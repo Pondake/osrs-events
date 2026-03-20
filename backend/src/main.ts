@@ -1,56 +1,55 @@
+import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
+import { ExpressAdapter } from '@nestjs/platform-express'
 import { AppModule } from './app.module'
+import express from 'express'
+import type { Request, Response } from 'express'
 
-let nestApp: Awaited<ReturnType<typeof NestFactory.create>> | undefined
+// One shared Express instance — reused across warm Lambda invocations.
+const server = express()
+let nestInitialized = false
 
-const bootstrapPromise = (async () => {
-  nestApp = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] })
+async function initNest(): Promise<void> {
+  if (nestInitialized) return
+  nestInitialized = true
 
-  nestApp.enableCors({
-    origin: process.env.NUXT_APP_URL || 'http://localhost:3000',
-    credentials: true,
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : undefined,
   })
 
-  await nestApp.init()
-  return nestApp
-})()
+  // CORS: origin:true reflects the request origin back, allowing all origins
+  // while remaining compatible with Authorization headers.
+  // Lock this down to specific domains before going to production:
+  //   origin: ['https://osrs-events.com', 'https://dev.osrs-events.com', 'http://localhost:3000']
+  app.enableCors({
+    origin: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  })
 
-// ─────────────────────────────────────────────
-// Vercel serverless handler
-// ─────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function handler(req: any, res: any) {
-  const origin = process.env.NUXT_APP_URL || 'http://localhost:3000'
-
-  // Set CORS headers at the outermost layer — this guarantees they are present
-  // on every response, including errors and cold-start failures, because the
-  // NestJS middleware only runs after bootstrapPromise resolves.
-  res.setHeader('Access-Control-Allow-Origin', origin)
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-
-  // Respond to CORS preflight immediately — no need to start NestJS for this
-  if (req.method === 'OPTIONS') {
-    res.statusCode = 204
-    res.end()
-    return
-  }
-
-  await bootstrapPromise
-  nestApp!.getHttpAdapter().getInstance()(req, res)
+  await app.init()
 }
 
-// ─────────────────────────────────────────────
-// Local development — starts a real HTTP server
-// ─────────────────────────────────────────────
-if (process.env.NODE_ENV !== 'production') {
-  bootstrapPromise.then(async () => {
-    const port = process.env.PORT || 3001
-    await nestApp!.listen(port)
+// ── Vercel serverless handler ─────────────────────────────────────────────
+// @vercel/node compiles this file with SWC (which supports emitDecoratorMetadata)
+// and calls this export for every incoming request.
+export default async function handler(req: Request, res: Response): Promise<void> {
+  await initNest()
+  server(req, res)
+}
+
+// ── Local development: start a real HTTP server ───────────────────────────
+// nest start / nest start:dev executes this file directly. We detect non-production
+// by checking NODE_ENV and start a proper listening server.
+async function bootstrap(): Promise<void> {
+  await initNest()
+  const port = process.env.PORT ?? 3001
+  server.listen(port, () => {
     console.log(`🚀 Backend running on http://localhost:${port}`)
     console.log(`📊 GraphQL Playground: http://localhost:${port}/graphql`)
   })
+}
+
+if (process.env.NODE_ENV !== 'production') {
+  bootstrap()
 }
