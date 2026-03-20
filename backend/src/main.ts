@@ -1,26 +1,41 @@
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
+import type { Request, Response } from 'express'
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+// Bootstrap the Nest app once; promise is cached at module level so warm
+// serverless invocations skip the expensive init on subsequent requests.
+let nestApp: Awaited<ReturnType<typeof NestFactory.create>> | undefined
 
-  // Enable CORS for the Nuxt frontend (NUXT_APP_URL = http://localhost:3000)
-  app.enableCors({
+const bootstrapPromise = (async () => {
+  nestApp = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] })
+
+  nestApp.enableCors({
     origin: process.env.NUXT_APP_URL || 'http://localhost:3000',
     credentials: true,
   })
 
-  const port = process.env.PORT || 3001
-  const nodeEnv = process.env.NODE_ENV || 'development'
-  
-  await app.listen(port)
-  
-  if (nodeEnv === 'development') {
-    console.log(`🚀 Backend running on http://localhost:${port}`)
-    console.log(`📊 GraphQL Playground: http://localhost:${port}/graphql`)
-  } else {
-    console.log(`Server started on port ${port}`)
-  }
+  await nestApp.init()
+  return nestApp
+})()
+
+// ─────────────────────────────────────────────
+// Vercel serverless handler — required export for deployment
+// Without this, Vercel throws "No exports found in module main.js"
+// ─────────────────────────────────────────────
+export default async function handler(req: Request, res: Response) {
+  await bootstrapPromise
+  // Get the underlying Express instance NestJS created internally
+  nestApp!.getHttpAdapter().getInstance()(req, res)
 }
 
-bootstrap()
+// ─────────────────────────────────────────────
+// Local development — starts a real HTTP server
+// ─────────────────────────────────────────────
+if (process.env.NODE_ENV !== 'production') {
+  bootstrapPromise.then(async () => {
+    const port = process.env.PORT || 3001
+    await nestApp!.listen(port)
+    console.log(`🚀 Backend running on http://localhost:${port}`)
+    console.log(`📊 GraphQL Playground: http://localhost:${port}/graphql`)
+  })
+}
