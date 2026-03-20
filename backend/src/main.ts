@@ -11,9 +11,16 @@ async function bootstrap() {
   })
 
   const port = process.env.PORT || 3001
+  const nodeEnv = process.env.NODE_ENV || 'development'
+  
   await app.listen(port)
-  console.log(`🚀 Backend running on http://localhost:${port}`)
-  console.log(`📊 GraphQL Playground: http://localhost:${port}/graphql`)
+  
+  if (nodeEnv === 'development') {
+    console.log(`🚀 Backend running on http://localhost:${port}`)
+    console.log(`📊 GraphQL Playground: http://localhost:${port}/graphql`)
+  } else {
+    console.log(`Server started on port ${port}`)
+  }
 }
 
 bootstrap()

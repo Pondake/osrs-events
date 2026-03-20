@@ -1,10 +1,10 @@
 <template>
   <nuxt-layout :title="$t('boards.title')" :description="$t('boards.subtitle')">
-   <template #links v-if="authStore.isAdmin || authStore.isEditor" >
-        <u-button color="primary" icon="i-lucide-plus" to="/admin/boards/create">
-          {{ $t('admin.create_board') }}
-        </u-button>
-      </template>
+    <template v-if="authStore.isAdmin || authStore.isEditor" #links>
+      <u-button color="primary" icon="i-lucide-plus" to="/admin/boards/create">
+        {{ $t('admin.create_board') }}
+      </u-button>
+    </template>
       
     <u-page-body>
       <u-container>
@@ -67,7 +67,7 @@
                         v-for="author in board.authors.slice(0, 3)"
                         :key="author.id"
                         :src="author.user.avatarUrl"
-                        :alt="author.user.discordUsername"
+                        :alt="author.user.nickname || author.user.discordUsername"
                         size="xs"
                         class="ring-2 ring-background"
                       />
@@ -76,7 +76,7 @@
                     <span class="text-xs text-muted">
                       {{
                         board.authors
-                          .map((a: { user: { discordUsername: string } }) => a.user.discordUsername)
+                          .map((a: { user: { discordUsername: string; nickname: string | null } }) => a.user.nickname || a.user.discordUsername)
                           .join(', ')
                       }}
                     </span>
@@ -110,7 +110,7 @@ const authStore = useAuthStore();
 
 interface BoardAuthor {
   id: string;
-  user: { id: string; discordUsername: string; avatarUrl: string | null };
+  user: { id: string; discordUsername: string; nickname: string | null; avatarUrl: string | null };
 }
 interface Board {
   id: string;
@@ -125,7 +125,7 @@ interface Board {
 const BOARDS_QUERY = `query Boards {
   boards {
     id title startDate endDate size diceRollLimit
-    authors { id user { id discordUsername avatarUrl } }
+    authors { id user { id discordUsername nickname avatarUrl } }
   }
 }`;
 

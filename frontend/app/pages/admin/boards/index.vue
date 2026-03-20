@@ -62,7 +62,7 @@
 
                   <span>
                     <u-icon name="i-heroicons-user-group" class="inline mr-1" />
-                    {{ board.authors.map((a: any) => a.user.discordUsername).join(', ') }}
+                    {{ board.authors.map((a: any) => a.user.nickname || a.user.discordUsername).join(', ') }}
                   </span>
                 </div>
               </div>
@@ -137,7 +137,7 @@ const BOARDS_QUERY = `
       endDate
       diceRollLimit
       authors {
-        user { id discordUsername }
+        user { id discordUsername nickname }
       }
     }
   }
