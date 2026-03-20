@@ -21,7 +21,8 @@
               {{ $t('tile_editor.current_task') }}
             </p>
 
-            <p class="text-sm font-medium truncate">{{ selectedTask.title }}</p>
+            <p class="text-sm font-medium">{{ selectedTask.title }}</p>
+            <p class="text-sm font-medium">{{ selectedTask.description }}</p>
           </div>
         </div>
 
@@ -200,7 +201,7 @@
             />
 
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium truncate">{{ selectedTask.title }}</p>
+              <p class="text-sm font-medium">{{ selectedTask.title }}</p>
             </div>
 
             <u-button

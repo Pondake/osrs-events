@@ -14,7 +14,7 @@ export const useAuthStore = defineStore('auth', {
     user: null as User | null,
     token: null as string | null,
     loading: false,
-    /** true once the client-side auth plugin has finished loading from localStorage */
+    /** true once auth has been initialized (user fetched or determined to be absent) */
     hydrated: false,
   }),
 
@@ -28,9 +28,17 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    /**
+     * Persist the JWT to both the auth cookie (for SSR) and localStorage (legacy).
+     * Only ever called on the client (after Discord OAuth callback).
+     */
     setToken(token: string) {
       this.token = token;
       if (import.meta.client) {
+        // Write to cookie so the server can read it on next SSR request (7-day expiry)
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 7);
+        document.cookie = `auth_token=${token}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
         localStorage.setItem('auth_token', token);
       }
     },
@@ -40,19 +48,24 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Load token from localStorage (called on app init)
+     * Load token from localStorage (client-only fallback for users who logged in
+     * before the cookie-based auth was introduced).
      */
     loadFromStorage() {
       if (import.meta.client) {
         const token = localStorage.getItem('auth_token');
-        if (token) {
+        if (token && !this.token) {
           this.token = token;
+          // Migrate to cookie so SSR works on subsequent requests
+          const expires = new Date();
+          expires.setDate(expires.getDate() + 7);
+          document.cookie = `auth_token=${token}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
         }
       }
     },
 
     /**
-     * Fetch current user info from backend using stored JWT
+     * Fetch current user info from the backend using the stored JWT.
      */
     async fetchMe() {
       if (!this.token) return;
@@ -80,6 +93,8 @@ export const useAuthStore = defineStore('auth', {
       this.user = null;
       this.token = null;
       if (import.meta.client) {
+        // Clear cookie
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
         localStorage.removeItem('auth_token');
       }
     },

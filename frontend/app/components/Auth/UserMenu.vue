@@ -13,7 +13,7 @@
 
           <u-icon v-else name="i-lucide-user" class="size-5" />
 
-          <span class="hidden sm:inline text-sm">{{ authStore.user?.discordUsername }}</span>
+          <span class="hidden sm:inline text-sm">{{ authStore.displayName }}</span>
 
           <template v-if="authStore.user?.roles?.length">
             <u-badge
@@ -69,7 +69,7 @@ function roleBadgeColor(role: string): 'primary' | 'success' | 'warning' | 'erro
 const items = computed(() => [
   [
     {
-      label: authStore.user?.discordUsername ?? t('common.profile'),
+      label: authStore.displayName ?? t('common.profile'),
       avatar: authStore.user?.avatarUrl ? { src: authStore.user.avatarUrl } : undefined,
       icon: authStore.user?.avatarUrl ? undefined : 'i-lucide-user',
       disabled: true,
