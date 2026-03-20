@@ -129,9 +129,7 @@ osrs-snakes/
 
 ## Roadmap
 
-- **Phase 2** — Teams, `EDITOR` and `TEAM_MANAGER` roles
-- **Phase 3** — RuneLite plugin webhook (auto-complete tiles from in-game events)
-- **Phase 4** — Rebrand to OSRS Events, bingo board mode with leaderboard
+See [roadmap.md](roadmap.md).
 
 ---
 

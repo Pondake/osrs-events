@@ -2,9 +2,7 @@
   <u-app :toaster="{ position: 'top-center', expand: true }">
     <app-header />
 
-
-      <nuxt-page />
-
+    <nuxt-page />
 
     <app-footer />
   </u-app>
@@ -18,9 +16,11 @@ useHead({
 });
 
 useSeoMeta({
-  title: 'OSRS Snakes & Ladders',
-  description: 'An Old School RuneScape themed Snakes & Ladders bingo board for your clan.',
-  ogTitle: 'OSRS Snakes & Ladders',
-  ogDescription: 'An Old School RuneScape themed Snakes & Ladders bingo board for your clan.',
+  title: 'OSRS Events',
+  description:
+    'An Old School RuneScape themed events platform. Join boards, roll dice and complete OSRS tasks with your clan.',
+  ogTitle: 'OSRS Events',
+  ogDescription:
+    'An Old School RuneScape themed events platform. Join boards, roll dice and complete OSRS tasks with your clan.',
 });
 </script>
