@@ -1,0 +1,203 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type BoardAuthorEntity {
+  id: ID!
+  user: UserEntity!
+}
+
+type BoardEntity {
+  authors: [BoardAuthorEntity!]!
+  createdAt: DateTime!
+  description: String
+
+  """null = unlimited rolls per day"""
+  diceRollLimit: Int
+  endDate: DateTime
+  id: ID!
+  size: BoardSize!
+  startDate: DateTime
+  tiles: [TileEntity!]
+  title: String!
+  updatedAt: DateTime!
+}
+
+enum BoardSize {
+  SIZE_5X5
+  SIZE_7X7
+  SIZE_9X9
+}
+
+type CompletedTileEntity {
+  completedAt: DateTime!
+  completedVia: CompletionSource!
+  id: ID!
+  tileId: ID!
+}
+
+enum CompletionSource {
+  MANUAL
+  RUNELITE
+}
+
+input CreateBoardInput {
+  """UUIDs of admin users to set as authors"""
+  authorIds: [ID!]!
+  description: String
+  diceRollLimit: Int
+  endDate: DateTime
+  size: BoardSize!
+  startDate: DateTime
+  title: String!
+}
+
+input CreateTaskInput {
+  description: String
+  iconUrl: String
+  title: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Mutation {
+  assignRole(roleName: String!, userId: ID!): UserEntity!
+  clearSnakeLadder(id: ID!): TileEntity!
+  completeTile(boardId: ID!, tileId: ID!): PlayerBoardEntity!
+  createBoard(input: CreateBoardInput!): BoardEntity!
+  createTask(input: CreateTaskInput!): TaskEntity!
+  deleteBoard(id: ID!): BoardEntity!
+  deleteTask(id: ID!): TaskEntity!
+  deleteTile(id: ID!): TileEntity!
+  removeRole(roleName: String!, userId: ID!): UserEntity!
+  rollDice(boardId: ID!): RollResultEntity!
+  uncompleteTile(boardId: ID!, tileId: ID!): PlayerBoardEntity
+  updateBoard(id: ID!, input: UpdateBoardInput!): BoardEntity!
+  updateProfile(nickname: String): UserEntity!
+  updateTask(id: ID!, input: UpdateTaskInput!): TaskEntity!
+  upsertTile(input: UpsertTileInput!): TileEntity!
+}
+
+type PlayerBoardBoardSummary {
+  id: ID!
+  size: String!
+  title: String!
+}
+
+type PlayerBoardEntity {
+  board: PlayerBoardBoardSummary
+  boardId: ID!
+  completedTiles: [CompletedTileEntity!]!
+  createdAt: DateTime!
+  currentPosition: Int!
+  diceRollsToday: Int!
+  id: ID!
+  lastRollDate: DateTime
+  updatedAt: DateTime!
+  user: UserEntity
+  userId: ID!
+}
+
+type Query {
+  board(id: ID!): BoardEntity
+  boardPlayerStates(boardId: ID!): [PlayerBoardEntity!]!
+  boards: [BoardEntity!]!
+  me: UserEntity
+  myBoardState(boardId: ID!): PlayerBoardEntity
+  myPlayerBoards: [PlayerBoardEntity!]!
+  task(id: ID!): TaskEntity
+  tasks(search: String): [TaskEntity!]!
+  tiles(boardId: ID!): [TileEntity!]!
+  users(search: String): [UserEntity!]!
+}
+
+type RoleEntity {
+  description: String
+  id: ID!
+  name: String!
+}
+
+type RollResultEntity {
+  """snake | ladder | null"""
+  jump: String
+
+  """Position before snake/ladder jump"""
+  landedOn: Int
+  newPosition: Int!
+  playerBoard: PlayerBoardEntity!
+  previousPosition: Int!
+  rolled: Int!
+}
+
+type TaskEntity {
+  createdAt: DateTime!
+  description: String
+  iconUrl: String
+  id: ID!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type TileEntity {
+  boardId: ID!
+  createdAt: DateTime!
+  displayTitle: String
+  iconUrl: String
+  id: ID!
+  position: Int!
+  targetPosition: Int
+  task: TaskEntity
+  titleOverride: String
+  type: TileType!
+  updatedAt: DateTime!
+}
+
+enum TileType {
+  LADDER
+  NORMAL
+  SNAKE
+}
+
+input UpdateBoardInput {
+  authorIds: [ID!]
+  description: String
+  diceRollLimit: Int
+  endDate: DateTime
+  size: BoardSize
+  startDate: DateTime
+  title: String
+}
+
+input UpdateTaskInput {
+  description: String
+  iconUrl: String
+  title: String
+}
+
+input UpsertTileInput {
+  boardId: ID!
+  position: Int!
+  targetPosition: Int
+  taskId: ID
+  titleOverride: String
+  type: TileType
+}
+
+type UserEntity {
+  avatarUrl: String
+  createdAt: DateTime!
+  discordId: String!
+  discordUsername: String!
+  id: ID!
+  nickname: String
+  updatedAt: DateTime!
+  userRoles: [UserRoleEntity!]!
+}
+
+type UserRoleEntity {
+  id: ID!
+  role: RoleEntity!
+}

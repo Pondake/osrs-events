@@ -1,0 +1,256 @@
+<template>
+  <nuxt-layout :title="$t('admin.tasks_title')" :description="$t('admin.tasks_subtitle')" >
+
+    <u-page-body>
+      <u-container>
+        <!-- Toolbar: search + create -->
+        <div class="flex gap-3 mb-6">
+          <u-input
+            v-model="searchQuery"
+            :placeholder="$t('common.search')"
+            icon="i-heroicons-magnifying-glass"
+            class="flex-1"
+            @input="onSearchInput"
+          />
+
+          <u-button icon="i-heroicons-plus" color="primary" @click="openCreateModal">
+            {{ $t('common.create') }}
+          </u-button>
+        </div>
+
+        <div v-if="pending" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <u-skeleton v-for="i in 6" :key="i" class="h-24" />
+        </div>
+
+        <u-alert
+          v-else-if="error"
+          color="error"
+          icon="i-heroicons-exclamation-circle"
+          :title="$t('errors.generic')"
+        />
+
+        <div v-else-if="tasks.length === 0" class="text-center py-12 text-muted">
+          <u-icon name="i-heroicons-clipboard-document-list" class="text-5xl mb-4 block mx-auto" />
+
+          <p>{{ $t('boards.no_boards') }}</p>
+        </div>
+
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <u-card
+            v-for="task in tasks"
+            :key="task.id"
+            class="osrs-border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+            @click="openEditModal(task)"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="w-12 h-12 shrink-0 flex items-center justify-center rounded-md bg-muted overflow-hidden"
+              >
+                <img
+                  v-if="task.iconUrl"
+                  :src="task.iconUrl"
+                  :alt="task.title"
+                  class="w-10 h-10 object-contain image-rendering-pixelated"
+                />
+
+                <u-icon v-else name="i-heroicons-photo" class="text-2xl text-muted" />
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold osrs-font truncate">{{ task.title }}</p>
+
+                <p v-if="task.description" class="text-xs text-muted truncate">
+                  {{ task.description }}
+                </p>
+              </div>
+
+              <u-button
+                icon="i-heroicons-pencil-square"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click.stop="openEditModal(task)"
+              />
+            </div>
+          </u-card>
+        </div>
+      </u-container>
+    </u-page-body>
+
+    <!-- Create/Edit Modal -->
+    <u-modal v-model:open="showModal">
+      <template #content>
+        <u-card class="osrs-border">
+          <template #header>
+            <h3 class="text-lg font-semibold osrs-font">
+              {{ editingTask ? $t('common.edit') : $t('common.create') }}
+            </h3>
+          </template>
+
+          <task-edit-form v-model="taskForm" />
+
+          <template #footer>
+            <div class="flex justify-between items-center">
+              <u-button
+                v-if="editingTask"
+                icon="i-heroicons-trash"
+                color="error"
+                variant="ghost"
+                :loading="deleting"
+                @click="doDeleteTask"
+              >
+                {{ $t('common.delete') }}
+              </u-button>
+
+              <div v-else />
+
+              <div class="flex gap-2">
+                <u-button color="neutral" variant="ghost" @click="showModal = false">
+                  {{ $t('common.cancel') }}
+                </u-button>
+
+                <u-button
+                  color="primary"
+                  :loading="saving"
+                  icon="i-heroicons-check"
+                  @click="saveTask"
+                >
+                  {{ $t('common.save') }}
+                </u-button>
+              </div>
+            </div>
+          </template>
+        </u-card>
+      </template>
+    </u-modal>
+  </nuxt-layout>
+</template>
+
+<script setup lang="ts">
+definePageMeta({ middleware: ['admin'] });
+
+const { t } = useI18n();
+const toast = useToast();
+
+const TASKS_QUERY = `
+  query Tasks($search: String) {
+    tasks(search: $search) {
+      id
+      title
+      iconUrl
+      description
+    }
+  }
+`;
+
+const CREATE_TASK_MUTATION = `
+  mutation CreateTask($input: CreateTaskInput!) {
+    createTask(input: $input) {
+      id title iconUrl description
+    }
+  }
+`;
+
+// Fixed: ID! instead of String!
+const UPDATE_TASK_MUTATION = `
+  mutation UpdateTask($id: ID!, $input: UpdateTaskInput!) {
+    updateTask(id: $id, input: $input) {
+      id title iconUrl description
+    }
+  }
+`;
+
+// Fixed: ID! instead of String!
+const DELETE_TASK_MUTATION = `
+  mutation DeleteTask($id: ID!) {
+    deleteTask(id: $id)
+  }
+`;
+
+const searchQuery = ref('');
+const { data, pending, error, refresh } = await useGql<{ tasks: any[] }>(
+  TASKS_QUERY,
+  computed(() => ({
+    search: searchQuery.value || undefined,
+  })),
+);
+const tasks = computed(() => data.value?.tasks ?? []);
+
+// Debounced search
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+function onSearchInput() {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => refresh(), 400);
+}
+
+// Modal state
+const showModal = ref(false);
+const editingTask = ref<any>(null);
+const saving = ref(false);
+const deleting = ref(false);
+
+const taskForm = reactive({
+  title: '',
+  iconUrl: '',
+  description: '',
+});
+
+function openCreateModal() {
+  editingTask.value = null;
+  taskForm.title = '';
+  taskForm.iconUrl = '';
+  taskForm.description = '';
+  showModal.value = true;
+}
+
+function openEditModal(task: any) {
+  editingTask.value = task;
+  taskForm.title = task.title;
+  taskForm.iconUrl = task.iconUrl ?? '';
+  taskForm.description = task.description ?? '';
+  showModal.value = true;
+}
+
+async function saveTask() {
+  if (!taskForm.title.trim()) {
+    toast.add({ title: t('errors.generic'), color: 'error' });
+    return;
+  }
+  saving.value = true;
+  try {
+    const input = {
+      title: taskForm.title.trim(),
+      iconUrl: taskForm.iconUrl.trim() || null,
+      description: taskForm.description.trim() || null,
+    };
+    if (editingTask.value) {
+      await useGqlMutation(UPDATE_TASK_MUTATION, { id: editingTask.value.id, input });
+      toast.add({ title: t('admin.task_updated'), color: 'success' });
+    } else {
+      await useGqlMutation(CREATE_TASK_MUTATION, { input });
+      toast.add({ title: t('admin.task_created'), color: 'success' });
+    }
+    showModal.value = false;
+    await refresh();
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' });
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function doDeleteTask() {
+  if (!editingTask.value) return;
+  deleting.value = true;
+  try {
+    await useGqlMutation(DELETE_TASK_MUTATION, { id: editingTask.value.id });
+    toast.add({ title: t('admin.task_deleted'), color: 'success' });
+    showModal.value = false;
+    await refresh();
+  } catch {
+    toast.add({ title: t('errors.generic'), color: 'error' });
+  } finally {
+    deleting.value = false;
+  }
+}
+</script>
