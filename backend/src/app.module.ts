@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common'
 import { GraphQLModule } from '@nestjs/graphql'
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo'
 import { ConfigModule } from '@nestjs/config'
-import { join } from 'path'
 import { PrismaModule } from './prisma/prisma.module'
 import { AuthModule } from './auth/auth.module'
 import { UsersModule } from './users/users.module'
@@ -20,9 +19,12 @@ import { PlayersModule } from './players/players.module'
     }),
 
     // GraphQL with Apollo — code-first
+    // autoSchemaFile: true keeps the schema in memory — never writes to disk.
+    // This is required for Vercel Lambda (read-only filesystem) and is safe
+    // for local development too (schema.gql in the repo is the generated copy).
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      autoSchemaFile: true,
       sortSchema: true,
       context: ({ req }: { req: Request }) => ({ req }),
       playground: process.env.NODE_ENV !== 'production',
