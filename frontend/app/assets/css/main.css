@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* OSRS-style Google Fonts */
+
+:root {
+  --font-osrs: 'Cinzel', Georgia, serif;
+  --font-osrs-decorative: 'Cinzel Decorative', Georgia, serif;
+}
+
+/* Headings use the OSRS-style font */
+h1, h2, h3, .osrs-font {
+  font-family: var(--font-osrs);
+}
+
+/* Page title decoration */
+.osrs-title {
+  font-family: var(--font-osrs-decorative);
+  letter-spacing: 0.05em;
+}
+
+/* Board grid styling */
+.board-grid {
+  display: grid;
+  gap: 4px;
+  position: relative;
+}
+
+.board-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.board-grid-7 {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.board-grid-9 {
+  grid-template-columns: repeat(9, 1fr);
+}
+
+/* Tile styling */
+.board-tile {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.board-tile:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+.board-tile--snake {
+  outline: 3px solid theme('colors.red.500');
+  outline-offset: -3px;
+}
+
+.board-tile--ladder {
+  outline: 3px solid theme('colors.green.500');
+  outline-offset: -3px;
+}
+
+.board-tile--completed {
+  opacity: 0.85;
+}
+
+/* Tiles that the player has already passed — grayed out behind them */
+.board-tile--past {
+  opacity: 0.38;
+  filter: grayscale(55%);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.board-tile--past:hover {
+  opacity: 0.55;
+  filter: grayscale(30%);
+}
+
+.board-tile--current {
+  outline: 3px solid theme('colors.purple.400');
+  outline-offset: -3px;
+}
+
+/* SVG snake/ladder overlay */
+.board-svg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Dice animation */
+@keyframes dice-shake {
+  0%   { transform: rotate(0deg) scale(1); }
+  10%  { transform: rotate(-25deg) scale(1.15); }
+  22%  { transform: rotate(25deg) scale(1.2); }
+  34%  { transform: rotate(-20deg) scale(1.15); }
+  46%  { transform: rotate(20deg) scale(1.2); }
+  58%  { transform: rotate(-14deg) scale(1.1); }
+  70%  { transform: rotate(14deg) scale(1.15); }
+  82%  { transform: rotate(-8deg) scale(1.05); }
+  91%  { transform: rotate(5deg) scale(1.02); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.dice-rolling {
+  animation: dice-shake 1.4s ease-in-out;
+}
+
+/* Player avatar on tile */
+.tile-avatar {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: calc(100% - 4px);
+}
+
+/* OSRS parchment background effect for board area */
+.board-parchment {
+  background-color: color-mix(in srgb, theme('colors.amber.50') 90%, theme('colors.orange.100') 10%);
+}
+
+.dark .board-parchment {
+  background-color: color-mix(in srgb, theme('colors.stone.900') 90%, theme('colors.amber.950') 10%);
+}
+
+/* Muted stone accent border */
+.osrs-border {
+  border: 2px solid theme('colors.stone.400');
+  box-shadow: 0 0 0 1px theme('colors.stone.200'), inset 0 0 0 1px theme('colors.stone.500');
+}
+
+.dark .osrs-border {
+  border: 2px solid theme('colors.stone.600');
+  box-shadow: 0 0 0 1px theme('colors.stone.800'), inset 0 0 0 1px theme('colors.stone.500');
+}
