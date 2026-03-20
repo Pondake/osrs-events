@@ -1,7 +1,7 @@
 import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
-import type { Request, Response } from 'express'
+import type { Request, Response, NextFunction } from 'express'
 
 let nestApp: Awaited<ReturnType<typeof NestFactory.create>> | undefined
 
@@ -10,11 +10,40 @@ const bootstrapPromise = (async () => {
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : undefined,
   })
 
+  // Restrict CORS to the frontend origin only — never use origin: true in production
+  const allowedOrigin = process.env.NUXT_APP_URL || 'http://localhost:3000'
+
   nestApp.enableCors({
-    origin: true,
+    origin: allowedOrigin,
+    credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   })
+
+  // Block direct browser / scraper access in production.
+  // Discord OAuth endpoints are explicitly excluded — they are public redirects.
+  // All other requests must show at least one sign of a legitimate API call:
+  //   1. POST with Content-Type: application/json  (GraphQL, Nuxt SSR)
+  //   2. Authorization: Bearer <token>             (authenticated requests)
+  //   3. Origin matches the frontend URL           (browser SPA requests)
+  if (process.env.NODE_ENV === 'production') {
+    nestApp.use((req: Request, res: Response, next: NextFunction) => {
+      // Always allow Discord OAuth redirect flow and CORS preflight
+      if (req.path.startsWith('/auth/discord') || req.method === 'OPTIONS') {
+        return next()
+      }
+
+      const hasAuth   = !!req.headers.authorization
+      const hasJson   = req.headers['content-type']?.includes('application/json')
+      const fromFront = req.headers.origin === allowedOrigin
+
+      if (!hasAuth && !hasJson && !fromFront) {
+        return res.status(403).json({ message: 'Direct API access is not permitted.' })
+      }
+
+      next()
+    })
+  }
 
   await nestApp.init()
   return nestApp

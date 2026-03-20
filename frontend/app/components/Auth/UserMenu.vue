@@ -33,6 +33,7 @@
       </u-dropdown-menu>
 
       <!-- Login button — only shown when not authenticated -->
+      <!-- On mobile: compact (icon + short label). On sm+: full label. -->
       <u-button
         v-else
         color="primary"
@@ -41,7 +42,8 @@
         :loading="authStore.loading"
         @click="authStore.loginWithDiscord()"
       >
-        {{ $t('common.login_discord') }}
+        <span class="sm:hidden">{{ $t('common.login') }}</span>
+        <span class="hidden sm:inline">{{ $t('common.login_discord') }}</span>
       </u-button>
 
       <template #fallback>

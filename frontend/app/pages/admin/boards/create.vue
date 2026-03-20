@@ -1,6 +1,5 @@
 <template>
   <nuxt-layout :title="$t('admin.create_board')">
-
     <u-page-body>
       <u-container class="max-w-2xl">
         <u-card class="osrs-border">
@@ -44,13 +43,41 @@
                 <u-select v-model="form.size" :items="sizeOptions" class="w-full" />
               </u-form-field>
 
-              <!-- Date range picker -->
+              <!-- Date range picker — DD-MM-YYYY locale with calendar popup -->
               <u-form-field
                 :label="$t('admin.date_range')"
                 :description="$t('admin.date_range_desc')"
                 name="dateRange"
               >
-                <u-input-date v-model="dateRange" range class="w-full" />
+                <u-input-date
+                  ref="inputDate"
+                  v-model="dateRange"
+                  range
+                  locale="nl"
+                  class="w-full"
+                >
+                  <template #trailing>
+                    <u-popover :reference="inputDate?.inputsRef?.[0]?.$el">
+                      <u-button
+                        color="neutral"
+                        variant="link"
+                        size="sm"
+                        icon="i-lucide-calendar"
+                        :aria-label="$t('admin.date_range')"
+                        class="px-0"
+                      />
+
+                      <template #content>
+                        <u-calendar
+                          v-model="dateRange"
+                          class="p-2"
+                          :number-of-months="2"
+                          range
+                        />
+                      </template>
+                    </u-popover>
+                  </template>
+                </u-input-date>
               </u-form-field>
 
               <!-- Dice roll limit -->
@@ -172,6 +199,9 @@ const { t } = useI18n();
 const toast = useToast();
 const router = useRouter();
 const authStore = useAuthStore();
+
+// Template ref for UInputDate — used to anchor the calendar popover
+const inputDate = useTemplateRef('inputDate');
 
 const CREATE_BOARD_MUTATION = `
   mutation CreateBoard($input: CreateBoardInput!) {

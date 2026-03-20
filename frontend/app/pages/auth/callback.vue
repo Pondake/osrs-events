@@ -42,7 +42,8 @@ onMounted(async () => {
       color: 'success',
     });
 
-    navigateTo('/boards');
+    // Replace history entry so the JWT token doesn't remain in browser history
+    navigateTo('/boards', { replace: true });
   } else {
     navigateTo('/');
   }

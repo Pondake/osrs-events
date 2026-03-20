@@ -9,6 +9,7 @@ import { BoardsModule } from './boards/boards.module'
 import { TilesModule } from './tiles/tiles.module'
 import { TasksModule } from './tasks/tasks.module'
 import { PlayersModule } from './players/players.module'
+import { SeedModule } from './seed/seed.module'
 
 @Module({
   imports: [
@@ -40,7 +41,8 @@ import { PlayersModule } from './players/players.module'
     BoardsModule,
     TilesModule,
     TasksModule,
-    PlayersModule
+    PlayersModule,
+    // SeedModule, enable to seed when running the app
   ]
 })
 export class AppModule {}

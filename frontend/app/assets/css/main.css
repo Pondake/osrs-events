@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
-/* OSRS-style Google Fonts */
+/* OSRS-style Google Fonts — loaded via <link> in nuxt.config.ts head */
 
 :root {
   --font-osrs: 'Cinzel', Georgia, serif;
@@ -12,6 +12,11 @@
 h1, h2, h3, .osrs-font {
   font-family: var(--font-osrs);
 }
+
+/* Tailwind v4 preflight resets heading sizes to inherit — restore sensible defaults */
+h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 700; }
+h2 { font-size: 1.875rem; line-height: 2.25rem; font-weight: 600; }
+h3 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; }
 
 /* Page title decoration */
 .osrs-title {

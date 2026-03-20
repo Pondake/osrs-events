@@ -31,18 +31,12 @@
       <auth-user-menu />
     </template>
 
-    <!-- Mobile panel — UHeader renders the toggle button automatically -->
-    <template #panel>
-      <client-only>
-        <div v-if="!authStore.hydrated" class="p-4 flex flex-col gap-2">
-          <u-skeleton class="h-8 w-full rounded" />
-          <u-skeleton class="h-8 w-full rounded" />
-        </div>
-
-        <div v-else-if="navigation.length" class="p-4">
-          <u-navigation-menu :items="navigation" orientation="vertical" />
-        </div>
-      </client-only>
+    <!-- Mobile panel — only provided when there are navigation items.
+         UHeader hides the hamburger toggle when no panel slot is present. -->
+    <template v-if="authStore.hydrated && navigation.length > 0" #panel>
+      <div class="p-4">
+        <u-navigation-menu :items="navigation" orientation="vertical" />
+      </div>
     </template>
   </u-header>
 </template>
