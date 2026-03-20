@@ -1,9 +1,6 @@
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
-import type { Request, Response } from 'express'
 
-// Bootstrap the Nest app once; promise is cached at module level so warm
-// serverless invocations skip the expensive init on subsequent requests.
 let nestApp: Awaited<ReturnType<typeof NestFactory.create>> | undefined
 
 const bootstrapPromise = (async () => {
@@ -12,6 +9,8 @@ const bootstrapPromise = (async () => {
   nestApp.enableCors({
     origin: process.env.NUXT_APP_URL || 'http://localhost:3000',
     credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 
   await nestApp.init()
@@ -19,12 +18,28 @@ const bootstrapPromise = (async () => {
 })()
 
 // ─────────────────────────────────────────────
-// Vercel serverless handler — required export for deployment
-// Without this, Vercel throws "No exports found in module main.js"
+// Vercel serverless handler
 // ─────────────────────────────────────────────
-export default async function handler(req: Request, res: Response) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function handler(req: any, res: any) {
+  const origin = process.env.NUXT_APP_URL || 'http://localhost:3000'
+
+  // Set CORS headers at the outermost layer — this guarantees they are present
+  // on every response, including errors and cold-start failures, because the
+  // NestJS middleware only runs after bootstrapPromise resolves.
+  res.setHeader('Access-Control-Allow-Origin', origin)
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
+  // Respond to CORS preflight immediately — no need to start NestJS for this
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204
+    res.end()
+    return
+  }
+
   await bootstrapPromise
-  // Get the underlying Express instance NestJS created internally
   nestApp!.getHttpAdapter().getInstance()(req, res)
 }
 
