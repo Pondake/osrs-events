@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/src/main.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["backend/src/**", "backend/prisma/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "backend/src/main.ts"
+    }
+  ]
+}
