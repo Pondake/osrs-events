@@ -4,19 +4,6 @@
 
 ---
 
-## Phase 2 — Teams & Permissions
-
-- [ ] Leaderboard per board/event (user/team rankings by points)
-- [ ] Teams system (create, join, manage)
-- [ ] New role: **EDITOR** (can edit boards they are assigned to) — role already seeded
-- [ ] New role: **TEAM_MANAGER** (can manage team membership) — role already seeded
-- [ ] Team-based board view: show team members' positions and progress
-- [ ] Team logic when creating & playing boards (assign board to a team)
-- [ ] Teams navigation link in header (for TEAM_MANAGER role)
-- [ ] Admin UI for assigning users to teams
-- [ ] Proper automated graphql generated interfaces
-
----
 
 ## Phase 3 — Polish & RuneLite Integration
 

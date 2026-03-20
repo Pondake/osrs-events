@@ -1,5 +1,6 @@
 {
   "common": {
+    "login": "Login",
     "login_discord": "Login with Discord",
     "logout": "Logout",
     "profile": "Profile",

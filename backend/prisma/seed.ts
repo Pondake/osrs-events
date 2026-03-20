@@ -1,4 +1,4 @@
-import { PrismaClient, BoardSize, TileType } from '@prisma/client'
+import { PrismaClient, BoardSize, TileType } from '../src/generated/prisma/index.js'
 import { PrismaPg } from '@prisma/adapter-pg'
 import 'dotenv/config'
 
@@ -36,7 +36,7 @@ async function main() {
     { title: 'Catch a Raw Shark',            iconUrl: 'https://oldschool.runescape.wiki/images/Raw_shark.png',            description: 'Fish a raw shark with a harpoon (requires 76 Fishing).' },
     { title: 'Catch a Raw Swordfish',        iconUrl: 'https://oldschool.runescape.wiki/images/Raw_swordfish.png',        description: 'Harpoon a raw swordfish at a fishing spot (requires 50 Fishing).' },
     { title: 'Mine Runite Ore',              iconUrl: 'https://oldschool.runescape.wiki/images/Runite_ore.png',           description: 'Mine Runite ore from a Runite rock (requires 85 Mining).' },
-    { title: 'Smelt a Rune Bar',             iconUrl: 'https://oldschool.runescape.wiki/images/Rune_bar.png',             description: 'Smelt a Rune bar in a furnace (requires 85 Smithing).' },
+    { title: 'Smelt a Rune Bar',             iconUrl: 'https://oldschool.runescape.wiki/images/Runite_bar.png',           description: 'Smelt a Rune bar in a furnace (requires 85 Smithing).' },
     { title: 'Chop Magic Logs',              iconUrl: 'https://oldschool.runescape.wiki/images/Magic_logs.png',           description: 'Chop magic logs from a magic tree (requires 75 Woodcutting).' },
     { title: 'Craft a Nature Rune',          iconUrl: 'https://oldschool.runescape.wiki/images/Nature_rune.png',          description: 'Craft a Nature rune at the Nature Altar (requires 44 Runecraft).' },
     { title: 'Catch Red Chinchompas',        iconUrl: 'https://oldschool.runescape.wiki/images/Red_chinchompa.png',       description: 'Box-trap red chinchompas in Feldip Hills (requires 63 Hunter).' },
