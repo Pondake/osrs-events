@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// Roles
+// ─────────────────────────────────────────────
+model Role {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String     @unique
+  description String?
+  userRoles   UserRole[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Users
+// ─────────────────────────────────────────────
+model User {
+  id              String        @id @default(uuid()) @db.Uuid
+  discordId       String        @unique
+  discordUsername String
+  nickname        String? // optional display name shown instead of discordUsername
+  avatarUrl       String?
+  userRoles       UserRole[]
+  boardAuthors    BoardAuthor[]
+  playerBoards    PlayerBoard[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// User-Role pivot
+// ─────────────────────────────────────────────
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+}
+
+// ─────────────────────────────────────────────
+// Tasks (OSRS task templates for tile autocomplete)
+// ─────────────────────────────────────────────
+model Task {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  iconUrl     String?
+  description String?
+  tiles       Tile[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Boards
+// ─────────────────────────────────────────────
+enum BoardSize {
+  SIZE_5X5
+  SIZE_7X7
+  SIZE_9X9
+}
+
+model Board {
+  id            String        @id @default(uuid()) @db.Uuid
+  title         String
+  description   String?
+  startDate     DateTime?
+  endDate       DateTime?
+  size          BoardSize     @default(SIZE_7X7)
+  diceRollLimit Int? // null = unlimited
+  authors       BoardAuthor[]
+  tiles         Tile[]
+  playerBoards  PlayerBoard[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Board-Author pivot
+// ─────────────────────────────────────────────
+model BoardAuthor {
+  id        String   @id @default(uuid()) @db.Uuid
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId   String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@unique([boardId, userId])
+}
+
+// ─────────────────────────────────────────────
+// Tiles
+// ─────────────────────────────────────────────
+enum TileType {
+  NORMAL
+  SNAKE
+  LADDER
+}
+
+model Tile {
+  id             String          @id @default(uuid()) @db.Uuid
+  board          Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId        String          @db.Uuid
+  position       Int // 0-based index on the board
+  task           Task?           @relation(fields: [taskId], references: [id])
+  taskId         String?         @db.Uuid
+  titleOverride  String? // overrides task title if set
+  type           TileType        @default(NORMAL)
+  targetPosition Int? // target tile position for snake/ladder
+  completedTiles CompletedTile[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([boardId, position])
+}
+
+// ─────────────────────────────────────────────
+// Player board state
+// ─────────────────────────────────────────────
+model PlayerBoard {
+  id              String          @id @default(uuid()) @db.Uuid
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String          @db.Uuid
+  board           Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId         String          @db.Uuid
+  currentPosition Int             @default(0)
+  diceRollsToday  Int             @default(0)
+  lastRollDate    DateTime?
+  completedTiles  CompletedTile[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([userId, boardId])
+}
+
+// ─────────────────────────────────────────────
+// Completed tiles
+// ─────────────────────────────────────────────
+enum CompletionSource {
+  MANUAL
+  RUNELITE
+}
+
+model CompletedTile {
+  id            String           @id @default(uuid()) @db.Uuid
+  playerBoard   PlayerBoard      @relation(fields: [playerBoardId], references: [id], onDelete: Cascade)
+  playerBoardId String           @db.Uuid
+  tile          Tile             @relation(fields: [tileId], references: [id], onDelete: Cascade)
+  tileId        String           @db.Uuid
+  completedAt   DateTime         @default(now())
+  completedVia  CompletionSource @default(MANUAL)
+
+  @@unique([playerBoardId, tileId])
+}

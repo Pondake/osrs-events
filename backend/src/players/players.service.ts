@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-import type { Board, Tile } from '@prisma/client'
+import type { Board, Tile } from '../generated/prisma/index.js'
 
 @Injectable()
 export class PlayersService {
