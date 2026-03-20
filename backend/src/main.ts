@@ -3,10 +3,11 @@ import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import type { Request, Response, NextFunction } from 'express'
 
-let nestApp: Awaited<ReturnType<typeof NestFactory.create>> | undefined
+// Cached NestJS app instance — reused across warm Vercel Lambda invocations.
+let app: Awaited<ReturnType<typeof NestFactory.create>> | null = null
 
-const bootstrapPromise = (async () => {
-  nestApp = await NestFactory.create(AppModule, {
+async function bootstrap() {
+  const nestApp = await NestFactory.create(AppModule, {
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : undefined,
   })
 
@@ -18,7 +19,7 @@ const bootstrapPromise = (async () => {
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  })
+  }) 
 
   // Block direct browser / scraper access in production.
   // Discord OAuth endpoints are explicitly excluded — they are public redirects.
@@ -45,21 +46,24 @@ const bootstrapPromise = (async () => {
     })
   }
 
-  await nestApp.init()
   return nestApp
-})()
-
-// Vercel serverless handler
-export default async function handler(req: Request, res: Response) {
-  await bootstrapPromise
-  nestApp!.getHttpAdapter().getInstance()(req, res)
 }
 
-// Local development
+// Vercel serverless handler — @vercel/node compiles this from TypeScript source.
+// The app is initialised once and reused across warm invocations.
+export default async function handler(req: Request, res: Response) {
+  if (!app) {
+    app = await bootstrap()
+    await app.init()
+  }
+  app.getHttpAdapter().getInstance()(req, res)
+}
+
+// Local development: spin up a real HTTP server.
 if (process.env.NODE_ENV !== 'production') {
-  bootstrapPromise.then(async () => {
+  bootstrap().then(async (nestApp) => {
     const port = process.env.PORT || 3001
-    await nestApp!.listen(port)
+    await nestApp.listen(port)
     console.log(`🚀 Backend running on http://localhost:${port}`)
     console.log(`📊 GraphQL Playground: http://localhost:${port}/graphql`)
   })
