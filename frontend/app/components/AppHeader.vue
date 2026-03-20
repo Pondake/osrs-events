@@ -2,13 +2,27 @@
   <u-header>
     <template #left>
       <nuxt-link to="/" class="flex items-center gap-2">
-        <span class="osrs-title text-lg font-bold text-primary">🐍 OSRS S&amp;L</span>
+        <span class="osrs-title text-lg font-bold text-primary">⚔️ OSRS Events</span>
       </nuxt-link>
     </template>
 
     <!-- Desktop navigation — client-only to avoid SSR hydration mismatch -->
     <client-only>
-      <u-navigation-menu v-if="navigation.length" :items="navigation" />
+      <!-- Skeleton while auth hydrates -->
+      <template #fallback>
+        <div class="hidden md:flex gap-3 items-center">
+          <u-skeleton class="h-5 w-14 rounded" />
+          <u-skeleton class="h-5 w-24 rounded" />
+        </div>
+      </template>
+
+      <!-- Skeleton while auth hydrates on client -->
+      <div v-if="!authStore.hydrated" class="hidden md:flex gap-3 items-center">
+        <u-skeleton class="h-5 w-14 rounded" />
+        <u-skeleton class="h-5 w-24 rounded" />
+      </div>
+
+      <u-navigation-menu v-else-if="navigation.length" :items="navigation" />
     </client-only>
 
     <template #right>
@@ -20,7 +34,12 @@
     <!-- Mobile panel — UHeader renders the toggle button automatically -->
     <template #panel>
       <client-only>
-        <div v-if="navigation.length" class="p-4">
+        <div v-if="!authStore.hydrated" class="p-4 flex flex-col gap-2">
+          <u-skeleton class="h-8 w-full rounded" />
+          <u-skeleton class="h-8 w-full rounded" />
+        </div>
+
+        <div v-else-if="navigation.length" class="p-4">
           <u-navigation-menu :items="navigation" orientation="vertical" />
         </div>
       </client-only>

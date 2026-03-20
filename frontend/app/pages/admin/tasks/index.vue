@@ -189,7 +189,7 @@ const editingTask = ref<any>(null);
 const saving = ref(false);
 const deleting = ref(false);
 
-const taskForm = reactive({
+const taskForm = ref({
   title: '',
   iconUrl: '',
   description: '',
@@ -197,31 +197,31 @@ const taskForm = reactive({
 
 function openCreateModal() {
   editingTask.value = null;
-  taskForm.title = '';
-  taskForm.iconUrl = '';
-  taskForm.description = '';
+  taskForm.value.title = '';
+  taskForm.value.iconUrl = '';
+  taskForm.value.description = '';
   showModal.value = true;
 }
 
 function openEditModal(task: any) {
   editingTask.value = task;
-  taskForm.title = task.title;
-  taskForm.iconUrl = task.iconUrl ?? '';
-  taskForm.description = task.description ?? '';
+  taskForm.value.title = task.title;
+  taskForm.value.iconUrl = task.iconUrl ?? '';
+  taskForm.value.description = task.description ?? '';
   showModal.value = true;
 }
 
 async function saveTask() {
-  if (!taskForm.title.trim()) {
+  if (!taskForm.value.title.trim()) {
     toast.add({ title: t('errors.generic'), color: 'error' });
     return;
   }
   saving.value = true;
   try {
     const input = {
-      title: taskForm.title.trim(),
-      iconUrl: taskForm.iconUrl.trim() || null,
-      description: taskForm.description.trim() || null,
+      title: taskForm.value.title.trim(),
+      iconUrl: taskForm.value.iconUrl.trim() || null,
+      description: taskForm.value.description.trim() || null,
     };
     if (editingTask.value) {
       await useGqlMutation(UPDATE_TASK_MUTATION, { id: editingTask.value.id, input });

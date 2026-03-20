@@ -4,14 +4,21 @@ import { useAuthStore } from '~/stores/auth';
 
 type Variables = MaybeRef<Record<string, unknown>> | ComputedRef<Record<string, unknown>>;
 
+interface UseGqlOptions {
+  /** Set to false to skip the initial fetch during SSR (for auth-protected queries). Default: true */
+  server?: boolean;
+}
+
 /**
  * GraphQL composable using $fetch — SSR-compatible, no provider needed.
  * Accepts plain objects or reactive refs/computed for variables.
  * When refresh() is called, it re-reads the current variable values.
+ * Pass { server: false } to skip the SSR fetch for auth-protected queries.
  */
 export async function useGql<T = Record<string, unknown>>(
   query: string,
   variables?: Variables,
+  options?: UseGqlOptions,
 ): Promise<{
   data: Ref<T | null>;
   pending: Ref<boolean>;
@@ -54,7 +61,12 @@ export async function useGql<T = Record<string, unknown>>(
     }
   };
 
-  await execute();
+  // Skip the SSR fetch for auth-protected queries (server: false)
+  if (import.meta.server && options?.server === false) {
+    pending.value = false;
+  } else {
+    await execute();
+  }
 
   return { data, pending, error, refresh: execute };
 }

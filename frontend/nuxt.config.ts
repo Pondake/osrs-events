@@ -31,6 +31,7 @@ export default defineNuxtConfig({
     '/': { prerender: false },
     '/admin/**': { ssr: true },
     '/boards/**': { ssr: true },
+    '/profile/**': { ssr: true },
   },
 
   app: {
