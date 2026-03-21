@@ -1,6 +1,5 @@
 <template>
   <nuxt-layout :title="$t('donate.title')" :description="$t('donate.subtitle')">
-
     <u-page-body>
       <u-container class="max-w-3xl py-8">
         <p class="text-muted leading-relaxed mb-10">{{ $t('donate.intro') }}</p>

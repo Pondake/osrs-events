@@ -1,6 +1,5 @@
 <template>
-  <nuxt-layout :title="$t('admin.tasks_title')" :description="$t('admin.tasks_subtitle')" >
-
+  <nuxt-layout :title="$t('admin.tasks_title')" :description="$t('admin.tasks_subtitle')">
     <u-page-body>
       <u-container>
         <!-- Toolbar: search + create -->

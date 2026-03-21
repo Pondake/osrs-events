@@ -43,6 +43,7 @@
         @click="authStore.loginWithDiscord()"
       >
         <span class="sm:hidden">{{ $t('common.login') }}</span>
+
         <span class="hidden sm:inline">{{ $t('common.login_discord') }}</span>
       </u-button>
 

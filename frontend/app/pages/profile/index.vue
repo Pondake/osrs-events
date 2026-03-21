@@ -1,6 +1,5 @@
 <template>
   <nuxt-layout :title="$t('profile.title')">
-
     <u-page-body>
       <u-container class="max-w-3xl">
         <div v-if="!authStore.user" class="text-center py-12 text-muted">

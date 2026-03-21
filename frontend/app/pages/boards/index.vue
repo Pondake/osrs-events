@@ -5,7 +5,7 @@
         {{ $t('admin.create_board') }}
       </u-button>
     </template>
-      
+
     <u-page-body>
       <u-container>
         <!-- Loading -->
@@ -76,7 +76,10 @@
                     <span class="text-xs text-muted">
                       {{
                         board.authors
-                          .map((a: { user: { discordUsername: string; nickname: string | null } }) => a.user.nickname || a.user.discordUsername)
+                          .map(
+                            (a: { user: { discordUsername: string; nickname: string | null } }) =>
+                              a.user.nickname || a.user.discordUsername,
+                          )
                           .join(', ')
                       }}
                     </span>

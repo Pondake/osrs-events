@@ -22,6 +22,7 @@
             </p>
 
             <p class="text-sm font-medium">{{ selectedTask.title }}</p>
+
             <p class="text-sm font-medium">{{ selectedTask.description }}</p>
           </div>
         </div>
@@ -291,8 +292,9 @@
 </template>
 
 <script setup lang="ts">
-import TaskEditForm from '~/components/Task/EditForm.vue';
 import type { TaskFormData } from '~/components/Task/EditForm.vue';
+
+import TaskEditForm from '~/components/Task/EditForm.vue';
 
 interface Task {
   id: string;

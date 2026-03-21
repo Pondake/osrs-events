@@ -34,10 +34,7 @@
 
       <u-icon v-else-if="isEmpty" name="i-lucide-plus" class="size-5 text-muted/50" />
 
-      <p
-        v-if="title"
-        class="text-sm text-center leading-tight line-clamp-2 text-muted mt-0.5"
-      >
+      <p v-if="title" class="text-sm text-center leading-tight line-clamp-2 text-muted mt-0.5">
         {{ title }}
       </p>
     </div>

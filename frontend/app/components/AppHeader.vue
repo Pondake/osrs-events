@@ -1,8 +1,18 @@
 <template>
-  <u-header>
-    <template #left>
+  <u-header
+    mode="drawer"
+    :toggle="navigation.length > 0"
+    :ui="{ content: 'top-[var(--ui-header-height)]' }"
+    :menu="{
+  direction: 'top',
+      inset: true,
+      shouldScaleBackground: true,
+      ui: { body: 'bg-red-200', overlay: ' bg-red-200 top-[var(--ui-header-height)]' },
+    }"
+  >
+    <template #title>
       <nuxt-link to="/" class="flex items-center gap-2">
-        <span class="osrs-title text-lg font-bold text-primary">⚔️ OSRS Events</span>
+        <span class="osrs-title text-lg font-bold text-highlighted">⚔️ OSRS Events</span>
       </nuxt-link>
     </template>
 
@@ -12,17 +22,12 @@
       <template #fallback>
         <div class="hidden md:flex gap-3 items-center">
           <u-skeleton class="h-5 w-14 rounded" />
+
           <u-skeleton class="h-5 w-24 rounded" />
         </div>
       </template>
 
-      <!-- Skeleton while auth hydrates on client -->
-      <div v-if="!authStore.hydrated" class="hidden md:flex gap-3 items-center">
-        <u-skeleton class="h-5 w-14 rounded" />
-        <u-skeleton class="h-5 w-24 rounded" />
-      </div>
-
-      <u-navigation-menu v-else-if="navigation.length" :items="navigation" />
+      <u-navigation-menu v-if="navigation.length" :items="navigation" />
     </client-only>
 
     <template #right>
@@ -33,7 +38,7 @@
 
     <!-- Mobile panel — only provided when there are navigation items.
          UHeader hides the hamburger toggle when no panel slot is present. -->
-    <template v-if="authStore.hydrated && navigation.length > 0" #panel>
+    <template v-if="authStore.hydrated && navigation.length > 0" #body>
       <div class="p-4">
         <u-navigation-menu :items="navigation" orientation="vertical" />
       </div>

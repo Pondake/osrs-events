@@ -11,9 +11,7 @@
             class="flex-1"
           />
 
-          <u-button to="/admin/boards/create" icon="i-heroicons-plus" color="primary">
-            {{ $t('admin.create_board') }}
-          </u-button>
+          <u-button to="/admin/boards/create" icon="i-heroicons-plus" color="primary" :label="$t('admin.create_board')"/>
         </div>
 
         <div v-if="pending" class="flex justify-center py-12">
@@ -34,21 +32,17 @@
         </div>
 
         <div v-else class="space-y-4">
-          <u-card v-for="board in filteredBoards" :key="board.id" class="osrs-border">
+          <u-blog-post v-for="board in filteredBoards" :key="board.id" class="osrs-border" :to="`/boards/${board.id}`">
+            <template #title>
+               <div class="flex items-center gap-3">
+                  <h3 class="text-lg font-semibold osrs-font truncate">{{ board.title }}</h3>
+                  <u-badge color="primary" variant="subtle" :label="$t('boards.size', { size: formatSize(board.size) })" />
+                  <u-badge v-if="board.diceRollLimit" color="warning" variant="subtle" :label="$t('boards.roll_limit', { limit: board.diceRollLimit })"/>
+                </div>
+            </template>
+            <template #description>
             <div class="flex items-center justify-between gap-4">
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-3 mb-1">
-                  <h3 class="text-lg font-semibold osrs-font truncate">{{ board.title }}</h3>
-
-                  <u-badge color="primary" variant="subtle">
-                    {{ $t('boards.size', { size: formatSize(board.size) }) }}
-                  </u-badge>
-
-                  <u-badge v-if="board.diceRollLimit" color="amber" variant="subtle">
-                    {{ $t('boards.roll_limit', { limit: board.diceRollLimit }) }}
-                  </u-badge>
-                </div>
-
                 <div class="text-sm text-muted flex flex-wrap gap-4">
                   <span v-if="board.startDate">
                     <u-icon name="i-heroicons-calendar" class="inline mr-1" />
@@ -62,7 +56,11 @@
 
                   <span>
                     <u-icon name="i-heroicons-user-group" class="inline mr-1" />
-                    {{ board.authors.map((a: any) => a.user.nickname || a.user.discordUsername).join(', ') }}
+                    {{
+                      board.authors
+                        .map((a: any) => a.user.nickname || a.user.discordUsername)
+                        .join(', ')
+                    }}
                   </span>
                 </div>
               </div>
@@ -86,7 +84,8 @@
                 />
               </div>
             </div>
-          </u-card>
+            </template>
+          </u-blog-post>
         </div>
       </u-container>
     </u-page-body>

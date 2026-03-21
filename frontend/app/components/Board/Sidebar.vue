@@ -5,101 +5,92 @@
       v-if="authStore.isAuthenticated"
       class="p-4 bg-muted/20 rounded-xl border border-default text-center"
     >
-        <p class="text-sm font-semibold mb-3 osrs-font">{{ $t('board.roll_dice') }}</p>
+      <p class="text-sm font-semibold mb-3 osrs-font">{{ $t('board.roll_dice') }}</p>
 
-        <!-- Must complete current tile before rolling -->
-        <u-alert
-          v-if="myBoardState !== null && !currentTileCompleted"
-          :title="$t('dice.complete_tile_first')"
-          color="warning"
-          variant="subtle"
-          icon="i-lucide-lock"
-          class="mb-3 text-left text-sm"
-        />
+      <!-- Must complete current tile before rolling -->
+      <u-alert
+        v-if="myBoardState !== null && !currentTileCompleted"
+        :title="$t('dice.complete_tile_first')"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-lock"
+        class="mb-3 text-left text-sm"
+      />
 
-        <dice-roller
-          :rolling="rolling"
-          :last-roll="lastRoll"
-          :rolls-today="myBoardState?.diceRollsToday ?? 0"
-          :roll-limit="board.diceRollLimit"
-          :disabled="!currentTileCompleted"
-          @roll="emit('roll')"
-        />
+      <dice-roller
+        :rolling="rolling"
+        :last-roll="lastRoll"
+        :rolls-today="myBoardState?.diceRollsToday ?? 0"
+        :roll-limit="board.diceRollLimit"
+        :disabled="!currentTileCompleted"
+        @roll="emit('roll')"
+      />
 
-        <!-- Roll result panel: shows snake/ladder jump info persistently -->
-        <div
-          v-if="lastRollResult"
-          class="mt-3 pt-3 border-t border-default text-sm text-left"
-        >
-          <p v-if="lastRollResult.jump === 'snake'" class="text-error font-semibold">
-            {{
-              $t('board.rolled_snake', {
-                from: lastRollResult.landedOn + 1,
-                to: lastRollResult.to + 1,
-              })
-            }}
+      <!-- Roll result panel: shows snake/ladder jump info persistently -->
+      <div v-if="lastRollResult" class="mt-3 pt-3 border-t border-default text-sm text-left">
+        <p v-if="lastRollResult.jump === 'snake'" class="text-error font-semibold">
+          {{
+            $t('board.rolled_snake', {
+              from: lastRollResult.landedOn + 1,
+              to: lastRollResult.to + 1,
+            })
+          }}
+        </p>
+
+        <p v-else-if="lastRollResult.jump === 'ladder'" class="text-success font-semibold">
+          {{
+            $t('board.rolled_ladder', {
+              from: lastRollResult.landedOn + 1,
+              to: lastRollResult.to + 1,
+            })
+          }}
+        </p>
+
+        <p v-else class="text-muted">
+          {{ $t('board.you_rolled', { value: lastRollResult.rolled }) }}
+        </p>
+      </div>
+
+      <!-- Edit mode: dice roll limit editor -->
+      <template v-if="editMode && authStore.isAdmin">
+        <u-separator class="my-4" />
+
+        <div class="text-left">
+          <p class="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
+            {{ $t('admin.dice_roll_limit') }}
           </p>
 
-          <p v-else-if="lastRollResult.jump === 'ladder'" class="text-success font-semibold">
-            {{
-              $t('board.rolled_ladder', {
-                from: lastRollResult.landedOn + 1,
-                to: lastRollResult.to + 1,
-              })
-            }}
-          </p>
-
-          <p v-else class="text-muted">
-            {{ $t('board.you_rolled', { value: lastRollResult.rolled }) }}
-          </p>
-        </div>
-
-        <!-- Edit mode: dice roll limit editor -->
-        <template v-if="editMode && authStore.isAdmin">
-          <u-separator class="my-4" />
-
-          <div class="text-left">
-            <p class="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
-              {{ $t('admin.dice_roll_limit') }}
-            </p>
-
-            <div class="flex items-center gap-2 flex-wrap">
-              <u-input
-                v-model.number="editRollLimit"
-                type="number"
-                min="1"
-                max="99"
-                :disabled="editUnlimited"
-                class="w-20"
-                size="sm"
-              />
-
-              <u-checkbox
-                v-model="editUnlimited"
-                :label="$t('admin.dice_roll_unlimited')"
-              />
-            </div>
-
-            <u-button
+          <div class="flex items-center gap-2 flex-wrap">
+            <u-input
+              v-model.number="editRollLimit"
+              type="number"
+              min="1"
+              max="99"
+              :disabled="editUnlimited"
+              class="w-20"
               size="sm"
-              color="primary"
-              variant="soft"
-              icon="i-lucide-check"
-              class="mt-2 w-full"
-              :loading="savingRollLimit"
-              @click="emit('save-roll-limit')"
-            >
-              {{ $t('common.save') }}
-            </u-button>
+            />
+
+            <u-checkbox v-model="editUnlimited" :label="$t('admin.dice_roll_unlimited')" />
           </div>
-        </template>
+
+          <u-button
+            size="sm"
+            color="primary"
+            variant="soft"
+            icon="i-lucide-check"
+            class="mt-2 w-full"
+            :loading="savingRollLimit"
+            @click="emit('save-roll-limit')"
+          >
+            {{ $t('common.save') }}
+          </u-button>
+        </div>
+      </template>
     </div>
 
     <!-- Current tile (player's position) -->
-    <div
-      v-if="myBoardState !== null"
-      class="p-4 bg-muted/20 rounded-xl border border-default"
-    >
+    <div v-if="myBoardState !== null" class="p-4 bg-muted/20 rounded-xl border border-default">
       <p class="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
         {{ $t('board.your_task') }}
       </p>
@@ -221,11 +212,7 @@
       </p>
 
       <div class="flex flex-wrap gap-2">
-        <div
-          v-for="author in board.authors"
-          :key="author.id"
-          class="flex items-center gap-1.5"
-        >
+        <div v-for="author in board.authors" :key="author.id" class="flex items-center gap-1.5">
           <u-avatar
             :src="author.user.avatarUrl ?? undefined"
             :alt="author.user.nickname || author.user.discordUsername"
@@ -323,6 +310,10 @@ interface RollResult {
   jump: string | null;
 }
 
+const editRollLimit = defineModel<number>('editRollLimit', { required: true });
+
+const editUnlimited = defineModel<boolean>('editUnlimited', { required: true });
+
 const props = defineProps<{
   board: Board;
   myBoardState: PlayerState | null;
@@ -341,9 +332,6 @@ const props = defineProps<{
   editMode: boolean;
   savingRollLimit: boolean;
 }>();
-
-const editRollLimit = defineModel<number>('editRollLimit', { required: true });
-const editUnlimited = defineModel<boolean>('editUnlimited', { required: true });
 
 const emit = defineEmits<{
   roll: [];

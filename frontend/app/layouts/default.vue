@@ -2,12 +2,7 @@
   <u-main>
     <u-page>
       <u-container>
-        <u-page-header
-          v-if="title"
-          :title="title"
-          :description="description || ''"
-          class="mb-2"
-        >
+        <u-page-header v-if="title" :title="title" :description="description || ''" class="mb-2">
           <template #links>
             <div class="flex gap-2 shrink-0 flex-wrap">
               <slot name="links" />
@@ -23,7 +18,7 @@
 
 <script setup lang="ts">
 defineProps<{
-  title?: string
-  description?: string
-}>()
+  title?: string;
+  description?: string;
+}>();
 </script>
