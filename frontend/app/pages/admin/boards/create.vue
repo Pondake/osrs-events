@@ -49,13 +49,7 @@
                 :description="$t('admin.date_range_desc')"
                 name="dateRange"
               >
-                <u-input-date
-                  ref="inputDate"
-                  v-model="dateRange"
-                  range
-                  locale="nl"
-                  class="w-full"
-                >
+                <u-input-date ref="inputDate" v-model="dateRange" range locale="nl" class="w-full">
                   <template #trailing>
                     <u-popover :reference="inputDate?.inputsRef?.[0]?.$el">
                       <u-button
@@ -68,12 +62,7 @@
                       />
 
                       <template #content>
-                        <u-calendar
-                          v-model="dateRange"
-                          class="p-2"
-                          :number-of-months="2"
-                          range
-                        />
+                        <u-calendar v-model="dateRange" class="p-2" :number-of-months="2" range />
                       </template>
                     </u-popover>
                   </template>

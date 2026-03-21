@@ -1,6 +1,5 @@
 <template>
   <nuxt-layout :title="$t('terms.title')" :description="$t('terms.subtitle')">
-
     <u-page-body>
       <u-container class="max-w-3xl py-8">
         <p class="text-sm text-muted mb-8">
