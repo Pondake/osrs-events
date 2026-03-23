@@ -11,8 +11,8 @@ const USER_FIELDS = `
 // ─── Queries & mutations ─────────────────────────────────────────────────────
 
 const USERS_QUERY = `
-  query Users($search: String) {
-    users(search: $search) { ${USER_FIELDS} }
+  query Users($search: String, $limit: Float) {
+    users(search: $search, limit: $limit) { ${USER_FIELDS} }
   }
 `
 
@@ -143,6 +143,15 @@ export async function fetchUsers(search: string): Promise<UserEntity[]> {
   const result = await useGqlMutation<{ users: UserEntity[] }>(USERS_QUERY, {
     search: search || undefined,
   })
+  return result.users ?? []
+}
+
+/**
+ * Fetch the N most recently joined users — for pre-loading suggestions in member modals.
+ * Admin or TEAM_MANAGER only.
+ */
+export async function fetchRecentUsers(limit: number): Promise<UserEntity[]> {
+  const result = await useGqlMutation<{ users: UserEntity[] }>(USERS_QUERY, { limit })
   return result.users ?? []
 }
 

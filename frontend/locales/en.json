@@ -287,7 +287,10 @@
     "team_deleted": "Team deleted.",
     "member_added": "Member added!",
     "member_removed": "Member removed.",
-    "no_members": "No members yet."
+    "no_members": "No members yet.",
+    "manage_all_teams": "Manage all teams",
+    "manage_members": "Manage members — {name}",
+    "manage_members_short": "Members"
   },
   "errors": {
     "not_found": "Page not found",

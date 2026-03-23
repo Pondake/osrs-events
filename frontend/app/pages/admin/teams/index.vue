@@ -1,9 +1,75 @@
 <template>
   <nuxt-layout :title="$t('admin.teams_title')" :description="$t('admin.teams_subtitle')">
+    <template #links>
+      <u-button
+        color="primary"
+        icon="i-lucide-plus"
+        size="sm"
+        :label="$t('teams.create_team')"
+        @click="openCreate"
+      />
+    </template>
+
     <u-page-body>
       <u-container class="max-w-3xl">
+
+        <!-- Create / Edit team modal -->
+        <u-modal v-model:open="showForm" :title="editingTeam ? $t('teams.edit_team') : $t('teams.create_team')">
+          <template #body>
+            <team-form v-model="formData" />
+          </template>
+
+          <template #footer>
+            <div class="flex gap-2 justify-end">
+              <u-button variant="ghost" color="neutral" :label="$t('common.cancel')" @click="closeForm" />
+              <u-button
+                color="primary"
+                :loading="saving"
+                :disabled="!formData.name.trim()"
+                :label="editingTeam ? $t('common.save') : $t('common.create')"
+                @click="submitForm"
+              />
+            </div>
+          </template>
+        </u-modal>
+
+        <!-- Manage members modal (shared component) -->
+        <team-members-modal
+          v-model:open="showMembers"
+          :team="managingTeam"
+          :add-member="addTeamMember"
+          :remove-member="removeTeamMember"
+          @team-updated="onTeamUpdated"
+        />
+
+        <!-- Delete confirm modal -->
+        <u-modal v-model:open="showDeleteConfirm" :title="$t('teams.delete_confirm_title')">
+          <template #body>
+            <p class="text-sm text-muted">
+              {{ $t('teams.delete_confirm_body', { name: deletingTeam?.name }) }}
+            </p>
+          </template>
+
+          <template #footer>
+            <div class="flex gap-2 justify-end">
+              <u-button
+                variant="ghost"
+                color="neutral"
+                :label="$t('common.cancel')"
+                @click="showDeleteConfirm = false"
+              />
+              <u-button
+                color="error"
+                :loading="deleting"
+                :label="$t('common.delete')"
+                @click="confirmDelete"
+              />
+            </div>
+          </template>
+        </u-modal>
+
         <!-- Loading -->
-        <div v-if="loading" class="flex flex-col gap-3 mt-4">
+        <div v-if="loading" class="flex flex-col gap-3">
           <u-skeleton v-for="i in 4" :key="i" class="h-24 rounded-xl" />
         </div>
 
@@ -15,7 +81,7 @@
         </div>
 
         <!-- Team list -->
-        <div v-else class="flex flex-col gap-4 mt-4">
+        <div v-else class="flex flex-col gap-4">
           <div
             v-for="team in teams"
             :key="team.id"
@@ -42,18 +108,37 @@
                 </p>
               </div>
 
-              <!-- Delete team -->
-              <u-button
-                variant="ghost"
-                color="error"
-                size="xs"
-                icon="i-lucide-trash"
-                :aria-label="$t('common.delete')"
-                @click="openDelete(team)"
-              />
+              <!-- Action buttons -->
+              <div class="flex gap-1">
+                <u-button
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  icon="i-lucide-users"
+                  :label="$t('teams.manage_members_short')"
+                  @click="openMembers(team)"
+                />
+
+                <u-button
+                  variant="ghost"
+                  color="neutral"
+                  size="xs"
+                  icon="i-lucide-pencil"
+                  @click="openEdit(team)"
+                />
+
+                <u-button
+                  variant="ghost"
+                  color="error"
+                  size="xs"
+                  icon="i-lucide-trash"
+                  :aria-label="$t('common.delete')"
+                  @click="openDelete(team)"
+                />
+              </div>
             </div>
 
-            <!-- Members -->
+            <!-- Members preview -->
             <div v-if="team.members.length > 0" class="flex flex-wrap gap-2">
               <div
                 v-for="member in team.members"
@@ -65,19 +150,7 @@
                   :alt="member.user.nickname ?? member.user.discordUsername"
                   size="2xs"
                 />
-                <span class="text-xs">{{
-                  member.user.nickname ?? member.user.discordUsername
-                }}</span>
-
-                <!-- Remove member -->
-                <button
-                  type="button"
-                  class="text-muted hover:text-error transition-colors ml-0.5"
-                  :title="$t('teams.remove_member')"
-                  @click="removeMember(team.id, member.userId)"
-                >
-                  <u-icon name="i-lucide-x" class="text-xs" />
-                </button>
+                <span class="text-xs">{{ member.user.nickname ?? member.user.discordUsername }}</span>
               </div>
             </div>
 
@@ -86,50 +159,77 @@
             </p>
           </div>
         </div>
+
       </u-container>
     </u-page-body>
-
-    <!-- Delete confirm modal -->
-    <u-modal
-      v-model:open="showDeleteConfirm"
-      :title="$t('teams.delete_confirm_title')"
-    >
-      <template #body>
-        <p class="text-sm text-muted">
-          {{ $t('teams.delete_confirm_body', { name: deletingTeam?.name }) }}
-        </p>
-      </template>
-      <template #footer>
-        <div class="flex gap-2 justify-end">
-          <u-button
-            variant="ghost"
-            color="neutral"
-            :label="$t('common.cancel')"
-            @click="showDeleteConfirm = false"
-          />
-          <u-button
-            color="error"
-            :loading="deleting"
-            :label="$t('common.delete')"
-            @click="confirmDelete"
-          />
-        </div>
-      </template>
-    </u-modal>
   </nuxt-layout>
 </template>
 
 <script setup lang="ts">
 import { useAllTeams, type TeamData } from '~/composables/useTeams'
+import type { TeamFormData } from '~/components/Team/Form.vue'
 
 definePageMeta({ middleware: 'admin' })
 
 const toast = useToast()
 const { t } = useI18n()
 
-const { teams, loading, load, deleteTeam, removeTeamMember } = useAllTeams()
+const { teams, loading, load, createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember } =
+  useAllTeams()
 
 onMounted(load)
+
+// ─── Create / Edit ────────────────────────────────────────────────────────────
+
+const showForm = ref(false)
+const saving = ref(false)
+const editingTeam = ref<TeamData | null>(null)
+const formData = ref<TeamFormData>({ name: '', iconUrl: '' })
+
+function openCreate() {
+  editingTeam.value = null
+  formData.value = { name: '', iconUrl: '' }
+  showForm.value = true
+}
+
+function openEdit(team: TeamData) {
+  editingTeam.value = team
+  formData.value = { name: team.name, iconUrl: team.iconUrl ?? '' }
+  showForm.value = true
+}
+
+function closeForm() {
+  showForm.value = false
+  editingTeam.value = null
+}
+
+async function submitForm() {
+  if (!formData.value.name.trim()) return
+  saving.value = true
+  try {
+    if (editingTeam.value) {
+      const updated = await updateTeam(editingTeam.value.id, {
+        name: formData.value.name.trim(),
+        iconUrl: formData.value.iconUrl || null,
+      })
+      const idx = teams.value.findIndex(t => t.id === updated.id)
+      if (idx >= 0) teams.value[idx] = updated
+      toast.add({ title: t('teams.team_updated'), color: 'success' })
+    } else {
+      const created = await createTeam({
+        name: formData.value.name.trim(),
+        iconUrl: formData.value.iconUrl || null,
+      })
+      teams.value.push(created)
+      toast.add({ title: t('teams.team_created'), color: 'success' })
+    }
+    closeForm()
+  } catch (e) {
+    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
+  } finally {
+    saving.value = false
+  }
+}
 
 // ─── Delete team ──────────────────────────────────────────────────────────────
 
@@ -157,16 +257,19 @@ async function confirmDelete() {
   }
 }
 
-// ─── Remove member ────────────────────────────────────────────────────────────
+// ─── Members modal ────────────────────────────────────────────────────────────
 
-async function removeMember(teamId: string, userId: string) {
-  try {
-    await removeTeamMember(teamId, userId)
-    const team = teams.value.find(t => t.id === teamId)
-    if (team) team.members = team.members.filter(m => m.userId !== userId)
-    toast.add({ title: t('teams.member_removed'), color: 'neutral' })
-  } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
-  }
+const showMembers = ref(false)
+const managingTeam = ref<TeamData | null>(null)
+
+function openMembers(team: TeamData) {
+  managingTeam.value = team
+  showMembers.value = true
+}
+
+function onTeamUpdated(updated: TeamData) {
+  const idx = teams.value.findIndex(t => t.id === updated.id)
+  if (idx >= 0) teams.value[idx] = updated
+  managingTeam.value = updated
 }
 </script>

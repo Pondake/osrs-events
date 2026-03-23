@@ -1,5 +1,5 @@
 <template>
-  <nuxt-layout :title="board?.title || ''" :description="board?.description || ''">
+  <nuxt-layout :title="board?.title || ''" :description="board?.description || ''" :pending="pending">
     <template #links>
       <div class="flex gap-2 shrink-0 flex-wrap">
         <!-- Show other players toggle -->

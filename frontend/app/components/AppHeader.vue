@@ -7,7 +7,6 @@
       direction: 'top',
       inset: true,
       shouldScaleBackground: true,
-      ui: { body: 'bg-red-200', overlay: ' bg-red-200 top-[var(--ui-header-height)]' },
     }"
   >
     <template #title>
