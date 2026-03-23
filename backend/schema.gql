@@ -127,6 +127,7 @@ type Mutation {
   deleteTask(id: ID!): TaskEntity!
   deleteTeam(id: ID!): TeamEntity!
   deleteTile(id: ID!): TileEntity!
+  deleteUser(userId: ID!): Boolean!
   grantPermission(permissionKey: PermissionKey!, userId: ID!): UserPermissionEntity!
   removeBoardAuthor(boardId: ID!, userId: ID!): Boolean!
   removeRole(roleName: String!, userId: ID!): UserEntity!

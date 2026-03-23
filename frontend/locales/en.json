@@ -201,7 +201,21 @@
     "save_first": "Save the board first, then you can manage teams.",
     "delete_board_confirm": "Are you sure you want to delete \"{title}\"? This cannot be undone.",
     "teams_title": "Manage Teams",
-    "teams_subtitle": "View and manage all teams across the platform."
+    "teams_subtitle": "View and manage all teams across the platform.",
+    "role_label_admin": "Admin",
+    "role_label_editor": "Editor",
+    "role_label_team_manager": "Team Manager",
+    "role_desc_admin": "Full access — manage boards, tiles, tasks and users",
+    "role_desc_editor": "Can create and edit boards they are assigned to",
+    "role_desc_team_manager": "Can create and manage teams",
+    "perm_label_can_create_boards": "Can Create Boards",
+    "perm_label_can_create_tiles": "Can Create Tiles",
+    "perm_desc_can_create_boards": "Allows this user to create their own boards",
+    "perm_desc_can_create_tiles": "Allows this user to create and edit tiles",
+    "delete_user": "Delete user",
+    "delete_user_confirm": "Are you sure you want to delete {name}? This cannot be undone.",
+    "user_deleted": "User {name} deleted.",
+    "cannot_delete_admin": "Admin users cannot be deleted."
   },
   "profile": {
     "title": "Profile",

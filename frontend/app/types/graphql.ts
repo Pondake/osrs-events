@@ -16,6 +16,11 @@ export type Scalars = {
   DateTime: { input: string; output: string; }
 };
 
+export type AddTeamMemberInput = {
+  teamId: Scalars['ID']['input'];
+  userId: Scalars['ID']['input'];
+};
+
 export type BoardAuthorEntity = {
   id: Scalars['ID']['output'];
   isOwner: Scalars['Boolean']['output'];
@@ -24,12 +29,14 @@ export type BoardAuthorEntity = {
 
 export type BoardEntity = {
   authors: Array<BoardAuthorEntity>;
+  boardTeams?: Maybe<Array<BoardTeamEntity>>;
   createdAt: Scalars['DateTime']['output'];
   description?: Maybe<Scalars['String']['output']>;
   /** null = unlimited rolls per day */
   diceRollLimit?: Maybe<Scalars['Int']['output']>;
   endDate?: Maybe<Scalars['DateTime']['output']>;
   id: Scalars['ID']['output'];
+  mode: BoardMode;
   size: BoardSize;
   startDate?: Maybe<Scalars['DateTime']['output']>;
   tiles?: Maybe<Array<TileEntity>>;
@@ -37,11 +44,30 @@ export type BoardEntity = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export enum BoardMode {
+  Solo = 'SOLO',
+  Team = 'TEAM'
+}
+
 export enum BoardSize {
   Size_5X5 = 'SIZE_5X5',
   Size_7X7 = 'SIZE_7X7',
   Size_9X9 = 'SIZE_9X9'
 }
+
+export type BoardTeamEntity = {
+  boardId: Scalars['ID']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  team: BoardTeamTeamSummary;
+  teamId: Scalars['ID']['output'];
+};
+
+export type BoardTeamTeamSummary = {
+  iconUrl?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
 
 export type CompletedTileEntity = {
   completedAt: Scalars['DateTime']['output'];
@@ -61,6 +87,7 @@ export type CreateBoardInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   diceRollLimit?: InputMaybe<Scalars['Int']['input']>;
   endDate?: InputMaybe<Scalars['DateTime']['input']>;
+  mode?: InputMaybe<BoardMode>;
   size: BoardSize;
   startDate?: InputMaybe<Scalars['DateTime']['input']>;
   title: Scalars['String']['input'];
@@ -72,23 +99,55 @@ export type CreateTaskInput = {
   title: Scalars['String']['input'];
 };
 
+export type CreateTeamInput = {
+  iconUrl?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
+};
+
+export type LeaderboardEntity = {
+  boardId: Scalars['ID']['output'];
+  entries: Array<LeaderboardEntryEntity>;
+  totalTiles: Scalars['Int']['output'];
+};
+
+export type LeaderboardEntryEntity = {
+  currentPosition: Scalars['Int']['output'];
+  pathHasLadder: Scalars['Boolean']['output'];
+  pathHasSnake: Scalars['Boolean']['output'];
+  playerId: Scalars['ID']['output'];
+  rank: Scalars['Int']['output'];
+  team?: Maybe<PlayerBoardTeamSummary>;
+  tilesRemaining: Scalars['Int']['output'];
+  user: UserEntity;
+};
+
 export type Mutation = {
   addBoardAuthor: BoardAuthorEntity;
+  addTeamMember: TeamEntity;
+  addTeamToBoard: BoardTeamEntity;
   assignRole: UserEntity;
   clearSnakeLadder: TileEntity;
   completeTile: PlayerBoardEntity;
   createBoard: BoardEntity;
   createTask: TaskEntity;
+  createTeam: TeamEntity;
   deleteBoard: BoardEntity;
   deleteTask: TaskEntity;
+  deleteTeam: TeamEntity;
   deleteTile: TileEntity;
-  removeRole: UserEntity;
+  deleteUser: Scalars['Boolean']['output'];
+  grantPermission: UserPermissionEntity;
   removeBoardAuthor: Scalars['Boolean']['output'];
+  removeRole: UserEntity;
+  removeTeamFromBoard: Scalars['Boolean']['output'];
+  removeTeamMember: TeamEntity;
+  revokePermission: Scalars['Boolean']['output'];
   rollDice: RollResultEntity;
   uncompleteTile?: Maybe<PlayerBoardEntity>;
   updateBoard: BoardEntity;
   updateProfile: UserEntity;
   updateTask: TaskEntity;
+  updateTeam: TeamEntity;
   upsertTile: TileEntity;
 };
 
@@ -97,6 +156,18 @@ export type MutationAddBoardAuthorArgs = {
   boardId: Scalars['ID']['input'];
   userId: Scalars['ID']['input'];
 };
+
+
+export type MutationAddTeamMemberArgs = {
+  input: AddTeamMemberInput;
+};
+
+
+export type MutationAddTeamToBoardArgs = {
+  boardId: Scalars['ID']['input'];
+  teamId: Scalars['ID']['input'];
+};
+
 
 export type MutationAssignRoleArgs = {
   roleName: Scalars['String']['input'];
@@ -125,6 +196,11 @@ export type MutationCreateTaskArgs = {
 };
 
 
+export type MutationCreateTeamArgs = {
+  input: CreateTeamInput;
+};
+
+
 export type MutationDeleteBoardArgs = {
   id: Scalars['ID']['input'];
 };
@@ -135,8 +211,24 @@ export type MutationDeleteTaskArgs = {
 };
 
 
+export type MutationDeleteTeamArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationDeleteTileArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteUserArgs = {
+  userId: Scalars['ID']['input'];
+};
+
+
+export type MutationGrantPermissionArgs = {
+  permissionKey: PermissionKey;
+  userId: Scalars['ID']['input'];
 };
 
 
@@ -145,8 +237,27 @@ export type MutationRemoveBoardAuthorArgs = {
   userId: Scalars['ID']['input'];
 };
 
+
 export type MutationRemoveRoleArgs = {
   roleName: Scalars['String']['input'];
+  userId: Scalars['ID']['input'];
+};
+
+
+export type MutationRemoveTeamFromBoardArgs = {
+  boardId: Scalars['ID']['input'];
+  teamId: Scalars['ID']['input'];
+};
+
+
+export type MutationRemoveTeamMemberArgs = {
+  teamId: Scalars['ID']['input'];
+  userId: Scalars['ID']['input'];
+};
+
+
+export type MutationRevokePermissionArgs = {
+  permissionKey: PermissionKey;
   userId: Scalars['ID']['input'];
 };
 
@@ -179,9 +290,21 @@ export type MutationUpdateTaskArgs = {
 };
 
 
+export type MutationUpdateTeamArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateTeamInput;
+};
+
+
 export type MutationUpsertTileArgs = {
   input: UpsertTileInput;
 };
+
+/** Granular permissions that can be granted to individual users */
+export enum PermissionKey {
+  CanCreateBoards = 'CAN_CREATE_BOARDS',
+  CanCreateTiles = 'CAN_CREATE_TILES'
+}
 
 export type PlayerBoardBoardSummary = {
   id: Scalars['ID']['output'];
@@ -198,27 +321,46 @@ export type PlayerBoardEntity = {
   diceRollsToday: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
   lastRollDate?: Maybe<Scalars['DateTime']['output']>;
+  team?: Maybe<PlayerBoardTeamSummary>;
+  teamId?: Maybe<Scalars['ID']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   user?: Maybe<UserEntity>;
   userId: Scalars['ID']['output'];
 };
 
+export type PlayerBoardTeamSummary = {
+  iconUrl?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
+
 export type Query = {
   board?: Maybe<BoardEntity>;
+  boardLeaderboard?: Maybe<LeaderboardEntity>;
   boardPlayerStates: Array<PlayerBoardEntity>;
   boards: Array<BoardEntity>;
   me?: Maybe<UserEntity>;
   myBoardState?: Maybe<PlayerBoardEntity>;
+  myPermissions: Array<UserPermissionEntity>;
   myPlayerBoards: Array<PlayerBoardEntity>;
+  myTeams: Array<TeamEntity>;
   task?: Maybe<TaskEntity>;
   tasks: Array<TaskEntity>;
+  team?: Maybe<TeamEntity>;
+  teams: Array<TeamEntity>;
   tiles: Array<TileEntity>;
+  userPermissions: Array<UserPermissionEntity>;
   users: Array<UserEntity>;
 };
 
 
 export type QueryBoardArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type QueryBoardLeaderboardArgs = {
+  boardId: Scalars['ID']['input'];
 };
 
 
@@ -242,8 +384,18 @@ export type QueryTasksArgs = {
 };
 
 
+export type QueryTeamArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type QueryTilesArgs = {
   boardId: Scalars['ID']['input'];
+};
+
+
+export type QueryUserPermissionsArgs = {
+  userId: Scalars['ID']['input'];
 };
 
 
@@ -277,6 +429,22 @@ export type TaskEntity = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type TeamEntity = {
+  createdAt: Scalars['DateTime']['output'];
+  iconUrl?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  members: Array<TeamMemberEntity>;
+  name: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type TeamMemberEntity = {
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  user: UserEntity;
+  userId: Scalars['ID']['output'];
+};
+
 export type TileEntity = {
   boardId: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
@@ -302,6 +470,7 @@ export type UpdateBoardInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   diceRollLimit?: InputMaybe<Scalars['Int']['input']>;
   endDate?: InputMaybe<Scalars['DateTime']['input']>;
+  mode?: InputMaybe<BoardMode>;
   size?: InputMaybe<BoardSize>;
   startDate?: InputMaybe<Scalars['DateTime']['input']>;
   title?: InputMaybe<Scalars['String']['input']>;
@@ -311,6 +480,11 @@ export type UpdateTaskInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   iconUrl?: InputMaybe<Scalars['String']['input']>;
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateTeamInput = {
+  iconUrl?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpsertTileInput = {
@@ -331,6 +505,13 @@ export type UserEntity = {
   nickname?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   userRoles: Array<UserRoleEntity>;
+};
+
+export type UserPermissionEntity = {
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  permissionKey: PermissionKey;
+  userId: Scalars['ID']['output'];
 };
 
 export type UserRoleEntity = {

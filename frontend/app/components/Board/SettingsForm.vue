@@ -242,26 +242,21 @@
 <script setup lang="ts">
 import { today, getLocalTimeZone } from '@internationalized/date'
 import type { CalendarDate } from '@internationalized/date'
-import type { UserEntity } from '~/types/graphql'
+import { type UserEntity, type BoardTeamEntity, BoardMode } from '~/types/graphql'
 import { fetchUsers } from '~/composables/useUsers'
 import { useAllTeams, type TeamData } from '~/composables/useTeams'
 
-export interface AssignedTeam {
-  teamId: string
-  team: { id: string; name: string; iconUrl?: string | null }
-}
+// Pick<BoardTeamEntity, 'teamId' | 'team'> matches exactly — no manual shape needed.
+export type AssignedTeam = Pick<BoardTeamEntity, 'teamId' | 'team'>
 
-export interface AuthorOption {
-  id: string
-  discordUsername: string
-  avatarUrl?: string | null
-}
+// Pick<UserEntity, ...> matches exactly — no manual shape needed.
+export type AuthorOption = Pick<UserEntity, 'id' | 'discordUsername' | 'avatarUrl'>
 
 export interface BoardFormData {
   title: string
   description: string
   size: 'SIZE_5X5' | 'SIZE_7X7' | 'SIZE_9X9'
-  mode: 'SOLO' | 'TEAM'
+  mode: 'SOLO' | "TEAM"
   diceRollLimit: number
   unlimitedRolls: boolean
   selectedAuthors: AuthorOption[]

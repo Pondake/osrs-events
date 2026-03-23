@@ -58,6 +58,12 @@ const REVOKE_PERMISSION_MUTATION = `
   }
 `
 
+const DELETE_USER_MUTATION = `
+  mutation DeleteUser($userId: ID!) {
+    deleteUser(userId: $userId)
+  }
+`
+
 // ─── Composables ─────────────────────────────────────────────────────────────
 
 /**
@@ -138,6 +144,14 @@ export async function fetchUsers(search: string): Promise<UserEntity[]> {
     search: search || undefined,
   })
   return result.users ?? []
+}
+
+/**
+ * Delete a user account — admin only.
+ * Will throw if the target user has the ADMIN role.
+ */
+export async function deleteUser(userId: string): Promise<void> {
+  await useGqlMutation(DELETE_USER_MUTATION, { userId })
 }
 
 /**
