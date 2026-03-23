@@ -1,7 +1,6 @@
 {
   "version": "0.2.0",
   "configurations": [
-  
     {
       "name": "Nuxt: Dev Server",
       "type": "node",
@@ -16,13 +15,13 @@
         "NODE_ENV": "development"
       }
     },
-  
+
     {
-      "name": "Generate types",
+      "name": "Generate types (watch)",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["generate"],
+      "runtimeArgs": ["generate:watch"],
       "cwd": "${workspaceRoot}/frontend",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
@@ -60,11 +59,11 @@
   "compounds": [
     {
       "name": "Full Stack: Dev",
-      "configurations": ["Nuxt: Dev Server", "NestJS: Dev Server"]
-    },
-    {
-      "name": "Full Stack: Debug",
-      "configurations": ["Nuxt: Dev Server", "NestJS: Debug"]
+      "configurations": [
+        "Nuxt: Dev Server",
+        "NestJS: Dev Server",
+        "Generate types (watch)"
+      ]
     }
   ]
 }

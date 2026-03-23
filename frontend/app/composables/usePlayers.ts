@@ -1,28 +1,26 @@
-import type { PlayerBoardEntity, RollResultEntity, UserEntity } from '~/types/graphql'
+import type {
+  PlayerBoardEntity,
+  RollResultEntity,
+  UserEntity,
+  PlayerBoardTeamSummary,
+  LeaderboardEntryEntity,
+  LeaderboardEntity,
+} from '~/types/graphql'
 
 // ─── Leaderboard types ────────────────────────────────────────────────────────
-// These extend the generated schema — the backend returns extra computed fields.
+// PlayerBoardTeamSummary matches exactly — re-export under the old name for
+// backwards compatibility with components that import TeamSummary from here.
+export type { PlayerBoardTeamSummary as TeamSummary }
 
-export interface TeamSummary {
-  id: string
-  name: string
-  iconUrl?: string | null
-}
-
-export interface LeaderboardEntry {
-  rank: number
-  playerId: string
+// LeaderboardEntryEntity exists in the schema but lacks `user` (the GQL query
+// adds it via field selection). Extend rather than redefine.
+export type LeaderboardEntry = LeaderboardEntryEntity & {
   user: Pick<UserEntity, 'id' | 'discordUsername' | 'nickname' | 'avatarUrl'>
-  team?: TeamSummary | null
-  currentPosition: number
-  tilesRemaining: number
-  pathHasLadder: boolean
-  pathHasSnake: boolean
 }
 
-export interface LeaderboardData {
-  boardId: string
-  totalTiles: number
+// LeaderboardEntity exists but its entries array uses the base entity type.
+// Override entries to carry the extended LeaderboardEntry.
+export type LeaderboardData = Omit<LeaderboardEntity, 'entries'> & {
   entries: LeaderboardEntry[]
 }
 

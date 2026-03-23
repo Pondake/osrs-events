@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 
 interface UpsertDiscordUserDto {
@@ -124,6 +124,22 @@ export class UsersService {
         }
       }
     })
+  }
+
+  /**
+   * Delete a user account.
+   * Admins cannot be deleted — assign/remove the ADMIN role first.
+   */
+  async deleteUser(targetUserId: string): Promise<void> {
+    const target = await this.findById(targetUserId)
+    if (!target) throw new NotFoundException('User not found')
+
+    const isAdmin = target.userRoles.some(ur => ur.role.name === 'ADMIN')
+    if (isAdmin) {
+      throw new ForbiddenException('Admin users cannot be deleted. Remove the ADMIN role first.')
+    }
+
+    await this.prisma.user.delete({ where: { id: targetUserId } })
   }
 
   /**

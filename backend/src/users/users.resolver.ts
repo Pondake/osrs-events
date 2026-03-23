@@ -69,4 +69,22 @@ export class UsersResolver {
     await this.usersService.removeRole(userId, roleName)
     return this.usersService.findById(userId)
   }
+
+  /**
+   * Delete a user account (admin only).
+   * Admins cannot delete other admins — remove their ADMIN role first.
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Mutation(() => Boolean)
+  async deleteUser(
+    @CurrentUser() currentUser: UserEntity,
+    @Args('userId', { type: () => ID }) userId: string,
+  ) {
+    if (userId === currentUser.id) {
+      throw new Error('You cannot delete your own account.')
+    }
+    await this.usersService.deleteUser(userId)
+    return true
+  }
 }

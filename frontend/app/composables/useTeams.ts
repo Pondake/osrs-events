@@ -61,6 +61,11 @@ const REMOVE_TEAM_MEMBER_MUTATION = `
 `
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+// TeamMemberEntity and TeamEntity exist in ~/types/graphql but the GQL query
+// only selects a subset of their fields (e.g. TeamMemberEntity includes
+// `createdAt` which we don't query). These manual types exactly mirror the
+// query field selections — don't replace them with the full entity types or
+// TypeScript will expect fields that aren't in the response.
 
 export interface TeamMemberData {
   id: string

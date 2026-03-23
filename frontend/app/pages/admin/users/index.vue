@@ -34,35 +34,34 @@
           <template #user-cell="{ row }">
             <div class="flex items-center gap-3">
               <u-avatar
-                :src="row.avatarUrl ?? undefined"
-                :alt="row.nickname ?? row.discordUsername"
+                :src="row.original.avatarUrl ?? undefined"
+                :alt="row.original.nickname ?? row.original.discordUsername"
                 size="sm"
               />
               <div class="min-w-0">
-                <p class="font-medium truncate">{{ row.nickname ?? row.discordUsername }}</p>
-                <p v-if="row.nickname" class="text-xs text-muted truncate">
-                  {{ row.discordUsername }}
+                <p class="font-medium truncate">{{ row.original.nickname ?? row.original.discordUsername }}</p>
+                <p v-if="row.original.nickname" class="text-xs text-muted truncate">
+                  {{ row.original.discordUsername }}
                 </p>
               </div>
             </div>
           </template>
 
           <template #joined-cell="{ row }">
-            <span class="text-sm text-muted">{{ formatDate(row.createdAt) }}</span>
+            <span class="text-sm text-muted">{{ formatDate(row.original.createdAt) }}</span>
           </template>
 
           <template #roles-cell="{ row }">
             <div class="flex flex-wrap gap-1">
               <u-badge
-                v-for="ur in row.userRoles"
+                v-for="ur in (row.original.userRoles ?? [])"
                 :key="ur.id"
                 :color="roleColor(ur.role.name)"
                 variant="subtle"
-                size="xs"
-              >
-                {{ ur.role.name }}
-              </u-badge>
-              <span v-if="row.userRoles.length === 0" class="text-xs text-muted italic">
+                size="md"
+                :label="ur.role.name"
+              />
+              <span v-if="!row.original.userRoles?.length" class="text-xs text-muted italic">
                 {{ $t('admin.no_roles') }}
               </span>
             </div>
@@ -76,7 +75,7 @@
                 color="neutral"
                 icon="i-lucide-shield"
                 :aria-label="$t('admin.edit_roles')"
-                @click="openRolesModal(row)"
+                @click="openRolesModal(row.original)"
               />
               <u-button
                 size="xs"
@@ -84,7 +83,16 @@
                 color="neutral"
                 icon="i-lucide-key"
                 :aria-label="$t('admin.edit_permissions')"
-                @click="openPermissionsModal(row)"
+                @click="openPermissionsModal(row.original)"
+              />
+              <u-button
+                v-if="row.original.id !== authStore.user?.id && !row.original.userRoles?.some((ur: any) => ur.role.name === 'ADMIN')"
+                size="xs"
+                variant="ghost"
+                color="error"
+                icon="i-lucide-trash-2"
+                :aria-label="$t('admin.delete_user')"
+                @click="openDeleteModal(row.original)"
               />
             </div>
           </template>
@@ -116,7 +124,7 @@
               class="flex items-center justify-between p-3 rounded-lg border border-default"
             >
               <div>
-                <p class="text-sm font-medium">{{ role.name }}</p>
+                <p class="text-sm font-medium">{{ role.label }}</p>
                 <p class="text-xs text-muted">{{ role.description }}</p>
               </div>
               <u-switch
@@ -158,7 +166,7 @@
               class="flex items-center justify-between p-3 rounded-lg border border-default"
             >
               <div>
-                <p class="text-sm font-medium">{{ perm.key }}</p>
+                <p class="text-sm font-medium">{{ perm.label }}</p>
                 <p class="text-xs text-muted">{{ perm.description }}</p>
               </div>
               <u-switch
@@ -175,17 +183,50 @@
         <u-button variant="ghost" color="neutral" :label="$t('common.close')" @click="showPermissionsModal = false" />
       </template>
     </u-modal>
+    <!-- ── Delete user modal ─────────────────────────────────────────────────── -->
+    <u-modal v-model:open="showDeleteModal" :title="$t('admin.delete_user')">
+      <template #body>
+        <div v-if="userToDelete" class="flex flex-col gap-4">
+          <div class="flex items-center gap-3">
+            <u-avatar
+              :src="userToDelete.avatarUrl ?? undefined"
+              :alt="userToDelete.nickname ?? userToDelete.discordUsername"
+            />
+            <p class="font-semibold">{{ userToDelete.nickname ?? userToDelete.discordUsername }}</p>
+          </div>
+          <u-alert
+            color="error"
+            variant="subtle"
+            icon="i-lucide-triangle-alert"
+            :description="$t('admin.delete_user_confirm', { name: userToDelete.nickname ?? userToDelete.discordUsername })"
+          />
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <u-button variant="ghost" color="neutral" :label="$t('common.cancel')" @click="showDeleteModal = false" />
+          <u-button
+            color="error"
+            :label="$t('common.delete')"
+            :loading="deleteLoading"
+            @click="confirmDelete"
+          />
+        </div>
+      </template>
+    </u-modal>
   </nuxt-layout>
 </template>
 
 <script setup lang="ts">
-import type { UserEntity } from '~/types/graphql'
-import { useUsers, fetchUserPermissions, grantPermission, revokePermission } from '~/composables/useUsers'
+import { type UserEntity, PermissionKey } from '~/types/graphql'
+import { useUsers, fetchUserPermissions, grantPermission, revokePermission, deleteUser as deleteUserMutation } from '~/composables/useUsers'
+import { useAuthStore } from '~/stores/auth'
 import { formatDate } from '~/utils/board'
 
 definePageMeta({ middleware: 'admin' })
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const toast = useToast()
 
 // ─── Search + data ────────────────────────────────────────────────────────────
@@ -199,24 +240,24 @@ watch(searchQuery, val => {
   debounceTimer = setTimeout(() => { debouncedSearch.value = val }, 350)
 })
 
-const { users, pending, error, assignRole, removeRole } = await useUsers(computed(() => debouncedSearch.value || undefined))
+const { users, pending, error, refresh: refreshUsers, assignRole, removeRole } = await useUsers(computed(() => debouncedSearch.value || undefined))
 
 // ─── Table columns ────────────────────────────────────────────────────────────
 
 const tableColumns = computed(() => [
-  { key: 'user',    label: t('admin.col_user') },
-  { key: 'joined',  label: t('admin.col_joined') },
-  { key: 'roles',   label: t('admin.col_roles') },
-  { key: 'actions', label: '', class: 'text-right' },
+  { id: 'user',    header: t('admin.col_user') },
+  { id: 'joined',  header: t('admin.col_joined') },
+  { id: 'roles',   header: t('admin.col_roles') },
+  { id: 'actions', header: '' },
 ])
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
 
-const availableRoles = [
-  { name: 'ADMIN',        description: 'Full access — manage boards, tiles, tasks and users' },
-  { name: 'EDITOR',       description: 'Can create and edit boards they are assigned to' },
-  { name: 'TEAM_MANAGER', description: 'Can create and manage teams' },
-]
+const availableRoles = computed(() => [
+  { name: 'ADMIN',        label: t('admin.role_label_admin'),        description: t('admin.role_desc_admin') },
+  { name: 'EDITOR',       label: t('admin.role_label_editor'),       description: t('admin.role_desc_editor') },
+  { name: 'TEAM_MANAGER', label: t('admin.role_label_team_manager'), description: t('admin.role_desc_team_manager') },
+])
 
 function roleColor(name: string): 'primary' | 'warning' | 'info' | 'neutral' {
   const map: Record<string, 'primary' | 'warning' | 'info' | 'neutral'> = {
@@ -265,10 +306,10 @@ function openRolesModal(user: UserEntity) {
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
 
-const permissionDefs = [
-  { key: 'canCreateBoards', description: 'Allows this user to create their own boards' },
-  { key: 'canCreateTiles',  description: 'Allows this user to create and edit tiles' },
-]
+const permissionDefs = computed(() => [
+  { key: PermissionKey.CanCreateBoards, label: t('admin.perm_label_can_create_boards'), description: t('admin.perm_desc_can_create_boards') },
+  { key: PermissionKey.CanCreateTiles,  label: t('admin.perm_label_can_create_tiles'),  description: t('admin.perm_desc_can_create_tiles') },
+])
 
 const userPermissionsMap = ref<Record<string, string[]>>({})
 const permissionsLoading = ref(false)
@@ -292,6 +333,33 @@ async function openPermissionsModal(user: UserEntity) {
 
 function userHasPermission(userId: string, key: string): boolean {
   return (userPermissionsMap.value[userId] ?? []).includes(key)
+}
+
+// ─── Delete user ──────────────────────────────────────────────────────────────
+
+const showDeleteModal = ref(false)
+const userToDelete = ref<UserEntity | null>(null)
+const deleteLoading = ref(false)
+
+function openDeleteModal(user: UserEntity) {
+  userToDelete.value = user
+  showDeleteModal.value = true
+}
+
+async function confirmDelete() {
+  if (!userToDelete.value) return
+  deleteLoading.value = true
+  try {
+    await deleteUserMutation(userToDelete.value.id)
+    const name = userToDelete.value.nickname ?? userToDelete.value.discordUsername
+    await refreshUsers()
+    toast.add({ title: t('admin.user_deleted', { name }), color: 'success' })
+    showDeleteModal.value = false
+  } catch (e) {
+    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
+  } finally {
+    deleteLoading.value = false
+  }
 }
 
 async function togglePermission(userId: string, key: string, value: boolean) {
