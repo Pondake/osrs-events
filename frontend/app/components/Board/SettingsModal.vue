@@ -91,7 +91,7 @@ function toISO(d: CalendarDate | null): string | null {
 
 async function onSave() {
   if (!form.value.title.trim()) {
-    toast.add({ title: t('validation.title_required'), color: 'error' })
+    toast.add({ title: t('validation.title_required'), color: 'error', id: "validation" })
     return
   }
 
@@ -112,14 +112,14 @@ async function onSave() {
 
     if (props.boardId) {
       board = await updateBoard(props.boardId, input)
-      toast.add({ title: t('admin.board_updated'), color: 'success' })
+      toast.add({ title: t('admin.board_updated'), color: 'success', id: "success" })
     } else {
       // Create the board first, then assign any queued teams sequentially
       board = await createBoard(input)
       for (const bt of form.value.assignedTeams) {
         await addTeamToBoard(board.id, bt.teamId)
       }
-      toast.add({ title: t('admin.board_created'), color: 'success' })
+      toast.add({ title: t('admin.board_created'), color: 'success', id: 'success' })
     }
 
     emit('saved', board)

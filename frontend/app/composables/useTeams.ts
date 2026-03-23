@@ -148,7 +148,8 @@ export function useMyTeams() {
 }
 
 /**
- * All teams — admin view.
+ * All teams — admin / team manager view.
+ * Has the same interface as useMyTeams so pages can swap composables freely.
  */
 export function useAllTeams() {
   const teams = ref<TeamData[]>([])
@@ -166,13 +167,34 @@ export function useAllTeams() {
     }
   }
 
+  async function createTeam(input: { name: string; iconUrl?: string | null }): Promise<TeamData> {
+    const result = await useGqlMutation<{ createTeam: TeamData }>(CREATE_TEAM_MUTATION, { input })
+    return result.createTeam
+  }
+
+  async function updateTeam(
+    id: string,
+    input: { name?: string; iconUrl?: string | null },
+  ): Promise<TeamData> {
+    const result = await useGqlMutation<{ updateTeam: TeamData }>(UPDATE_TEAM_MUTATION, { id, input })
+    return result.updateTeam
+  }
+
   async function deleteTeam(id: string): Promise<void> {
     await useGqlMutation(DELETE_TEAM_MUTATION, { id })
+  }
+
+  async function addTeamMember(teamId: string, userId: string): Promise<TeamData> {
+    const result = await useGqlMutation<{ addTeamMember: TeamData }>(
+      ADD_TEAM_MEMBER_MUTATION,
+      { input: { teamId, userId } },
+    )
+    return result.addTeamMember
   }
 
   async function removeTeamMember(teamId: string, userId: string): Promise<void> {
     await useGqlMutation(REMOVE_TEAM_MEMBER_MUTATION, { teamId, userId })
   }
 
-  return { teams, loading, load, deleteTeam, removeTeamMember }
+  return { teams, loading, load, createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember }
 }

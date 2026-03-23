@@ -88,13 +88,15 @@ export function usePermissions() {
   }
 
   /**
-   * Can the current user manage a specific team's membership?
-   * True for admins; also for TEAM_MANAGERs who are members of the team.
+   * Can the current user manage any team?
+   * True for admins and all TEAM_MANAGERs globally — no membership check needed.
+   *
+   * Phase 3: narrow this to the user's own Discord guild.
    */
-  function canManageTeam(members: TeamMemberRef[]): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function canManageTeam(_members?: TeamMemberRef[]): boolean {
     if (!authStore.user) return false
-    if (isAdmin.value) return true
-    return isTeamManager.value && members.some(m => m.user.id === authStore.user?.id)
+    return isAdmin.value || isTeamManager.value
   }
 
   // ─── Load & mutation ───────────────────────────────────────────────────

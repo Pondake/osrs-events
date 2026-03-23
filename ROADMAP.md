@@ -64,6 +64,31 @@ Discord guild data is DB-cached (`UserGuild`) — refreshed on every login. "Can
   - [ ] `INVITE`: "Enter invite code" input + submit; magic link auto-fills + submits
 - [ ] Magic link page: `/boards/[id]/join/[token]` — validate invite → join board → redirect to board
 
+### Discord group-based teams
+
+Teams are currently global — any TEAM_MANAGER can see and manage all teams. In Phase 3, teams become scoped to Discord guilds (servers) using the `UserGuild` data already synced at login.
+
+**Model changes**
+- [ ] Add `guildId?` to `Team` — ties a team to a specific Discord server
+- [ ] Add `guildName?` to `Team` — cached for display without live Discord calls
+- [ ] Run Prisma migration
+
+**Backend**
+- [ ] `TeamsService.findAll()` — when called by a TEAM_MANAGER (non-admin), filter to teams whose `guildId` is in the user's `UserGuild` list
+- [ ] `TeamsService.create()` — auto-set `guildId`/`guildName` from the creator's primary guild (or let them pick)
+- [ ] Member search for TEAM_MANAGERs — filter `users` query to only show users who share a guild with the manager (`UserGuild` join)
+- [ ] Admins always see and manage all teams regardless of guild
+
+**Frontend — `/teams`**
+- [ ] TEAM_MANAGER view: show only teams in their guild(s) (backend-filtered)
+- [ ] Show guild name as a group header when a manager belongs to multiple guilds
+- [ ] Admin view: still shows all teams
+
+**Frontend — `/admin/teams`**
+- [ ] Group teams by `guildName` with collapsible sections
+- [ ] Teams without a guild grouped under "No guild" fallback section
+- [ ] Show guild icon (from `UserGuild`) next to each group header
+
 ### Deferred from Phase 2
 
 - [ ] **Team shareable invite link** — single-use link a TEAM_MANAGER generates; one player accepts it to join the team (analogous to board invites but scoped to teams)

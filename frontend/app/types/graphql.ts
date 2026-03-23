@@ -400,6 +400,7 @@ export type QueryUserPermissionsArgs = {
 
 
 export type QueryUsersArgs = {
+  limit?: InputMaybe<Scalars['Float']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
 };
 

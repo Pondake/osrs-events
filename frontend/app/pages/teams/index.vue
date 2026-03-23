@@ -1,5 +1,29 @@
 <template>
-  <nuxt-layout :title="$t('teams.title')">
+  <nuxt-layout :title="$t('teams.title')" :description="$t('teams.my_teams_subtitle')">
+    <template #links>
+      <div class="flex items-center gap-2">
+        <!-- Admin shortcut -->
+        <u-button
+          v-if="permissions.isAdmin.value"
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          icon="i-lucide-shield"
+          :to="localePath('/admin/teams')"
+          :label="$t('teams.manage_all_teams')"
+        />
+
+        <u-button
+          v-if="!loading && canManageAll"
+          color="primary"
+          icon="i-lucide-plus"
+          size="sm"
+          :label="$t('teams.create_team')"
+          @click="openCreate"
+        />
+      </div>
+    </template>
+
     <u-page-body>
       <u-container class="max-w-3xl">
         <!-- Access guard -->
@@ -33,45 +57,14 @@
             </template>
           </u-modal>
 
-          <!-- Add member modal -->
-          <u-modal v-model:open="showAddMember" :title="$t('teams.add_member')">
-            <template #body>
-              <div class="flex flex-col gap-3">
-                <u-input
-                  v-model="memberSearch"
-                  :placeholder="$t('common.search')"
-                  icon="i-lucide-search"
-                  class="w-full"
-                />
-
-                <!-- Search results -->
-                <div v-if="memberSearch.length >= 2" class="flex flex-col gap-1 max-h-64 overflow-y-auto">
-                  <div
-                    v-for="user in filteredUsers"
-                    :key="user.id"
-                    class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/30 cursor-pointer"
-                    @click="addMember(user.id)"
-                  >
-                    <u-avatar
-                      :src="user.avatarUrl ?? undefined"
-                      :alt="user.nickname ?? user.discordUsername"
-                      size="xs"
-                    />
-
-                    <span class="text-sm">{{ user.nickname ?? user.discordUsername }}</span>
-                  </div>
-
-                  <p v-if="filteredUsers.length === 0" class="text-sm text-muted text-center py-4">
-                    {{ $t('teams.no_users_found') }}
-                  </p>
-                </div>
-              </div>
-            </template>
-
-            <template #footer>
-              <u-button variant="ghost" color="neutral" :label="$t('common.close')" @click="showAddMember = false" />
-            </template>
-          </u-modal>
+          <!-- Manage members modal (shared component) -->
+          <team-members-modal
+            v-model:open="showMembers"
+            :team="managingTeam"
+            :add-member="addTeamMember"
+            :remove-member="removeTeamMember"
+            @team-updated="onTeamUpdated"
+          />
 
           <!-- Delete confirm modal -->
           <u-modal v-model:open="showDeleteConfirm" :title="$t('teams.delete_confirm_title')">
@@ -87,19 +80,6 @@
             </template>
           </u-modal>
 
-          <!-- Header row -->
-          <div class="flex items-center justify-between mb-6">
-            <p class="text-sm text-muted">{{ $t('teams.my_teams_subtitle') }}</p>
-
-            <u-button
-              color="primary"
-              icon="i-lucide-plus"
-              size="sm"
-              :label="$t('teams.create_team')"
-              @click="openCreate"
-            />
-          </div>
-
           <!-- Loading -->
           <div v-if="loading" class="flex flex-col gap-3">
             <u-skeleton v-for="i in 3" :key="i" class="h-24 rounded-xl" />
@@ -113,7 +93,7 @@
 
             <p class="text-sm text-muted mt-2 mb-6">{{ $t('teams.no_teams_desc') }}</p>
 
-            <u-button color="primary" icon="i-lucide-plus" :label="$t('teams.create_team')" @click="openCreate" />
+            <u-button v-if="canManageAll" color="primary" icon="i-lucide-plus" :label="$t('teams.create_team')" @click="openCreate" />
           </div>
 
           <!-- Team cards -->
@@ -146,15 +126,15 @@
                   </p>
                 </div>
 
-                <!-- Actions (visible to managers/admins of this team) -->
-                <div v-if="canManageThisTeam(team)" class="flex gap-1">
+                <!-- Actions (visible to managers/admins) -->
+                <div v-if="permissions.canManageTeam()" class="flex gap-1">
                   <u-button
                     variant="ghost"
                     color="neutral"
                     size="xs"
-                    icon="i-lucide-user-plus"
-                    :label="$t('teams.add_member')"
-                    @click="openAddMember(team)"
+                    icon="i-lucide-users"
+                    :label="$t('teams.manage_members_short')"
+                    @click="openMembers(team)"
                   />
 
                   <u-button
@@ -189,19 +169,10 @@
                   />
 
                   <span class="text-xs">{{ member.user.nickname ?? member.user.discordUsername }}</span>
-
-                  <!-- Remove member (managers/admins only) -->
-                  <button
-                    v-if="canManageThisTeam(team)"
-                    type="button"
-                    class="text-muted hover:text-error transition-colors ml-0.5"
-                    :title="$t('teams.remove_member')"
-                    @click="removeMember(team, member.userId)"
-                  >
-                    <u-icon name="i-lucide-x" class="text-xs" />
-                  </button>
                 </div>
               </div>
+
+              <p v-else class="text-xs text-muted italic">{{ $t('teams.no_members') }}</p>
             </div>
           </div>
         </template>
@@ -212,19 +183,21 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
-import { useMyTeams, type TeamData, type TeamMemberData } from '~/composables/useTeams'
-import { fetchUsers } from '~/composables/useUsers'
-import type { UserEntity } from '~/types/graphql'
+import { useMyTeams, useAllTeams, type TeamData } from '~/composables/useTeams'
 import type { TeamFormData } from '~/components/Team/Form.vue'
 
 const authStore = useAuthStore()
 const toast = useToast()
 const { t } = useI18n()
+const localePath = useLocalePath()
 
 const permissions = usePermissions()
 
+// Admins and team managers see ALL teams; regular players see only their own
+const canManageAll = computed(() => permissions.isAdmin.value || permissions.isTeamManager.value)
+
 const { teams, loading, load, createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember } =
-  useMyTeams()
+  canManageAll.value ? useAllTeams() : useMyTeams()
 
 onMounted(load)
 
@@ -306,70 +279,19 @@ async function confirmDelete() {
   }
 }
 
-// ─── Add / remove members ────────────────────────────────────────────────────
+// ─── Members modal ────────────────────────────────────────────────────────────
 
-const showAddMember = ref(false)
-const addingToTeam = ref<TeamData | null>(null)
-const memberSearch = ref('')
+const showMembers = ref(false)
+const managingTeam = ref<TeamData | null>(null)
 
-// Simple user search — imperative, uses fetchUsers from useUsers composable
-const allUsers = ref<UserEntity[]>([])
-
-async function loadUsers(search: string) {
-  try {
-    allUsers.value = await fetchUsers(search)
-  } catch {
-    allUsers.value = []
-  }
+function openMembers(team: TeamData) {
+  managingTeam.value = team
+  showMembers.value = true
 }
 
-const filteredUsers = computed(() => {
-  const existing = new Set(addingToTeam.value?.members.map(m => m.userId) ?? [])
-  return allUsers.value.filter(u => !existing.has(u.id))
-})
-
-watch(memberSearch, val => {
-  if (val.length >= 2) loadUsers(val)
-  else allUsers.value = []
-})
-
-function openAddMember(team: TeamData) {
-  addingToTeam.value = team
-  memberSearch.value = ''
-  allUsers.value = []
-  showAddMember.value = true
-}
-
-async function addMember(userId: string) {
-  if (!addingToTeam.value) return
-  try {
-    const updatedTeam = await addTeamMember(addingToTeam.value.id, userId)
-    const idx = teams.value.findIndex(t => t.id === addingToTeam.value!.id)
-    if (idx >= 0) {
-      teams.value[idx] = updatedTeam
-      // Keep the modal open but update the reference so the member filter stays accurate
-      addingToTeam.value = updatedTeam
-    }
-    toast.add({ title: t('teams.member_added'), color: 'success' })
-  } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
-  }
-}
-
-async function removeMember(team: TeamData, userId: string) {
-  try {
-    await removeTeamMember(team.id, userId)
-    const t2 = teams.value.find(t => t.id === team.id)
-    if (t2) t2.members = t2.members.filter(m => m.userId !== userId)
-    toast.add({ title: t('teams.member_removed'), color: 'neutral' })
-  } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
-  }
-}
-
-// ─── Permission check ─────────────────────────────────────────────────────────
-
-function canManageThisTeam(team: TeamData): boolean {
-  return permissions.canManageTeam(team.members)
+function onTeamUpdated(updated: TeamData) {
+  const idx = teams.value.findIndex(t => t.id === updated.id)
+  if (idx >= 0) teams.value[idx] = updated
+  managingTeam.value = updated
 }
 </script>

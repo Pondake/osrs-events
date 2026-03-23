@@ -78,9 +78,10 @@ export class UsersService {
   }
 
   /**
-   * List all users with roles — optional case-insensitive search by username
+   * List all users with roles — optional case-insensitive search by username,
+   * optional limit to N most recently joined users.
    */
-  async findAll(search?: string) {
+  async findAll(search?: string, limit?: number) {
     return this.prisma.user.findMany({
       where: search
         ? { discordUsername: { contains: search, mode: 'insensitive' } }
@@ -90,7 +91,8 @@ export class UsersService {
           include: { role: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      ...(limit ? { take: limit } : {}),
     })
   }
 

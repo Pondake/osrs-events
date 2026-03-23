@@ -1,5 +1,5 @@
 <template>
-  <u-app :toaster="{ position: 'top-center', expand: true }">
+  <u-app :toaster="{ position: 'top-center', expand: true, class: 'top-[calc(var(--ui-header-height)+var(--spacing)*6)]' }">
     <app-header />
 
     <nuxt-page />
@@ -23,4 +23,5 @@ useSeoMeta({
   ogDescription:
     'An Old School RuneScape themed events platform. Join boards, roll dice and complete OSRS tasks with your clan.',
 });
+
 </script>

@@ -279,10 +279,10 @@ async function doAddAuthor(user: AuthorOption) {
   authorSearch.value = ''
   try {
     await addBoardAuthor(boardId, user.id)
-    toast.add({ title: t('admin.editor_added', { name: user.discordUsername }), color: 'success' })
+    toast.add({id: `board-${boardId}`, title: t('admin.editor_added', { name: user.discordUsername }), color: 'success' })
     await refreshBoard()
   } catch {
-    toast.add({ title: t('errors.generic'), color: 'error' })
+    toast.add({id: `board-${boardId}`, title: t('errors.generic'), color: 'error' })
   }
 }
 
@@ -290,10 +290,10 @@ async function doRemoveAuthor(userId: string) {
   removingAuthorId.value = userId
   try {
     await removeBoardAuthor(boardId, userId)
-    toast.add({ title: t('admin.editor_removed'), color: 'neutral' })
+    toast.add({id: `board-${boardId}`, title: t('admin.editor_removed'), color: 'neutral' })
     await refreshBoard()
   } catch {
-    toast.add({ title: t('errors.generic'), color: 'error' })
+    toast.add({id: `board-${boardId}`, title: t('errors.generic'), color: 'error' })
   } finally {
     removingAuthorId.value = null
   }
@@ -317,10 +317,10 @@ async function onSubmit(_event: FormSubmitEvent<Schema>) {
       diceRollLimit:  form.unlimitedRolls ? null : form.diceRollLimit,
     }
     await updateBoard(boardId, input)
-    toast.add({ title: t('admin.board_updated'), color: 'success' })
+    toast.add({id: `board-${boardId}`, title: t('admin.board_updated'), color: 'success' })
     await refreshBoard()
   } catch {
-    toast.add({ title: t('errors.generic'), color: 'error' })
+    toast.add({id: `board-${boardId}`, title: t('errors.generic'), color: 'error' })
   } finally {
     submitting.value = false
   }

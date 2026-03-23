@@ -193,7 +193,7 @@ type Query {
   teams: [TeamEntity!]!
   tiles(boardId: ID!): [TileEntity!]!
   userPermissions(userId: ID!): [UserPermissionEntity!]!
-  users(search: String): [UserEntity!]!
+  users(limit: Float, search: String): [UserEntity!]!
 }
 
 type RoleEntity {

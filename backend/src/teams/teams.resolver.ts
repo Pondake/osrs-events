@@ -13,9 +13,9 @@ import { UserEntity } from '../users/entities/user.entity'
 export class TeamsResolver {
   constructor(private teamsService: TeamsService) {}
 
-  /** List all teams (admin or editor — needed for board team assignment) */
+  /** List all teams (admin, editor or team manager) */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'EDITOR')
+  @Roles('ADMIN', 'EDITOR', 'TEAM_MANAGER')
   @Query(() => [TeamEntity], { name: 'teams' })
   findAll() {
     return this.teamsService.findAll()
@@ -43,9 +43,9 @@ export class TeamsResolver {
     return this.teamsService.create(input, user.id)
   }
 
-  /** Update a team (admin only) */
+  /** Update a team (admin or TEAM_MANAGER) */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'TEAM_MANAGER')
   @Mutation(() => TeamEntity)
   updateTeam(
     @Args('id', { type: () => ID }) id: string,
@@ -54,9 +54,9 @@ export class TeamsResolver {
     return this.teamsService.update(id, input)
   }
 
-  /** Delete a team (admin only) */
+  /** Delete a team (admin or TEAM_MANAGER) */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'TEAM_MANAGER')
   @Mutation(() => TeamEntity)
   deleteTeam(@Args('id', { type: () => ID }) id: string) {
     return this.teamsService.delete(id)
