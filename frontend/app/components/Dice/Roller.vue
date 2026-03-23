@@ -79,15 +79,13 @@
 </template>
 
 <script setup lang="ts">
-interface Props {
+const props = withDefaults(defineProps<{
   rolling?: boolean;
   lastRoll?: number | null;
   rollsToday?: number;
   rollLimit?: number | null;
   disabled?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
+}>(), {
   rolling: false,
   lastRoll: null,
   rollsToday: 0,

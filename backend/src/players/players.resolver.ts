@@ -2,7 +2,9 @@ import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
 import { PlayersService } from './players.service'
 import { PlayerBoardEntity, RollResultEntity } from './entities/player-board.entity'
+import { LeaderboardEntity } from './entities/leaderboard.entity'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt.guard'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { UserEntity } from '../users/entities/user.entity'
 
@@ -34,6 +36,16 @@ export class PlayersResolver {
     @Args('boardId', { type: () => ID }) boardId: string
   ) {
     return this.playersService.getPlayerBoardsByBoard(boardId)
+  }
+
+  /**
+   * Leaderboard for a board: players ranked by position, with tiles remaining
+   * and snake/ladder path indicators. Public (optional auth).
+   */
+  @UseGuards(OptionalJwtAuthGuard)
+  @Query(() => LeaderboardEntity, { name: 'boardLeaderboard', nullable: true })
+  getBoardLeaderboard(@Args('boardId', { type: () => ID }) boardId: string) {
+    return this.playersService.getLeaderboard(boardId)
   }
 
   /** Roll the dice */

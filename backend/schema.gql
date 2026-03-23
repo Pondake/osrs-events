@@ -1,0 +1,313 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+input AddTeamMemberInput {
+  teamId: ID!
+  userId: ID!
+}
+
+type BoardAuthorEntity {
+  id: ID!
+  isOwner: Boolean!
+  user: UserEntity!
+}
+
+type BoardEntity {
+  authors: [BoardAuthorEntity!]!
+  boardTeams: [BoardTeamEntity!]
+  createdAt: DateTime!
+  description: String
+
+  """null = unlimited rolls per day"""
+  diceRollLimit: Int
+  endDate: DateTime
+  id: ID!
+  mode: BoardMode!
+  size: BoardSize!
+  startDate: DateTime
+  tiles: [TileEntity!]
+  title: String!
+  updatedAt: DateTime!
+}
+
+enum BoardMode {
+  SOLO
+  TEAM
+}
+
+enum BoardSize {
+  SIZE_5X5
+  SIZE_7X7
+  SIZE_9X9
+}
+
+type BoardTeamEntity {
+  boardId: ID!
+  createdAt: DateTime!
+  id: ID!
+  team: BoardTeamTeamSummary!
+  teamId: ID!
+}
+
+type BoardTeamTeamSummary {
+  iconUrl: String
+  id: ID!
+  name: String!
+}
+
+type CompletedTileEntity {
+  completedAt: DateTime!
+  completedVia: CompletionSource!
+  id: ID!
+  tileId: ID!
+}
+
+enum CompletionSource {
+  MANUAL
+  RUNELITE
+}
+
+input CreateBoardInput {
+  """UUIDs of admin users to set as authors"""
+  authorIds: [ID!]!
+  description: String
+  diceRollLimit: Int
+  endDate: DateTime
+  mode: BoardMode
+  size: BoardSize!
+  startDate: DateTime
+  title: String!
+}
+
+input CreateTaskInput {
+  description: String
+  iconUrl: String
+  title: String!
+}
+
+input CreateTeamInput {
+  iconUrl: String
+  name: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type LeaderboardEntity {
+  boardId: ID!
+  entries: [LeaderboardEntryEntity!]!
+  totalTiles: Int!
+}
+
+type LeaderboardEntryEntity {
+  currentPosition: Int!
+  pathHasLadder: Boolean!
+  pathHasSnake: Boolean!
+  playerId: ID!
+  rank: Int!
+  team: PlayerBoardTeamSummary
+  tilesRemaining: Int!
+  user: UserEntity!
+}
+
+type Mutation {
+  addBoardAuthor(boardId: ID!, userId: ID!): BoardAuthorEntity!
+  addTeamMember(input: AddTeamMemberInput!): TeamEntity!
+  addTeamToBoard(boardId: ID!, teamId: ID!): BoardTeamEntity!
+  assignRole(roleName: String!, userId: ID!): UserEntity!
+  clearSnakeLadder(id: ID!): TileEntity!
+  completeTile(boardId: ID!, tileId: ID!): PlayerBoardEntity!
+  createBoard(input: CreateBoardInput!): BoardEntity!
+  createTask(input: CreateTaskInput!): TaskEntity!
+  createTeam(input: CreateTeamInput!): TeamEntity!
+  deleteBoard(id: ID!): BoardEntity!
+  deleteTask(id: ID!): TaskEntity!
+  deleteTeam(id: ID!): TeamEntity!
+  deleteTile(id: ID!): TileEntity!
+  grantPermission(permissionKey: PermissionKey!, userId: ID!): UserPermissionEntity!
+  removeBoardAuthor(boardId: ID!, userId: ID!): Boolean!
+  removeRole(roleName: String!, userId: ID!): UserEntity!
+  removeTeamFromBoard(boardId: ID!, teamId: ID!): Boolean!
+  removeTeamMember(teamId: ID!, userId: ID!): TeamEntity!
+  revokePermission(permissionKey: PermissionKey!, userId: ID!): Boolean!
+  rollDice(boardId: ID!): RollResultEntity!
+  uncompleteTile(boardId: ID!, tileId: ID!): PlayerBoardEntity
+  updateBoard(id: ID!, input: UpdateBoardInput!): BoardEntity!
+  updateProfile(nickname: String): UserEntity!
+  updateTask(id: ID!, input: UpdateTaskInput!): TaskEntity!
+  updateTeam(id: ID!, input: UpdateTeamInput!): TeamEntity!
+  upsertTile(input: UpsertTileInput!): TileEntity!
+}
+
+"""Granular permissions that can be granted to individual users"""
+enum PermissionKey {
+  CAN_CREATE_BOARDS
+  CAN_CREATE_TILES
+}
+
+type PlayerBoardBoardSummary {
+  id: ID!
+  size: String!
+  title: String!
+}
+
+type PlayerBoardEntity {
+  board: PlayerBoardBoardSummary
+  boardId: ID!
+  completedTiles: [CompletedTileEntity!]!
+  createdAt: DateTime!
+  currentPosition: Int!
+  diceRollsToday: Int!
+  id: ID!
+  lastRollDate: DateTime
+  team: PlayerBoardTeamSummary
+  teamId: ID
+  updatedAt: DateTime!
+  user: UserEntity
+  userId: ID!
+}
+
+type PlayerBoardTeamSummary {
+  iconUrl: String
+  id: ID!
+  name: String!
+}
+
+type Query {
+  board(id: ID!): BoardEntity
+  boardLeaderboard(boardId: ID!): LeaderboardEntity
+  boardPlayerStates(boardId: ID!): [PlayerBoardEntity!]!
+  boards: [BoardEntity!]!
+  me: UserEntity
+  myBoardState(boardId: ID!): PlayerBoardEntity
+  myPermissions: [UserPermissionEntity!]!
+  myPlayerBoards: [PlayerBoardEntity!]!
+  myTeams: [TeamEntity!]!
+  task(id: ID!): TaskEntity
+  tasks(search: String): [TaskEntity!]!
+  team(id: ID!): TeamEntity
+  teams: [TeamEntity!]!
+  tiles(boardId: ID!): [TileEntity!]!
+  userPermissions(userId: ID!): [UserPermissionEntity!]!
+  users(search: String): [UserEntity!]!
+}
+
+type RoleEntity {
+  description: String
+  id: ID!
+  name: String!
+}
+
+type RollResultEntity {
+  """snake | ladder | null"""
+  jump: String
+
+  """Position before snake/ladder jump"""
+  landedOn: Int
+  newPosition: Int!
+  playerBoard: PlayerBoardEntity!
+  previousPosition: Int!
+  rolled: Int!
+}
+
+type TaskEntity {
+  createdAt: DateTime!
+  description: String
+  iconUrl: String
+  id: ID!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type TeamEntity {
+  createdAt: DateTime!
+  iconUrl: String
+  id: ID!
+  members: [TeamMemberEntity!]!
+  name: String!
+  updatedAt: DateTime!
+}
+
+type TeamMemberEntity {
+  createdAt: DateTime!
+  id: ID!
+  user: UserEntity!
+  userId: ID!
+}
+
+type TileEntity {
+  boardId: ID!
+  createdAt: DateTime!
+  displayTitle: String
+  iconUrl: String
+  id: ID!
+  position: Int!
+  targetPosition: Int
+  task: TaskEntity
+  titleOverride: String
+  type: TileType!
+  updatedAt: DateTime!
+}
+
+enum TileType {
+  LADDER
+  NORMAL
+  SNAKE
+}
+
+input UpdateBoardInput {
+  authorIds: [ID!]
+  description: String
+  diceRollLimit: Int
+  endDate: DateTime
+  mode: BoardMode
+  size: BoardSize
+  startDate: DateTime
+  title: String
+}
+
+input UpdateTaskInput {
+  description: String
+  iconUrl: String
+  title: String
+}
+
+input UpdateTeamInput {
+  iconUrl: String
+  name: String
+}
+
+input UpsertTileInput {
+  boardId: ID!
+  position: Int!
+  targetPosition: Int
+  taskId: ID
+  titleOverride: String
+  type: TileType
+}
+
+type UserEntity {
+  avatarUrl: String
+  createdAt: DateTime!
+  discordId: String!
+  discordUsername: String!
+  id: ID!
+  nickname: String
+  updatedAt: DateTime!
+  userRoles: [UserRoleEntity!]!
+}
+
+type UserPermissionEntity {
+  createdAt: DateTime!
+  id: ID!
+  permissionKey: PermissionKey!
+  userId: ID!
+}
+
+type UserRoleEntity {
+  id: ID!
+  role: RoleEntity!
+}
