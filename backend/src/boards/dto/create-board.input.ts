@@ -1,5 +1,5 @@
 import { InputType, Field, Int, ID } from '@nestjs/graphql'
-import { BoardSize } from '../entities/board.entity'
+import { BoardSize, BoardMode } from '../entities/board.entity'
 
 @InputType()
 export class CreateBoardInput {
@@ -17,6 +17,9 @@ export class CreateBoardInput {
 
   @Field(() => BoardSize)
   size: BoardSize
+
+  @Field(() => BoardMode, { nullable: true })
+  mode?: BoardMode
 
   @Field(() => Int, { nullable: true })
   diceRollLimit?: number
@@ -41,6 +44,9 @@ export class UpdateBoardInput {
 
   @Field(() => BoardSize, { nullable: true })
   size?: BoardSize
+
+  @Field(() => BoardMode, { nullable: true })
+  mode?: BoardMode
 
   @Field(() => Int, { nullable: true })
   diceRollLimit?: number

@@ -13,19 +13,17 @@
             trailing-icon="i-lucide-arrow-right"
             size="xl"
             color="primary"
-          >
-            {{ $t('home.cta_boards') }}
-          </u-button>
+            :label="$t('home.cta_boards')"
+          />
 
           <u-button
             v-else
             size="xl"
             icon="i-simple-icons-discord"
             color="primary"
+            :label="$t('home.cta_login')"
             @click="authStore.loginWithDiscord()"
-          >
-            {{ $t('home.cta_login') }}
-          </u-button>
+          />
         </template>
       </u-page-hero>
 

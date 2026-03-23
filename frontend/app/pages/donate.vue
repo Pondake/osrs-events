@@ -32,9 +32,8 @@
               variant="solid"
               icon="i-lucide-coffee"
               block
-            >
-              {{ $t('donate.kofi_button') }}
-            </u-button>
+              :label="$t('donate.kofi_button')"
+            />
           </u-card>
 
           <!-- OSRS GP card -->
@@ -79,9 +78,8 @@
                 size="xs"
                 icon="i-lucide-mail"
                 block
-              >
-                {{ $t('donate.gp_how_cta') }}
-              </u-button>
+                :label="$t('donate.gp_how_cta')"
+              />
             </div>
           </u-card>
         </div>

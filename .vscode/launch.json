@@ -16,6 +16,21 @@
         "NODE_ENV": "development"
       }
     },
+  
+    {
+      "name": "Generate types",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["generate"],
+      "cwd": "${workspaceRoot}/frontend",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
     {
       "name": "Nuxt: Build",
       "type": "node",
@@ -33,20 +48,6 @@
       "request": "launch",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["run", "start:dev"],
-      "cwd": "${workspaceRoot}/backend",
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "skipFiles": ["<node_internals>/**"],
-      "env": {
-        "NODE_ENV": "development"
-      }
-    },
-    {
-      "name": "NestJS: Debug",
-      "type": "node",
-      "request": "launch",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "start:debug"],
       "cwd": "${workspaceRoot}/backend",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",

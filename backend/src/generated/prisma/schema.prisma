@@ -23,16 +23,31 @@ model Role {
 // Users
 // ─────────────────────────────────────────────
 model User {
-  id              String        @id @default(uuid()) @db.Uuid
-  discordId       String        @unique
+  id              String           @id @default(uuid()) @db.Uuid
+  discordId       String           @unique
   discordUsername String
   nickname        String? // optional display name shown instead of discordUsername
   avatarUrl       String?
   userRoles       UserRole[]
+  userPermissions UserPermission[]
   boardAuthors    BoardAuthor[]
   playerBoards    PlayerBoard[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  teamMembers     TeamMember[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Granular per-user permissions (independent of roles)
+// ─────────────────────────────────────────────
+model UserPermission {
+  id            String   @id @default(uuid()) @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String   @db.Uuid
+  permissionKey String // e.g. "canCreateBoards", "canCreateTiles"
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, permissionKey])
 }
 
 // ─────────────────────────────────────────────
@@ -71,6 +86,11 @@ enum BoardSize {
   SIZE_9X9
 }
 
+enum BoardMode {
+  SOLO
+  TEAM
+}
+
 model Board {
   id            String        @id @default(uuid()) @db.Uuid
   title         String
@@ -78,12 +98,28 @@ model Board {
   startDate     DateTime?
   endDate       DateTime?
   size          BoardSize     @default(SIZE_7X7)
+  mode          BoardMode     @default(SOLO)
   diceRollLimit Int? // null = unlimited
   authors       BoardAuthor[]
   tiles         Tile[]
   playerBoards  PlayerBoard[]
+  boardTeams    BoardTeam[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Board-Team pivot (TEAM mode boards only)
+// ─────────────────────────────────────────────
+model BoardTeam {
+  id        String   @id @default(uuid()) @db.Uuid
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId   String   @db.Uuid
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@unique([boardId, teamId])
 }
 
 // ─────────────────────────────────────────────
@@ -95,6 +131,7 @@ model BoardAuthor {
   boardId   String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String   @db.Uuid
+  isOwner   Boolean  @default(false) // true for the original creator — cannot be removed
   createdAt DateTime @default(now())
 
   @@unique([boardId, userId])
@@ -135,6 +172,8 @@ model PlayerBoard {
   userId          String          @db.Uuid
   board           Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
   boardId         String          @db.Uuid
+  team            Team?           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId          String?         @db.Uuid // set for TEAM mode boards — one shared board per team
   currentPosition Int             @default(0)
   diceRollsToday  Int             @default(0)
   lastRollDate    DateTime?
@@ -143,6 +182,7 @@ model PlayerBoard {
   updatedAt       DateTime        @updatedAt
 
   @@unique([userId, boardId])
+  @@unique([teamId, boardId]) // one shared entry per team per board (nulls are not distinct)
 }
 
 // ─────────────────────────────────────────────
@@ -163,4 +203,32 @@ model CompletedTile {
   completedVia  CompletionSource @default(MANUAL)
 
   @@unique([playerBoardId, tileId])
+}
+
+// ─────────────────────────────────────────────
+// Teams
+// ─────────────────────────────────────────────
+model Team {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  iconUrl      String? // decorative OSRS Wiki icon, same picker as tasks
+  members      TeamMember[]
+  boardTeams   BoardTeam[]
+  playerBoards PlayerBoard[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Team-Member pivot
+// ─────────────────────────────────────────────
+model TeamMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, userId])
 }

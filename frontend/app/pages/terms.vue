@@ -109,13 +109,8 @@
 
         <!-- Footer links -->
         <div class="flex gap-4 flex-wrap mt-8 pt-6 border-t border-default">
-          <u-button to="/privacy" variant="link" color="neutral" size="sm" class="px-0">
-            {{ $t('nav.privacy') }}
-          </u-button>
-
-          <u-button to="/about" variant="link" color="neutral" size="sm" class="px-0">
-            {{ $t('nav.about') }}
-          </u-button>
+          <u-button to="/privacy" variant="link" color="neutral" size="sm" class="px-0" :label="$t('nav.privacy')" />
+          <u-button to="/about" variant="link" color="neutral" size="sm" class="px-0" :label="$t('nav.about')" />
         </div>
       </u-container>
     </u-page-body>

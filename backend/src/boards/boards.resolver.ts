@@ -1,7 +1,7 @@
 import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql'
-import { UseGuards } from '@nestjs/common'
+import { ForbiddenException, UseGuards } from '@nestjs/common'
 import { BoardsService } from './boards.service'
-import { BoardEntity } from './entities/board.entity'
+import { BoardAuthorEntity, BoardEntity, BoardTeamEntity } from './entities/board.entity'
 import { CreateBoardInput, UpdateBoardInput } from './dto/create-board.input'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt.guard'
@@ -39,15 +39,89 @@ export class BoardsResolver {
     return this.boardsService.create(input, user.id)
   }
 
-  /** Update a board (admin only) */
+  /** Update a board (admin always; editor only if they are the board owner) */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'EDITOR')
   @Mutation(() => BoardEntity)
-  updateBoard(
+  async updateBoard(
     @Args('id', { type: () => ID }) id: string,
-    @Args('input') input: UpdateBoardInput
+    @Args('input') input: UpdateBoardInput,
+    @CurrentUser() user: UserEntity
   ) {
+    const isAdmin = (user.userRoles ?? []).some((ur) => ur.role.name === 'ADMIN')
+    if (!isAdmin) {
+      const isOwner = await this.boardsService.isBoardOwner(id, user.id)
+      if (!isOwner) throw new ForbiddenException('You are not the owner of this board')
+    }
     return this.boardsService.update(id, input)
+  }
+
+  /** Add a co-editor to a board (admin always; editor only if they are the board owner) */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'EDITOR')
+  @Mutation(() => BoardAuthorEntity)
+  async addBoardAuthor(
+    @Args('boardId', { type: () => ID }) boardId: string,
+    @Args('userId', { type: () => ID }) userId: string,
+    @CurrentUser() user: UserEntity
+  ) {
+    const isAdmin = (user.userRoles ?? []).some((ur) => ur.role.name === 'ADMIN')
+    if (!isAdmin) {
+      const isOwner = await this.boardsService.isBoardOwner(boardId, user.id)
+      if (!isOwner) throw new ForbiddenException('You are not the owner of this board')
+    }
+    return this.boardsService.addAuthor(boardId, userId)
+  }
+
+  /** Remove a co-editor from a board. The board owner cannot be removed. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'EDITOR')
+  @Mutation(() => Boolean)
+  async removeBoardAuthor(
+    @Args('boardId', { type: () => ID }) boardId: string,
+    @Args('userId', { type: () => ID }) userId: string,
+    @CurrentUser() user: UserEntity
+  ) {
+    const isAdmin = (user.userRoles ?? []).some((ur) => ur.role.name === 'ADMIN')
+    if (!isAdmin) {
+      const isOwner = await this.boardsService.isBoardOwner(boardId, user.id)
+      if (!isOwner) throw new ForbiddenException('You are not the owner of this board')
+    }
+    return this.boardsService.removeAuthor(boardId, userId)
+  }
+
+  /** Add a team to a TEAM-mode board (admin or board owner) */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'EDITOR')
+  @Mutation(() => BoardTeamEntity)
+  async addTeamToBoard(
+    @Args('boardId', { type: () => ID }) boardId: string,
+    @Args('teamId', { type: () => ID }) teamId: string,
+    @CurrentUser() user: UserEntity
+  ) {
+    const isAdmin = (user.userRoles ?? []).some((ur) => ur.role.name === 'ADMIN')
+    if (!isAdmin) {
+      const isOwner = await this.boardsService.isBoardOwner(boardId, user.id)
+      if (!isOwner) throw new ForbiddenException('You are not the owner of this board')
+    }
+    return this.boardsService.addTeamToBoard(boardId, teamId)
+  }
+
+  /** Remove a team from a board (admin or board owner) */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'EDITOR')
+  @Mutation(() => Boolean)
+  async removeTeamFromBoard(
+    @Args('boardId', { type: () => ID }) boardId: string,
+    @Args('teamId', { type: () => ID }) teamId: string,
+    @CurrentUser() user: UserEntity
+  ) {
+    const isAdmin = (user.userRoles ?? []).some((ur) => ur.role.name === 'ADMIN')
+    if (!isAdmin) {
+      const isOwner = await this.boardsService.isBoardOwner(boardId, user.id)
+      if (!isOwner) throw new ForbiddenException('You are not the owner of this board')
+    }
+    return this.boardsService.removeTeamFromBoard(boardId, teamId)
   }
 
   /** Delete a board (admin only) */

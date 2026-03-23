@@ -33,36 +33,16 @@
 </template>
 
 <script setup lang="ts">
-interface Task {
-  id: string;
-  title: string;
-  iconUrl: string | null;
-}
-interface Tile {
-  id: string;
-  position: number;
-  type: 'NORMAL' | 'SNAKE' | 'LADDER';
-  targetPosition: number | null;
-  titleOverride: string | null;
-  displayTitle?: string | null;
-  task: Task | null;
-}
-interface PlayerState {
-  userId: string;
-  currentPosition: number;
-  user?: { id: string; discordUsername: string; avatarUrl: string | null };
-}
+import type { TileEntity, PlayerBoardEntity, BoardSize } from '~/types/graphql'
 
-interface Props {
-  tiles: Tile[];
-  boardSize: 'SIZE_5X5' | 'SIZE_7X7' | 'SIZE_9X9';
+const props = withDefaults(defineProps<{
+  tiles: TileEntity[];
+  boardSize: BoardSize;
   currentPosition?: number;
   completedTilePositions?: number[];
-  playerStates?: PlayerState[];
+  playerStates?: PlayerBoardEntity[];
   editMode?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
+}>(), {
   currentPosition: -1,
   completedTilePositions: () => [],
   playerStates: () => [],
@@ -96,11 +76,11 @@ const orderedTiles = computed(() => {
       const tile = tileMap.get(position) ?? {
         id: `empty-${position}`,
         position,
-        type: 'NORMAL' as const,
+        type: 'NORMAL' as TileEntity['type'],
         targetPosition: null,
         titleOverride: null,
         task: null,
-      };
+      } as TileEntity;
 
       // Display number: 1-based, position 0 = tile 1
       const displayNumber = position + 1;
@@ -115,17 +95,18 @@ const completedPositions = computed(() => new Set(props.completedTilePositions))
 const connections = computed(() =>
   props.tiles
     .filter(t => (t.type === 'SNAKE' || t.type === 'LADDER') && t.targetPosition !== null)
-    .map(t => ({ from: t.position, to: t.targetPosition!, type: t.type as 'SNAKE' | 'LADDER' })),
+    .map(t => ({ from: t.position, to: t.targetPosition as number, type: t.type as 'SNAKE' | 'LADDER' })),
 );
 
 function playersOnTile(position: number) {
   return props.playerStates
     .filter(p => p.currentPosition === position)
     .map(p => ({
-      id: p.userId,
-      discordUsername: p.user?.discordUsername ?? 'Player',
-      avatarUrl: p.user?.avatarUrl ?? null,
-    }));
+      id: (p as any).teamId ?? p.userId,
+      discordUsername: (p as any).team?.name ?? p.user?.discordUsername ?? 'Player',
+      avatarUrl: (p as any).team?.iconUrl ?? p.user?.avatarUrl ?? null,
+      isTeam: !!(p as any).team,
+    }))
 }
 
 function handleTileClick(position: number) {

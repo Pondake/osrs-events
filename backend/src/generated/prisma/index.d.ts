@@ -24,6 +24,11 @@ export type Role = $Result.DefaultSelection<Prisma.$RolePayload>
  */
 export type User = $Result.DefaultSelection<Prisma.$UserPayload>
 /**
+ * Model UserPermission
+ * 
+ */
+export type UserPermission = $Result.DefaultSelection<Prisma.$UserPermissionPayload>
+/**
  * Model UserRole
  * 
  */
@@ -38,6 +43,11 @@ export type Task = $Result.DefaultSelection<Prisma.$TaskPayload>
  * 
  */
 export type Board = $Result.DefaultSelection<Prisma.$BoardPayload>
+/**
+ * Model BoardTeam
+ * 
+ */
+export type BoardTeam = $Result.DefaultSelection<Prisma.$BoardTeamPayload>
 /**
  * Model BoardAuthor
  * 
@@ -58,6 +68,16 @@ export type PlayerBoard = $Result.DefaultSelection<Prisma.$PlayerBoardPayload>
  * 
  */
 export type CompletedTile = $Result.DefaultSelection<Prisma.$CompletedTilePayload>
+/**
+ * Model Team
+ * 
+ */
+export type Team = $Result.DefaultSelection<Prisma.$TeamPayload>
+/**
+ * Model TeamMember
+ * 
+ */
+export type TeamMember = $Result.DefaultSelection<Prisma.$TeamMemberPayload>
 
 /**
  * Enums
@@ -70,6 +90,14 @@ export namespace $Enums {
 };
 
 export type BoardSize = (typeof BoardSize)[keyof typeof BoardSize]
+
+
+export const BoardMode: {
+  SOLO: 'SOLO',
+  TEAM: 'TEAM'
+};
+
+export type BoardMode = (typeof BoardMode)[keyof typeof BoardMode]
 
 
 export const TileType: {
@@ -93,6 +121,10 @@ export type CompletionSource = (typeof CompletionSource)[keyof typeof Completion
 export type BoardSize = $Enums.BoardSize
 
 export const BoardSize: typeof $Enums.BoardSize
+
+export type BoardMode = $Enums.BoardMode
+
+export const BoardMode: typeof $Enums.BoardMode
 
 export type TileType = $Enums.TileType
 
@@ -244,6 +276,16 @@ export class PrismaClient<
   get user(): Prisma.UserDelegate<ExtArgs, ClientOptions>;
 
   /**
+   * `prisma.userPermission`: Exposes CRUD operations for the **UserPermission** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more UserPermissions
+    * const userPermissions = await prisma.userPermission.findMany()
+    * ```
+    */
+  get userPermission(): Prisma.UserPermissionDelegate<ExtArgs, ClientOptions>;
+
+  /**
    * `prisma.userRole`: Exposes CRUD operations for the **UserRole** model.
     * Example usage:
     * ```ts
@@ -272,6 +314,16 @@ export class PrismaClient<
     * ```
     */
   get board(): Prisma.BoardDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.boardTeam`: Exposes CRUD operations for the **BoardTeam** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more BoardTeams
+    * const boardTeams = await prisma.boardTeam.findMany()
+    * ```
+    */
+  get boardTeam(): Prisma.BoardTeamDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.boardAuthor`: Exposes CRUD operations for the **BoardAuthor** model.
@@ -312,6 +364,26 @@ export class PrismaClient<
     * ```
     */
   get completedTile(): Prisma.CompletedTileDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.team`: Exposes CRUD operations for the **Team** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Teams
+    * const teams = await prisma.team.findMany()
+    * ```
+    */
+  get team(): Prisma.TeamDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.teamMember`: Exposes CRUD operations for the **TeamMember** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TeamMembers
+    * const teamMembers = await prisma.teamMember.findMany()
+    * ```
+    */
+  get teamMember(): Prisma.TeamMemberDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -748,13 +820,17 @@ export namespace Prisma {
   export const ModelName: {
     Role: 'Role',
     User: 'User',
+    UserPermission: 'UserPermission',
     UserRole: 'UserRole',
     Task: 'Task',
     Board: 'Board',
+    BoardTeam: 'BoardTeam',
     BoardAuthor: 'BoardAuthor',
     Tile: 'Tile',
     PlayerBoard: 'PlayerBoard',
-    CompletedTile: 'CompletedTile'
+    CompletedTile: 'CompletedTile',
+    Team: 'Team',
+    TeamMember: 'TeamMember'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -770,7 +846,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "role" | "user" | "userRole" | "task" | "board" | "boardAuthor" | "tile" | "playerBoard" | "completedTile"
+      modelProps: "role" | "user" | "userPermission" | "userRole" | "task" | "board" | "boardTeam" | "boardAuthor" | "tile" | "playerBoard" | "completedTile" | "team" | "teamMember"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -919,6 +995,80 @@ export namespace Prisma {
           count: {
             args: Prisma.UserCountArgs<ExtArgs>
             result: $Utils.Optional<UserCountAggregateOutputType> | number
+          }
+        }
+      }
+      UserPermission: {
+        payload: Prisma.$UserPermissionPayload<ExtArgs>
+        fields: Prisma.UserPermissionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.UserPermissionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.UserPermissionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>
+          }
+          findFirst: {
+            args: Prisma.UserPermissionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.UserPermissionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>
+          }
+          findMany: {
+            args: Prisma.UserPermissionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>[]
+          }
+          create: {
+            args: Prisma.UserPermissionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>
+          }
+          createMany: {
+            args: Prisma.UserPermissionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.UserPermissionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>[]
+          }
+          delete: {
+            args: Prisma.UserPermissionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>
+          }
+          update: {
+            args: Prisma.UserPermissionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>
+          }
+          deleteMany: {
+            args: Prisma.UserPermissionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.UserPermissionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.UserPermissionUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>[]
+          }
+          upsert: {
+            args: Prisma.UserPermissionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserPermissionPayload>
+          }
+          aggregate: {
+            args: Prisma.UserPermissionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateUserPermission>
+          }
+          groupBy: {
+            args: Prisma.UserPermissionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<UserPermissionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.UserPermissionCountArgs<ExtArgs>
+            result: $Utils.Optional<UserPermissionCountAggregateOutputType> | number
           }
         }
       }
@@ -1141,6 +1291,80 @@ export namespace Prisma {
           count: {
             args: Prisma.BoardCountArgs<ExtArgs>
             result: $Utils.Optional<BoardCountAggregateOutputType> | number
+          }
+        }
+      }
+      BoardTeam: {
+        payload: Prisma.$BoardTeamPayload<ExtArgs>
+        fields: Prisma.BoardTeamFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.BoardTeamFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.BoardTeamFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>
+          }
+          findFirst: {
+            args: Prisma.BoardTeamFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.BoardTeamFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>
+          }
+          findMany: {
+            args: Prisma.BoardTeamFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>[]
+          }
+          create: {
+            args: Prisma.BoardTeamCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>
+          }
+          createMany: {
+            args: Prisma.BoardTeamCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.BoardTeamCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>[]
+          }
+          delete: {
+            args: Prisma.BoardTeamDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>
+          }
+          update: {
+            args: Prisma.BoardTeamUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>
+          }
+          deleteMany: {
+            args: Prisma.BoardTeamDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.BoardTeamUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.BoardTeamUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>[]
+          }
+          upsert: {
+            args: Prisma.BoardTeamUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$BoardTeamPayload>
+          }
+          aggregate: {
+            args: Prisma.BoardTeamAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateBoardTeam>
+          }
+          groupBy: {
+            args: Prisma.BoardTeamGroupByArgs<ExtArgs>
+            result: $Utils.Optional<BoardTeamGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.BoardTeamCountArgs<ExtArgs>
+            result: $Utils.Optional<BoardTeamCountAggregateOutputType> | number
           }
         }
       }
@@ -1440,6 +1664,154 @@ export namespace Prisma {
           }
         }
       }
+      Team: {
+        payload: Prisma.$TeamPayload<ExtArgs>
+        fields: Prisma.TeamFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TeamFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TeamFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>
+          }
+          findFirst: {
+            args: Prisma.TeamFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TeamFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>
+          }
+          findMany: {
+            args: Prisma.TeamFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>[]
+          }
+          create: {
+            args: Prisma.TeamCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>
+          }
+          createMany: {
+            args: Prisma.TeamCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TeamCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>[]
+          }
+          delete: {
+            args: Prisma.TeamDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>
+          }
+          update: {
+            args: Prisma.TeamUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>
+          }
+          deleteMany: {
+            args: Prisma.TeamDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TeamUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.TeamUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>[]
+          }
+          upsert: {
+            args: Prisma.TeamUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamPayload>
+          }
+          aggregate: {
+            args: Prisma.TeamAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTeam>
+          }
+          groupBy: {
+            args: Prisma.TeamGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TeamGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TeamCountArgs<ExtArgs>
+            result: $Utils.Optional<TeamCountAggregateOutputType> | number
+          }
+        }
+      }
+      TeamMember: {
+        payload: Prisma.$TeamMemberPayload<ExtArgs>
+        fields: Prisma.TeamMemberFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TeamMemberFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TeamMemberFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>
+          }
+          findFirst: {
+            args: Prisma.TeamMemberFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TeamMemberFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>
+          }
+          findMany: {
+            args: Prisma.TeamMemberFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>[]
+          }
+          create: {
+            args: Prisma.TeamMemberCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>
+          }
+          createMany: {
+            args: Prisma.TeamMemberCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TeamMemberCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>[]
+          }
+          delete: {
+            args: Prisma.TeamMemberDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>
+          }
+          update: {
+            args: Prisma.TeamMemberUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>
+          }
+          deleteMany: {
+            args: Prisma.TeamMemberDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TeamMemberUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.TeamMemberUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>[]
+          }
+          upsert: {
+            args: Prisma.TeamMemberUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TeamMemberPayload>
+          }
+          aggregate: {
+            args: Prisma.TeamMemberAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTeamMember>
+          }
+          groupBy: {
+            args: Prisma.TeamMemberGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TeamMemberGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TeamMemberCountArgs<ExtArgs>
+            result: $Utils.Optional<TeamMemberCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1550,13 +1922,17 @@ export namespace Prisma {
   export type GlobalOmitConfig = {
     role?: RoleOmit
     user?: UserOmit
+    userPermission?: UserPermissionOmit
     userRole?: UserRoleOmit
     task?: TaskOmit
     board?: BoardOmit
+    boardTeam?: BoardTeamOmit
     boardAuthor?: BoardAuthorOmit
     tile?: TileOmit
     playerBoard?: PlayerBoardOmit
     completedTile?: CompletedTileOmit
+    team?: TeamOmit
+    teamMember?: TeamMemberOmit
   }
 
   /* Types for Logging */
@@ -1669,14 +2045,18 @@ export namespace Prisma {
 
   export type UserCountOutputType = {
     userRoles: number
+    userPermissions: number
     boardAuthors: number
     playerBoards: number
+    teamMembers: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     userRoles?: boolean | UserCountOutputTypeCountUserRolesArgs
+    userPermissions?: boolean | UserCountOutputTypeCountUserPermissionsArgs
     boardAuthors?: boolean | UserCountOutputTypeCountBoardAuthorsArgs
     playerBoards?: boolean | UserCountOutputTypeCountPlayerBoardsArgs
+    teamMembers?: boolean | UserCountOutputTypeCountTeamMembersArgs
   }
 
   // Custom InputTypes
@@ -1700,6 +2080,13 @@ export namespace Prisma {
   /**
    * UserCountOutputType without action
    */
+  export type UserCountOutputTypeCountUserPermissionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserPermissionWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
   export type UserCountOutputTypeCountBoardAuthorsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: BoardAuthorWhereInput
   }
@@ -1709,6 +2096,13 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountPlayerBoardsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: PlayerBoardWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountTeamMembersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TeamMemberWhereInput
   }
 
 
@@ -1751,12 +2145,14 @@ export namespace Prisma {
     authors: number
     tiles: number
     playerBoards: number
+    boardTeams: number
   }
 
   export type BoardCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     authors?: boolean | BoardCountOutputTypeCountAuthorsArgs
     tiles?: boolean | BoardCountOutputTypeCountTilesArgs
     playerBoards?: boolean | BoardCountOutputTypeCountPlayerBoardsArgs
+    boardTeams?: boolean | BoardCountOutputTypeCountBoardTeamsArgs
   }
 
   // Custom InputTypes
@@ -1789,6 +2185,13 @@ export namespace Prisma {
    */
   export type BoardCountOutputTypeCountPlayerBoardsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: PlayerBoardWhereInput
+  }
+
+  /**
+   * BoardCountOutputType without action
+   */
+  export type BoardCountOutputTypeCountBoardTeamsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: BoardTeamWhereInput
   }
 
 
@@ -1851,6 +2254,55 @@ export namespace Prisma {
    */
   export type PlayerBoardCountOutputTypeCountCompletedTilesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: CompletedTileWhereInput
+  }
+
+
+  /**
+   * Count Type TeamCountOutputType
+   */
+
+  export type TeamCountOutputType = {
+    members: number
+    boardTeams: number
+    playerBoards: number
+  }
+
+  export type TeamCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    members?: boolean | TeamCountOutputTypeCountMembersArgs
+    boardTeams?: boolean | TeamCountOutputTypeCountBoardTeamsArgs
+    playerBoards?: boolean | TeamCountOutputTypeCountPlayerBoardsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * TeamCountOutputType without action
+   */
+  export type TeamCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamCountOutputType
+     */
+    select?: TeamCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * TeamCountOutputType without action
+   */
+  export type TeamCountOutputTypeCountMembersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TeamMemberWhereInput
+  }
+
+  /**
+   * TeamCountOutputType without action
+   */
+  export type TeamCountOutputTypeCountBoardTeamsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: BoardTeamWhereInput
+  }
+
+  /**
+   * TeamCountOutputType without action
+   */
+  export type TeamCountOutputTypeCountPlayerBoardsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: PlayerBoardWhereInput
   }
 
 
@@ -3114,8 +3566,10 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     userRoles?: boolean | User$userRolesArgs<ExtArgs>
+    userPermissions?: boolean | User$userPermissionsArgs<ExtArgs>
     boardAuthors?: boolean | User$boardAuthorsArgs<ExtArgs>
     playerBoards?: boolean | User$playerBoardsArgs<ExtArgs>
+    teamMembers?: boolean | User$teamMembersArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -3152,8 +3606,10 @@ export namespace Prisma {
   export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "discordId" | "discordUsername" | "nickname" | "avatarUrl" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     userRoles?: boolean | User$userRolesArgs<ExtArgs>
+    userPermissions?: boolean | User$userPermissionsArgs<ExtArgs>
     boardAuthors?: boolean | User$boardAuthorsArgs<ExtArgs>
     playerBoards?: boolean | User$playerBoardsArgs<ExtArgs>
+    teamMembers?: boolean | User$teamMembersArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -3163,8 +3619,10 @@ export namespace Prisma {
     name: "User"
     objects: {
       userRoles: Prisma.$UserRolePayload<ExtArgs>[]
+      userPermissions: Prisma.$UserPermissionPayload<ExtArgs>[]
       boardAuthors: Prisma.$BoardAuthorPayload<ExtArgs>[]
       playerBoards: Prisma.$PlayerBoardPayload<ExtArgs>[]
+      teamMembers: Prisma.$TeamMemberPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -3569,8 +4027,10 @@ export namespace Prisma {
   export interface Prisma__UserClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     userRoles<T extends User$userRolesArgs<ExtArgs> = {}>(args?: Subset<T, User$userRolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    userPermissions<T extends User$userPermissionsArgs<ExtArgs> = {}>(args?: Subset<T, User$userPermissionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     boardAuthors<T extends User$boardAuthorsArgs<ExtArgs> = {}>(args?: Subset<T, User$boardAuthorsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BoardAuthorPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     playerBoards<T extends User$playerBoardsArgs<ExtArgs> = {}>(args?: Subset<T, User$playerBoardsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PlayerBoardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    teamMembers<T extends User$teamMembersArgs<ExtArgs> = {}>(args?: Subset<T, User$teamMembersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4024,6 +4484,30 @@ export namespace Prisma {
   }
 
   /**
+   * User.userPermissions
+   */
+  export type User$userPermissionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    where?: UserPermissionWhereInput
+    orderBy?: UserPermissionOrderByWithRelationInput | UserPermissionOrderByWithRelationInput[]
+    cursor?: UserPermissionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: UserPermissionScalarFieldEnum | UserPermissionScalarFieldEnum[]
+  }
+
+  /**
    * User.boardAuthors
    */
   export type User$boardAuthorsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -4072,6 +4556,30 @@ export namespace Prisma {
   }
 
   /**
+   * User.teamMembers
+   */
+  export type User$teamMembersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    where?: TeamMemberWhereInput
+    orderBy?: TeamMemberOrderByWithRelationInput | TeamMemberOrderByWithRelationInput[]
+    cursor?: TeamMemberWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TeamMemberScalarFieldEnum | TeamMemberScalarFieldEnum[]
+  }
+
+  /**
    * User without action
    */
   export type UserDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -4087,6 +4595,1056 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: UserInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model UserPermission
+   */
+
+  export type AggregateUserPermission = {
+    _count: UserPermissionCountAggregateOutputType | null
+    _min: UserPermissionMinAggregateOutputType | null
+    _max: UserPermissionMaxAggregateOutputType | null
+  }
+
+  export type UserPermissionMinAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    permissionKey: string | null
+    createdAt: Date | null
+  }
+
+  export type UserPermissionMaxAggregateOutputType = {
+    id: string | null
+    userId: string | null
+    permissionKey: string | null
+    createdAt: Date | null
+  }
+
+  export type UserPermissionCountAggregateOutputType = {
+    id: number
+    userId: number
+    permissionKey: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type UserPermissionMinAggregateInputType = {
+    id?: true
+    userId?: true
+    permissionKey?: true
+    createdAt?: true
+  }
+
+  export type UserPermissionMaxAggregateInputType = {
+    id?: true
+    userId?: true
+    permissionKey?: true
+    createdAt?: true
+  }
+
+  export type UserPermissionCountAggregateInputType = {
+    id?: true
+    userId?: true
+    permissionKey?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type UserPermissionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserPermission to aggregate.
+     */
+    where?: UserPermissionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserPermissions to fetch.
+     */
+    orderBy?: UserPermissionOrderByWithRelationInput | UserPermissionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: UserPermissionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserPermissions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserPermissions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned UserPermissions
+    **/
+    _count?: true | UserPermissionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: UserPermissionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: UserPermissionMaxAggregateInputType
+  }
+
+  export type GetUserPermissionAggregateType<T extends UserPermissionAggregateArgs> = {
+        [P in keyof T & keyof AggregateUserPermission]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateUserPermission[P]>
+      : GetScalarType<T[P], AggregateUserPermission[P]>
+  }
+
+
+
+
+  export type UserPermissionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserPermissionWhereInput
+    orderBy?: UserPermissionOrderByWithAggregationInput | UserPermissionOrderByWithAggregationInput[]
+    by: UserPermissionScalarFieldEnum[] | UserPermissionScalarFieldEnum
+    having?: UserPermissionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: UserPermissionCountAggregateInputType | true
+    _min?: UserPermissionMinAggregateInputType
+    _max?: UserPermissionMaxAggregateInputType
+  }
+
+  export type UserPermissionGroupByOutputType = {
+    id: string
+    userId: string
+    permissionKey: string
+    createdAt: Date
+    _count: UserPermissionCountAggregateOutputType | null
+    _min: UserPermissionMinAggregateOutputType | null
+    _max: UserPermissionMaxAggregateOutputType | null
+  }
+
+  type GetUserPermissionGroupByPayload<T extends UserPermissionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<UserPermissionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof UserPermissionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], UserPermissionGroupByOutputType[P]>
+            : GetScalarType<T[P], UserPermissionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type UserPermissionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    permissionKey?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userPermission"]>
+
+  export type UserPermissionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    permissionKey?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userPermission"]>
+
+  export type UserPermissionSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    userId?: boolean
+    permissionKey?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["userPermission"]>
+
+  export type UserPermissionSelectScalar = {
+    id?: boolean
+    userId?: boolean
+    permissionKey?: boolean
+    createdAt?: boolean
+  }
+
+  export type UserPermissionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "permissionKey" | "createdAt", ExtArgs["result"]["userPermission"]>
+  export type UserPermissionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type UserPermissionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type UserPermissionIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $UserPermissionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "UserPermission"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      userId: string
+      permissionKey: string
+      createdAt: Date
+    }, ExtArgs["result"]["userPermission"]>
+    composites: {}
+  }
+
+  type UserPermissionGetPayload<S extends boolean | null | undefined | UserPermissionDefaultArgs> = $Result.GetResult<Prisma.$UserPermissionPayload, S>
+
+  type UserPermissionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<UserPermissionFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: UserPermissionCountAggregateInputType | true
+    }
+
+  export interface UserPermissionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['UserPermission'], meta: { name: 'UserPermission' } }
+    /**
+     * Find zero or one UserPermission that matches the filter.
+     * @param {UserPermissionFindUniqueArgs} args - Arguments to find a UserPermission
+     * @example
+     * // Get one UserPermission
+     * const userPermission = await prisma.userPermission.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends UserPermissionFindUniqueArgs>(args: SelectSubset<T, UserPermissionFindUniqueArgs<ExtArgs>>): Prisma__UserPermissionClient<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one UserPermission that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {UserPermissionFindUniqueOrThrowArgs} args - Arguments to find a UserPermission
+     * @example
+     * // Get one UserPermission
+     * const userPermission = await prisma.userPermission.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends UserPermissionFindUniqueOrThrowArgs>(args: SelectSubset<T, UserPermissionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__UserPermissionClient<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first UserPermission that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserPermissionFindFirstArgs} args - Arguments to find a UserPermission
+     * @example
+     * // Get one UserPermission
+     * const userPermission = await prisma.userPermission.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends UserPermissionFindFirstArgs>(args?: SelectSubset<T, UserPermissionFindFirstArgs<ExtArgs>>): Prisma__UserPermissionClient<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first UserPermission that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserPermissionFindFirstOrThrowArgs} args - Arguments to find a UserPermission
+     * @example
+     * // Get one UserPermission
+     * const userPermission = await prisma.userPermission.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends UserPermissionFindFirstOrThrowArgs>(args?: SelectSubset<T, UserPermissionFindFirstOrThrowArgs<ExtArgs>>): Prisma__UserPermissionClient<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more UserPermissions that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserPermissionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all UserPermissions
+     * const userPermissions = await prisma.userPermission.findMany()
+     * 
+     * // Get first 10 UserPermissions
+     * const userPermissions = await prisma.userPermission.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const userPermissionWithIdOnly = await prisma.userPermission.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends UserPermissionFindManyArgs>(args?: SelectSubset<T, UserPermissionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a UserPermission.
+     * @param {UserPermissionCreateArgs} args - Arguments to create a UserPermission.
+     * @example
+     * // Create one UserPermission
+     * const UserPermission = await prisma.userPermission.create({
+     *   data: {
+     *     // ... data to create a UserPermission
+     *   }
+     * })
+     * 
+     */
+    create<T extends UserPermissionCreateArgs>(args: SelectSubset<T, UserPermissionCreateArgs<ExtArgs>>): Prisma__UserPermissionClient<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many UserPermissions.
+     * @param {UserPermissionCreateManyArgs} args - Arguments to create many UserPermissions.
+     * @example
+     * // Create many UserPermissions
+     * const userPermission = await prisma.userPermission.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends UserPermissionCreateManyArgs>(args?: SelectSubset<T, UserPermissionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many UserPermissions and returns the data saved in the database.
+     * @param {UserPermissionCreateManyAndReturnArgs} args - Arguments to create many UserPermissions.
+     * @example
+     * // Create many UserPermissions
+     * const userPermission = await prisma.userPermission.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many UserPermissions and only return the `id`
+     * const userPermissionWithIdOnly = await prisma.userPermission.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends UserPermissionCreateManyAndReturnArgs>(args?: SelectSubset<T, UserPermissionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a UserPermission.
+     * @param {UserPermissionDeleteArgs} args - Arguments to delete one UserPermission.
+     * @example
+     * // Delete one UserPermission
+     * const UserPermission = await prisma.userPermission.delete({
+     *   where: {
+     *     // ... filter to delete one UserPermission
+     *   }
+     * })
+     * 
+     */
+    delete<T extends UserPermissionDeleteArgs>(args: SelectSubset<T, UserPermissionDeleteArgs<ExtArgs>>): Prisma__UserPermissionClient<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one UserPermission.
+     * @param {UserPermissionUpdateArgs} args - Arguments to update one UserPermission.
+     * @example
+     * // Update one UserPermission
+     * const userPermission = await prisma.userPermission.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends UserPermissionUpdateArgs>(args: SelectSubset<T, UserPermissionUpdateArgs<ExtArgs>>): Prisma__UserPermissionClient<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more UserPermissions.
+     * @param {UserPermissionDeleteManyArgs} args - Arguments to filter UserPermissions to delete.
+     * @example
+     * // Delete a few UserPermissions
+     * const { count } = await prisma.userPermission.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends UserPermissionDeleteManyArgs>(args?: SelectSubset<T, UserPermissionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserPermissions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserPermissionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many UserPermissions
+     * const userPermission = await prisma.userPermission.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends UserPermissionUpdateManyArgs>(args: SelectSubset<T, UserPermissionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserPermissions and returns the data updated in the database.
+     * @param {UserPermissionUpdateManyAndReturnArgs} args - Arguments to update many UserPermissions.
+     * @example
+     * // Update many UserPermissions
+     * const userPermission = await prisma.userPermission.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more UserPermissions and only return the `id`
+     * const userPermissionWithIdOnly = await prisma.userPermission.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends UserPermissionUpdateManyAndReturnArgs>(args: SelectSubset<T, UserPermissionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one UserPermission.
+     * @param {UserPermissionUpsertArgs} args - Arguments to update or create a UserPermission.
+     * @example
+     * // Update or create a UserPermission
+     * const userPermission = await prisma.userPermission.upsert({
+     *   create: {
+     *     // ... data to create a UserPermission
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the UserPermission we want to update
+     *   }
+     * })
+     */
+    upsert<T extends UserPermissionUpsertArgs>(args: SelectSubset<T, UserPermissionUpsertArgs<ExtArgs>>): Prisma__UserPermissionClient<$Result.GetResult<Prisma.$UserPermissionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of UserPermissions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserPermissionCountArgs} args - Arguments to filter UserPermissions to count.
+     * @example
+     * // Count the number of UserPermissions
+     * const count = await prisma.userPermission.count({
+     *   where: {
+     *     // ... the filter for the UserPermissions we want to count
+     *   }
+     * })
+    **/
+    count<T extends UserPermissionCountArgs>(
+      args?: Subset<T, UserPermissionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], UserPermissionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a UserPermission.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserPermissionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends UserPermissionAggregateArgs>(args: Subset<T, UserPermissionAggregateArgs>): Prisma.PrismaPromise<GetUserPermissionAggregateType<T>>
+
+    /**
+     * Group by UserPermission.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserPermissionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends UserPermissionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: UserPermissionGroupByArgs['orderBy'] }
+        : { orderBy?: UserPermissionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, UserPermissionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetUserPermissionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the UserPermission model
+   */
+  readonly fields: UserPermissionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for UserPermission.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__UserPermissionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the UserPermission model
+   */
+  interface UserPermissionFieldRefs {
+    readonly id: FieldRef<"UserPermission", 'String'>
+    readonly userId: FieldRef<"UserPermission", 'String'>
+    readonly permissionKey: FieldRef<"UserPermission", 'String'>
+    readonly createdAt: FieldRef<"UserPermission", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * UserPermission findUnique
+   */
+  export type UserPermissionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserPermission to fetch.
+     */
+    where: UserPermissionWhereUniqueInput
+  }
+
+  /**
+   * UserPermission findUniqueOrThrow
+   */
+  export type UserPermissionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserPermission to fetch.
+     */
+    where: UserPermissionWhereUniqueInput
+  }
+
+  /**
+   * UserPermission findFirst
+   */
+  export type UserPermissionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserPermission to fetch.
+     */
+    where?: UserPermissionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserPermissions to fetch.
+     */
+    orderBy?: UserPermissionOrderByWithRelationInput | UserPermissionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserPermissions.
+     */
+    cursor?: UserPermissionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserPermissions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserPermissions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserPermissions.
+     */
+    distinct?: UserPermissionScalarFieldEnum | UserPermissionScalarFieldEnum[]
+  }
+
+  /**
+   * UserPermission findFirstOrThrow
+   */
+  export type UserPermissionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserPermission to fetch.
+     */
+    where?: UserPermissionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserPermissions to fetch.
+     */
+    orderBy?: UserPermissionOrderByWithRelationInput | UserPermissionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserPermissions.
+     */
+    cursor?: UserPermissionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserPermissions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserPermissions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserPermissions.
+     */
+    distinct?: UserPermissionScalarFieldEnum | UserPermissionScalarFieldEnum[]
+  }
+
+  /**
+   * UserPermission findMany
+   */
+  export type UserPermissionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * Filter, which UserPermissions to fetch.
+     */
+    where?: UserPermissionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserPermissions to fetch.
+     */
+    orderBy?: UserPermissionOrderByWithRelationInput | UserPermissionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing UserPermissions.
+     */
+    cursor?: UserPermissionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserPermissions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserPermissions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserPermissions.
+     */
+    distinct?: UserPermissionScalarFieldEnum | UserPermissionScalarFieldEnum[]
+  }
+
+  /**
+   * UserPermission create
+   */
+  export type UserPermissionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * The data needed to create a UserPermission.
+     */
+    data: XOR<UserPermissionCreateInput, UserPermissionUncheckedCreateInput>
+  }
+
+  /**
+   * UserPermission createMany
+   */
+  export type UserPermissionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many UserPermissions.
+     */
+    data: UserPermissionCreateManyInput | UserPermissionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserPermission createManyAndReturn
+   */
+  export type UserPermissionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * The data used to create many UserPermissions.
+     */
+    data: UserPermissionCreateManyInput | UserPermissionCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * UserPermission update
+   */
+  export type UserPermissionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * The data needed to update a UserPermission.
+     */
+    data: XOR<UserPermissionUpdateInput, UserPermissionUncheckedUpdateInput>
+    /**
+     * Choose, which UserPermission to update.
+     */
+    where: UserPermissionWhereUniqueInput
+  }
+
+  /**
+   * UserPermission updateMany
+   */
+  export type UserPermissionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update UserPermissions.
+     */
+    data: XOR<UserPermissionUpdateManyMutationInput, UserPermissionUncheckedUpdateManyInput>
+    /**
+     * Filter which UserPermissions to update
+     */
+    where?: UserPermissionWhereInput
+    /**
+     * Limit how many UserPermissions to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * UserPermission updateManyAndReturn
+   */
+  export type UserPermissionUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * The data used to update UserPermissions.
+     */
+    data: XOR<UserPermissionUpdateManyMutationInput, UserPermissionUncheckedUpdateManyInput>
+    /**
+     * Filter which UserPermissions to update
+     */
+    where?: UserPermissionWhereInput
+    /**
+     * Limit how many UserPermissions to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * UserPermission upsert
+   */
+  export type UserPermissionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * The filter to search for the UserPermission to update in case it exists.
+     */
+    where: UserPermissionWhereUniqueInput
+    /**
+     * In case the UserPermission found by the `where` argument doesn't exist, create a new UserPermission with this data.
+     */
+    create: XOR<UserPermissionCreateInput, UserPermissionUncheckedCreateInput>
+    /**
+     * In case the UserPermission was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<UserPermissionUpdateInput, UserPermissionUncheckedUpdateInput>
+  }
+
+  /**
+   * UserPermission delete
+   */
+  export type UserPermissionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
+    /**
+     * Filter which UserPermission to delete.
+     */
+    where: UserPermissionWhereUniqueInput
+  }
+
+  /**
+   * UserPermission deleteMany
+   */
+  export type UserPermissionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserPermissions to delete
+     */
+    where?: UserPermissionWhereInput
+    /**
+     * Limit how many UserPermissions to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * UserPermission without action
+   */
+  export type UserPermissionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserPermission
+     */
+    select?: UserPermissionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the UserPermission
+     */
+    omit?: UserPermissionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserPermissionInclude<ExtArgs> | null
   }
 
 
@@ -6263,6 +7821,7 @@ export namespace Prisma {
     startDate: Date | null
     endDate: Date | null
     size: $Enums.BoardSize | null
+    mode: $Enums.BoardMode | null
     diceRollLimit: number | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -6275,6 +7834,7 @@ export namespace Prisma {
     startDate: Date | null
     endDate: Date | null
     size: $Enums.BoardSize | null
+    mode: $Enums.BoardMode | null
     diceRollLimit: number | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -6287,6 +7847,7 @@ export namespace Prisma {
     startDate: number
     endDate: number
     size: number
+    mode: number
     diceRollLimit: number
     createdAt: number
     updatedAt: number
@@ -6309,6 +7870,7 @@ export namespace Prisma {
     startDate?: true
     endDate?: true
     size?: true
+    mode?: true
     diceRollLimit?: true
     createdAt?: true
     updatedAt?: true
@@ -6321,6 +7883,7 @@ export namespace Prisma {
     startDate?: true
     endDate?: true
     size?: true
+    mode?: true
     diceRollLimit?: true
     createdAt?: true
     updatedAt?: true
@@ -6333,6 +7896,7 @@ export namespace Prisma {
     startDate?: true
     endDate?: true
     size?: true
+    mode?: true
     diceRollLimit?: true
     createdAt?: true
     updatedAt?: true
@@ -6432,6 +7996,7 @@ export namespace Prisma {
     startDate: Date | null
     endDate: Date | null
     size: $Enums.BoardSize
+    mode: $Enums.BoardMode
     diceRollLimit: number | null
     createdAt: Date
     updatedAt: Date
@@ -6463,12 +8028,14 @@ export namespace Prisma {
     startDate?: boolean
     endDate?: boolean
     size?: boolean
+    mode?: boolean
     diceRollLimit?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     authors?: boolean | Board$authorsArgs<ExtArgs>
     tiles?: boolean | Board$tilesArgs<ExtArgs>
     playerBoards?: boolean | Board$playerBoardsArgs<ExtArgs>
+    boardTeams?: boolean | Board$boardTeamsArgs<ExtArgs>
     _count?: boolean | BoardCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["board"]>
 
@@ -6479,6 +8046,7 @@ export namespace Prisma {
     startDate?: boolean
     endDate?: boolean
     size?: boolean
+    mode?: boolean
     diceRollLimit?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -6491,6 +8059,7 @@ export namespace Prisma {
     startDate?: boolean
     endDate?: boolean
     size?: boolean
+    mode?: boolean
     diceRollLimit?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -6503,16 +8072,18 @@ export namespace Prisma {
     startDate?: boolean
     endDate?: boolean
     size?: boolean
+    mode?: boolean
     diceRollLimit?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type BoardOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "description" | "startDate" | "endDate" | "size" | "diceRollLimit" | "createdAt" | "updatedAt", ExtArgs["result"]["board"]>
+  export type BoardOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "description" | "startDate" | "endDate" | "size" | "mode" | "diceRollLimit" | "createdAt" | "updatedAt", ExtArgs["result"]["board"]>
   export type BoardInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     authors?: boolean | Board$authorsArgs<ExtArgs>
     tiles?: boolean | Board$tilesArgs<ExtArgs>
     playerBoards?: boolean | Board$playerBoardsArgs<ExtArgs>
+    boardTeams?: boolean | Board$boardTeamsArgs<ExtArgs>
     _count?: boolean | BoardCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type BoardIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -6524,6 +8095,7 @@ export namespace Prisma {
       authors: Prisma.$BoardAuthorPayload<ExtArgs>[]
       tiles: Prisma.$TilePayload<ExtArgs>[]
       playerBoards: Prisma.$PlayerBoardPayload<ExtArgs>[]
+      boardTeams: Prisma.$BoardTeamPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -6532,6 +8104,7 @@ export namespace Prisma {
       startDate: Date | null
       endDate: Date | null
       size: $Enums.BoardSize
+      mode: $Enums.BoardMode
       diceRollLimit: number | null
       createdAt: Date
       updatedAt: Date
@@ -6932,6 +8505,7 @@ export namespace Prisma {
     authors<T extends Board$authorsArgs<ExtArgs> = {}>(args?: Subset<T, Board$authorsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BoardAuthorPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     tiles<T extends Board$tilesArgs<ExtArgs> = {}>(args?: Subset<T, Board$tilesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     playerBoards<T extends Board$playerBoardsArgs<ExtArgs> = {}>(args?: Subset<T, Board$playerBoardsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PlayerBoardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    boardTeams<T extends Board$boardTeamsArgs<ExtArgs> = {}>(args?: Subset<T, Board$boardTeamsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -6967,6 +8541,7 @@ export namespace Prisma {
     readonly startDate: FieldRef<"Board", 'DateTime'>
     readonly endDate: FieldRef<"Board", 'DateTime'>
     readonly size: FieldRef<"Board", 'BoardSize'>
+    readonly mode: FieldRef<"Board", 'BoardMode'>
     readonly diceRollLimit: FieldRef<"Board", 'Int'>
     readonly createdAt: FieldRef<"Board", 'DateTime'>
     readonly updatedAt: FieldRef<"Board", 'DateTime'>
@@ -7435,6 +9010,30 @@ export namespace Prisma {
   }
 
   /**
+   * Board.boardTeams
+   */
+  export type Board$boardTeamsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    where?: BoardTeamWhereInput
+    orderBy?: BoardTeamOrderByWithRelationInput | BoardTeamOrderByWithRelationInput[]
+    cursor?: BoardTeamWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: BoardTeamScalarFieldEnum | BoardTeamScalarFieldEnum[]
+  }
+
+  /**
    * Board without action
    */
   export type BoardDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -7454,6 +9053,1064 @@ export namespace Prisma {
 
 
   /**
+   * Model BoardTeam
+   */
+
+  export type AggregateBoardTeam = {
+    _count: BoardTeamCountAggregateOutputType | null
+    _min: BoardTeamMinAggregateOutputType | null
+    _max: BoardTeamMaxAggregateOutputType | null
+  }
+
+  export type BoardTeamMinAggregateOutputType = {
+    id: string | null
+    boardId: string | null
+    teamId: string | null
+    createdAt: Date | null
+  }
+
+  export type BoardTeamMaxAggregateOutputType = {
+    id: string | null
+    boardId: string | null
+    teamId: string | null
+    createdAt: Date | null
+  }
+
+  export type BoardTeamCountAggregateOutputType = {
+    id: number
+    boardId: number
+    teamId: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type BoardTeamMinAggregateInputType = {
+    id?: true
+    boardId?: true
+    teamId?: true
+    createdAt?: true
+  }
+
+  export type BoardTeamMaxAggregateInputType = {
+    id?: true
+    boardId?: true
+    teamId?: true
+    createdAt?: true
+  }
+
+  export type BoardTeamCountAggregateInputType = {
+    id?: true
+    boardId?: true
+    teamId?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type BoardTeamAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which BoardTeam to aggregate.
+     */
+    where?: BoardTeamWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of BoardTeams to fetch.
+     */
+    orderBy?: BoardTeamOrderByWithRelationInput | BoardTeamOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: BoardTeamWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` BoardTeams from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` BoardTeams.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned BoardTeams
+    **/
+    _count?: true | BoardTeamCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: BoardTeamMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: BoardTeamMaxAggregateInputType
+  }
+
+  export type GetBoardTeamAggregateType<T extends BoardTeamAggregateArgs> = {
+        [P in keyof T & keyof AggregateBoardTeam]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateBoardTeam[P]>
+      : GetScalarType<T[P], AggregateBoardTeam[P]>
+  }
+
+
+
+
+  export type BoardTeamGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: BoardTeamWhereInput
+    orderBy?: BoardTeamOrderByWithAggregationInput | BoardTeamOrderByWithAggregationInput[]
+    by: BoardTeamScalarFieldEnum[] | BoardTeamScalarFieldEnum
+    having?: BoardTeamScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: BoardTeamCountAggregateInputType | true
+    _min?: BoardTeamMinAggregateInputType
+    _max?: BoardTeamMaxAggregateInputType
+  }
+
+  export type BoardTeamGroupByOutputType = {
+    id: string
+    boardId: string
+    teamId: string
+    createdAt: Date
+    _count: BoardTeamCountAggregateOutputType | null
+    _min: BoardTeamMinAggregateOutputType | null
+    _max: BoardTeamMaxAggregateOutputType | null
+  }
+
+  type GetBoardTeamGroupByPayload<T extends BoardTeamGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<BoardTeamGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof BoardTeamGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], BoardTeamGroupByOutputType[P]>
+            : GetScalarType<T[P], BoardTeamGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type BoardTeamSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    boardId?: boolean
+    teamId?: boolean
+    createdAt?: boolean
+    board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["boardTeam"]>
+
+  export type BoardTeamSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    boardId?: boolean
+    teamId?: boolean
+    createdAt?: boolean
+    board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["boardTeam"]>
+
+  export type BoardTeamSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    boardId?: boolean
+    teamId?: boolean
+    createdAt?: boolean
+    board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["boardTeam"]>
+
+  export type BoardTeamSelectScalar = {
+    id?: boolean
+    boardId?: boolean
+    teamId?: boolean
+    createdAt?: boolean
+  }
+
+  export type BoardTeamOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "boardId" | "teamId" | "createdAt", ExtArgs["result"]["boardTeam"]>
+  export type BoardTeamInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+  }
+  export type BoardTeamIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+  }
+  export type BoardTeamIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+  }
+
+  export type $BoardTeamPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "BoardTeam"
+    objects: {
+      board: Prisma.$BoardPayload<ExtArgs>
+      team: Prisma.$TeamPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      boardId: string
+      teamId: string
+      createdAt: Date
+    }, ExtArgs["result"]["boardTeam"]>
+    composites: {}
+  }
+
+  type BoardTeamGetPayload<S extends boolean | null | undefined | BoardTeamDefaultArgs> = $Result.GetResult<Prisma.$BoardTeamPayload, S>
+
+  type BoardTeamCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<BoardTeamFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: BoardTeamCountAggregateInputType | true
+    }
+
+  export interface BoardTeamDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['BoardTeam'], meta: { name: 'BoardTeam' } }
+    /**
+     * Find zero or one BoardTeam that matches the filter.
+     * @param {BoardTeamFindUniqueArgs} args - Arguments to find a BoardTeam
+     * @example
+     * // Get one BoardTeam
+     * const boardTeam = await prisma.boardTeam.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends BoardTeamFindUniqueArgs>(args: SelectSubset<T, BoardTeamFindUniqueArgs<ExtArgs>>): Prisma__BoardTeamClient<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one BoardTeam that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {BoardTeamFindUniqueOrThrowArgs} args - Arguments to find a BoardTeam
+     * @example
+     * // Get one BoardTeam
+     * const boardTeam = await prisma.boardTeam.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends BoardTeamFindUniqueOrThrowArgs>(args: SelectSubset<T, BoardTeamFindUniqueOrThrowArgs<ExtArgs>>): Prisma__BoardTeamClient<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first BoardTeam that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BoardTeamFindFirstArgs} args - Arguments to find a BoardTeam
+     * @example
+     * // Get one BoardTeam
+     * const boardTeam = await prisma.boardTeam.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends BoardTeamFindFirstArgs>(args?: SelectSubset<T, BoardTeamFindFirstArgs<ExtArgs>>): Prisma__BoardTeamClient<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first BoardTeam that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BoardTeamFindFirstOrThrowArgs} args - Arguments to find a BoardTeam
+     * @example
+     * // Get one BoardTeam
+     * const boardTeam = await prisma.boardTeam.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends BoardTeamFindFirstOrThrowArgs>(args?: SelectSubset<T, BoardTeamFindFirstOrThrowArgs<ExtArgs>>): Prisma__BoardTeamClient<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more BoardTeams that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BoardTeamFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all BoardTeams
+     * const boardTeams = await prisma.boardTeam.findMany()
+     * 
+     * // Get first 10 BoardTeams
+     * const boardTeams = await prisma.boardTeam.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const boardTeamWithIdOnly = await prisma.boardTeam.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends BoardTeamFindManyArgs>(args?: SelectSubset<T, BoardTeamFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a BoardTeam.
+     * @param {BoardTeamCreateArgs} args - Arguments to create a BoardTeam.
+     * @example
+     * // Create one BoardTeam
+     * const BoardTeam = await prisma.boardTeam.create({
+     *   data: {
+     *     // ... data to create a BoardTeam
+     *   }
+     * })
+     * 
+     */
+    create<T extends BoardTeamCreateArgs>(args: SelectSubset<T, BoardTeamCreateArgs<ExtArgs>>): Prisma__BoardTeamClient<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many BoardTeams.
+     * @param {BoardTeamCreateManyArgs} args - Arguments to create many BoardTeams.
+     * @example
+     * // Create many BoardTeams
+     * const boardTeam = await prisma.boardTeam.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends BoardTeamCreateManyArgs>(args?: SelectSubset<T, BoardTeamCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many BoardTeams and returns the data saved in the database.
+     * @param {BoardTeamCreateManyAndReturnArgs} args - Arguments to create many BoardTeams.
+     * @example
+     * // Create many BoardTeams
+     * const boardTeam = await prisma.boardTeam.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many BoardTeams and only return the `id`
+     * const boardTeamWithIdOnly = await prisma.boardTeam.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends BoardTeamCreateManyAndReturnArgs>(args?: SelectSubset<T, BoardTeamCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a BoardTeam.
+     * @param {BoardTeamDeleteArgs} args - Arguments to delete one BoardTeam.
+     * @example
+     * // Delete one BoardTeam
+     * const BoardTeam = await prisma.boardTeam.delete({
+     *   where: {
+     *     // ... filter to delete one BoardTeam
+     *   }
+     * })
+     * 
+     */
+    delete<T extends BoardTeamDeleteArgs>(args: SelectSubset<T, BoardTeamDeleteArgs<ExtArgs>>): Prisma__BoardTeamClient<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one BoardTeam.
+     * @param {BoardTeamUpdateArgs} args - Arguments to update one BoardTeam.
+     * @example
+     * // Update one BoardTeam
+     * const boardTeam = await prisma.boardTeam.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends BoardTeamUpdateArgs>(args: SelectSubset<T, BoardTeamUpdateArgs<ExtArgs>>): Prisma__BoardTeamClient<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more BoardTeams.
+     * @param {BoardTeamDeleteManyArgs} args - Arguments to filter BoardTeams to delete.
+     * @example
+     * // Delete a few BoardTeams
+     * const { count } = await prisma.boardTeam.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends BoardTeamDeleteManyArgs>(args?: SelectSubset<T, BoardTeamDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more BoardTeams.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BoardTeamUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many BoardTeams
+     * const boardTeam = await prisma.boardTeam.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends BoardTeamUpdateManyArgs>(args: SelectSubset<T, BoardTeamUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more BoardTeams and returns the data updated in the database.
+     * @param {BoardTeamUpdateManyAndReturnArgs} args - Arguments to update many BoardTeams.
+     * @example
+     * // Update many BoardTeams
+     * const boardTeam = await prisma.boardTeam.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more BoardTeams and only return the `id`
+     * const boardTeamWithIdOnly = await prisma.boardTeam.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends BoardTeamUpdateManyAndReturnArgs>(args: SelectSubset<T, BoardTeamUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one BoardTeam.
+     * @param {BoardTeamUpsertArgs} args - Arguments to update or create a BoardTeam.
+     * @example
+     * // Update or create a BoardTeam
+     * const boardTeam = await prisma.boardTeam.upsert({
+     *   create: {
+     *     // ... data to create a BoardTeam
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the BoardTeam we want to update
+     *   }
+     * })
+     */
+    upsert<T extends BoardTeamUpsertArgs>(args: SelectSubset<T, BoardTeamUpsertArgs<ExtArgs>>): Prisma__BoardTeamClient<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of BoardTeams.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BoardTeamCountArgs} args - Arguments to filter BoardTeams to count.
+     * @example
+     * // Count the number of BoardTeams
+     * const count = await prisma.boardTeam.count({
+     *   where: {
+     *     // ... the filter for the BoardTeams we want to count
+     *   }
+     * })
+    **/
+    count<T extends BoardTeamCountArgs>(
+      args?: Subset<T, BoardTeamCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], BoardTeamCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a BoardTeam.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BoardTeamAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends BoardTeamAggregateArgs>(args: Subset<T, BoardTeamAggregateArgs>): Prisma.PrismaPromise<GetBoardTeamAggregateType<T>>
+
+    /**
+     * Group by BoardTeam.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {BoardTeamGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends BoardTeamGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: BoardTeamGroupByArgs['orderBy'] }
+        : { orderBy?: BoardTeamGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, BoardTeamGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetBoardTeamGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the BoardTeam model
+   */
+  readonly fields: BoardTeamFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for BoardTeam.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__BoardTeamClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    board<T extends BoardDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BoardDefaultArgs<ExtArgs>>): Prisma__BoardClient<$Result.GetResult<Prisma.$BoardPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    team<T extends TeamDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TeamDefaultArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the BoardTeam model
+   */
+  interface BoardTeamFieldRefs {
+    readonly id: FieldRef<"BoardTeam", 'String'>
+    readonly boardId: FieldRef<"BoardTeam", 'String'>
+    readonly teamId: FieldRef<"BoardTeam", 'String'>
+    readonly createdAt: FieldRef<"BoardTeam", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * BoardTeam findUnique
+   */
+  export type BoardTeamFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * Filter, which BoardTeam to fetch.
+     */
+    where: BoardTeamWhereUniqueInput
+  }
+
+  /**
+   * BoardTeam findUniqueOrThrow
+   */
+  export type BoardTeamFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * Filter, which BoardTeam to fetch.
+     */
+    where: BoardTeamWhereUniqueInput
+  }
+
+  /**
+   * BoardTeam findFirst
+   */
+  export type BoardTeamFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * Filter, which BoardTeam to fetch.
+     */
+    where?: BoardTeamWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of BoardTeams to fetch.
+     */
+    orderBy?: BoardTeamOrderByWithRelationInput | BoardTeamOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for BoardTeams.
+     */
+    cursor?: BoardTeamWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` BoardTeams from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` BoardTeams.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of BoardTeams.
+     */
+    distinct?: BoardTeamScalarFieldEnum | BoardTeamScalarFieldEnum[]
+  }
+
+  /**
+   * BoardTeam findFirstOrThrow
+   */
+  export type BoardTeamFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * Filter, which BoardTeam to fetch.
+     */
+    where?: BoardTeamWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of BoardTeams to fetch.
+     */
+    orderBy?: BoardTeamOrderByWithRelationInput | BoardTeamOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for BoardTeams.
+     */
+    cursor?: BoardTeamWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` BoardTeams from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` BoardTeams.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of BoardTeams.
+     */
+    distinct?: BoardTeamScalarFieldEnum | BoardTeamScalarFieldEnum[]
+  }
+
+  /**
+   * BoardTeam findMany
+   */
+  export type BoardTeamFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * Filter, which BoardTeams to fetch.
+     */
+    where?: BoardTeamWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of BoardTeams to fetch.
+     */
+    orderBy?: BoardTeamOrderByWithRelationInput | BoardTeamOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing BoardTeams.
+     */
+    cursor?: BoardTeamWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` BoardTeams from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` BoardTeams.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of BoardTeams.
+     */
+    distinct?: BoardTeamScalarFieldEnum | BoardTeamScalarFieldEnum[]
+  }
+
+  /**
+   * BoardTeam create
+   */
+  export type BoardTeamCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * The data needed to create a BoardTeam.
+     */
+    data: XOR<BoardTeamCreateInput, BoardTeamUncheckedCreateInput>
+  }
+
+  /**
+   * BoardTeam createMany
+   */
+  export type BoardTeamCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many BoardTeams.
+     */
+    data: BoardTeamCreateManyInput | BoardTeamCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * BoardTeam createManyAndReturn
+   */
+  export type BoardTeamCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * The data used to create many BoardTeams.
+     */
+    data: BoardTeamCreateManyInput | BoardTeamCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * BoardTeam update
+   */
+  export type BoardTeamUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * The data needed to update a BoardTeam.
+     */
+    data: XOR<BoardTeamUpdateInput, BoardTeamUncheckedUpdateInput>
+    /**
+     * Choose, which BoardTeam to update.
+     */
+    where: BoardTeamWhereUniqueInput
+  }
+
+  /**
+   * BoardTeam updateMany
+   */
+  export type BoardTeamUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update BoardTeams.
+     */
+    data: XOR<BoardTeamUpdateManyMutationInput, BoardTeamUncheckedUpdateManyInput>
+    /**
+     * Filter which BoardTeams to update
+     */
+    where?: BoardTeamWhereInput
+    /**
+     * Limit how many BoardTeams to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * BoardTeam updateManyAndReturn
+   */
+  export type BoardTeamUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * The data used to update BoardTeams.
+     */
+    data: XOR<BoardTeamUpdateManyMutationInput, BoardTeamUncheckedUpdateManyInput>
+    /**
+     * Filter which BoardTeams to update
+     */
+    where?: BoardTeamWhereInput
+    /**
+     * Limit how many BoardTeams to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * BoardTeam upsert
+   */
+  export type BoardTeamUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * The filter to search for the BoardTeam to update in case it exists.
+     */
+    where: BoardTeamWhereUniqueInput
+    /**
+     * In case the BoardTeam found by the `where` argument doesn't exist, create a new BoardTeam with this data.
+     */
+    create: XOR<BoardTeamCreateInput, BoardTeamUncheckedCreateInput>
+    /**
+     * In case the BoardTeam was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<BoardTeamUpdateInput, BoardTeamUncheckedUpdateInput>
+  }
+
+  /**
+   * BoardTeam delete
+   */
+  export type BoardTeamDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    /**
+     * Filter which BoardTeam to delete.
+     */
+    where: BoardTeamWhereUniqueInput
+  }
+
+  /**
+   * BoardTeam deleteMany
+   */
+  export type BoardTeamDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which BoardTeams to delete
+     */
+    where?: BoardTeamWhereInput
+    /**
+     * Limit how many BoardTeams to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * BoardTeam without action
+   */
+  export type BoardTeamDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Model BoardAuthor
    */
 
@@ -7467,6 +10124,7 @@ export namespace Prisma {
     id: string | null
     boardId: string | null
     userId: string | null
+    isOwner: boolean | null
     createdAt: Date | null
   }
 
@@ -7474,6 +10132,7 @@ export namespace Prisma {
     id: string | null
     boardId: string | null
     userId: string | null
+    isOwner: boolean | null
     createdAt: Date | null
   }
 
@@ -7481,6 +10140,7 @@ export namespace Prisma {
     id: number
     boardId: number
     userId: number
+    isOwner: number
     createdAt: number
     _all: number
   }
@@ -7490,6 +10150,7 @@ export namespace Prisma {
     id?: true
     boardId?: true
     userId?: true
+    isOwner?: true
     createdAt?: true
   }
 
@@ -7497,6 +10158,7 @@ export namespace Prisma {
     id?: true
     boardId?: true
     userId?: true
+    isOwner?: true
     createdAt?: true
   }
 
@@ -7504,6 +10166,7 @@ export namespace Prisma {
     id?: true
     boardId?: true
     userId?: true
+    isOwner?: true
     createdAt?: true
     _all?: true
   }
@@ -7584,6 +10247,7 @@ export namespace Prisma {
     id: string
     boardId: string
     userId: string
+    isOwner: boolean
     createdAt: Date
     _count: BoardAuthorCountAggregateOutputType | null
     _min: BoardAuthorMinAggregateOutputType | null
@@ -7608,6 +10272,7 @@ export namespace Prisma {
     id?: boolean
     boardId?: boolean
     userId?: boolean
+    isOwner?: boolean
     createdAt?: boolean
     board?: boolean | BoardDefaultArgs<ExtArgs>
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -7617,6 +10282,7 @@ export namespace Prisma {
     id?: boolean
     boardId?: boolean
     userId?: boolean
+    isOwner?: boolean
     createdAt?: boolean
     board?: boolean | BoardDefaultArgs<ExtArgs>
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -7626,6 +10292,7 @@ export namespace Prisma {
     id?: boolean
     boardId?: boolean
     userId?: boolean
+    isOwner?: boolean
     createdAt?: boolean
     board?: boolean | BoardDefaultArgs<ExtArgs>
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -7635,10 +10302,11 @@ export namespace Prisma {
     id?: boolean
     boardId?: boolean
     userId?: boolean
+    isOwner?: boolean
     createdAt?: boolean
   }
 
-  export type BoardAuthorOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "boardId" | "userId" | "createdAt", ExtArgs["result"]["boardAuthor"]>
+  export type BoardAuthorOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "boardId" | "userId" | "isOwner" | "createdAt", ExtArgs["result"]["boardAuthor"]>
   export type BoardAuthorInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     board?: boolean | BoardDefaultArgs<ExtArgs>
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -7662,6 +10330,7 @@ export namespace Prisma {
       id: string
       boardId: string
       userId: string
+      isOwner: boolean
       createdAt: Date
     }, ExtArgs["result"]["boardAuthor"]>
     composites: {}
@@ -8091,6 +10760,7 @@ export namespace Prisma {
     readonly id: FieldRef<"BoardAuthor", 'String'>
     readonly boardId: FieldRef<"BoardAuthor", 'String'>
     readonly userId: FieldRef<"BoardAuthor", 'String'>
+    readonly isOwner: FieldRef<"BoardAuthor", 'Boolean'>
     readonly createdAt: FieldRef<"BoardAuthor", 'DateTime'>
   }
     
@@ -9747,6 +12417,7 @@ export namespace Prisma {
     id: string | null
     userId: string | null
     boardId: string | null
+    teamId: string | null
     currentPosition: number | null
     diceRollsToday: number | null
     lastRollDate: Date | null
@@ -9758,6 +12429,7 @@ export namespace Prisma {
     id: string | null
     userId: string | null
     boardId: string | null
+    teamId: string | null
     currentPosition: number | null
     diceRollsToday: number | null
     lastRollDate: Date | null
@@ -9769,6 +12441,7 @@ export namespace Prisma {
     id: number
     userId: number
     boardId: number
+    teamId: number
     currentPosition: number
     diceRollsToday: number
     lastRollDate: number
@@ -9792,6 +12465,7 @@ export namespace Prisma {
     id?: true
     userId?: true
     boardId?: true
+    teamId?: true
     currentPosition?: true
     diceRollsToday?: true
     lastRollDate?: true
@@ -9803,6 +12477,7 @@ export namespace Prisma {
     id?: true
     userId?: true
     boardId?: true
+    teamId?: true
     currentPosition?: true
     diceRollsToday?: true
     lastRollDate?: true
@@ -9814,6 +12489,7 @@ export namespace Prisma {
     id?: true
     userId?: true
     boardId?: true
+    teamId?: true
     currentPosition?: true
     diceRollsToday?: true
     lastRollDate?: true
@@ -9912,6 +12588,7 @@ export namespace Prisma {
     id: string
     userId: string
     boardId: string
+    teamId: string | null
     currentPosition: number
     diceRollsToday: number
     lastRollDate: Date | null
@@ -9942,6 +12619,7 @@ export namespace Prisma {
     id?: boolean
     userId?: boolean
     boardId?: boolean
+    teamId?: boolean
     currentPosition?: boolean
     diceRollsToday?: boolean
     lastRollDate?: boolean
@@ -9949,6 +12627,7 @@ export namespace Prisma {
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
     board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | PlayerBoard$teamArgs<ExtArgs>
     completedTiles?: boolean | PlayerBoard$completedTilesArgs<ExtArgs>
     _count?: boolean | PlayerBoardCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["playerBoard"]>
@@ -9957,6 +12636,7 @@ export namespace Prisma {
     id?: boolean
     userId?: boolean
     boardId?: boolean
+    teamId?: boolean
     currentPosition?: boolean
     diceRollsToday?: boolean
     lastRollDate?: boolean
@@ -9964,12 +12644,14 @@ export namespace Prisma {
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
     board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | PlayerBoard$teamArgs<ExtArgs>
   }, ExtArgs["result"]["playerBoard"]>
 
   export type PlayerBoardSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     userId?: boolean
     boardId?: boolean
+    teamId?: boolean
     currentPosition?: boolean
     diceRollsToday?: boolean
     lastRollDate?: boolean
@@ -9977,12 +12659,14 @@ export namespace Prisma {
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
     board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | PlayerBoard$teamArgs<ExtArgs>
   }, ExtArgs["result"]["playerBoard"]>
 
   export type PlayerBoardSelectScalar = {
     id?: boolean
     userId?: boolean
     boardId?: boolean
+    teamId?: boolean
     currentPosition?: boolean
     diceRollsToday?: boolean
     lastRollDate?: boolean
@@ -9990,20 +12674,23 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type PlayerBoardOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "boardId" | "currentPosition" | "diceRollsToday" | "lastRollDate" | "createdAt" | "updatedAt", ExtArgs["result"]["playerBoard"]>
+  export type PlayerBoardOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "boardId" | "teamId" | "currentPosition" | "diceRollsToday" | "lastRollDate" | "createdAt" | "updatedAt", ExtArgs["result"]["playerBoard"]>
   export type PlayerBoardInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | PlayerBoard$teamArgs<ExtArgs>
     completedTiles?: boolean | PlayerBoard$completedTilesArgs<ExtArgs>
     _count?: boolean | PlayerBoardCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type PlayerBoardIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | PlayerBoard$teamArgs<ExtArgs>
   }
   export type PlayerBoardIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     board?: boolean | BoardDefaultArgs<ExtArgs>
+    team?: boolean | PlayerBoard$teamArgs<ExtArgs>
   }
 
   export type $PlayerBoardPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -10011,12 +12698,14 @@ export namespace Prisma {
     objects: {
       user: Prisma.$UserPayload<ExtArgs>
       board: Prisma.$BoardPayload<ExtArgs>
+      team: Prisma.$TeamPayload<ExtArgs> | null
       completedTiles: Prisma.$CompletedTilePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
       userId: string
       boardId: string
+      teamId: string | null
       currentPosition: number
       diceRollsToday: number
       lastRollDate: Date | null
@@ -10418,6 +13107,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     board<T extends BoardDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BoardDefaultArgs<ExtArgs>>): Prisma__BoardClient<$Result.GetResult<Prisma.$BoardPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    team<T extends PlayerBoard$teamArgs<ExtArgs> = {}>(args?: Subset<T, PlayerBoard$teamArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     completedTiles<T extends PlayerBoard$completedTilesArgs<ExtArgs> = {}>(args?: Subset<T, PlayerBoard$completedTilesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CompletedTilePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -10451,6 +13141,7 @@ export namespace Prisma {
     readonly id: FieldRef<"PlayerBoard", 'String'>
     readonly userId: FieldRef<"PlayerBoard", 'String'>
     readonly boardId: FieldRef<"PlayerBoard", 'String'>
+    readonly teamId: FieldRef<"PlayerBoard", 'String'>
     readonly currentPosition: FieldRef<"PlayerBoard", 'Int'>
     readonly diceRollsToday: FieldRef<"PlayerBoard", 'Int'>
     readonly lastRollDate: FieldRef<"PlayerBoard", 'DateTime'>
@@ -10854,6 +13545,25 @@ export namespace Prisma {
      * Limit how many PlayerBoards to delete.
      */
     limit?: number
+  }
+
+  /**
+   * PlayerBoard.team
+   */
+  export type PlayerBoard$teamArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    where?: TeamWhereInput
   }
 
   /**
@@ -11971,6 +14681,2195 @@ export namespace Prisma {
 
 
   /**
+   * Model Team
+   */
+
+  export type AggregateTeam = {
+    _count: TeamCountAggregateOutputType | null
+    _min: TeamMinAggregateOutputType | null
+    _max: TeamMaxAggregateOutputType | null
+  }
+
+  export type TeamMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    iconUrl: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TeamMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    iconUrl: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TeamCountAggregateOutputType = {
+    id: number
+    name: number
+    iconUrl: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type TeamMinAggregateInputType = {
+    id?: true
+    name?: true
+    iconUrl?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TeamMaxAggregateInputType = {
+    id?: true
+    name?: true
+    iconUrl?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TeamCountAggregateInputType = {
+    id?: true
+    name?: true
+    iconUrl?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type TeamAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Team to aggregate.
+     */
+    where?: TeamWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Teams to fetch.
+     */
+    orderBy?: TeamOrderByWithRelationInput | TeamOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TeamWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Teams from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Teams.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Teams
+    **/
+    _count?: true | TeamCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TeamMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TeamMaxAggregateInputType
+  }
+
+  export type GetTeamAggregateType<T extends TeamAggregateArgs> = {
+        [P in keyof T & keyof AggregateTeam]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTeam[P]>
+      : GetScalarType<T[P], AggregateTeam[P]>
+  }
+
+
+
+
+  export type TeamGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TeamWhereInput
+    orderBy?: TeamOrderByWithAggregationInput | TeamOrderByWithAggregationInput[]
+    by: TeamScalarFieldEnum[] | TeamScalarFieldEnum
+    having?: TeamScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TeamCountAggregateInputType | true
+    _min?: TeamMinAggregateInputType
+    _max?: TeamMaxAggregateInputType
+  }
+
+  export type TeamGroupByOutputType = {
+    id: string
+    name: string
+    iconUrl: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: TeamCountAggregateOutputType | null
+    _min: TeamMinAggregateOutputType | null
+    _max: TeamMaxAggregateOutputType | null
+  }
+
+  type GetTeamGroupByPayload<T extends TeamGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TeamGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TeamGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TeamGroupByOutputType[P]>
+            : GetScalarType<T[P], TeamGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TeamSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    iconUrl?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    members?: boolean | Team$membersArgs<ExtArgs>
+    boardTeams?: boolean | Team$boardTeamsArgs<ExtArgs>
+    playerBoards?: boolean | Team$playerBoardsArgs<ExtArgs>
+    _count?: boolean | TeamCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["team"]>
+
+  export type TeamSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    iconUrl?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["team"]>
+
+  export type TeamSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    iconUrl?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["team"]>
+
+  export type TeamSelectScalar = {
+    id?: boolean
+    name?: boolean
+    iconUrl?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type TeamOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "iconUrl" | "createdAt" | "updatedAt", ExtArgs["result"]["team"]>
+  export type TeamInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    members?: boolean | Team$membersArgs<ExtArgs>
+    boardTeams?: boolean | Team$boardTeamsArgs<ExtArgs>
+    playerBoards?: boolean | Team$playerBoardsArgs<ExtArgs>
+    _count?: boolean | TeamCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type TeamIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type TeamIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $TeamPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Team"
+    objects: {
+      members: Prisma.$TeamMemberPayload<ExtArgs>[]
+      boardTeams: Prisma.$BoardTeamPayload<ExtArgs>[]
+      playerBoards: Prisma.$PlayerBoardPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      iconUrl: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["team"]>
+    composites: {}
+  }
+
+  type TeamGetPayload<S extends boolean | null | undefined | TeamDefaultArgs> = $Result.GetResult<Prisma.$TeamPayload, S>
+
+  type TeamCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<TeamFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: TeamCountAggregateInputType | true
+    }
+
+  export interface TeamDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Team'], meta: { name: 'Team' } }
+    /**
+     * Find zero or one Team that matches the filter.
+     * @param {TeamFindUniqueArgs} args - Arguments to find a Team
+     * @example
+     * // Get one Team
+     * const team = await prisma.team.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TeamFindUniqueArgs>(args: SelectSubset<T, TeamFindUniqueArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Team that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {TeamFindUniqueOrThrowArgs} args - Arguments to find a Team
+     * @example
+     * // Get one Team
+     * const team = await prisma.team.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TeamFindUniqueOrThrowArgs>(args: SelectSubset<T, TeamFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Team that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamFindFirstArgs} args - Arguments to find a Team
+     * @example
+     * // Get one Team
+     * const team = await prisma.team.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TeamFindFirstArgs>(args?: SelectSubset<T, TeamFindFirstArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Team that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamFindFirstOrThrowArgs} args - Arguments to find a Team
+     * @example
+     * // Get one Team
+     * const team = await prisma.team.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TeamFindFirstOrThrowArgs>(args?: SelectSubset<T, TeamFindFirstOrThrowArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Teams that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Teams
+     * const teams = await prisma.team.findMany()
+     * 
+     * // Get first 10 Teams
+     * const teams = await prisma.team.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const teamWithIdOnly = await prisma.team.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TeamFindManyArgs>(args?: SelectSubset<T, TeamFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Team.
+     * @param {TeamCreateArgs} args - Arguments to create a Team.
+     * @example
+     * // Create one Team
+     * const Team = await prisma.team.create({
+     *   data: {
+     *     // ... data to create a Team
+     *   }
+     * })
+     * 
+     */
+    create<T extends TeamCreateArgs>(args: SelectSubset<T, TeamCreateArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Teams.
+     * @param {TeamCreateManyArgs} args - Arguments to create many Teams.
+     * @example
+     * // Create many Teams
+     * const team = await prisma.team.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TeamCreateManyArgs>(args?: SelectSubset<T, TeamCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Teams and returns the data saved in the database.
+     * @param {TeamCreateManyAndReturnArgs} args - Arguments to create many Teams.
+     * @example
+     * // Create many Teams
+     * const team = await prisma.team.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Teams and only return the `id`
+     * const teamWithIdOnly = await prisma.team.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TeamCreateManyAndReturnArgs>(args?: SelectSubset<T, TeamCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Team.
+     * @param {TeamDeleteArgs} args - Arguments to delete one Team.
+     * @example
+     * // Delete one Team
+     * const Team = await prisma.team.delete({
+     *   where: {
+     *     // ... filter to delete one Team
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TeamDeleteArgs>(args: SelectSubset<T, TeamDeleteArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Team.
+     * @param {TeamUpdateArgs} args - Arguments to update one Team.
+     * @example
+     * // Update one Team
+     * const team = await prisma.team.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TeamUpdateArgs>(args: SelectSubset<T, TeamUpdateArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Teams.
+     * @param {TeamDeleteManyArgs} args - Arguments to filter Teams to delete.
+     * @example
+     * // Delete a few Teams
+     * const { count } = await prisma.team.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TeamDeleteManyArgs>(args?: SelectSubset<T, TeamDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Teams.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Teams
+     * const team = await prisma.team.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TeamUpdateManyArgs>(args: SelectSubset<T, TeamUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Teams and returns the data updated in the database.
+     * @param {TeamUpdateManyAndReturnArgs} args - Arguments to update many Teams.
+     * @example
+     * // Update many Teams
+     * const team = await prisma.team.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Teams and only return the `id`
+     * const teamWithIdOnly = await prisma.team.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends TeamUpdateManyAndReturnArgs>(args: SelectSubset<T, TeamUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Team.
+     * @param {TeamUpsertArgs} args - Arguments to update or create a Team.
+     * @example
+     * // Update or create a Team
+     * const team = await prisma.team.upsert({
+     *   create: {
+     *     // ... data to create a Team
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Team we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TeamUpsertArgs>(args: SelectSubset<T, TeamUpsertArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Teams.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamCountArgs} args - Arguments to filter Teams to count.
+     * @example
+     * // Count the number of Teams
+     * const count = await prisma.team.count({
+     *   where: {
+     *     // ... the filter for the Teams we want to count
+     *   }
+     * })
+    **/
+    count<T extends TeamCountArgs>(
+      args?: Subset<T, TeamCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TeamCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Team.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TeamAggregateArgs>(args: Subset<T, TeamAggregateArgs>): Prisma.PrismaPromise<GetTeamAggregateType<T>>
+
+    /**
+     * Group by Team.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TeamGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TeamGroupByArgs['orderBy'] }
+        : { orderBy?: TeamGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TeamGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTeamGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Team model
+   */
+  readonly fields: TeamFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Team.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TeamClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    members<T extends Team$membersArgs<ExtArgs> = {}>(args?: Subset<T, Team$membersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    boardTeams<T extends Team$boardTeamsArgs<ExtArgs> = {}>(args?: Subset<T, Team$boardTeamsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BoardTeamPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    playerBoards<T extends Team$playerBoardsArgs<ExtArgs> = {}>(args?: Subset<T, Team$playerBoardsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PlayerBoardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Team model
+   */
+  interface TeamFieldRefs {
+    readonly id: FieldRef<"Team", 'String'>
+    readonly name: FieldRef<"Team", 'String'>
+    readonly iconUrl: FieldRef<"Team", 'String'>
+    readonly createdAt: FieldRef<"Team", 'DateTime'>
+    readonly updatedAt: FieldRef<"Team", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Team findUnique
+   */
+  export type TeamFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * Filter, which Team to fetch.
+     */
+    where: TeamWhereUniqueInput
+  }
+
+  /**
+   * Team findUniqueOrThrow
+   */
+  export type TeamFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * Filter, which Team to fetch.
+     */
+    where: TeamWhereUniqueInput
+  }
+
+  /**
+   * Team findFirst
+   */
+  export type TeamFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * Filter, which Team to fetch.
+     */
+    where?: TeamWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Teams to fetch.
+     */
+    orderBy?: TeamOrderByWithRelationInput | TeamOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Teams.
+     */
+    cursor?: TeamWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Teams from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Teams.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Teams.
+     */
+    distinct?: TeamScalarFieldEnum | TeamScalarFieldEnum[]
+  }
+
+  /**
+   * Team findFirstOrThrow
+   */
+  export type TeamFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * Filter, which Team to fetch.
+     */
+    where?: TeamWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Teams to fetch.
+     */
+    orderBy?: TeamOrderByWithRelationInput | TeamOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Teams.
+     */
+    cursor?: TeamWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Teams from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Teams.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Teams.
+     */
+    distinct?: TeamScalarFieldEnum | TeamScalarFieldEnum[]
+  }
+
+  /**
+   * Team findMany
+   */
+  export type TeamFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * Filter, which Teams to fetch.
+     */
+    where?: TeamWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Teams to fetch.
+     */
+    orderBy?: TeamOrderByWithRelationInput | TeamOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Teams.
+     */
+    cursor?: TeamWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Teams from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Teams.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Teams.
+     */
+    distinct?: TeamScalarFieldEnum | TeamScalarFieldEnum[]
+  }
+
+  /**
+   * Team create
+   */
+  export type TeamCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Team.
+     */
+    data: XOR<TeamCreateInput, TeamUncheckedCreateInput>
+  }
+
+  /**
+   * Team createMany
+   */
+  export type TeamCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Teams.
+     */
+    data: TeamCreateManyInput | TeamCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Team createManyAndReturn
+   */
+  export type TeamCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * The data used to create many Teams.
+     */
+    data: TeamCreateManyInput | TeamCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Team update
+   */
+  export type TeamUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Team.
+     */
+    data: XOR<TeamUpdateInput, TeamUncheckedUpdateInput>
+    /**
+     * Choose, which Team to update.
+     */
+    where: TeamWhereUniqueInput
+  }
+
+  /**
+   * Team updateMany
+   */
+  export type TeamUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Teams.
+     */
+    data: XOR<TeamUpdateManyMutationInput, TeamUncheckedUpdateManyInput>
+    /**
+     * Filter which Teams to update
+     */
+    where?: TeamWhereInput
+    /**
+     * Limit how many Teams to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Team updateManyAndReturn
+   */
+  export type TeamUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * The data used to update Teams.
+     */
+    data: XOR<TeamUpdateManyMutationInput, TeamUncheckedUpdateManyInput>
+    /**
+     * Filter which Teams to update
+     */
+    where?: TeamWhereInput
+    /**
+     * Limit how many Teams to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Team upsert
+   */
+  export type TeamUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Team to update in case it exists.
+     */
+    where: TeamWhereUniqueInput
+    /**
+     * In case the Team found by the `where` argument doesn't exist, create a new Team with this data.
+     */
+    create: XOR<TeamCreateInput, TeamUncheckedCreateInput>
+    /**
+     * In case the Team was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TeamUpdateInput, TeamUncheckedUpdateInput>
+  }
+
+  /**
+   * Team delete
+   */
+  export type TeamDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+    /**
+     * Filter which Team to delete.
+     */
+    where: TeamWhereUniqueInput
+  }
+
+  /**
+   * Team deleteMany
+   */
+  export type TeamDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Teams to delete
+     */
+    where?: TeamWhereInput
+    /**
+     * Limit how many Teams to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Team.members
+   */
+  export type Team$membersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    where?: TeamMemberWhereInput
+    orderBy?: TeamMemberOrderByWithRelationInput | TeamMemberOrderByWithRelationInput[]
+    cursor?: TeamMemberWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TeamMemberScalarFieldEnum | TeamMemberScalarFieldEnum[]
+  }
+
+  /**
+   * Team.boardTeams
+   */
+  export type Team$boardTeamsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the BoardTeam
+     */
+    select?: BoardTeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the BoardTeam
+     */
+    omit?: BoardTeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: BoardTeamInclude<ExtArgs> | null
+    where?: BoardTeamWhereInput
+    orderBy?: BoardTeamOrderByWithRelationInput | BoardTeamOrderByWithRelationInput[]
+    cursor?: BoardTeamWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: BoardTeamScalarFieldEnum | BoardTeamScalarFieldEnum[]
+  }
+
+  /**
+   * Team.playerBoards
+   */
+  export type Team$playerBoardsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PlayerBoard
+     */
+    select?: PlayerBoardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PlayerBoard
+     */
+    omit?: PlayerBoardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: PlayerBoardInclude<ExtArgs> | null
+    where?: PlayerBoardWhereInput
+    orderBy?: PlayerBoardOrderByWithRelationInput | PlayerBoardOrderByWithRelationInput[]
+    cursor?: PlayerBoardWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: PlayerBoardScalarFieldEnum | PlayerBoardScalarFieldEnum[]
+  }
+
+  /**
+   * Team without action
+   */
+  export type TeamDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Team
+     */
+    select?: TeamSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Team
+     */
+    omit?: TeamOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model TeamMember
+   */
+
+  export type AggregateTeamMember = {
+    _count: TeamMemberCountAggregateOutputType | null
+    _min: TeamMemberMinAggregateOutputType | null
+    _max: TeamMemberMaxAggregateOutputType | null
+  }
+
+  export type TeamMemberMinAggregateOutputType = {
+    id: string | null
+    teamId: string | null
+    userId: string | null
+    createdAt: Date | null
+  }
+
+  export type TeamMemberMaxAggregateOutputType = {
+    id: string | null
+    teamId: string | null
+    userId: string | null
+    createdAt: Date | null
+  }
+
+  export type TeamMemberCountAggregateOutputType = {
+    id: number
+    teamId: number
+    userId: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type TeamMemberMinAggregateInputType = {
+    id?: true
+    teamId?: true
+    userId?: true
+    createdAt?: true
+  }
+
+  export type TeamMemberMaxAggregateInputType = {
+    id?: true
+    teamId?: true
+    userId?: true
+    createdAt?: true
+  }
+
+  export type TeamMemberCountAggregateInputType = {
+    id?: true
+    teamId?: true
+    userId?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type TeamMemberAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TeamMember to aggregate.
+     */
+    where?: TeamMemberWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TeamMembers to fetch.
+     */
+    orderBy?: TeamMemberOrderByWithRelationInput | TeamMemberOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TeamMemberWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TeamMembers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TeamMembers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TeamMembers
+    **/
+    _count?: true | TeamMemberCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TeamMemberMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TeamMemberMaxAggregateInputType
+  }
+
+  export type GetTeamMemberAggregateType<T extends TeamMemberAggregateArgs> = {
+        [P in keyof T & keyof AggregateTeamMember]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTeamMember[P]>
+      : GetScalarType<T[P], AggregateTeamMember[P]>
+  }
+
+
+
+
+  export type TeamMemberGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TeamMemberWhereInput
+    orderBy?: TeamMemberOrderByWithAggregationInput | TeamMemberOrderByWithAggregationInput[]
+    by: TeamMemberScalarFieldEnum[] | TeamMemberScalarFieldEnum
+    having?: TeamMemberScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TeamMemberCountAggregateInputType | true
+    _min?: TeamMemberMinAggregateInputType
+    _max?: TeamMemberMaxAggregateInputType
+  }
+
+  export type TeamMemberGroupByOutputType = {
+    id: string
+    teamId: string
+    userId: string
+    createdAt: Date
+    _count: TeamMemberCountAggregateOutputType | null
+    _min: TeamMemberMinAggregateOutputType | null
+    _max: TeamMemberMaxAggregateOutputType | null
+  }
+
+  type GetTeamMemberGroupByPayload<T extends TeamMemberGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TeamMemberGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TeamMemberGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TeamMemberGroupByOutputType[P]>
+            : GetScalarType<T[P], TeamMemberGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TeamMemberSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    teamId?: boolean
+    userId?: boolean
+    createdAt?: boolean
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["teamMember"]>
+
+  export type TeamMemberSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    teamId?: boolean
+    userId?: boolean
+    createdAt?: boolean
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["teamMember"]>
+
+  export type TeamMemberSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    teamId?: boolean
+    userId?: boolean
+    createdAt?: boolean
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["teamMember"]>
+
+  export type TeamMemberSelectScalar = {
+    id?: boolean
+    teamId?: boolean
+    userId?: boolean
+    createdAt?: boolean
+  }
+
+  export type TeamMemberOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "teamId" | "userId" | "createdAt", ExtArgs["result"]["teamMember"]>
+  export type TeamMemberInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type TeamMemberIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type TeamMemberIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    team?: boolean | TeamDefaultArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $TeamMemberPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TeamMember"
+    objects: {
+      team: Prisma.$TeamPayload<ExtArgs>
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      teamId: string
+      userId: string
+      createdAt: Date
+    }, ExtArgs["result"]["teamMember"]>
+    composites: {}
+  }
+
+  type TeamMemberGetPayload<S extends boolean | null | undefined | TeamMemberDefaultArgs> = $Result.GetResult<Prisma.$TeamMemberPayload, S>
+
+  type TeamMemberCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<TeamMemberFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: TeamMemberCountAggregateInputType | true
+    }
+
+  export interface TeamMemberDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TeamMember'], meta: { name: 'TeamMember' } }
+    /**
+     * Find zero or one TeamMember that matches the filter.
+     * @param {TeamMemberFindUniqueArgs} args - Arguments to find a TeamMember
+     * @example
+     * // Get one TeamMember
+     * const teamMember = await prisma.teamMember.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TeamMemberFindUniqueArgs>(args: SelectSubset<T, TeamMemberFindUniqueArgs<ExtArgs>>): Prisma__TeamMemberClient<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one TeamMember that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {TeamMemberFindUniqueOrThrowArgs} args - Arguments to find a TeamMember
+     * @example
+     * // Get one TeamMember
+     * const teamMember = await prisma.teamMember.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TeamMemberFindUniqueOrThrowArgs>(args: SelectSubset<T, TeamMemberFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TeamMemberClient<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TeamMember that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamMemberFindFirstArgs} args - Arguments to find a TeamMember
+     * @example
+     * // Get one TeamMember
+     * const teamMember = await prisma.teamMember.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TeamMemberFindFirstArgs>(args?: SelectSubset<T, TeamMemberFindFirstArgs<ExtArgs>>): Prisma__TeamMemberClient<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TeamMember that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamMemberFindFirstOrThrowArgs} args - Arguments to find a TeamMember
+     * @example
+     * // Get one TeamMember
+     * const teamMember = await prisma.teamMember.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TeamMemberFindFirstOrThrowArgs>(args?: SelectSubset<T, TeamMemberFindFirstOrThrowArgs<ExtArgs>>): Prisma__TeamMemberClient<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more TeamMembers that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamMemberFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TeamMembers
+     * const teamMembers = await prisma.teamMember.findMany()
+     * 
+     * // Get first 10 TeamMembers
+     * const teamMembers = await prisma.teamMember.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const teamMemberWithIdOnly = await prisma.teamMember.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TeamMemberFindManyArgs>(args?: SelectSubset<T, TeamMemberFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a TeamMember.
+     * @param {TeamMemberCreateArgs} args - Arguments to create a TeamMember.
+     * @example
+     * // Create one TeamMember
+     * const TeamMember = await prisma.teamMember.create({
+     *   data: {
+     *     // ... data to create a TeamMember
+     *   }
+     * })
+     * 
+     */
+    create<T extends TeamMemberCreateArgs>(args: SelectSubset<T, TeamMemberCreateArgs<ExtArgs>>): Prisma__TeamMemberClient<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many TeamMembers.
+     * @param {TeamMemberCreateManyArgs} args - Arguments to create many TeamMembers.
+     * @example
+     * // Create many TeamMembers
+     * const teamMember = await prisma.teamMember.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TeamMemberCreateManyArgs>(args?: SelectSubset<T, TeamMemberCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TeamMembers and returns the data saved in the database.
+     * @param {TeamMemberCreateManyAndReturnArgs} args - Arguments to create many TeamMembers.
+     * @example
+     * // Create many TeamMembers
+     * const teamMember = await prisma.teamMember.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TeamMembers and only return the `id`
+     * const teamMemberWithIdOnly = await prisma.teamMember.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TeamMemberCreateManyAndReturnArgs>(args?: SelectSubset<T, TeamMemberCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a TeamMember.
+     * @param {TeamMemberDeleteArgs} args - Arguments to delete one TeamMember.
+     * @example
+     * // Delete one TeamMember
+     * const TeamMember = await prisma.teamMember.delete({
+     *   where: {
+     *     // ... filter to delete one TeamMember
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TeamMemberDeleteArgs>(args: SelectSubset<T, TeamMemberDeleteArgs<ExtArgs>>): Prisma__TeamMemberClient<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one TeamMember.
+     * @param {TeamMemberUpdateArgs} args - Arguments to update one TeamMember.
+     * @example
+     * // Update one TeamMember
+     * const teamMember = await prisma.teamMember.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TeamMemberUpdateArgs>(args: SelectSubset<T, TeamMemberUpdateArgs<ExtArgs>>): Prisma__TeamMemberClient<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more TeamMembers.
+     * @param {TeamMemberDeleteManyArgs} args - Arguments to filter TeamMembers to delete.
+     * @example
+     * // Delete a few TeamMembers
+     * const { count } = await prisma.teamMember.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TeamMemberDeleteManyArgs>(args?: SelectSubset<T, TeamMemberDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TeamMembers.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamMemberUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TeamMembers
+     * const teamMember = await prisma.teamMember.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TeamMemberUpdateManyArgs>(args: SelectSubset<T, TeamMemberUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TeamMembers and returns the data updated in the database.
+     * @param {TeamMemberUpdateManyAndReturnArgs} args - Arguments to update many TeamMembers.
+     * @example
+     * // Update many TeamMembers
+     * const teamMember = await prisma.teamMember.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more TeamMembers and only return the `id`
+     * const teamMemberWithIdOnly = await prisma.teamMember.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends TeamMemberUpdateManyAndReturnArgs>(args: SelectSubset<T, TeamMemberUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one TeamMember.
+     * @param {TeamMemberUpsertArgs} args - Arguments to update or create a TeamMember.
+     * @example
+     * // Update or create a TeamMember
+     * const teamMember = await prisma.teamMember.upsert({
+     *   create: {
+     *     // ... data to create a TeamMember
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TeamMember we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TeamMemberUpsertArgs>(args: SelectSubset<T, TeamMemberUpsertArgs<ExtArgs>>): Prisma__TeamMemberClient<$Result.GetResult<Prisma.$TeamMemberPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of TeamMembers.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamMemberCountArgs} args - Arguments to filter TeamMembers to count.
+     * @example
+     * // Count the number of TeamMembers
+     * const count = await prisma.teamMember.count({
+     *   where: {
+     *     // ... the filter for the TeamMembers we want to count
+     *   }
+     * })
+    **/
+    count<T extends TeamMemberCountArgs>(
+      args?: Subset<T, TeamMemberCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TeamMemberCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TeamMember.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamMemberAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TeamMemberAggregateArgs>(args: Subset<T, TeamMemberAggregateArgs>): Prisma.PrismaPromise<GetTeamMemberAggregateType<T>>
+
+    /**
+     * Group by TeamMember.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TeamMemberGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TeamMemberGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TeamMemberGroupByArgs['orderBy'] }
+        : { orderBy?: TeamMemberGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TeamMemberGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTeamMemberGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TeamMember model
+   */
+  readonly fields: TeamMemberFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TeamMember.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TeamMemberClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    team<T extends TeamDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TeamDefaultArgs<ExtArgs>>): Prisma__TeamClient<$Result.GetResult<Prisma.$TeamPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TeamMember model
+   */
+  interface TeamMemberFieldRefs {
+    readonly id: FieldRef<"TeamMember", 'String'>
+    readonly teamId: FieldRef<"TeamMember", 'String'>
+    readonly userId: FieldRef<"TeamMember", 'String'>
+    readonly createdAt: FieldRef<"TeamMember", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TeamMember findUnique
+   */
+  export type TeamMemberFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * Filter, which TeamMember to fetch.
+     */
+    where: TeamMemberWhereUniqueInput
+  }
+
+  /**
+   * TeamMember findUniqueOrThrow
+   */
+  export type TeamMemberFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * Filter, which TeamMember to fetch.
+     */
+    where: TeamMemberWhereUniqueInput
+  }
+
+  /**
+   * TeamMember findFirst
+   */
+  export type TeamMemberFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * Filter, which TeamMember to fetch.
+     */
+    where?: TeamMemberWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TeamMembers to fetch.
+     */
+    orderBy?: TeamMemberOrderByWithRelationInput | TeamMemberOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TeamMembers.
+     */
+    cursor?: TeamMemberWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TeamMembers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TeamMembers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TeamMembers.
+     */
+    distinct?: TeamMemberScalarFieldEnum | TeamMemberScalarFieldEnum[]
+  }
+
+  /**
+   * TeamMember findFirstOrThrow
+   */
+  export type TeamMemberFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * Filter, which TeamMember to fetch.
+     */
+    where?: TeamMemberWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TeamMembers to fetch.
+     */
+    orderBy?: TeamMemberOrderByWithRelationInput | TeamMemberOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TeamMembers.
+     */
+    cursor?: TeamMemberWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TeamMembers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TeamMembers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TeamMembers.
+     */
+    distinct?: TeamMemberScalarFieldEnum | TeamMemberScalarFieldEnum[]
+  }
+
+  /**
+   * TeamMember findMany
+   */
+  export type TeamMemberFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * Filter, which TeamMembers to fetch.
+     */
+    where?: TeamMemberWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TeamMembers to fetch.
+     */
+    orderBy?: TeamMemberOrderByWithRelationInput | TeamMemberOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TeamMembers.
+     */
+    cursor?: TeamMemberWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TeamMembers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TeamMembers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TeamMembers.
+     */
+    distinct?: TeamMemberScalarFieldEnum | TeamMemberScalarFieldEnum[]
+  }
+
+  /**
+   * TeamMember create
+   */
+  export type TeamMemberCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TeamMember.
+     */
+    data: XOR<TeamMemberCreateInput, TeamMemberUncheckedCreateInput>
+  }
+
+  /**
+   * TeamMember createMany
+   */
+  export type TeamMemberCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TeamMembers.
+     */
+    data: TeamMemberCreateManyInput | TeamMemberCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TeamMember createManyAndReturn
+   */
+  export type TeamMemberCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * The data used to create many TeamMembers.
+     */
+    data: TeamMemberCreateManyInput | TeamMemberCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TeamMember update
+   */
+  export type TeamMemberUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TeamMember.
+     */
+    data: XOR<TeamMemberUpdateInput, TeamMemberUncheckedUpdateInput>
+    /**
+     * Choose, which TeamMember to update.
+     */
+    where: TeamMemberWhereUniqueInput
+  }
+
+  /**
+   * TeamMember updateMany
+   */
+  export type TeamMemberUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TeamMembers.
+     */
+    data: XOR<TeamMemberUpdateManyMutationInput, TeamMemberUncheckedUpdateManyInput>
+    /**
+     * Filter which TeamMembers to update
+     */
+    where?: TeamMemberWhereInput
+    /**
+     * Limit how many TeamMembers to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * TeamMember updateManyAndReturn
+   */
+  export type TeamMemberUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * The data used to update TeamMembers.
+     */
+    data: XOR<TeamMemberUpdateManyMutationInput, TeamMemberUncheckedUpdateManyInput>
+    /**
+     * Filter which TeamMembers to update
+     */
+    where?: TeamMemberWhereInput
+    /**
+     * Limit how many TeamMembers to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TeamMember upsert
+   */
+  export type TeamMemberUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TeamMember to update in case it exists.
+     */
+    where: TeamMemberWhereUniqueInput
+    /**
+     * In case the TeamMember found by the `where` argument doesn't exist, create a new TeamMember with this data.
+     */
+    create: XOR<TeamMemberCreateInput, TeamMemberUncheckedCreateInput>
+    /**
+     * In case the TeamMember was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TeamMemberUpdateInput, TeamMemberUncheckedUpdateInput>
+  }
+
+  /**
+   * TeamMember delete
+   */
+  export type TeamMemberDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+    /**
+     * Filter which TeamMember to delete.
+     */
+    where: TeamMemberWhereUniqueInput
+  }
+
+  /**
+   * TeamMember deleteMany
+   */
+  export type TeamMemberDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TeamMembers to delete
+     */
+    where?: TeamMemberWhereInput
+    /**
+     * Limit how many TeamMembers to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * TeamMember without action
+   */
+  export type TeamMemberDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TeamMember
+     */
+    select?: TeamMemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TeamMember
+     */
+    omit?: TeamMemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TeamMemberInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -12008,6 +16907,16 @@ export namespace Prisma {
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+  export const UserPermissionScalarFieldEnum: {
+    id: 'id',
+    userId: 'userId',
+    permissionKey: 'permissionKey',
+    createdAt: 'createdAt'
+  };
+
+  export type UserPermissionScalarFieldEnum = (typeof UserPermissionScalarFieldEnum)[keyof typeof UserPermissionScalarFieldEnum]
+
+
   export const UserRoleScalarFieldEnum: {
     id: 'id',
     userId: 'userId',
@@ -12037,6 +16946,7 @@ export namespace Prisma {
     startDate: 'startDate',
     endDate: 'endDate',
     size: 'size',
+    mode: 'mode',
     diceRollLimit: 'diceRollLimit',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -12045,10 +16955,21 @@ export namespace Prisma {
   export type BoardScalarFieldEnum = (typeof BoardScalarFieldEnum)[keyof typeof BoardScalarFieldEnum]
 
 
+  export const BoardTeamScalarFieldEnum: {
+    id: 'id',
+    boardId: 'boardId',
+    teamId: 'teamId',
+    createdAt: 'createdAt'
+  };
+
+  export type BoardTeamScalarFieldEnum = (typeof BoardTeamScalarFieldEnum)[keyof typeof BoardTeamScalarFieldEnum]
+
+
   export const BoardAuthorScalarFieldEnum: {
     id: 'id',
     boardId: 'boardId',
     userId: 'userId',
+    isOwner: 'isOwner',
     createdAt: 'createdAt'
   };
 
@@ -12074,6 +16995,7 @@ export namespace Prisma {
     id: 'id',
     userId: 'userId',
     boardId: 'boardId',
+    teamId: 'teamId',
     currentPosition: 'currentPosition',
     diceRollsToday: 'diceRollsToday',
     lastRollDate: 'lastRollDate',
@@ -12093,6 +17015,27 @@ export namespace Prisma {
   };
 
   export type CompletedTileScalarFieldEnum = (typeof CompletedTileScalarFieldEnum)[keyof typeof CompletedTileScalarFieldEnum]
+
+
+  export const TeamScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    iconUrl: 'iconUrl',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type TeamScalarFieldEnum = (typeof TeamScalarFieldEnum)[keyof typeof TeamScalarFieldEnum]
+
+
+  export const TeamMemberScalarFieldEnum: {
+    id: 'id',
+    teamId: 'teamId',
+    userId: 'userId',
+    createdAt: 'createdAt'
+  };
+
+  export type TeamMemberScalarFieldEnum = (typeof TeamMemberScalarFieldEnum)[keyof typeof TeamMemberScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -12167,6 +17110,20 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'BoardMode'
+   */
+  export type EnumBoardModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BoardMode'>
+    
+
+
+  /**
+   * Reference to a field of type 'BoardMode[]'
+   */
+  export type ListEnumBoardModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BoardMode[]'>
+    
+
+
+  /**
    * Reference to a field of type 'Int'
    */
   export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
@@ -12177,6 +17134,13 @@ export namespace Prisma {
    * Reference to a field of type 'Int[]'
    */
   export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Boolean'
+   */
+  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 
@@ -12292,8 +17256,10 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     userRoles?: UserRoleListRelationFilter
+    userPermissions?: UserPermissionListRelationFilter
     boardAuthors?: BoardAuthorListRelationFilter
     playerBoards?: PlayerBoardListRelationFilter
+    teamMembers?: TeamMemberListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -12305,8 +17271,10 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userRoles?: UserRoleOrderByRelationAggregateInput
+    userPermissions?: UserPermissionOrderByRelationAggregateInput
     boardAuthors?: BoardAuthorOrderByRelationAggregateInput
     playerBoards?: PlayerBoardOrderByRelationAggregateInput
+    teamMembers?: TeamMemberOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -12321,8 +17289,10 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     userRoles?: UserRoleListRelationFilter
+    userPermissions?: UserPermissionListRelationFilter
     boardAuthors?: BoardAuthorListRelationFilter
     playerBoards?: PlayerBoardListRelationFilter
+    teamMembers?: TeamMemberListRelationFilter
   }, "id" | "discordId">
 
   export type UserOrderByWithAggregationInput = {
@@ -12349,6 +17319,57 @@ export namespace Prisma {
     avatarUrl?: StringNullableWithAggregatesFilter<"User"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
+  }
+
+  export type UserPermissionWhereInput = {
+    AND?: UserPermissionWhereInput | UserPermissionWhereInput[]
+    OR?: UserPermissionWhereInput[]
+    NOT?: UserPermissionWhereInput | UserPermissionWhereInput[]
+    id?: UuidFilter<"UserPermission"> | string
+    userId?: UuidFilter<"UserPermission"> | string
+    permissionKey?: StringFilter<"UserPermission"> | string
+    createdAt?: DateTimeFilter<"UserPermission"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type UserPermissionOrderByWithRelationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    permissionKey?: SortOrder
+    createdAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type UserPermissionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    userId_permissionKey?: UserPermissionUserIdPermissionKeyCompoundUniqueInput
+    AND?: UserPermissionWhereInput | UserPermissionWhereInput[]
+    OR?: UserPermissionWhereInput[]
+    NOT?: UserPermissionWhereInput | UserPermissionWhereInput[]
+    userId?: UuidFilter<"UserPermission"> | string
+    permissionKey?: StringFilter<"UserPermission"> | string
+    createdAt?: DateTimeFilter<"UserPermission"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id" | "userId_permissionKey">
+
+  export type UserPermissionOrderByWithAggregationInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    permissionKey?: SortOrder
+    createdAt?: SortOrder
+    _count?: UserPermissionCountOrderByAggregateInput
+    _max?: UserPermissionMaxOrderByAggregateInput
+    _min?: UserPermissionMinOrderByAggregateInput
+  }
+
+  export type UserPermissionScalarWhereWithAggregatesInput = {
+    AND?: UserPermissionScalarWhereWithAggregatesInput | UserPermissionScalarWhereWithAggregatesInput[]
+    OR?: UserPermissionScalarWhereWithAggregatesInput[]
+    NOT?: UserPermissionScalarWhereWithAggregatesInput | UserPermissionScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"UserPermission"> | string
+    userId?: UuidWithAggregatesFilter<"UserPermission"> | string
+    permissionKey?: StringWithAggregatesFilter<"UserPermission"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"UserPermission"> | Date | string
   }
 
   export type UserRoleWhereInput = {
@@ -12475,12 +17496,14 @@ export namespace Prisma {
     startDate?: DateTimeNullableFilter<"Board"> | Date | string | null
     endDate?: DateTimeNullableFilter<"Board"> | Date | string | null
     size?: EnumBoardSizeFilter<"Board"> | $Enums.BoardSize
+    mode?: EnumBoardModeFilter<"Board"> | $Enums.BoardMode
     diceRollLimit?: IntNullableFilter<"Board"> | number | null
     createdAt?: DateTimeFilter<"Board"> | Date | string
     updatedAt?: DateTimeFilter<"Board"> | Date | string
     authors?: BoardAuthorListRelationFilter
     tiles?: TileListRelationFilter
     playerBoards?: PlayerBoardListRelationFilter
+    boardTeams?: BoardTeamListRelationFilter
   }
 
   export type BoardOrderByWithRelationInput = {
@@ -12490,12 +17513,14 @@ export namespace Prisma {
     startDate?: SortOrderInput | SortOrder
     endDate?: SortOrderInput | SortOrder
     size?: SortOrder
+    mode?: SortOrder
     diceRollLimit?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     authors?: BoardAuthorOrderByRelationAggregateInput
     tiles?: TileOrderByRelationAggregateInput
     playerBoards?: PlayerBoardOrderByRelationAggregateInput
+    boardTeams?: BoardTeamOrderByRelationAggregateInput
   }
 
   export type BoardWhereUniqueInput = Prisma.AtLeast<{
@@ -12508,12 +17533,14 @@ export namespace Prisma {
     startDate?: DateTimeNullableFilter<"Board"> | Date | string | null
     endDate?: DateTimeNullableFilter<"Board"> | Date | string | null
     size?: EnumBoardSizeFilter<"Board"> | $Enums.BoardSize
+    mode?: EnumBoardModeFilter<"Board"> | $Enums.BoardMode
     diceRollLimit?: IntNullableFilter<"Board"> | number | null
     createdAt?: DateTimeFilter<"Board"> | Date | string
     updatedAt?: DateTimeFilter<"Board"> | Date | string
     authors?: BoardAuthorListRelationFilter
     tiles?: TileListRelationFilter
     playerBoards?: PlayerBoardListRelationFilter
+    boardTeams?: BoardTeamListRelationFilter
   }, "id">
 
   export type BoardOrderByWithAggregationInput = {
@@ -12523,6 +17550,7 @@ export namespace Prisma {
     startDate?: SortOrderInput | SortOrder
     endDate?: SortOrderInput | SortOrder
     size?: SortOrder
+    mode?: SortOrder
     diceRollLimit?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -12543,9 +17571,64 @@ export namespace Prisma {
     startDate?: DateTimeNullableWithAggregatesFilter<"Board"> | Date | string | null
     endDate?: DateTimeNullableWithAggregatesFilter<"Board"> | Date | string | null
     size?: EnumBoardSizeWithAggregatesFilter<"Board"> | $Enums.BoardSize
+    mode?: EnumBoardModeWithAggregatesFilter<"Board"> | $Enums.BoardMode
     diceRollLimit?: IntNullableWithAggregatesFilter<"Board"> | number | null
     createdAt?: DateTimeWithAggregatesFilter<"Board"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Board"> | Date | string
+  }
+
+  export type BoardTeamWhereInput = {
+    AND?: BoardTeamWhereInput | BoardTeamWhereInput[]
+    OR?: BoardTeamWhereInput[]
+    NOT?: BoardTeamWhereInput | BoardTeamWhereInput[]
+    id?: UuidFilter<"BoardTeam"> | string
+    boardId?: UuidFilter<"BoardTeam"> | string
+    teamId?: UuidFilter<"BoardTeam"> | string
+    createdAt?: DateTimeFilter<"BoardTeam"> | Date | string
+    board?: XOR<BoardScalarRelationFilter, BoardWhereInput>
+    team?: XOR<TeamScalarRelationFilter, TeamWhereInput>
+  }
+
+  export type BoardTeamOrderByWithRelationInput = {
+    id?: SortOrder
+    boardId?: SortOrder
+    teamId?: SortOrder
+    createdAt?: SortOrder
+    board?: BoardOrderByWithRelationInput
+    team?: TeamOrderByWithRelationInput
+  }
+
+  export type BoardTeamWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    boardId_teamId?: BoardTeamBoardIdTeamIdCompoundUniqueInput
+    AND?: BoardTeamWhereInput | BoardTeamWhereInput[]
+    OR?: BoardTeamWhereInput[]
+    NOT?: BoardTeamWhereInput | BoardTeamWhereInput[]
+    boardId?: UuidFilter<"BoardTeam"> | string
+    teamId?: UuidFilter<"BoardTeam"> | string
+    createdAt?: DateTimeFilter<"BoardTeam"> | Date | string
+    board?: XOR<BoardScalarRelationFilter, BoardWhereInput>
+    team?: XOR<TeamScalarRelationFilter, TeamWhereInput>
+  }, "id" | "boardId_teamId">
+
+  export type BoardTeamOrderByWithAggregationInput = {
+    id?: SortOrder
+    boardId?: SortOrder
+    teamId?: SortOrder
+    createdAt?: SortOrder
+    _count?: BoardTeamCountOrderByAggregateInput
+    _max?: BoardTeamMaxOrderByAggregateInput
+    _min?: BoardTeamMinOrderByAggregateInput
+  }
+
+  export type BoardTeamScalarWhereWithAggregatesInput = {
+    AND?: BoardTeamScalarWhereWithAggregatesInput | BoardTeamScalarWhereWithAggregatesInput[]
+    OR?: BoardTeamScalarWhereWithAggregatesInput[]
+    NOT?: BoardTeamScalarWhereWithAggregatesInput | BoardTeamScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"BoardTeam"> | string
+    boardId?: UuidWithAggregatesFilter<"BoardTeam"> | string
+    teamId?: UuidWithAggregatesFilter<"BoardTeam"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"BoardTeam"> | Date | string
   }
 
   export type BoardAuthorWhereInput = {
@@ -12555,6 +17638,7 @@ export namespace Prisma {
     id?: UuidFilter<"BoardAuthor"> | string
     boardId?: UuidFilter<"BoardAuthor"> | string
     userId?: UuidFilter<"BoardAuthor"> | string
+    isOwner?: BoolFilter<"BoardAuthor"> | boolean
     createdAt?: DateTimeFilter<"BoardAuthor"> | Date | string
     board?: XOR<BoardScalarRelationFilter, BoardWhereInput>
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
@@ -12564,6 +17648,7 @@ export namespace Prisma {
     id?: SortOrder
     boardId?: SortOrder
     userId?: SortOrder
+    isOwner?: SortOrder
     createdAt?: SortOrder
     board?: BoardOrderByWithRelationInput
     user?: UserOrderByWithRelationInput
@@ -12577,6 +17662,7 @@ export namespace Prisma {
     NOT?: BoardAuthorWhereInput | BoardAuthorWhereInput[]
     boardId?: UuidFilter<"BoardAuthor"> | string
     userId?: UuidFilter<"BoardAuthor"> | string
+    isOwner?: BoolFilter<"BoardAuthor"> | boolean
     createdAt?: DateTimeFilter<"BoardAuthor"> | Date | string
     board?: XOR<BoardScalarRelationFilter, BoardWhereInput>
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
@@ -12586,6 +17672,7 @@ export namespace Prisma {
     id?: SortOrder
     boardId?: SortOrder
     userId?: SortOrder
+    isOwner?: SortOrder
     createdAt?: SortOrder
     _count?: BoardAuthorCountOrderByAggregateInput
     _max?: BoardAuthorMaxOrderByAggregateInput
@@ -12599,6 +17686,7 @@ export namespace Prisma {
     id?: UuidWithAggregatesFilter<"BoardAuthor"> | string
     boardId?: UuidWithAggregatesFilter<"BoardAuthor"> | string
     userId?: UuidWithAggregatesFilter<"BoardAuthor"> | string
+    isOwner?: BoolWithAggregatesFilter<"BoardAuthor"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"BoardAuthor"> | Date | string
   }
 
@@ -12693,6 +17781,7 @@ export namespace Prisma {
     id?: UuidFilter<"PlayerBoard"> | string
     userId?: UuidFilter<"PlayerBoard"> | string
     boardId?: UuidFilter<"PlayerBoard"> | string
+    teamId?: UuidNullableFilter<"PlayerBoard"> | string | null
     currentPosition?: IntFilter<"PlayerBoard"> | number
     diceRollsToday?: IntFilter<"PlayerBoard"> | number
     lastRollDate?: DateTimeNullableFilter<"PlayerBoard"> | Date | string | null
@@ -12700,6 +17789,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"PlayerBoard"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     board?: XOR<BoardScalarRelationFilter, BoardWhereInput>
+    team?: XOR<TeamNullableScalarRelationFilter, TeamWhereInput> | null
     completedTiles?: CompletedTileListRelationFilter
   }
 
@@ -12707,6 +17797,7 @@ export namespace Prisma {
     id?: SortOrder
     userId?: SortOrder
     boardId?: SortOrder
+    teamId?: SortOrderInput | SortOrder
     currentPosition?: SortOrder
     diceRollsToday?: SortOrder
     lastRollDate?: SortOrderInput | SortOrder
@@ -12714,17 +17805,20 @@ export namespace Prisma {
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
     board?: BoardOrderByWithRelationInput
+    team?: TeamOrderByWithRelationInput
     completedTiles?: CompletedTileOrderByRelationAggregateInput
   }
 
   export type PlayerBoardWhereUniqueInput = Prisma.AtLeast<{
     id?: string
     userId_boardId?: PlayerBoardUserIdBoardIdCompoundUniqueInput
+    teamId_boardId?: PlayerBoardTeamIdBoardIdCompoundUniqueInput
     AND?: PlayerBoardWhereInput | PlayerBoardWhereInput[]
     OR?: PlayerBoardWhereInput[]
     NOT?: PlayerBoardWhereInput | PlayerBoardWhereInput[]
     userId?: UuidFilter<"PlayerBoard"> | string
     boardId?: UuidFilter<"PlayerBoard"> | string
+    teamId?: UuidNullableFilter<"PlayerBoard"> | string | null
     currentPosition?: IntFilter<"PlayerBoard"> | number
     diceRollsToday?: IntFilter<"PlayerBoard"> | number
     lastRollDate?: DateTimeNullableFilter<"PlayerBoard"> | Date | string | null
@@ -12732,13 +17826,15 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"PlayerBoard"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     board?: XOR<BoardScalarRelationFilter, BoardWhereInput>
+    team?: XOR<TeamNullableScalarRelationFilter, TeamWhereInput> | null
     completedTiles?: CompletedTileListRelationFilter
-  }, "id" | "userId_boardId">
+  }, "id" | "userId_boardId" | "teamId_boardId">
 
   export type PlayerBoardOrderByWithAggregationInput = {
     id?: SortOrder
     userId?: SortOrder
     boardId?: SortOrder
+    teamId?: SortOrderInput | SortOrder
     currentPosition?: SortOrder
     diceRollsToday?: SortOrder
     lastRollDate?: SortOrderInput | SortOrder
@@ -12758,6 +17854,7 @@ export namespace Prisma {
     id?: UuidWithAggregatesFilter<"PlayerBoard"> | string
     userId?: UuidWithAggregatesFilter<"PlayerBoard"> | string
     boardId?: UuidWithAggregatesFilter<"PlayerBoard"> | string
+    teamId?: UuidNullableWithAggregatesFilter<"PlayerBoard"> | string | null
     currentPosition?: IntWithAggregatesFilter<"PlayerBoard"> | number
     diceRollsToday?: IntWithAggregatesFilter<"PlayerBoard"> | number
     lastRollDate?: DateTimeNullableWithAggregatesFilter<"PlayerBoard"> | Date | string | null
@@ -12822,6 +17919,121 @@ export namespace Prisma {
     tileId?: UuidWithAggregatesFilter<"CompletedTile"> | string
     completedAt?: DateTimeWithAggregatesFilter<"CompletedTile"> | Date | string
     completedVia?: EnumCompletionSourceWithAggregatesFilter<"CompletedTile"> | $Enums.CompletionSource
+  }
+
+  export type TeamWhereInput = {
+    AND?: TeamWhereInput | TeamWhereInput[]
+    OR?: TeamWhereInput[]
+    NOT?: TeamWhereInput | TeamWhereInput[]
+    id?: UuidFilter<"Team"> | string
+    name?: StringFilter<"Team"> | string
+    iconUrl?: StringNullableFilter<"Team"> | string | null
+    createdAt?: DateTimeFilter<"Team"> | Date | string
+    updatedAt?: DateTimeFilter<"Team"> | Date | string
+    members?: TeamMemberListRelationFilter
+    boardTeams?: BoardTeamListRelationFilter
+    playerBoards?: PlayerBoardListRelationFilter
+  }
+
+  export type TeamOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    iconUrl?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    members?: TeamMemberOrderByRelationAggregateInput
+    boardTeams?: BoardTeamOrderByRelationAggregateInput
+    playerBoards?: PlayerBoardOrderByRelationAggregateInput
+  }
+
+  export type TeamWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: TeamWhereInput | TeamWhereInput[]
+    OR?: TeamWhereInput[]
+    NOT?: TeamWhereInput | TeamWhereInput[]
+    name?: StringFilter<"Team"> | string
+    iconUrl?: StringNullableFilter<"Team"> | string | null
+    createdAt?: DateTimeFilter<"Team"> | Date | string
+    updatedAt?: DateTimeFilter<"Team"> | Date | string
+    members?: TeamMemberListRelationFilter
+    boardTeams?: BoardTeamListRelationFilter
+    playerBoards?: PlayerBoardListRelationFilter
+  }, "id">
+
+  export type TeamOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    iconUrl?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: TeamCountOrderByAggregateInput
+    _max?: TeamMaxOrderByAggregateInput
+    _min?: TeamMinOrderByAggregateInput
+  }
+
+  export type TeamScalarWhereWithAggregatesInput = {
+    AND?: TeamScalarWhereWithAggregatesInput | TeamScalarWhereWithAggregatesInput[]
+    OR?: TeamScalarWhereWithAggregatesInput[]
+    NOT?: TeamScalarWhereWithAggregatesInput | TeamScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"Team"> | string
+    name?: StringWithAggregatesFilter<"Team"> | string
+    iconUrl?: StringNullableWithAggregatesFilter<"Team"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"Team"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Team"> | Date | string
+  }
+
+  export type TeamMemberWhereInput = {
+    AND?: TeamMemberWhereInput | TeamMemberWhereInput[]
+    OR?: TeamMemberWhereInput[]
+    NOT?: TeamMemberWhereInput | TeamMemberWhereInput[]
+    id?: UuidFilter<"TeamMember"> | string
+    teamId?: UuidFilter<"TeamMember"> | string
+    userId?: UuidFilter<"TeamMember"> | string
+    createdAt?: DateTimeFilter<"TeamMember"> | Date | string
+    team?: XOR<TeamScalarRelationFilter, TeamWhereInput>
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type TeamMemberOrderByWithRelationInput = {
+    id?: SortOrder
+    teamId?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+    team?: TeamOrderByWithRelationInput
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type TeamMemberWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    teamId_userId?: TeamMemberTeamIdUserIdCompoundUniqueInput
+    AND?: TeamMemberWhereInput | TeamMemberWhereInput[]
+    OR?: TeamMemberWhereInput[]
+    NOT?: TeamMemberWhereInput | TeamMemberWhereInput[]
+    teamId?: UuidFilter<"TeamMember"> | string
+    userId?: UuidFilter<"TeamMember"> | string
+    createdAt?: DateTimeFilter<"TeamMember"> | Date | string
+    team?: XOR<TeamScalarRelationFilter, TeamWhereInput>
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id" | "teamId_userId">
+
+  export type TeamMemberOrderByWithAggregationInput = {
+    id?: SortOrder
+    teamId?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+    _count?: TeamMemberCountOrderByAggregateInput
+    _max?: TeamMemberMaxOrderByAggregateInput
+    _min?: TeamMemberMinOrderByAggregateInput
+  }
+
+  export type TeamMemberScalarWhereWithAggregatesInput = {
+    AND?: TeamMemberScalarWhereWithAggregatesInput | TeamMemberScalarWhereWithAggregatesInput[]
+    OR?: TeamMemberScalarWhereWithAggregatesInput[]
+    NOT?: TeamMemberScalarWhereWithAggregatesInput | TeamMemberScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"TeamMember"> | string
+    teamId?: UuidWithAggregatesFilter<"TeamMember"> | string
+    userId?: UuidWithAggregatesFilter<"TeamMember"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"TeamMember"> | Date | string
   }
 
   export type RoleCreateInput = {
@@ -12893,8 +18105,10 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    userPermissions?: UserPermissionCreateNestedManyWithoutUserInput
     boardAuthors?: BoardAuthorCreateNestedManyWithoutUserInput
     playerBoards?: PlayerBoardCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -12906,8 +18120,10 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    userPermissions?: UserPermissionUncheckedCreateNestedManyWithoutUserInput
     boardAuthors?: BoardAuthorUncheckedCreateNestedManyWithoutUserInput
     playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -12919,8 +18135,10 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    userPermissions?: UserPermissionUpdateManyWithoutUserNestedInput
     boardAuthors?: BoardAuthorUpdateManyWithoutUserNestedInput
     playerBoards?: PlayerBoardUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -12932,8 +18150,10 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    userPermissions?: UserPermissionUncheckedUpdateManyWithoutUserNestedInput
     boardAuthors?: BoardAuthorUncheckedUpdateManyWithoutUserNestedInput
     playerBoards?: PlayerBoardUncheckedUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -12964,6 +18184,54 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserPermissionCreateInput = {
+    id?: string
+    permissionKey: string
+    createdAt?: Date | string
+    user: UserCreateNestedOneWithoutUserPermissionsInput
+  }
+
+  export type UserPermissionUncheckedCreateInput = {
+    id?: string
+    userId: string
+    permissionKey: string
+    createdAt?: Date | string
+  }
+
+  export type UserPermissionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    permissionKey?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutUserPermissionsNestedInput
+  }
+
+  export type UserPermissionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    permissionKey?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserPermissionCreateManyInput = {
+    id?: string
+    userId: string
+    permissionKey: string
+    createdAt?: Date | string
+  }
+
+  export type UserPermissionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    permissionKey?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserPermissionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    permissionKey?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type UserRoleCreateInput = {
@@ -13087,12 +18355,14 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     authors?: BoardAuthorCreateNestedManyWithoutBoardInput
     tiles?: TileCreateNestedManyWithoutBoardInput
     playerBoards?: PlayerBoardCreateNestedManyWithoutBoardInput
+    boardTeams?: BoardTeamCreateNestedManyWithoutBoardInput
   }
 
   export type BoardUncheckedCreateInput = {
@@ -13102,12 +18372,14 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     authors?: BoardAuthorUncheckedCreateNestedManyWithoutBoardInput
     tiles?: TileUncheckedCreateNestedManyWithoutBoardInput
     playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutBoardInput
+    boardTeams?: BoardTeamUncheckedCreateNestedManyWithoutBoardInput
   }
 
   export type BoardUpdateInput = {
@@ -13117,12 +18389,14 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     authors?: BoardAuthorUpdateManyWithoutBoardNestedInput
     tiles?: TileUpdateManyWithoutBoardNestedInput
     playerBoards?: PlayerBoardUpdateManyWithoutBoardNestedInput
+    boardTeams?: BoardTeamUpdateManyWithoutBoardNestedInput
   }
 
   export type BoardUncheckedUpdateInput = {
@@ -13132,12 +18406,14 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     authors?: BoardAuthorUncheckedUpdateManyWithoutBoardNestedInput
     tiles?: TileUncheckedUpdateManyWithoutBoardNestedInput
     playerBoards?: PlayerBoardUncheckedUpdateManyWithoutBoardNestedInput
+    boardTeams?: BoardTeamUncheckedUpdateManyWithoutBoardNestedInput
   }
 
   export type BoardCreateManyInput = {
@@ -13147,6 +18423,7 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -13159,6 +18436,7 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -13171,13 +18449,62 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type BoardTeamCreateInput = {
+    id?: string
+    createdAt?: Date | string
+    board: BoardCreateNestedOneWithoutBoardTeamsInput
+    team: TeamCreateNestedOneWithoutBoardTeamsInput
+  }
+
+  export type BoardTeamUncheckedCreateInput = {
+    id?: string
+    boardId: string
+    teamId: string
+    createdAt?: Date | string
+  }
+
+  export type BoardTeamUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    board?: BoardUpdateOneRequiredWithoutBoardTeamsNestedInput
+    team?: TeamUpdateOneRequiredWithoutBoardTeamsNestedInput
+  }
+
+  export type BoardTeamUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    boardId?: StringFieldUpdateOperationsInput | string
+    teamId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BoardTeamCreateManyInput = {
+    id?: string
+    boardId: string
+    teamId: string
+    createdAt?: Date | string
+  }
+
+  export type BoardTeamUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BoardTeamUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    boardId?: StringFieldUpdateOperationsInput | string
+    teamId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type BoardAuthorCreateInput = {
     id?: string
+    isOwner?: boolean
     createdAt?: Date | string
     board: BoardCreateNestedOneWithoutAuthorsInput
     user: UserCreateNestedOneWithoutBoardAuthorsInput
@@ -13187,11 +18514,13 @@ export namespace Prisma {
     id?: string
     boardId: string
     userId: string
+    isOwner?: boolean
     createdAt?: Date | string
   }
 
   export type BoardAuthorUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     board?: BoardUpdateOneRequiredWithoutAuthorsNestedInput
     user?: UserUpdateOneRequiredWithoutBoardAuthorsNestedInput
@@ -13201,6 +18530,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -13208,11 +18538,13 @@ export namespace Prisma {
     id?: string
     boardId: string
     userId: string
+    isOwner?: boolean
     createdAt?: Date | string
   }
 
   export type BoardAuthorUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -13220,6 +18552,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -13318,6 +18651,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutPlayerBoardsInput
     board: BoardCreateNestedOneWithoutPlayerBoardsInput
+    team?: TeamCreateNestedOneWithoutPlayerBoardsInput
     completedTiles?: CompletedTileCreateNestedManyWithoutPlayerBoardInput
   }
 
@@ -13325,6 +18659,7 @@ export namespace Prisma {
     id?: string
     userId: string
     boardId: string
+    teamId?: string | null
     currentPosition?: number
     diceRollsToday?: number
     lastRollDate?: Date | string | null
@@ -13342,6 +18677,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutPlayerBoardsNestedInput
     board?: BoardUpdateOneRequiredWithoutPlayerBoardsNestedInput
+    team?: TeamUpdateOneWithoutPlayerBoardsNestedInput
     completedTiles?: CompletedTileUpdateManyWithoutPlayerBoardNestedInput
   }
 
@@ -13349,6 +18685,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
+    teamId?: NullableStringFieldUpdateOperationsInput | string | null
     currentPosition?: IntFieldUpdateOperationsInput | number
     diceRollsToday?: IntFieldUpdateOperationsInput | number
     lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -13361,6 +18698,7 @@ export namespace Prisma {
     id?: string
     userId: string
     boardId: string
+    teamId?: string | null
     currentPosition?: number
     diceRollsToday?: number
     lastRollDate?: Date | string | null
@@ -13381,6 +18719,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
+    teamId?: NullableStringFieldUpdateOperationsInput | string | null
     currentPosition?: IntFieldUpdateOperationsInput | number
     diceRollsToday?: IntFieldUpdateOperationsInput | number
     lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -13440,6 +18779,121 @@ export namespace Prisma {
     tileId?: StringFieldUpdateOperationsInput | string
     completedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     completedVia?: EnumCompletionSourceFieldUpdateOperationsInput | $Enums.CompletionSource
+  }
+
+  export type TeamCreateInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    members?: TeamMemberCreateNestedManyWithoutTeamInput
+    boardTeams?: BoardTeamCreateNestedManyWithoutTeamInput
+    playerBoards?: PlayerBoardCreateNestedManyWithoutTeamInput
+  }
+
+  export type TeamUncheckedCreateInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    members?: TeamMemberUncheckedCreateNestedManyWithoutTeamInput
+    boardTeams?: BoardTeamUncheckedCreateNestedManyWithoutTeamInput
+    playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutTeamInput
+  }
+
+  export type TeamUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    members?: TeamMemberUpdateManyWithoutTeamNestedInput
+    boardTeams?: BoardTeamUpdateManyWithoutTeamNestedInput
+    playerBoards?: PlayerBoardUpdateManyWithoutTeamNestedInput
+  }
+
+  export type TeamUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    members?: TeamMemberUncheckedUpdateManyWithoutTeamNestedInput
+    boardTeams?: BoardTeamUncheckedUpdateManyWithoutTeamNestedInput
+    playerBoards?: PlayerBoardUncheckedUpdateManyWithoutTeamNestedInput
+  }
+
+  export type TeamCreateManyInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TeamUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TeamUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TeamMemberCreateInput = {
+    id?: string
+    createdAt?: Date | string
+    team: TeamCreateNestedOneWithoutMembersInput
+    user: UserCreateNestedOneWithoutTeamMembersInput
+  }
+
+  export type TeamMemberUncheckedCreateInput = {
+    id?: string
+    teamId: string
+    userId: string
+    createdAt?: Date | string
+  }
+
+  export type TeamMemberUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    team?: TeamUpdateOneRequiredWithoutMembersNestedInput
+    user?: UserUpdateOneRequiredWithoutTeamMembersNestedInput
+  }
+
+  export type TeamMemberUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    teamId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TeamMemberCreateManyInput = {
+    id?: string
+    teamId: string
+    userId: string
+    createdAt?: Date | string
+  }
+
+  export type TeamMemberUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TeamMemberUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    teamId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type UuidFilter<$PrismaModel = never> = {
@@ -13599,6 +19053,12 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
+  export type UserPermissionListRelationFilter = {
+    every?: UserPermissionWhereInput
+    some?: UserPermissionWhereInput
+    none?: UserPermissionWhereInput
+  }
+
   export type BoardAuthorListRelationFilter = {
     every?: BoardAuthorWhereInput
     some?: BoardAuthorWhereInput
@@ -13611,11 +19071,25 @@ export namespace Prisma {
     none?: PlayerBoardWhereInput
   }
 
+  export type TeamMemberListRelationFilter = {
+    every?: TeamMemberWhereInput
+    some?: TeamMemberWhereInput
+    none?: TeamMemberWhereInput
+  }
+
+  export type UserPermissionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type BoardAuthorOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
   export type PlayerBoardOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TeamMemberOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -13652,6 +19126,32 @@ export namespace Prisma {
   export type UserScalarRelationFilter = {
     is?: UserWhereInput
     isNot?: UserWhereInput
+  }
+
+  export type UserPermissionUserIdPermissionKeyCompoundUniqueInput = {
+    userId: string
+    permissionKey: string
+  }
+
+  export type UserPermissionCountOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    permissionKey?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type UserPermissionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    permissionKey?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type UserPermissionMinOrderByAggregateInput = {
+    id?: SortOrder
+    userId?: SortOrder
+    permissionKey?: SortOrder
+    createdAt?: SortOrder
   }
 
   export type RoleScalarRelationFilter = {
@@ -13740,6 +19240,13 @@ export namespace Prisma {
     not?: NestedEnumBoardSizeFilter<$PrismaModel> | $Enums.BoardSize
   }
 
+  export type EnumBoardModeFilter<$PrismaModel = never> = {
+    equals?: $Enums.BoardMode | EnumBoardModeFieldRefInput<$PrismaModel>
+    in?: $Enums.BoardMode[] | ListEnumBoardModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.BoardMode[] | ListEnumBoardModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumBoardModeFilter<$PrismaModel> | $Enums.BoardMode
+  }
+
   export type IntNullableFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel> | null
     in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
@@ -13751,6 +19258,16 @@ export namespace Prisma {
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
+  export type BoardTeamListRelationFilter = {
+    every?: BoardTeamWhereInput
+    some?: BoardTeamWhereInput
+    none?: BoardTeamWhereInput
+  }
+
+  export type BoardTeamOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type BoardCountOrderByAggregateInput = {
     id?: SortOrder
     title?: SortOrder
@@ -13758,6 +19275,7 @@ export namespace Prisma {
     startDate?: SortOrder
     endDate?: SortOrder
     size?: SortOrder
+    mode?: SortOrder
     diceRollLimit?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -13774,6 +19292,7 @@ export namespace Prisma {
     startDate?: SortOrder
     endDate?: SortOrder
     size?: SortOrder
+    mode?: SortOrder
     diceRollLimit?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -13786,6 +19305,7 @@ export namespace Prisma {
     startDate?: SortOrder
     endDate?: SortOrder
     size?: SortOrder
+    mode?: SortOrder
     diceRollLimit?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -13819,6 +19339,16 @@ export namespace Prisma {
     _max?: NestedEnumBoardSizeFilter<$PrismaModel>
   }
 
+  export type EnumBoardModeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.BoardMode | EnumBoardModeFieldRefInput<$PrismaModel>
+    in?: $Enums.BoardMode[] | ListEnumBoardModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.BoardMode[] | ListEnumBoardModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumBoardModeWithAggregatesFilter<$PrismaModel> | $Enums.BoardMode
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumBoardModeFilter<$PrismaModel>
+    _max?: NestedEnumBoardModeFilter<$PrismaModel>
+  }
+
   export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel> | null
     in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
@@ -13840,6 +19370,42 @@ export namespace Prisma {
     isNot?: BoardWhereInput
   }
 
+  export type TeamScalarRelationFilter = {
+    is?: TeamWhereInput
+    isNot?: TeamWhereInput
+  }
+
+  export type BoardTeamBoardIdTeamIdCompoundUniqueInput = {
+    boardId: string
+    teamId: string
+  }
+
+  export type BoardTeamCountOrderByAggregateInput = {
+    id?: SortOrder
+    boardId?: SortOrder
+    teamId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type BoardTeamMaxOrderByAggregateInput = {
+    id?: SortOrder
+    boardId?: SortOrder
+    teamId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type BoardTeamMinOrderByAggregateInput = {
+    id?: SortOrder
+    boardId?: SortOrder
+    teamId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type BoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
   export type BoardAuthorBoardIdUserIdCompoundUniqueInput = {
     boardId: string
     userId: string
@@ -13849,6 +19415,7 @@ export namespace Prisma {
     id?: SortOrder
     boardId?: SortOrder
     userId?: SortOrder
+    isOwner?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -13856,6 +19423,7 @@ export namespace Prisma {
     id?: SortOrder
     boardId?: SortOrder
     userId?: SortOrder
+    isOwner?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -13863,7 +19431,16 @@ export namespace Prisma {
     id?: SortOrder
     boardId?: SortOrder
     userId?: SortOrder
+    isOwner?: SortOrder
     createdAt?: SortOrder
+  }
+
+  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type IntFilter<$PrismaModel = never> = {
@@ -14003,8 +19580,18 @@ export namespace Prisma {
     _max?: NestedEnumTileTypeFilter<$PrismaModel>
   }
 
+  export type TeamNullableScalarRelationFilter = {
+    is?: TeamWhereInput | null
+    isNot?: TeamWhereInput | null
+  }
+
   export type PlayerBoardUserIdBoardIdCompoundUniqueInput = {
     userId: string
+    boardId: string
+  }
+
+  export type PlayerBoardTeamIdBoardIdCompoundUniqueInput = {
+    teamId: string
     boardId: string
   }
 
@@ -14012,6 +19599,7 @@ export namespace Prisma {
     id?: SortOrder
     userId?: SortOrder
     boardId?: SortOrder
+    teamId?: SortOrder
     currentPosition?: SortOrder
     diceRollsToday?: SortOrder
     lastRollDate?: SortOrder
@@ -14028,6 +19616,7 @@ export namespace Prisma {
     id?: SortOrder
     userId?: SortOrder
     boardId?: SortOrder
+    teamId?: SortOrder
     currentPosition?: SortOrder
     diceRollsToday?: SortOrder
     lastRollDate?: SortOrder
@@ -14039,6 +19628,7 @@ export namespace Prisma {
     id?: SortOrder
     userId?: SortOrder
     boardId?: SortOrder
+    teamId?: SortOrder
     currentPosition?: SortOrder
     diceRollsToday?: SortOrder
     lastRollDate?: SortOrder
@@ -14107,6 +19697,56 @@ export namespace Prisma {
     _max?: NestedEnumCompletionSourceFilter<$PrismaModel>
   }
 
+  export type TeamCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    iconUrl?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TeamMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    iconUrl?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TeamMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    iconUrl?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TeamMemberTeamIdUserIdCompoundUniqueInput = {
+    teamId: string
+    userId: string
+  }
+
+  export type TeamMemberCountOrderByAggregateInput = {
+    id?: SortOrder
+    teamId?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TeamMemberMaxOrderByAggregateInput = {
+    id?: SortOrder
+    teamId?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type TeamMemberMinOrderByAggregateInput = {
+    id?: SortOrder
+    teamId?: SortOrder
+    userId?: SortOrder
+    createdAt?: SortOrder
+  }
+
   export type UserRoleCreateNestedManyWithoutRoleInput = {
     create?: XOR<UserRoleCreateWithoutRoleInput, UserRoleUncheckedCreateWithoutRoleInput> | UserRoleCreateWithoutRoleInput[] | UserRoleUncheckedCreateWithoutRoleInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutRoleInput | UserRoleCreateOrConnectWithoutRoleInput[]
@@ -14168,6 +19808,13 @@ export namespace Prisma {
     connect?: UserRoleWhereUniqueInput | UserRoleWhereUniqueInput[]
   }
 
+  export type UserPermissionCreateNestedManyWithoutUserInput = {
+    create?: XOR<UserPermissionCreateWithoutUserInput, UserPermissionUncheckedCreateWithoutUserInput> | UserPermissionCreateWithoutUserInput[] | UserPermissionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserPermissionCreateOrConnectWithoutUserInput | UserPermissionCreateOrConnectWithoutUserInput[]
+    createMany?: UserPermissionCreateManyUserInputEnvelope
+    connect?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+  }
+
   export type BoardAuthorCreateNestedManyWithoutUserInput = {
     create?: XOR<BoardAuthorCreateWithoutUserInput, BoardAuthorUncheckedCreateWithoutUserInput> | BoardAuthorCreateWithoutUserInput[] | BoardAuthorUncheckedCreateWithoutUserInput[]
     connectOrCreate?: BoardAuthorCreateOrConnectWithoutUserInput | BoardAuthorCreateOrConnectWithoutUserInput[]
@@ -14182,11 +19829,25 @@ export namespace Prisma {
     connect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
   }
 
+  export type TeamMemberCreateNestedManyWithoutUserInput = {
+    create?: XOR<TeamMemberCreateWithoutUserInput, TeamMemberUncheckedCreateWithoutUserInput> | TeamMemberCreateWithoutUserInput[] | TeamMemberUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: TeamMemberCreateOrConnectWithoutUserInput | TeamMemberCreateOrConnectWithoutUserInput[]
+    createMany?: TeamMemberCreateManyUserInputEnvelope
+    connect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+  }
+
   export type UserRoleUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
     createMany?: UserRoleCreateManyUserInputEnvelope
     connect?: UserRoleWhereUniqueInput | UserRoleWhereUniqueInput[]
+  }
+
+  export type UserPermissionUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<UserPermissionCreateWithoutUserInput, UserPermissionUncheckedCreateWithoutUserInput> | UserPermissionCreateWithoutUserInput[] | UserPermissionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserPermissionCreateOrConnectWithoutUserInput | UserPermissionCreateOrConnectWithoutUserInput[]
+    createMany?: UserPermissionCreateManyUserInputEnvelope
+    connect?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
   }
 
   export type BoardAuthorUncheckedCreateNestedManyWithoutUserInput = {
@@ -14203,6 +19864,13 @@ export namespace Prisma {
     connect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
   }
 
+  export type TeamMemberUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<TeamMemberCreateWithoutUserInput, TeamMemberUncheckedCreateWithoutUserInput> | TeamMemberCreateWithoutUserInput[] | TeamMemberUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: TeamMemberCreateOrConnectWithoutUserInput | TeamMemberCreateOrConnectWithoutUserInput[]
+    createMany?: TeamMemberCreateManyUserInputEnvelope
+    connect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+  }
+
   export type UserRoleUpdateManyWithoutUserNestedInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -14215,6 +19883,20 @@ export namespace Prisma {
     update?: UserRoleUpdateWithWhereUniqueWithoutUserInput | UserRoleUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: UserRoleUpdateManyWithWhereWithoutUserInput | UserRoleUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: UserRoleScalarWhereInput | UserRoleScalarWhereInput[]
+  }
+
+  export type UserPermissionUpdateManyWithoutUserNestedInput = {
+    create?: XOR<UserPermissionCreateWithoutUserInput, UserPermissionUncheckedCreateWithoutUserInput> | UserPermissionCreateWithoutUserInput[] | UserPermissionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserPermissionCreateOrConnectWithoutUserInput | UserPermissionCreateOrConnectWithoutUserInput[]
+    upsert?: UserPermissionUpsertWithWhereUniqueWithoutUserInput | UserPermissionUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: UserPermissionCreateManyUserInputEnvelope
+    set?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+    disconnect?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+    delete?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+    connect?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+    update?: UserPermissionUpdateWithWhereUniqueWithoutUserInput | UserPermissionUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: UserPermissionUpdateManyWithWhereWithoutUserInput | UserPermissionUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: UserPermissionScalarWhereInput | UserPermissionScalarWhereInput[]
   }
 
   export type BoardAuthorUpdateManyWithoutUserNestedInput = {
@@ -14245,6 +19927,20 @@ export namespace Prisma {
     deleteMany?: PlayerBoardScalarWhereInput | PlayerBoardScalarWhereInput[]
   }
 
+  export type TeamMemberUpdateManyWithoutUserNestedInput = {
+    create?: XOR<TeamMemberCreateWithoutUserInput, TeamMemberUncheckedCreateWithoutUserInput> | TeamMemberCreateWithoutUserInput[] | TeamMemberUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: TeamMemberCreateOrConnectWithoutUserInput | TeamMemberCreateOrConnectWithoutUserInput[]
+    upsert?: TeamMemberUpsertWithWhereUniqueWithoutUserInput | TeamMemberUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: TeamMemberCreateManyUserInputEnvelope
+    set?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    disconnect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    delete?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    connect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    update?: TeamMemberUpdateWithWhereUniqueWithoutUserInput | TeamMemberUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: TeamMemberUpdateManyWithWhereWithoutUserInput | TeamMemberUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: TeamMemberScalarWhereInput | TeamMemberScalarWhereInput[]
+  }
+
   export type UserRoleUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -14257,6 +19953,20 @@ export namespace Prisma {
     update?: UserRoleUpdateWithWhereUniqueWithoutUserInput | UserRoleUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: UserRoleUpdateManyWithWhereWithoutUserInput | UserRoleUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: UserRoleScalarWhereInput | UserRoleScalarWhereInput[]
+  }
+
+  export type UserPermissionUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<UserPermissionCreateWithoutUserInput, UserPermissionUncheckedCreateWithoutUserInput> | UserPermissionCreateWithoutUserInput[] | UserPermissionUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: UserPermissionCreateOrConnectWithoutUserInput | UserPermissionCreateOrConnectWithoutUserInput[]
+    upsert?: UserPermissionUpsertWithWhereUniqueWithoutUserInput | UserPermissionUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: UserPermissionCreateManyUserInputEnvelope
+    set?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+    disconnect?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+    delete?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+    connect?: UserPermissionWhereUniqueInput | UserPermissionWhereUniqueInput[]
+    update?: UserPermissionUpdateWithWhereUniqueWithoutUserInput | UserPermissionUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: UserPermissionUpdateManyWithWhereWithoutUserInput | UserPermissionUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: UserPermissionScalarWhereInput | UserPermissionScalarWhereInput[]
   }
 
   export type BoardAuthorUncheckedUpdateManyWithoutUserNestedInput = {
@@ -14285,6 +19995,34 @@ export namespace Prisma {
     update?: PlayerBoardUpdateWithWhereUniqueWithoutUserInput | PlayerBoardUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: PlayerBoardUpdateManyWithWhereWithoutUserInput | PlayerBoardUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: PlayerBoardScalarWhereInput | PlayerBoardScalarWhereInput[]
+  }
+
+  export type TeamMemberUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<TeamMemberCreateWithoutUserInput, TeamMemberUncheckedCreateWithoutUserInput> | TeamMemberCreateWithoutUserInput[] | TeamMemberUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: TeamMemberCreateOrConnectWithoutUserInput | TeamMemberCreateOrConnectWithoutUserInput[]
+    upsert?: TeamMemberUpsertWithWhereUniqueWithoutUserInput | TeamMemberUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: TeamMemberCreateManyUserInputEnvelope
+    set?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    disconnect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    delete?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    connect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    update?: TeamMemberUpdateWithWhereUniqueWithoutUserInput | TeamMemberUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: TeamMemberUpdateManyWithWhereWithoutUserInput | TeamMemberUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: TeamMemberScalarWhereInput | TeamMemberScalarWhereInput[]
+  }
+
+  export type UserCreateNestedOneWithoutUserPermissionsInput = {
+    create?: XOR<UserCreateWithoutUserPermissionsInput, UserUncheckedCreateWithoutUserPermissionsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutUserPermissionsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutUserPermissionsNestedInput = {
+    create?: XOR<UserCreateWithoutUserPermissionsInput, UserUncheckedCreateWithoutUserPermissionsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutUserPermissionsInput
+    upsert?: UserUpsertWithoutUserPermissionsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutUserPermissionsInput, UserUpdateWithoutUserPermissionsInput>, UserUncheckedUpdateWithoutUserPermissionsInput>
   }
 
   export type UserCreateNestedOneWithoutUserRolesInput = {
@@ -14378,6 +20116,13 @@ export namespace Prisma {
     connect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
   }
 
+  export type BoardTeamCreateNestedManyWithoutBoardInput = {
+    create?: XOR<BoardTeamCreateWithoutBoardInput, BoardTeamUncheckedCreateWithoutBoardInput> | BoardTeamCreateWithoutBoardInput[] | BoardTeamUncheckedCreateWithoutBoardInput[]
+    connectOrCreate?: BoardTeamCreateOrConnectWithoutBoardInput | BoardTeamCreateOrConnectWithoutBoardInput[]
+    createMany?: BoardTeamCreateManyBoardInputEnvelope
+    connect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+  }
+
   export type BoardAuthorUncheckedCreateNestedManyWithoutBoardInput = {
     create?: XOR<BoardAuthorCreateWithoutBoardInput, BoardAuthorUncheckedCreateWithoutBoardInput> | BoardAuthorCreateWithoutBoardInput[] | BoardAuthorUncheckedCreateWithoutBoardInput[]
     connectOrCreate?: BoardAuthorCreateOrConnectWithoutBoardInput | BoardAuthorCreateOrConnectWithoutBoardInput[]
@@ -14399,12 +20144,23 @@ export namespace Prisma {
     connect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
   }
 
+  export type BoardTeamUncheckedCreateNestedManyWithoutBoardInput = {
+    create?: XOR<BoardTeamCreateWithoutBoardInput, BoardTeamUncheckedCreateWithoutBoardInput> | BoardTeamCreateWithoutBoardInput[] | BoardTeamUncheckedCreateWithoutBoardInput[]
+    connectOrCreate?: BoardTeamCreateOrConnectWithoutBoardInput | BoardTeamCreateOrConnectWithoutBoardInput[]
+    createMany?: BoardTeamCreateManyBoardInputEnvelope
+    connect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+  }
+
   export type NullableDateTimeFieldUpdateOperationsInput = {
     set?: Date | string | null
   }
 
   export type EnumBoardSizeFieldUpdateOperationsInput = {
     set?: $Enums.BoardSize
+  }
+
+  export type EnumBoardModeFieldUpdateOperationsInput = {
+    set?: $Enums.BoardMode
   }
 
   export type NullableIntFieldUpdateOperationsInput = {
@@ -14457,6 +20213,20 @@ export namespace Prisma {
     deleteMany?: PlayerBoardScalarWhereInput | PlayerBoardScalarWhereInput[]
   }
 
+  export type BoardTeamUpdateManyWithoutBoardNestedInput = {
+    create?: XOR<BoardTeamCreateWithoutBoardInput, BoardTeamUncheckedCreateWithoutBoardInput> | BoardTeamCreateWithoutBoardInput[] | BoardTeamUncheckedCreateWithoutBoardInput[]
+    connectOrCreate?: BoardTeamCreateOrConnectWithoutBoardInput | BoardTeamCreateOrConnectWithoutBoardInput[]
+    upsert?: BoardTeamUpsertWithWhereUniqueWithoutBoardInput | BoardTeamUpsertWithWhereUniqueWithoutBoardInput[]
+    createMany?: BoardTeamCreateManyBoardInputEnvelope
+    set?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    disconnect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    delete?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    connect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    update?: BoardTeamUpdateWithWhereUniqueWithoutBoardInput | BoardTeamUpdateWithWhereUniqueWithoutBoardInput[]
+    updateMany?: BoardTeamUpdateManyWithWhereWithoutBoardInput | BoardTeamUpdateManyWithWhereWithoutBoardInput[]
+    deleteMany?: BoardTeamScalarWhereInput | BoardTeamScalarWhereInput[]
+  }
+
   export type BoardAuthorUncheckedUpdateManyWithoutBoardNestedInput = {
     create?: XOR<BoardAuthorCreateWithoutBoardInput, BoardAuthorUncheckedCreateWithoutBoardInput> | BoardAuthorCreateWithoutBoardInput[] | BoardAuthorUncheckedCreateWithoutBoardInput[]
     connectOrCreate?: BoardAuthorCreateOrConnectWithoutBoardInput | BoardAuthorCreateOrConnectWithoutBoardInput[]
@@ -14499,6 +20269,48 @@ export namespace Prisma {
     deleteMany?: PlayerBoardScalarWhereInput | PlayerBoardScalarWhereInput[]
   }
 
+  export type BoardTeamUncheckedUpdateManyWithoutBoardNestedInput = {
+    create?: XOR<BoardTeamCreateWithoutBoardInput, BoardTeamUncheckedCreateWithoutBoardInput> | BoardTeamCreateWithoutBoardInput[] | BoardTeamUncheckedCreateWithoutBoardInput[]
+    connectOrCreate?: BoardTeamCreateOrConnectWithoutBoardInput | BoardTeamCreateOrConnectWithoutBoardInput[]
+    upsert?: BoardTeamUpsertWithWhereUniqueWithoutBoardInput | BoardTeamUpsertWithWhereUniqueWithoutBoardInput[]
+    createMany?: BoardTeamCreateManyBoardInputEnvelope
+    set?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    disconnect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    delete?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    connect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    update?: BoardTeamUpdateWithWhereUniqueWithoutBoardInput | BoardTeamUpdateWithWhereUniqueWithoutBoardInput[]
+    updateMany?: BoardTeamUpdateManyWithWhereWithoutBoardInput | BoardTeamUpdateManyWithWhereWithoutBoardInput[]
+    deleteMany?: BoardTeamScalarWhereInput | BoardTeamScalarWhereInput[]
+  }
+
+  export type BoardCreateNestedOneWithoutBoardTeamsInput = {
+    create?: XOR<BoardCreateWithoutBoardTeamsInput, BoardUncheckedCreateWithoutBoardTeamsInput>
+    connectOrCreate?: BoardCreateOrConnectWithoutBoardTeamsInput
+    connect?: BoardWhereUniqueInput
+  }
+
+  export type TeamCreateNestedOneWithoutBoardTeamsInput = {
+    create?: XOR<TeamCreateWithoutBoardTeamsInput, TeamUncheckedCreateWithoutBoardTeamsInput>
+    connectOrCreate?: TeamCreateOrConnectWithoutBoardTeamsInput
+    connect?: TeamWhereUniqueInput
+  }
+
+  export type BoardUpdateOneRequiredWithoutBoardTeamsNestedInput = {
+    create?: XOR<BoardCreateWithoutBoardTeamsInput, BoardUncheckedCreateWithoutBoardTeamsInput>
+    connectOrCreate?: BoardCreateOrConnectWithoutBoardTeamsInput
+    upsert?: BoardUpsertWithoutBoardTeamsInput
+    connect?: BoardWhereUniqueInput
+    update?: XOR<XOR<BoardUpdateToOneWithWhereWithoutBoardTeamsInput, BoardUpdateWithoutBoardTeamsInput>, BoardUncheckedUpdateWithoutBoardTeamsInput>
+  }
+
+  export type TeamUpdateOneRequiredWithoutBoardTeamsNestedInput = {
+    create?: XOR<TeamCreateWithoutBoardTeamsInput, TeamUncheckedCreateWithoutBoardTeamsInput>
+    connectOrCreate?: TeamCreateOrConnectWithoutBoardTeamsInput
+    upsert?: TeamUpsertWithoutBoardTeamsInput
+    connect?: TeamWhereUniqueInput
+    update?: XOR<XOR<TeamUpdateToOneWithWhereWithoutBoardTeamsInput, TeamUpdateWithoutBoardTeamsInput>, TeamUncheckedUpdateWithoutBoardTeamsInput>
+  }
+
   export type BoardCreateNestedOneWithoutAuthorsInput = {
     create?: XOR<BoardCreateWithoutAuthorsInput, BoardUncheckedCreateWithoutAuthorsInput>
     connectOrCreate?: BoardCreateOrConnectWithoutAuthorsInput
@@ -14509,6 +20321,10 @@ export namespace Prisma {
     create?: XOR<UserCreateWithoutBoardAuthorsInput, UserUncheckedCreateWithoutBoardAuthorsInput>
     connectOrCreate?: UserCreateOrConnectWithoutBoardAuthorsInput
     connect?: UserWhereUniqueInput
+  }
+
+  export type BoolFieldUpdateOperationsInput = {
+    set?: boolean
   }
 
   export type BoardUpdateOneRequiredWithoutAuthorsNestedInput = {
@@ -14623,6 +20439,12 @@ export namespace Prisma {
     connect?: BoardWhereUniqueInput
   }
 
+  export type TeamCreateNestedOneWithoutPlayerBoardsInput = {
+    create?: XOR<TeamCreateWithoutPlayerBoardsInput, TeamUncheckedCreateWithoutPlayerBoardsInput>
+    connectOrCreate?: TeamCreateOrConnectWithoutPlayerBoardsInput
+    connect?: TeamWhereUniqueInput
+  }
+
   export type CompletedTileCreateNestedManyWithoutPlayerBoardInput = {
     create?: XOR<CompletedTileCreateWithoutPlayerBoardInput, CompletedTileUncheckedCreateWithoutPlayerBoardInput> | CompletedTileCreateWithoutPlayerBoardInput[] | CompletedTileUncheckedCreateWithoutPlayerBoardInput[]
     connectOrCreate?: CompletedTileCreateOrConnectWithoutPlayerBoardInput | CompletedTileCreateOrConnectWithoutPlayerBoardInput[]
@@ -14651,6 +20473,16 @@ export namespace Prisma {
     upsert?: BoardUpsertWithoutPlayerBoardsInput
     connect?: BoardWhereUniqueInput
     update?: XOR<XOR<BoardUpdateToOneWithWhereWithoutPlayerBoardsInput, BoardUpdateWithoutPlayerBoardsInput>, BoardUncheckedUpdateWithoutPlayerBoardsInput>
+  }
+
+  export type TeamUpdateOneWithoutPlayerBoardsNestedInput = {
+    create?: XOR<TeamCreateWithoutPlayerBoardsInput, TeamUncheckedCreateWithoutPlayerBoardsInput>
+    connectOrCreate?: TeamCreateOrConnectWithoutPlayerBoardsInput
+    upsert?: TeamUpsertWithoutPlayerBoardsInput
+    disconnect?: TeamWhereInput | boolean
+    delete?: TeamWhereInput | boolean
+    connect?: TeamWhereUniqueInput
+    update?: XOR<XOR<TeamUpdateToOneWithWhereWithoutPlayerBoardsInput, TeamUpdateWithoutPlayerBoardsInput>, TeamUncheckedUpdateWithoutPlayerBoardsInput>
   }
 
   export type CompletedTileUpdateManyWithoutPlayerBoardNestedInput = {
@@ -14711,6 +20543,160 @@ export namespace Prisma {
     upsert?: TileUpsertWithoutCompletedTilesInput
     connect?: TileWhereUniqueInput
     update?: XOR<XOR<TileUpdateToOneWithWhereWithoutCompletedTilesInput, TileUpdateWithoutCompletedTilesInput>, TileUncheckedUpdateWithoutCompletedTilesInput>
+  }
+
+  export type TeamMemberCreateNestedManyWithoutTeamInput = {
+    create?: XOR<TeamMemberCreateWithoutTeamInput, TeamMemberUncheckedCreateWithoutTeamInput> | TeamMemberCreateWithoutTeamInput[] | TeamMemberUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: TeamMemberCreateOrConnectWithoutTeamInput | TeamMemberCreateOrConnectWithoutTeamInput[]
+    createMany?: TeamMemberCreateManyTeamInputEnvelope
+    connect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+  }
+
+  export type BoardTeamCreateNestedManyWithoutTeamInput = {
+    create?: XOR<BoardTeamCreateWithoutTeamInput, BoardTeamUncheckedCreateWithoutTeamInput> | BoardTeamCreateWithoutTeamInput[] | BoardTeamUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: BoardTeamCreateOrConnectWithoutTeamInput | BoardTeamCreateOrConnectWithoutTeamInput[]
+    createMany?: BoardTeamCreateManyTeamInputEnvelope
+    connect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+  }
+
+  export type PlayerBoardCreateNestedManyWithoutTeamInput = {
+    create?: XOR<PlayerBoardCreateWithoutTeamInput, PlayerBoardUncheckedCreateWithoutTeamInput> | PlayerBoardCreateWithoutTeamInput[] | PlayerBoardUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: PlayerBoardCreateOrConnectWithoutTeamInput | PlayerBoardCreateOrConnectWithoutTeamInput[]
+    createMany?: PlayerBoardCreateManyTeamInputEnvelope
+    connect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+  }
+
+  export type TeamMemberUncheckedCreateNestedManyWithoutTeamInput = {
+    create?: XOR<TeamMemberCreateWithoutTeamInput, TeamMemberUncheckedCreateWithoutTeamInput> | TeamMemberCreateWithoutTeamInput[] | TeamMemberUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: TeamMemberCreateOrConnectWithoutTeamInput | TeamMemberCreateOrConnectWithoutTeamInput[]
+    createMany?: TeamMemberCreateManyTeamInputEnvelope
+    connect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+  }
+
+  export type BoardTeamUncheckedCreateNestedManyWithoutTeamInput = {
+    create?: XOR<BoardTeamCreateWithoutTeamInput, BoardTeamUncheckedCreateWithoutTeamInput> | BoardTeamCreateWithoutTeamInput[] | BoardTeamUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: BoardTeamCreateOrConnectWithoutTeamInput | BoardTeamCreateOrConnectWithoutTeamInput[]
+    createMany?: BoardTeamCreateManyTeamInputEnvelope
+    connect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+  }
+
+  export type PlayerBoardUncheckedCreateNestedManyWithoutTeamInput = {
+    create?: XOR<PlayerBoardCreateWithoutTeamInput, PlayerBoardUncheckedCreateWithoutTeamInput> | PlayerBoardCreateWithoutTeamInput[] | PlayerBoardUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: PlayerBoardCreateOrConnectWithoutTeamInput | PlayerBoardCreateOrConnectWithoutTeamInput[]
+    createMany?: PlayerBoardCreateManyTeamInputEnvelope
+    connect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+  }
+
+  export type TeamMemberUpdateManyWithoutTeamNestedInput = {
+    create?: XOR<TeamMemberCreateWithoutTeamInput, TeamMemberUncheckedCreateWithoutTeamInput> | TeamMemberCreateWithoutTeamInput[] | TeamMemberUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: TeamMemberCreateOrConnectWithoutTeamInput | TeamMemberCreateOrConnectWithoutTeamInput[]
+    upsert?: TeamMemberUpsertWithWhereUniqueWithoutTeamInput | TeamMemberUpsertWithWhereUniqueWithoutTeamInput[]
+    createMany?: TeamMemberCreateManyTeamInputEnvelope
+    set?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    disconnect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    delete?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    connect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    update?: TeamMemberUpdateWithWhereUniqueWithoutTeamInput | TeamMemberUpdateWithWhereUniqueWithoutTeamInput[]
+    updateMany?: TeamMemberUpdateManyWithWhereWithoutTeamInput | TeamMemberUpdateManyWithWhereWithoutTeamInput[]
+    deleteMany?: TeamMemberScalarWhereInput | TeamMemberScalarWhereInput[]
+  }
+
+  export type BoardTeamUpdateManyWithoutTeamNestedInput = {
+    create?: XOR<BoardTeamCreateWithoutTeamInput, BoardTeamUncheckedCreateWithoutTeamInput> | BoardTeamCreateWithoutTeamInput[] | BoardTeamUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: BoardTeamCreateOrConnectWithoutTeamInput | BoardTeamCreateOrConnectWithoutTeamInput[]
+    upsert?: BoardTeamUpsertWithWhereUniqueWithoutTeamInput | BoardTeamUpsertWithWhereUniqueWithoutTeamInput[]
+    createMany?: BoardTeamCreateManyTeamInputEnvelope
+    set?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    disconnect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    delete?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    connect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    update?: BoardTeamUpdateWithWhereUniqueWithoutTeamInput | BoardTeamUpdateWithWhereUniqueWithoutTeamInput[]
+    updateMany?: BoardTeamUpdateManyWithWhereWithoutTeamInput | BoardTeamUpdateManyWithWhereWithoutTeamInput[]
+    deleteMany?: BoardTeamScalarWhereInput | BoardTeamScalarWhereInput[]
+  }
+
+  export type PlayerBoardUpdateManyWithoutTeamNestedInput = {
+    create?: XOR<PlayerBoardCreateWithoutTeamInput, PlayerBoardUncheckedCreateWithoutTeamInput> | PlayerBoardCreateWithoutTeamInput[] | PlayerBoardUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: PlayerBoardCreateOrConnectWithoutTeamInput | PlayerBoardCreateOrConnectWithoutTeamInput[]
+    upsert?: PlayerBoardUpsertWithWhereUniqueWithoutTeamInput | PlayerBoardUpsertWithWhereUniqueWithoutTeamInput[]
+    createMany?: PlayerBoardCreateManyTeamInputEnvelope
+    set?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+    disconnect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+    delete?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+    connect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+    update?: PlayerBoardUpdateWithWhereUniqueWithoutTeamInput | PlayerBoardUpdateWithWhereUniqueWithoutTeamInput[]
+    updateMany?: PlayerBoardUpdateManyWithWhereWithoutTeamInput | PlayerBoardUpdateManyWithWhereWithoutTeamInput[]
+    deleteMany?: PlayerBoardScalarWhereInput | PlayerBoardScalarWhereInput[]
+  }
+
+  export type TeamMemberUncheckedUpdateManyWithoutTeamNestedInput = {
+    create?: XOR<TeamMemberCreateWithoutTeamInput, TeamMemberUncheckedCreateWithoutTeamInput> | TeamMemberCreateWithoutTeamInput[] | TeamMemberUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: TeamMemberCreateOrConnectWithoutTeamInput | TeamMemberCreateOrConnectWithoutTeamInput[]
+    upsert?: TeamMemberUpsertWithWhereUniqueWithoutTeamInput | TeamMemberUpsertWithWhereUniqueWithoutTeamInput[]
+    createMany?: TeamMemberCreateManyTeamInputEnvelope
+    set?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    disconnect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    delete?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    connect?: TeamMemberWhereUniqueInput | TeamMemberWhereUniqueInput[]
+    update?: TeamMemberUpdateWithWhereUniqueWithoutTeamInput | TeamMemberUpdateWithWhereUniqueWithoutTeamInput[]
+    updateMany?: TeamMemberUpdateManyWithWhereWithoutTeamInput | TeamMemberUpdateManyWithWhereWithoutTeamInput[]
+    deleteMany?: TeamMemberScalarWhereInput | TeamMemberScalarWhereInput[]
+  }
+
+  export type BoardTeamUncheckedUpdateManyWithoutTeamNestedInput = {
+    create?: XOR<BoardTeamCreateWithoutTeamInput, BoardTeamUncheckedCreateWithoutTeamInput> | BoardTeamCreateWithoutTeamInput[] | BoardTeamUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: BoardTeamCreateOrConnectWithoutTeamInput | BoardTeamCreateOrConnectWithoutTeamInput[]
+    upsert?: BoardTeamUpsertWithWhereUniqueWithoutTeamInput | BoardTeamUpsertWithWhereUniqueWithoutTeamInput[]
+    createMany?: BoardTeamCreateManyTeamInputEnvelope
+    set?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    disconnect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    delete?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    connect?: BoardTeamWhereUniqueInput | BoardTeamWhereUniqueInput[]
+    update?: BoardTeamUpdateWithWhereUniqueWithoutTeamInput | BoardTeamUpdateWithWhereUniqueWithoutTeamInput[]
+    updateMany?: BoardTeamUpdateManyWithWhereWithoutTeamInput | BoardTeamUpdateManyWithWhereWithoutTeamInput[]
+    deleteMany?: BoardTeamScalarWhereInput | BoardTeamScalarWhereInput[]
+  }
+
+  export type PlayerBoardUncheckedUpdateManyWithoutTeamNestedInput = {
+    create?: XOR<PlayerBoardCreateWithoutTeamInput, PlayerBoardUncheckedCreateWithoutTeamInput> | PlayerBoardCreateWithoutTeamInput[] | PlayerBoardUncheckedCreateWithoutTeamInput[]
+    connectOrCreate?: PlayerBoardCreateOrConnectWithoutTeamInput | PlayerBoardCreateOrConnectWithoutTeamInput[]
+    upsert?: PlayerBoardUpsertWithWhereUniqueWithoutTeamInput | PlayerBoardUpsertWithWhereUniqueWithoutTeamInput[]
+    createMany?: PlayerBoardCreateManyTeamInputEnvelope
+    set?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+    disconnect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+    delete?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+    connect?: PlayerBoardWhereUniqueInput | PlayerBoardWhereUniqueInput[]
+    update?: PlayerBoardUpdateWithWhereUniqueWithoutTeamInput | PlayerBoardUpdateWithWhereUniqueWithoutTeamInput[]
+    updateMany?: PlayerBoardUpdateManyWithWhereWithoutTeamInput | PlayerBoardUpdateManyWithWhereWithoutTeamInput[]
+    deleteMany?: PlayerBoardScalarWhereInput | PlayerBoardScalarWhereInput[]
+  }
+
+  export type TeamCreateNestedOneWithoutMembersInput = {
+    create?: XOR<TeamCreateWithoutMembersInput, TeamUncheckedCreateWithoutMembersInput>
+    connectOrCreate?: TeamCreateOrConnectWithoutMembersInput
+    connect?: TeamWhereUniqueInput
+  }
+
+  export type UserCreateNestedOneWithoutTeamMembersInput = {
+    create?: XOR<UserCreateWithoutTeamMembersInput, UserUncheckedCreateWithoutTeamMembersInput>
+    connectOrCreate?: UserCreateOrConnectWithoutTeamMembersInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type TeamUpdateOneRequiredWithoutMembersNestedInput = {
+    create?: XOR<TeamCreateWithoutMembersInput, TeamUncheckedCreateWithoutMembersInput>
+    connectOrCreate?: TeamCreateOrConnectWithoutMembersInput
+    upsert?: TeamUpsertWithoutMembersInput
+    connect?: TeamWhereUniqueInput
+    update?: XOR<XOR<TeamUpdateToOneWithWhereWithoutMembersInput, TeamUpdateWithoutMembersInput>, TeamUncheckedUpdateWithoutMembersInput>
+  }
+
+  export type UserUpdateOneRequiredWithoutTeamMembersNestedInput = {
+    create?: XOR<UserCreateWithoutTeamMembersInput, UserUncheckedCreateWithoutTeamMembersInput>
+    connectOrCreate?: UserCreateOrConnectWithoutTeamMembersInput
+    upsert?: UserUpsertWithoutTeamMembersInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutTeamMembersInput, UserUpdateWithoutTeamMembersInput>, UserUncheckedUpdateWithoutTeamMembersInput>
   }
 
   export type NestedUuidFilter<$PrismaModel = never> = {
@@ -14865,6 +20851,13 @@ export namespace Prisma {
     not?: NestedEnumBoardSizeFilter<$PrismaModel> | $Enums.BoardSize
   }
 
+  export type NestedEnumBoardModeFilter<$PrismaModel = never> = {
+    equals?: $Enums.BoardMode | EnumBoardModeFieldRefInput<$PrismaModel>
+    in?: $Enums.BoardMode[] | ListEnumBoardModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.BoardMode[] | ListEnumBoardModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumBoardModeFilter<$PrismaModel> | $Enums.BoardMode
+  }
+
   export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -14887,6 +20880,16 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumBoardSizeFilter<$PrismaModel>
     _max?: NestedEnumBoardSizeFilter<$PrismaModel>
+  }
+
+  export type NestedEnumBoardModeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.BoardMode | EnumBoardModeFieldRefInput<$PrismaModel>
+    in?: $Enums.BoardMode[] | ListEnumBoardModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.BoardMode[] | ListEnumBoardModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumBoardModeWithAggregatesFilter<$PrismaModel> | $Enums.BoardMode
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumBoardModeFilter<$PrismaModel>
+    _max?: NestedEnumBoardModeFilter<$PrismaModel>
   }
 
   export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -14914,6 +20917,19 @@ export namespace Prisma {
     gt?: number | FloatFieldRefInput<$PrismaModel>
     gte?: number | FloatFieldRefInput<$PrismaModel>
     not?: NestedFloatNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
+  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type NestedUuidNullableFilter<$PrismaModel = never> = {
@@ -15072,8 +21088,31 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type UserPermissionCreateWithoutUserInput = {
+    id?: string
+    permissionKey: string
+    createdAt?: Date | string
+  }
+
+  export type UserPermissionUncheckedCreateWithoutUserInput = {
+    id?: string
+    permissionKey: string
+    createdAt?: Date | string
+  }
+
+  export type UserPermissionCreateOrConnectWithoutUserInput = {
+    where: UserPermissionWhereUniqueInput
+    create: XOR<UserPermissionCreateWithoutUserInput, UserPermissionUncheckedCreateWithoutUserInput>
+  }
+
+  export type UserPermissionCreateManyUserInputEnvelope = {
+    data: UserPermissionCreateManyUserInput | UserPermissionCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type BoardAuthorCreateWithoutUserInput = {
     id?: string
+    isOwner?: boolean
     createdAt?: Date | string
     board: BoardCreateNestedOneWithoutAuthorsInput
   }
@@ -15081,6 +21120,7 @@ export namespace Prisma {
   export type BoardAuthorUncheckedCreateWithoutUserInput = {
     id?: string
     boardId: string
+    isOwner?: boolean
     createdAt?: Date | string
   }
 
@@ -15102,12 +21142,14 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     board: BoardCreateNestedOneWithoutPlayerBoardsInput
+    team?: TeamCreateNestedOneWithoutPlayerBoardsInput
     completedTiles?: CompletedTileCreateNestedManyWithoutPlayerBoardInput
   }
 
   export type PlayerBoardUncheckedCreateWithoutUserInput = {
     id?: string
     boardId: string
+    teamId?: string | null
     currentPosition?: number
     diceRollsToday?: number
     lastRollDate?: Date | string | null
@@ -15126,6 +21168,28 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type TeamMemberCreateWithoutUserInput = {
+    id?: string
+    createdAt?: Date | string
+    team: TeamCreateNestedOneWithoutMembersInput
+  }
+
+  export type TeamMemberUncheckedCreateWithoutUserInput = {
+    id?: string
+    teamId: string
+    createdAt?: Date | string
+  }
+
+  export type TeamMemberCreateOrConnectWithoutUserInput = {
+    where: TeamMemberWhereUniqueInput
+    create: XOR<TeamMemberCreateWithoutUserInput, TeamMemberUncheckedCreateWithoutUserInput>
+  }
+
+  export type TeamMemberCreateManyUserInputEnvelope = {
+    data: TeamMemberCreateManyUserInput | TeamMemberCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type UserRoleUpsertWithWhereUniqueWithoutUserInput = {
     where: UserRoleWhereUniqueInput
     update: XOR<UserRoleUpdateWithoutUserInput, UserRoleUncheckedUpdateWithoutUserInput>
@@ -15140,6 +21204,32 @@ export namespace Prisma {
   export type UserRoleUpdateManyWithWhereWithoutUserInput = {
     where: UserRoleScalarWhereInput
     data: XOR<UserRoleUpdateManyMutationInput, UserRoleUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type UserPermissionUpsertWithWhereUniqueWithoutUserInput = {
+    where: UserPermissionWhereUniqueInput
+    update: XOR<UserPermissionUpdateWithoutUserInput, UserPermissionUncheckedUpdateWithoutUserInput>
+    create: XOR<UserPermissionCreateWithoutUserInput, UserPermissionUncheckedCreateWithoutUserInput>
+  }
+
+  export type UserPermissionUpdateWithWhereUniqueWithoutUserInput = {
+    where: UserPermissionWhereUniqueInput
+    data: XOR<UserPermissionUpdateWithoutUserInput, UserPermissionUncheckedUpdateWithoutUserInput>
+  }
+
+  export type UserPermissionUpdateManyWithWhereWithoutUserInput = {
+    where: UserPermissionScalarWhereInput
+    data: XOR<UserPermissionUpdateManyMutationInput, UserPermissionUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type UserPermissionScalarWhereInput = {
+    AND?: UserPermissionScalarWhereInput | UserPermissionScalarWhereInput[]
+    OR?: UserPermissionScalarWhereInput[]
+    NOT?: UserPermissionScalarWhereInput | UserPermissionScalarWhereInput[]
+    id?: UuidFilter<"UserPermission"> | string
+    userId?: UuidFilter<"UserPermission"> | string
+    permissionKey?: StringFilter<"UserPermission"> | string
+    createdAt?: DateTimeFilter<"UserPermission"> | Date | string
   }
 
   export type BoardAuthorUpsertWithWhereUniqueWithoutUserInput = {
@@ -15165,6 +21255,7 @@ export namespace Prisma {
     id?: UuidFilter<"BoardAuthor"> | string
     boardId?: UuidFilter<"BoardAuthor"> | string
     userId?: UuidFilter<"BoardAuthor"> | string
+    isOwner?: BoolFilter<"BoardAuthor"> | boolean
     createdAt?: DateTimeFilter<"BoardAuthor"> | Date | string
   }
 
@@ -15191,11 +21282,110 @@ export namespace Prisma {
     id?: UuidFilter<"PlayerBoard"> | string
     userId?: UuidFilter<"PlayerBoard"> | string
     boardId?: UuidFilter<"PlayerBoard"> | string
+    teamId?: UuidNullableFilter<"PlayerBoard"> | string | null
     currentPosition?: IntFilter<"PlayerBoard"> | number
     diceRollsToday?: IntFilter<"PlayerBoard"> | number
     lastRollDate?: DateTimeNullableFilter<"PlayerBoard"> | Date | string | null
     createdAt?: DateTimeFilter<"PlayerBoard"> | Date | string
     updatedAt?: DateTimeFilter<"PlayerBoard"> | Date | string
+  }
+
+  export type TeamMemberUpsertWithWhereUniqueWithoutUserInput = {
+    where: TeamMemberWhereUniqueInput
+    update: XOR<TeamMemberUpdateWithoutUserInput, TeamMemberUncheckedUpdateWithoutUserInput>
+    create: XOR<TeamMemberCreateWithoutUserInput, TeamMemberUncheckedCreateWithoutUserInput>
+  }
+
+  export type TeamMemberUpdateWithWhereUniqueWithoutUserInput = {
+    where: TeamMemberWhereUniqueInput
+    data: XOR<TeamMemberUpdateWithoutUserInput, TeamMemberUncheckedUpdateWithoutUserInput>
+  }
+
+  export type TeamMemberUpdateManyWithWhereWithoutUserInput = {
+    where: TeamMemberScalarWhereInput
+    data: XOR<TeamMemberUpdateManyMutationInput, TeamMemberUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type TeamMemberScalarWhereInput = {
+    AND?: TeamMemberScalarWhereInput | TeamMemberScalarWhereInput[]
+    OR?: TeamMemberScalarWhereInput[]
+    NOT?: TeamMemberScalarWhereInput | TeamMemberScalarWhereInput[]
+    id?: UuidFilter<"TeamMember"> | string
+    teamId?: UuidFilter<"TeamMember"> | string
+    userId?: UuidFilter<"TeamMember"> | string
+    createdAt?: DateTimeFilter<"TeamMember"> | Date | string
+  }
+
+  export type UserCreateWithoutUserPermissionsInput = {
+    id?: string
+    discordId: string
+    discordUsername: string
+    nickname?: string | null
+    avatarUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    boardAuthors?: BoardAuthorCreateNestedManyWithoutUserInput
+    playerBoards?: PlayerBoardCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutUserPermissionsInput = {
+    id?: string
+    discordId: string
+    discordUsername: string
+    nickname?: string | null
+    avatarUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    boardAuthors?: BoardAuthorUncheckedCreateNestedManyWithoutUserInput
+    playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutUserPermissionsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutUserPermissionsInput, UserUncheckedCreateWithoutUserPermissionsInput>
+  }
+
+  export type UserUpsertWithoutUserPermissionsInput = {
+    update: XOR<UserUpdateWithoutUserPermissionsInput, UserUncheckedUpdateWithoutUserPermissionsInput>
+    create: XOR<UserCreateWithoutUserPermissionsInput, UserUncheckedCreateWithoutUserPermissionsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutUserPermissionsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutUserPermissionsInput, UserUncheckedUpdateWithoutUserPermissionsInput>
+  }
+
+  export type UserUpdateWithoutUserPermissionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    discordId?: StringFieldUpdateOperationsInput | string
+    discordUsername?: StringFieldUpdateOperationsInput | string
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null
+    avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    boardAuthors?: BoardAuthorUpdateManyWithoutUserNestedInput
+    playerBoards?: PlayerBoardUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutUserPermissionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    discordId?: StringFieldUpdateOperationsInput | string
+    discordUsername?: StringFieldUpdateOperationsInput | string
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null
+    avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    boardAuthors?: BoardAuthorUncheckedUpdateManyWithoutUserNestedInput
+    playerBoards?: PlayerBoardUncheckedUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutUserRolesInput = {
@@ -15206,8 +21396,10 @@ export namespace Prisma {
     avatarUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    userPermissions?: UserPermissionCreateNestedManyWithoutUserInput
     boardAuthors?: BoardAuthorCreateNestedManyWithoutUserInput
     playerBoards?: PlayerBoardCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutUserRolesInput = {
@@ -15218,8 +21410,10 @@ export namespace Prisma {
     avatarUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    userPermissions?: UserPermissionUncheckedCreateNestedManyWithoutUserInput
     boardAuthors?: BoardAuthorUncheckedCreateNestedManyWithoutUserInput
     playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutUserRolesInput = {
@@ -15267,8 +21461,10 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userPermissions?: UserPermissionUpdateManyWithoutUserNestedInput
     boardAuthors?: BoardAuthorUpdateManyWithoutUserNestedInput
     playerBoards?: PlayerBoardUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutUserRolesInput = {
@@ -15279,8 +21475,10 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userPermissions?: UserPermissionUncheckedUpdateManyWithoutUserNestedInput
     boardAuthors?: BoardAuthorUncheckedUpdateManyWithoutUserNestedInput
     playerBoards?: PlayerBoardUncheckedUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type RoleUpsertWithoutUserRolesInput = {
@@ -15377,6 +21575,7 @@ export namespace Prisma {
 
   export type BoardAuthorCreateWithoutBoardInput = {
     id?: string
+    isOwner?: boolean
     createdAt?: Date | string
     user: UserCreateNestedOneWithoutBoardAuthorsInput
   }
@@ -15384,6 +21583,7 @@ export namespace Prisma {
   export type BoardAuthorUncheckedCreateWithoutBoardInput = {
     id?: string
     userId: string
+    isOwner?: boolean
     createdAt?: Date | string
   }
 
@@ -15439,12 +21639,14 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutPlayerBoardsInput
+    team?: TeamCreateNestedOneWithoutPlayerBoardsInput
     completedTiles?: CompletedTileCreateNestedManyWithoutPlayerBoardInput
   }
 
   export type PlayerBoardUncheckedCreateWithoutBoardInput = {
     id?: string
     userId: string
+    teamId?: string | null
     currentPosition?: number
     diceRollsToday?: number
     lastRollDate?: Date | string | null
@@ -15460,6 +21662,28 @@ export namespace Prisma {
 
   export type PlayerBoardCreateManyBoardInputEnvelope = {
     data: PlayerBoardCreateManyBoardInput | PlayerBoardCreateManyBoardInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type BoardTeamCreateWithoutBoardInput = {
+    id?: string
+    createdAt?: Date | string
+    team: TeamCreateNestedOneWithoutBoardTeamsInput
+  }
+
+  export type BoardTeamUncheckedCreateWithoutBoardInput = {
+    id?: string
+    teamId: string
+    createdAt?: Date | string
+  }
+
+  export type BoardTeamCreateOrConnectWithoutBoardInput = {
+    where: BoardTeamWhereUniqueInput
+    create: XOR<BoardTeamCreateWithoutBoardInput, BoardTeamUncheckedCreateWithoutBoardInput>
+  }
+
+  export type BoardTeamCreateManyBoardInputEnvelope = {
+    data: BoardTeamCreateManyBoardInput | BoardTeamCreateManyBoardInput[]
     skipDuplicates?: boolean
   }
 
@@ -15511,6 +21735,168 @@ export namespace Prisma {
     data: XOR<PlayerBoardUpdateManyMutationInput, PlayerBoardUncheckedUpdateManyWithoutBoardInput>
   }
 
+  export type BoardTeamUpsertWithWhereUniqueWithoutBoardInput = {
+    where: BoardTeamWhereUniqueInput
+    update: XOR<BoardTeamUpdateWithoutBoardInput, BoardTeamUncheckedUpdateWithoutBoardInput>
+    create: XOR<BoardTeamCreateWithoutBoardInput, BoardTeamUncheckedCreateWithoutBoardInput>
+  }
+
+  export type BoardTeamUpdateWithWhereUniqueWithoutBoardInput = {
+    where: BoardTeamWhereUniqueInput
+    data: XOR<BoardTeamUpdateWithoutBoardInput, BoardTeamUncheckedUpdateWithoutBoardInput>
+  }
+
+  export type BoardTeamUpdateManyWithWhereWithoutBoardInput = {
+    where: BoardTeamScalarWhereInput
+    data: XOR<BoardTeamUpdateManyMutationInput, BoardTeamUncheckedUpdateManyWithoutBoardInput>
+  }
+
+  export type BoardTeamScalarWhereInput = {
+    AND?: BoardTeamScalarWhereInput | BoardTeamScalarWhereInput[]
+    OR?: BoardTeamScalarWhereInput[]
+    NOT?: BoardTeamScalarWhereInput | BoardTeamScalarWhereInput[]
+    id?: UuidFilter<"BoardTeam"> | string
+    boardId?: UuidFilter<"BoardTeam"> | string
+    teamId?: UuidFilter<"BoardTeam"> | string
+    createdAt?: DateTimeFilter<"BoardTeam"> | Date | string
+  }
+
+  export type BoardCreateWithoutBoardTeamsInput = {
+    id?: string
+    title: string
+    description?: string | null
+    startDate?: Date | string | null
+    endDate?: Date | string | null
+    size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
+    diceRollLimit?: number | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    authors?: BoardAuthorCreateNestedManyWithoutBoardInput
+    tiles?: TileCreateNestedManyWithoutBoardInput
+    playerBoards?: PlayerBoardCreateNestedManyWithoutBoardInput
+  }
+
+  export type BoardUncheckedCreateWithoutBoardTeamsInput = {
+    id?: string
+    title: string
+    description?: string | null
+    startDate?: Date | string | null
+    endDate?: Date | string | null
+    size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
+    diceRollLimit?: number | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    authors?: BoardAuthorUncheckedCreateNestedManyWithoutBoardInput
+    tiles?: TileUncheckedCreateNestedManyWithoutBoardInput
+    playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutBoardInput
+  }
+
+  export type BoardCreateOrConnectWithoutBoardTeamsInput = {
+    where: BoardWhereUniqueInput
+    create: XOR<BoardCreateWithoutBoardTeamsInput, BoardUncheckedCreateWithoutBoardTeamsInput>
+  }
+
+  export type TeamCreateWithoutBoardTeamsInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    members?: TeamMemberCreateNestedManyWithoutTeamInput
+    playerBoards?: PlayerBoardCreateNestedManyWithoutTeamInput
+  }
+
+  export type TeamUncheckedCreateWithoutBoardTeamsInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    members?: TeamMemberUncheckedCreateNestedManyWithoutTeamInput
+    playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutTeamInput
+  }
+
+  export type TeamCreateOrConnectWithoutBoardTeamsInput = {
+    where: TeamWhereUniqueInput
+    create: XOR<TeamCreateWithoutBoardTeamsInput, TeamUncheckedCreateWithoutBoardTeamsInput>
+  }
+
+  export type BoardUpsertWithoutBoardTeamsInput = {
+    update: XOR<BoardUpdateWithoutBoardTeamsInput, BoardUncheckedUpdateWithoutBoardTeamsInput>
+    create: XOR<BoardCreateWithoutBoardTeamsInput, BoardUncheckedCreateWithoutBoardTeamsInput>
+    where?: BoardWhereInput
+  }
+
+  export type BoardUpdateToOneWithWhereWithoutBoardTeamsInput = {
+    where?: BoardWhereInput
+    data: XOR<BoardUpdateWithoutBoardTeamsInput, BoardUncheckedUpdateWithoutBoardTeamsInput>
+  }
+
+  export type BoardUpdateWithoutBoardTeamsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
+    diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    authors?: BoardAuthorUpdateManyWithoutBoardNestedInput
+    tiles?: TileUpdateManyWithoutBoardNestedInput
+    playerBoards?: PlayerBoardUpdateManyWithoutBoardNestedInput
+  }
+
+  export type BoardUncheckedUpdateWithoutBoardTeamsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
+    diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    authors?: BoardAuthorUncheckedUpdateManyWithoutBoardNestedInput
+    tiles?: TileUncheckedUpdateManyWithoutBoardNestedInput
+    playerBoards?: PlayerBoardUncheckedUpdateManyWithoutBoardNestedInput
+  }
+
+  export type TeamUpsertWithoutBoardTeamsInput = {
+    update: XOR<TeamUpdateWithoutBoardTeamsInput, TeamUncheckedUpdateWithoutBoardTeamsInput>
+    create: XOR<TeamCreateWithoutBoardTeamsInput, TeamUncheckedCreateWithoutBoardTeamsInput>
+    where?: TeamWhereInput
+  }
+
+  export type TeamUpdateToOneWithWhereWithoutBoardTeamsInput = {
+    where?: TeamWhereInput
+    data: XOR<TeamUpdateWithoutBoardTeamsInput, TeamUncheckedUpdateWithoutBoardTeamsInput>
+  }
+
+  export type TeamUpdateWithoutBoardTeamsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    members?: TeamMemberUpdateManyWithoutTeamNestedInput
+    playerBoards?: PlayerBoardUpdateManyWithoutTeamNestedInput
+  }
+
+  export type TeamUncheckedUpdateWithoutBoardTeamsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    members?: TeamMemberUncheckedUpdateManyWithoutTeamNestedInput
+    playerBoards?: PlayerBoardUncheckedUpdateManyWithoutTeamNestedInput
+  }
+
   export type BoardCreateWithoutAuthorsInput = {
     id?: string
     title: string
@@ -15518,11 +21904,13 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     tiles?: TileCreateNestedManyWithoutBoardInput
     playerBoards?: PlayerBoardCreateNestedManyWithoutBoardInput
+    boardTeams?: BoardTeamCreateNestedManyWithoutBoardInput
   }
 
   export type BoardUncheckedCreateWithoutAuthorsInput = {
@@ -15532,11 +21920,13 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     tiles?: TileUncheckedCreateNestedManyWithoutBoardInput
     playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutBoardInput
+    boardTeams?: BoardTeamUncheckedCreateNestedManyWithoutBoardInput
   }
 
   export type BoardCreateOrConnectWithoutAuthorsInput = {
@@ -15553,7 +21943,9 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    userPermissions?: UserPermissionCreateNestedManyWithoutUserInput
     playerBoards?: PlayerBoardCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutBoardAuthorsInput = {
@@ -15565,7 +21957,9 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    userPermissions?: UserPermissionUncheckedCreateNestedManyWithoutUserInput
     playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutBoardAuthorsInput = {
@@ -15591,11 +21985,13 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tiles?: TileUpdateManyWithoutBoardNestedInput
     playerBoards?: PlayerBoardUpdateManyWithoutBoardNestedInput
+    boardTeams?: BoardTeamUpdateManyWithoutBoardNestedInput
   }
 
   export type BoardUncheckedUpdateWithoutAuthorsInput = {
@@ -15605,11 +22001,13 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tiles?: TileUncheckedUpdateManyWithoutBoardNestedInput
     playerBoards?: PlayerBoardUncheckedUpdateManyWithoutBoardNestedInput
+    boardTeams?: BoardTeamUncheckedUpdateManyWithoutBoardNestedInput
   }
 
   export type UserUpsertWithoutBoardAuthorsInput = {
@@ -15632,7 +22030,9 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    userPermissions?: UserPermissionUpdateManyWithoutUserNestedInput
     playerBoards?: PlayerBoardUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutBoardAuthorsInput = {
@@ -15644,7 +22044,9 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    userPermissions?: UserPermissionUncheckedUpdateManyWithoutUserNestedInput
     playerBoards?: PlayerBoardUncheckedUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type BoardCreateWithoutTilesInput = {
@@ -15654,11 +22056,13 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     authors?: BoardAuthorCreateNestedManyWithoutBoardInput
     playerBoards?: PlayerBoardCreateNestedManyWithoutBoardInput
+    boardTeams?: BoardTeamCreateNestedManyWithoutBoardInput
   }
 
   export type BoardUncheckedCreateWithoutTilesInput = {
@@ -15668,11 +22072,13 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     authors?: BoardAuthorUncheckedCreateNestedManyWithoutBoardInput
     playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutBoardInput
+    boardTeams?: BoardTeamUncheckedCreateNestedManyWithoutBoardInput
   }
 
   export type BoardCreateOrConnectWithoutTilesInput = {
@@ -15745,11 +22151,13 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     authors?: BoardAuthorUpdateManyWithoutBoardNestedInput
     playerBoards?: PlayerBoardUpdateManyWithoutBoardNestedInput
+    boardTeams?: BoardTeamUpdateManyWithoutBoardNestedInput
   }
 
   export type BoardUncheckedUpdateWithoutTilesInput = {
@@ -15759,11 +22167,13 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     authors?: BoardAuthorUncheckedUpdateManyWithoutBoardNestedInput
     playerBoards?: PlayerBoardUncheckedUpdateManyWithoutBoardNestedInput
+    boardTeams?: BoardTeamUncheckedUpdateManyWithoutBoardNestedInput
   }
 
   export type TaskUpsertWithoutTilesInput = {
@@ -15831,7 +22241,9 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    userPermissions?: UserPermissionCreateNestedManyWithoutUserInput
     boardAuthors?: BoardAuthorCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutPlayerBoardsInput = {
@@ -15843,7 +22255,9 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    userPermissions?: UserPermissionUncheckedCreateNestedManyWithoutUserInput
     boardAuthors?: BoardAuthorUncheckedCreateNestedManyWithoutUserInput
+    teamMembers?: TeamMemberUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutPlayerBoardsInput = {
@@ -15858,11 +22272,13 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     authors?: BoardAuthorCreateNestedManyWithoutBoardInput
     tiles?: TileCreateNestedManyWithoutBoardInput
+    boardTeams?: BoardTeamCreateNestedManyWithoutBoardInput
   }
 
   export type BoardUncheckedCreateWithoutPlayerBoardsInput = {
@@ -15872,16 +22288,43 @@ export namespace Prisma {
     startDate?: Date | string | null
     endDate?: Date | string | null
     size?: $Enums.BoardSize
+    mode?: $Enums.BoardMode
     diceRollLimit?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     authors?: BoardAuthorUncheckedCreateNestedManyWithoutBoardInput
     tiles?: TileUncheckedCreateNestedManyWithoutBoardInput
+    boardTeams?: BoardTeamUncheckedCreateNestedManyWithoutBoardInput
   }
 
   export type BoardCreateOrConnectWithoutPlayerBoardsInput = {
     where: BoardWhereUniqueInput
     create: XOR<BoardCreateWithoutPlayerBoardsInput, BoardUncheckedCreateWithoutPlayerBoardsInput>
+  }
+
+  export type TeamCreateWithoutPlayerBoardsInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    members?: TeamMemberCreateNestedManyWithoutTeamInput
+    boardTeams?: BoardTeamCreateNestedManyWithoutTeamInput
+  }
+
+  export type TeamUncheckedCreateWithoutPlayerBoardsInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    members?: TeamMemberUncheckedCreateNestedManyWithoutTeamInput
+    boardTeams?: BoardTeamUncheckedCreateNestedManyWithoutTeamInput
+  }
+
+  export type TeamCreateOrConnectWithoutPlayerBoardsInput = {
+    where: TeamWhereUniqueInput
+    create: XOR<TeamCreateWithoutPlayerBoardsInput, TeamUncheckedCreateWithoutPlayerBoardsInput>
   }
 
   export type CompletedTileCreateWithoutPlayerBoardInput = {
@@ -15928,7 +22371,9 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    userPermissions?: UserPermissionUpdateManyWithoutUserNestedInput
     boardAuthors?: BoardAuthorUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutPlayerBoardsInput = {
@@ -15940,7 +22385,9 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    userPermissions?: UserPermissionUncheckedUpdateManyWithoutUserNestedInput
     boardAuthors?: BoardAuthorUncheckedUpdateManyWithoutUserNestedInput
+    teamMembers?: TeamMemberUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type BoardUpsertWithoutPlayerBoardsInput = {
@@ -15961,11 +22408,13 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     authors?: BoardAuthorUpdateManyWithoutBoardNestedInput
     tiles?: TileUpdateManyWithoutBoardNestedInput
+    boardTeams?: BoardTeamUpdateManyWithoutBoardNestedInput
   }
 
   export type BoardUncheckedUpdateWithoutPlayerBoardsInput = {
@@ -15975,11 +22424,44 @@ export namespace Prisma {
     startDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     size?: EnumBoardSizeFieldUpdateOperationsInput | $Enums.BoardSize
+    mode?: EnumBoardModeFieldUpdateOperationsInput | $Enums.BoardMode
     diceRollLimit?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     authors?: BoardAuthorUncheckedUpdateManyWithoutBoardNestedInput
     tiles?: TileUncheckedUpdateManyWithoutBoardNestedInput
+    boardTeams?: BoardTeamUncheckedUpdateManyWithoutBoardNestedInput
+  }
+
+  export type TeamUpsertWithoutPlayerBoardsInput = {
+    update: XOR<TeamUpdateWithoutPlayerBoardsInput, TeamUncheckedUpdateWithoutPlayerBoardsInput>
+    create: XOR<TeamCreateWithoutPlayerBoardsInput, TeamUncheckedCreateWithoutPlayerBoardsInput>
+    where?: TeamWhereInput
+  }
+
+  export type TeamUpdateToOneWithWhereWithoutPlayerBoardsInput = {
+    where?: TeamWhereInput
+    data: XOR<TeamUpdateWithoutPlayerBoardsInput, TeamUncheckedUpdateWithoutPlayerBoardsInput>
+  }
+
+  export type TeamUpdateWithoutPlayerBoardsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    members?: TeamMemberUpdateManyWithoutTeamNestedInput
+    boardTeams?: BoardTeamUpdateManyWithoutTeamNestedInput
+  }
+
+  export type TeamUncheckedUpdateWithoutPlayerBoardsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    members?: TeamMemberUncheckedUpdateManyWithoutTeamNestedInput
+    boardTeams?: BoardTeamUncheckedUpdateManyWithoutTeamNestedInput
   }
 
   export type CompletedTileUpsertWithWhereUniqueWithoutPlayerBoardInput = {
@@ -16007,12 +22489,14 @@ export namespace Prisma {
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutPlayerBoardsInput
     board: BoardCreateNestedOneWithoutPlayerBoardsInput
+    team?: TeamCreateNestedOneWithoutPlayerBoardsInput
   }
 
   export type PlayerBoardUncheckedCreateWithoutCompletedTilesInput = {
     id?: string
     userId: string
     boardId: string
+    teamId?: string | null
     currentPosition?: number
     diceRollsToday?: number
     lastRollDate?: Date | string | null
@@ -16074,12 +22558,14 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutPlayerBoardsNestedInput
     board?: BoardUpdateOneRequiredWithoutPlayerBoardsNestedInput
+    team?: TeamUpdateOneWithoutPlayerBoardsNestedInput
   }
 
   export type PlayerBoardUncheckedUpdateWithoutCompletedTilesInput = {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
+    teamId?: NullableStringFieldUpdateOperationsInput | string | null
     currentPosition?: IntFieldUpdateOperationsInput | number
     diceRollsToday?: IntFieldUpdateOperationsInput | number
     lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -16122,6 +22608,260 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TeamMemberCreateWithoutTeamInput = {
+    id?: string
+    createdAt?: Date | string
+    user: UserCreateNestedOneWithoutTeamMembersInput
+  }
+
+  export type TeamMemberUncheckedCreateWithoutTeamInput = {
+    id?: string
+    userId: string
+    createdAt?: Date | string
+  }
+
+  export type TeamMemberCreateOrConnectWithoutTeamInput = {
+    where: TeamMemberWhereUniqueInput
+    create: XOR<TeamMemberCreateWithoutTeamInput, TeamMemberUncheckedCreateWithoutTeamInput>
+  }
+
+  export type TeamMemberCreateManyTeamInputEnvelope = {
+    data: TeamMemberCreateManyTeamInput | TeamMemberCreateManyTeamInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type BoardTeamCreateWithoutTeamInput = {
+    id?: string
+    createdAt?: Date | string
+    board: BoardCreateNestedOneWithoutBoardTeamsInput
+  }
+
+  export type BoardTeamUncheckedCreateWithoutTeamInput = {
+    id?: string
+    boardId: string
+    createdAt?: Date | string
+  }
+
+  export type BoardTeamCreateOrConnectWithoutTeamInput = {
+    where: BoardTeamWhereUniqueInput
+    create: XOR<BoardTeamCreateWithoutTeamInput, BoardTeamUncheckedCreateWithoutTeamInput>
+  }
+
+  export type BoardTeamCreateManyTeamInputEnvelope = {
+    data: BoardTeamCreateManyTeamInput | BoardTeamCreateManyTeamInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type PlayerBoardCreateWithoutTeamInput = {
+    id?: string
+    currentPosition?: number
+    diceRollsToday?: number
+    lastRollDate?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutPlayerBoardsInput
+    board: BoardCreateNestedOneWithoutPlayerBoardsInput
+    completedTiles?: CompletedTileCreateNestedManyWithoutPlayerBoardInput
+  }
+
+  export type PlayerBoardUncheckedCreateWithoutTeamInput = {
+    id?: string
+    userId: string
+    boardId: string
+    currentPosition?: number
+    diceRollsToday?: number
+    lastRollDate?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    completedTiles?: CompletedTileUncheckedCreateNestedManyWithoutPlayerBoardInput
+  }
+
+  export type PlayerBoardCreateOrConnectWithoutTeamInput = {
+    where: PlayerBoardWhereUniqueInput
+    create: XOR<PlayerBoardCreateWithoutTeamInput, PlayerBoardUncheckedCreateWithoutTeamInput>
+  }
+
+  export type PlayerBoardCreateManyTeamInputEnvelope = {
+    data: PlayerBoardCreateManyTeamInput | PlayerBoardCreateManyTeamInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TeamMemberUpsertWithWhereUniqueWithoutTeamInput = {
+    where: TeamMemberWhereUniqueInput
+    update: XOR<TeamMemberUpdateWithoutTeamInput, TeamMemberUncheckedUpdateWithoutTeamInput>
+    create: XOR<TeamMemberCreateWithoutTeamInput, TeamMemberUncheckedCreateWithoutTeamInput>
+  }
+
+  export type TeamMemberUpdateWithWhereUniqueWithoutTeamInput = {
+    where: TeamMemberWhereUniqueInput
+    data: XOR<TeamMemberUpdateWithoutTeamInput, TeamMemberUncheckedUpdateWithoutTeamInput>
+  }
+
+  export type TeamMemberUpdateManyWithWhereWithoutTeamInput = {
+    where: TeamMemberScalarWhereInput
+    data: XOR<TeamMemberUpdateManyMutationInput, TeamMemberUncheckedUpdateManyWithoutTeamInput>
+  }
+
+  export type BoardTeamUpsertWithWhereUniqueWithoutTeamInput = {
+    where: BoardTeamWhereUniqueInput
+    update: XOR<BoardTeamUpdateWithoutTeamInput, BoardTeamUncheckedUpdateWithoutTeamInput>
+    create: XOR<BoardTeamCreateWithoutTeamInput, BoardTeamUncheckedCreateWithoutTeamInput>
+  }
+
+  export type BoardTeamUpdateWithWhereUniqueWithoutTeamInput = {
+    where: BoardTeamWhereUniqueInput
+    data: XOR<BoardTeamUpdateWithoutTeamInput, BoardTeamUncheckedUpdateWithoutTeamInput>
+  }
+
+  export type BoardTeamUpdateManyWithWhereWithoutTeamInput = {
+    where: BoardTeamScalarWhereInput
+    data: XOR<BoardTeamUpdateManyMutationInput, BoardTeamUncheckedUpdateManyWithoutTeamInput>
+  }
+
+  export type PlayerBoardUpsertWithWhereUniqueWithoutTeamInput = {
+    where: PlayerBoardWhereUniqueInput
+    update: XOR<PlayerBoardUpdateWithoutTeamInput, PlayerBoardUncheckedUpdateWithoutTeamInput>
+    create: XOR<PlayerBoardCreateWithoutTeamInput, PlayerBoardUncheckedCreateWithoutTeamInput>
+  }
+
+  export type PlayerBoardUpdateWithWhereUniqueWithoutTeamInput = {
+    where: PlayerBoardWhereUniqueInput
+    data: XOR<PlayerBoardUpdateWithoutTeamInput, PlayerBoardUncheckedUpdateWithoutTeamInput>
+  }
+
+  export type PlayerBoardUpdateManyWithWhereWithoutTeamInput = {
+    where: PlayerBoardScalarWhereInput
+    data: XOR<PlayerBoardUpdateManyMutationInput, PlayerBoardUncheckedUpdateManyWithoutTeamInput>
+  }
+
+  export type TeamCreateWithoutMembersInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    boardTeams?: BoardTeamCreateNestedManyWithoutTeamInput
+    playerBoards?: PlayerBoardCreateNestedManyWithoutTeamInput
+  }
+
+  export type TeamUncheckedCreateWithoutMembersInput = {
+    id?: string
+    name: string
+    iconUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    boardTeams?: BoardTeamUncheckedCreateNestedManyWithoutTeamInput
+    playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutTeamInput
+  }
+
+  export type TeamCreateOrConnectWithoutMembersInput = {
+    where: TeamWhereUniqueInput
+    create: XOR<TeamCreateWithoutMembersInput, TeamUncheckedCreateWithoutMembersInput>
+  }
+
+  export type UserCreateWithoutTeamMembersInput = {
+    id?: string
+    discordId: string
+    discordUsername: string
+    nickname?: string | null
+    avatarUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    userPermissions?: UserPermissionCreateNestedManyWithoutUserInput
+    boardAuthors?: BoardAuthorCreateNestedManyWithoutUserInput
+    playerBoards?: PlayerBoardCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutTeamMembersInput = {
+    id?: string
+    discordId: string
+    discordUsername: string
+    nickname?: string | null
+    avatarUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    userPermissions?: UserPermissionUncheckedCreateNestedManyWithoutUserInput
+    boardAuthors?: BoardAuthorUncheckedCreateNestedManyWithoutUserInput
+    playerBoards?: PlayerBoardUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutTeamMembersInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutTeamMembersInput, UserUncheckedCreateWithoutTeamMembersInput>
+  }
+
+  export type TeamUpsertWithoutMembersInput = {
+    update: XOR<TeamUpdateWithoutMembersInput, TeamUncheckedUpdateWithoutMembersInput>
+    create: XOR<TeamCreateWithoutMembersInput, TeamUncheckedCreateWithoutMembersInput>
+    where?: TeamWhereInput
+  }
+
+  export type TeamUpdateToOneWithWhereWithoutMembersInput = {
+    where?: TeamWhereInput
+    data: XOR<TeamUpdateWithoutMembersInput, TeamUncheckedUpdateWithoutMembersInput>
+  }
+
+  export type TeamUpdateWithoutMembersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    boardTeams?: BoardTeamUpdateManyWithoutTeamNestedInput
+    playerBoards?: PlayerBoardUpdateManyWithoutTeamNestedInput
+  }
+
+  export type TeamUncheckedUpdateWithoutMembersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    iconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    boardTeams?: BoardTeamUncheckedUpdateManyWithoutTeamNestedInput
+    playerBoards?: PlayerBoardUncheckedUpdateManyWithoutTeamNestedInput
+  }
+
+  export type UserUpsertWithoutTeamMembersInput = {
+    update: XOR<UserUpdateWithoutTeamMembersInput, UserUncheckedUpdateWithoutTeamMembersInput>
+    create: XOR<UserCreateWithoutTeamMembersInput, UserUncheckedCreateWithoutTeamMembersInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutTeamMembersInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutTeamMembersInput, UserUncheckedUpdateWithoutTeamMembersInput>
+  }
+
+  export type UserUpdateWithoutTeamMembersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    discordId?: StringFieldUpdateOperationsInput | string
+    discordUsername?: StringFieldUpdateOperationsInput | string
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null
+    avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    userPermissions?: UserPermissionUpdateManyWithoutUserNestedInput
+    boardAuthors?: BoardAuthorUpdateManyWithoutUserNestedInput
+    playerBoards?: PlayerBoardUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutTeamMembersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    discordId?: StringFieldUpdateOperationsInput | string
+    discordUsername?: StringFieldUpdateOperationsInput | string
+    nickname?: NullableStringFieldUpdateOperationsInput | string | null
+    avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    userPermissions?: UserPermissionUncheckedUpdateManyWithoutUserNestedInput
+    boardAuthors?: BoardAuthorUncheckedUpdateManyWithoutUserNestedInput
+    playerBoards?: PlayerBoardUncheckedUpdateManyWithoutUserNestedInput
+  }
+
   export type UserRoleCreateManyRoleInput = {
     id?: string
     userId: string
@@ -16152,20 +22892,34 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
+  export type UserPermissionCreateManyUserInput = {
+    id?: string
+    permissionKey: string
+    createdAt?: Date | string
+  }
+
   export type BoardAuthorCreateManyUserInput = {
     id?: string
     boardId: string
+    isOwner?: boolean
     createdAt?: Date | string
   }
 
   export type PlayerBoardCreateManyUserInput = {
     id?: string
     boardId: string
+    teamId?: string | null
     currentPosition?: number
     diceRollsToday?: number
     lastRollDate?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+  }
+
+  export type TeamMemberCreateManyUserInput = {
+    id?: string
+    teamId: string
+    createdAt?: Date | string
   }
 
   export type UserRoleUpdateWithoutUserInput = {
@@ -16186,8 +22940,27 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type UserPermissionUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    permissionKey?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserPermissionUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    permissionKey?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserPermissionUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    permissionKey?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type BoardAuthorUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     board?: BoardUpdateOneRequiredWithoutAuthorsNestedInput
   }
@@ -16195,12 +22968,14 @@ export namespace Prisma {
   export type BoardAuthorUncheckedUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type BoardAuthorUncheckedUpdateManyWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -16212,12 +22987,14 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     board?: BoardUpdateOneRequiredWithoutPlayerBoardsNestedInput
+    team?: TeamUpdateOneWithoutPlayerBoardsNestedInput
     completedTiles?: CompletedTileUpdateManyWithoutPlayerBoardNestedInput
   }
 
   export type PlayerBoardUncheckedUpdateWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
+    teamId?: NullableStringFieldUpdateOperationsInput | string | null
     currentPosition?: IntFieldUpdateOperationsInput | number
     diceRollsToday?: IntFieldUpdateOperationsInput | number
     lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -16229,11 +23006,30 @@ export namespace Prisma {
   export type PlayerBoardUncheckedUpdateManyWithoutUserInput = {
     id?: StringFieldUpdateOperationsInput | string
     boardId?: StringFieldUpdateOperationsInput | string
+    teamId?: NullableStringFieldUpdateOperationsInput | string | null
     currentPosition?: IntFieldUpdateOperationsInput | number
     diceRollsToday?: IntFieldUpdateOperationsInput | number
     lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TeamMemberUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    team?: TeamUpdateOneRequiredWithoutMembersNestedInput
+  }
+
+  export type TeamMemberUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    teamId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TeamMemberUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    teamId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type TileCreateManyTaskInput = {
@@ -16285,6 +23081,7 @@ export namespace Prisma {
   export type BoardAuthorCreateManyBoardInput = {
     id?: string
     userId: string
+    isOwner?: boolean
     createdAt?: Date | string
   }
 
@@ -16302,6 +23099,7 @@ export namespace Prisma {
   export type PlayerBoardCreateManyBoardInput = {
     id?: string
     userId: string
+    teamId?: string | null
     currentPosition?: number
     diceRollsToday?: number
     lastRollDate?: Date | string | null
@@ -16309,8 +23107,15 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type BoardTeamCreateManyBoardInput = {
+    id?: string
+    teamId: string
+    createdAt?: Date | string
+  }
+
   export type BoardAuthorUpdateWithoutBoardInput = {
     id?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutBoardAuthorsNestedInput
   }
@@ -16318,12 +23123,14 @@ export namespace Prisma {
   export type BoardAuthorUncheckedUpdateWithoutBoardInput = {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type BoardAuthorUncheckedUpdateManyWithoutBoardInput = {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    isOwner?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -16370,12 +23177,14 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutPlayerBoardsNestedInput
+    team?: TeamUpdateOneWithoutPlayerBoardsNestedInput
     completedTiles?: CompletedTileUpdateManyWithoutPlayerBoardNestedInput
   }
 
   export type PlayerBoardUncheckedUpdateWithoutBoardInput = {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    teamId?: NullableStringFieldUpdateOperationsInput | string | null
     currentPosition?: IntFieldUpdateOperationsInput | number
     diceRollsToday?: IntFieldUpdateOperationsInput | number
     lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -16387,11 +23196,30 @@ export namespace Prisma {
   export type PlayerBoardUncheckedUpdateManyWithoutBoardInput = {
     id?: StringFieldUpdateOperationsInput | string
     userId?: StringFieldUpdateOperationsInput | string
+    teamId?: NullableStringFieldUpdateOperationsInput | string | null
     currentPosition?: IntFieldUpdateOperationsInput | number
     diceRollsToday?: IntFieldUpdateOperationsInput | number
     lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BoardTeamUpdateWithoutBoardInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    team?: TeamUpdateOneRequiredWithoutBoardTeamsNestedInput
+  }
+
+  export type BoardTeamUncheckedUpdateWithoutBoardInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    teamId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BoardTeamUncheckedUpdateManyWithoutBoardInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    teamId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type CompletedTileCreateManyTileInput = {
@@ -16448,6 +23276,100 @@ export namespace Prisma {
     tileId?: StringFieldUpdateOperationsInput | string
     completedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     completedVia?: EnumCompletionSourceFieldUpdateOperationsInput | $Enums.CompletionSource
+  }
+
+  export type TeamMemberCreateManyTeamInput = {
+    id?: string
+    userId: string
+    createdAt?: Date | string
+  }
+
+  export type BoardTeamCreateManyTeamInput = {
+    id?: string
+    boardId: string
+    createdAt?: Date | string
+  }
+
+  export type PlayerBoardCreateManyTeamInput = {
+    id?: string
+    userId: string
+    boardId: string
+    currentPosition?: number
+    diceRollsToday?: number
+    lastRollDate?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TeamMemberUpdateWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutTeamMembersNestedInput
+  }
+
+  export type TeamMemberUncheckedUpdateWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TeamMemberUncheckedUpdateManyWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BoardTeamUpdateWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    board?: BoardUpdateOneRequiredWithoutBoardTeamsNestedInput
+  }
+
+  export type BoardTeamUncheckedUpdateWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    boardId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type BoardTeamUncheckedUpdateManyWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    boardId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type PlayerBoardUpdateWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    currentPosition?: IntFieldUpdateOperationsInput | number
+    diceRollsToday?: IntFieldUpdateOperationsInput | number
+    lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutPlayerBoardsNestedInput
+    board?: BoardUpdateOneRequiredWithoutPlayerBoardsNestedInput
+    completedTiles?: CompletedTileUpdateManyWithoutPlayerBoardNestedInput
+  }
+
+  export type PlayerBoardUncheckedUpdateWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    boardId?: StringFieldUpdateOperationsInput | string
+    currentPosition?: IntFieldUpdateOperationsInput | number
+    diceRollsToday?: IntFieldUpdateOperationsInput | number
+    lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    completedTiles?: CompletedTileUncheckedUpdateManyWithoutPlayerBoardNestedInput
+  }
+
+  export type PlayerBoardUncheckedUpdateManyWithoutTeamInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    boardId?: StringFieldUpdateOperationsInput | string
+    currentPosition?: IntFieldUpdateOperationsInput | number
+    diceRollsToday?: IntFieldUpdateOperationsInput | number
+    lastRollDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
 

@@ -138,6 +138,13 @@ exports.Prisma.UserScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.UserPermissionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  permissionKey: 'permissionKey',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.UserRoleScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -161,15 +168,24 @@ exports.Prisma.BoardScalarFieldEnum = {
   startDate: 'startDate',
   endDate: 'endDate',
   size: 'size',
+  mode: 'mode',
   diceRollLimit: 'diceRollLimit',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.BoardTeamScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  teamId: 'teamId',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.BoardAuthorScalarFieldEnum = {
   id: 'id',
   boardId: 'boardId',
   userId: 'userId',
+  isOwner: 'isOwner',
   createdAt: 'createdAt'
 };
 
@@ -189,6 +205,7 @@ exports.Prisma.PlayerBoardScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   boardId: 'boardId',
+  teamId: 'teamId',
   currentPosition: 'currentPosition',
   diceRollsToday: 'diceRollsToday',
   lastRollDate: 'lastRollDate',
@@ -202,6 +219,21 @@ exports.Prisma.CompletedTileScalarFieldEnum = {
   tileId: 'tileId',
   completedAt: 'completedAt',
   completedVia: 'completedVia'
+};
+
+exports.Prisma.TeamScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  iconUrl: 'iconUrl',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TeamMemberScalarFieldEnum = {
+  id: 'id',
+  teamId: 'teamId',
+  userId: 'userId',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -224,6 +256,11 @@ exports.BoardSize = exports.$Enums.BoardSize = {
   SIZE_9X9: 'SIZE_9X9'
 };
 
+exports.BoardMode = exports.$Enums.BoardMode = {
+  SOLO: 'SOLO',
+  TEAM: 'TEAM'
+};
+
 exports.TileType = exports.$Enums.TileType = {
   NORMAL: 'NORMAL',
   SNAKE: 'SNAKE',
@@ -238,13 +275,17 @@ exports.CompletionSource = exports.$Enums.CompletionSource = {
 exports.Prisma.ModelName = {
   Role: 'Role',
   User: 'User',
+  UserPermission: 'UserPermission',
   UserRole: 'UserRole',
   Task: 'Task',
   Board: 'Board',
+  BoardTeam: 'BoardTeam',
   BoardAuthor: 'BoardAuthor',
   Tile: 'Tile',
   PlayerBoard: 'PlayerBoard',
-  CompletedTile: 'CompletedTile'
+  CompletedTile: 'CompletedTile',
+  Team: 'Team',
+  TeamMember: 'TeamMember'
 };
 
 /**

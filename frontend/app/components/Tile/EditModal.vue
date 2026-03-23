@@ -79,10 +79,9 @@
           variant="ghost"
           icon="i-lucide-arrow-left"
           class="self-start -ml-1"
+          :label="$t('tile_editor.back')"
           @click="step = 'choose'"
-        >
-          {{ $t('tile_editor.back') }}
-        </u-button>
+        />
 
         <task-edit-form v-model="taskEditForm" />
       </div>
@@ -95,10 +94,9 @@
           variant="ghost"
           icon="i-lucide-arrow-left"
           class="self-start -ml-1"
+          :label="$t('tile_editor.back')"
           @click="step = 'choose'"
-        >
-          {{ $t('tile_editor.back') }}
-        </u-button>
+        />
 
         <!-- Current task (read-only reference) -->
         <div v-if="selectedTask" class="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
@@ -154,10 +152,9 @@
           variant="ghost"
           icon="i-lucide-arrow-left"
           class="self-start -ml-1"
+          :label="$t('tile_editor.back')"
           @click="step = selectedTask ? 'choose' : 'replace'"
-        >
-          {{ $t('tile_editor.back') }}
-        </u-button>
+        />
 
         <u-form-field :label="$t('tile_editor.task_placeholder')">
           <u-input
@@ -240,10 +237,9 @@
           variant="ghost"
           icon="i-lucide-arrow-left"
           class="self-start -ml-1"
+          :label="$t('tile_editor.back')"
           @click="step = 'replace'"
-        >
-          {{ $t('tile_editor.back') }}
-        </u-button>
+        />
 
         <task-edit-form v-model="createTaskForm" />
       </div>
@@ -252,39 +248,48 @@
     <template #footer>
       <div class="flex justify-between w-full">
         <!-- Delete always visible -->
-        <u-button color="error" variant="ghost" icon="i-lucide-trash-2" @click="deleteTile">
-          {{ $t('common.delete') }}
-        </u-button>
+        <u-button
+          color="error"
+          variant="ghost"
+          icon="i-lucide-trash-2"
+          :label="$t('common.delete')"
+          @click="deleteTile"
+        />
 
         <div class="flex gap-2">
-          <u-button color="neutral" variant="ghost" @click="isOpen = false">
-            {{ $t('common.cancel') }}
-          </u-button>
+          <u-button
+            color="neutral"
+            variant="ghost"
+            :label="$t('common.cancel')"
+            @click="isOpen = false"
+          />
 
           <!-- Save task (edit-task step) -->
-          <u-button v-if="step === 'edit-task'" color="primary" :loading="saving" @click="saveTask">
-            {{ $t('common.save') }}
-          </u-button>
+          <u-button
+            v-if="step === 'edit-task'"
+            color="primary"
+            :loading="saving"
+            :label="$t('common.save')"
+            @click="saveTask"
+          />
 
           <!-- Save tile settings / replace -->
           <u-button
             v-else-if="step === 'edit-tile' || step === 'replace'"
             color="primary"
             :loading="saving"
+            :label="$t('common.save')"
             @click="saveTile"
-          >
-            {{ $t('common.save') }}
-          </u-button>
+          />
 
           <!-- Create new task -->
           <u-button
             v-else-if="step === 'create-task'"
             color="primary"
             :loading="saving"
+            :label="$t('common.create')"
             @click="createNewTask"
-          >
-            {{ $t('common.create') }}
-          </u-button>
+          />
         </div>
       </div>
     </template>
@@ -292,36 +297,32 @@
 </template>
 
 <script setup lang="ts">
-import type { TaskFormData } from '~/components/Task/EditForm.vue';
+import type { TaskFormData } from '~/components/Task/EditForm.vue'
+import type { TaskEntity, TileType } from '~/types/graphql'
 
-import TaskEditForm from '~/components/Task/EditForm.vue';
+import TaskEditForm from '~/components/Task/EditForm.vue'
 
-interface Task {
-  id: string;
-  title: string;
-  iconUrl: string | null;
-}
+// TileData is the editor's working shape — a partial TileEntity used for create/edit forms.
 interface TileData {
-  id?: string;
-  position: number;
-  boardId: string;
-  task: Task | null;
-  titleOverride: string | null;
-  type: 'NORMAL' | 'SNAKE' | 'LADDER';
-  targetPosition: number | null;
+  id?: string
+  position: number
+  boardId: string
+  task: TaskEntity | null
+  titleOverride: string | null
+  type: TileType
+  targetPosition: number | null
 }
 
-interface Props {
+const props = defineProps<{
   tile: TileData | null;
   totalTiles: number;
   open: boolean;
-}
-
-const props = defineProps<Props>();
+}>();
 const emit = defineEmits<{
   'update:open': [value: boolean];
   saved: [];
   deleted: [];
+  'task-updated': [{ tileId: string | undefined; task: TaskEntity }];
 }>();
 
 const { t } = useI18n();
@@ -344,7 +345,7 @@ const tileTypeOptions = [
 // Board-tile form (type / targetPosition / titleOverride)
 const form = reactive({
   titleOverride: '' as string,
-  type: 'NORMAL' as 'NORMAL' | 'SNAKE' | 'LADDER',
+  type: 'NORMAL' as TileType,
   targetPosition: null as number | null,
 });
 
@@ -363,8 +364,8 @@ const createTaskForm = ref<TaskFormData>({
 });
 
 const taskSearch = ref('');
-const taskResults = ref<Task[]>([]);
-const selectedTask = ref<Task | null>(null);
+const taskResults = ref<TaskEntity[]>([]);
+const selectedTask = ref<TaskEntity | null>(null);
 const saving = ref(false);
 
 // Populate form when tile prop changes
@@ -425,7 +426,7 @@ async function onTaskSearch() {
     return;
   }
   try {
-    const result = await useGqlMutation<{ tasks: Task[] }>(SEARCH_TASKS, {
+    const result = await useGqlMutation<{ tasks: TaskEntity[] }>(SEARCH_TASKS, {
       search: taskSearch.value,
     });
     taskResults.value = result.tasks ?? [];
@@ -434,7 +435,7 @@ async function onTaskSearch() {
   }
 }
 
-function selectTask(task: Task) {
+function selectTask(task: TaskEntity) {
   selectedTask.value = task;
   taskSearch.value = task.title;
   taskResults.value = [];
@@ -447,12 +448,12 @@ function clearTask() {
   taskResults.value = [];
 }
 
-/** Save the underlying task (icon / title / description) */
+/** Save the underlying task (icon / title / description) — updates in-place, no full reload */
 async function saveTask() {
   if (!selectedTask.value?.id) return;
   saving.value = true;
   try {
-    const result = await useGqlMutation<{ updateTask: Task }>(UPDATE_TASK_GQL, {
+    const result = await useGqlMutation<{ updateTask: TaskEntity }>(UPDATE_TASK_GQL, {
       id: selectedTask.value.id,
       input: {
         title: taskEditForm.value.title || undefined,
@@ -460,9 +461,11 @@ async function saveTask() {
         description: taskEditForm.value.description || null,
       },
     });
-    selectedTask.value = { ...selectedTask.value, ...result.updateTask };
+    const updatedTask = { ...selectedTask.value, ...result.updateTask } as TaskEntity;
+    selectedTask.value = updatedTask;
     toast.add({ title: t('tile_editor.task_saved'), color: 'success' });
-    emit('saved');
+    // Emit task-updated so the parent can patch the tile in-place without a full board refresh
+    emit('task-updated', { tileId: props.tile?.id, task: updatedTask });
     isOpen.value = false;
   } catch (e) {
     toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' });
@@ -501,7 +504,7 @@ async function createNewTask() {
   if (!props.tile || !createTaskForm.value.title.trim()) return;
   saving.value = true;
   try {
-    const result = await useGqlMutation<{ createTask: Task }>(CREATE_TASK_GQL, {
+    const result = await useGqlMutation<{ createTask: TaskEntity }>(CREATE_TASK_GQL, {
       input: {
         title: createTaskForm.value.title.trim(),
         iconUrl: createTaskForm.value.iconUrl || null,

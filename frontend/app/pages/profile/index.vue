@@ -4,7 +4,6 @@
       <u-container class="max-w-3xl">
         <div v-if="!authStore.user" class="text-center py-12 text-muted">
           <u-skeleton class="h-24 w-24 rounded-full mx-auto mb-4" />
-
           <u-skeleton class="h-6 w-48 mx-auto" />
         </div>
 
@@ -23,7 +22,6 @@
                 <!-- Editable display name -->
                 <div v-if="!editingProfile" class="flex items-center gap-2">
                   <h2 class="text-2xl font-bold osrs-font">{{ authStore.displayName }}</h2>
-
                   <u-button
                     size="xs"
                     color="neutral"
@@ -40,7 +38,6 @@
                     class="flex-1"
                     size="sm"
                   />
-
                   <u-button
                     size="sm"
                     color="primary"
@@ -48,7 +45,6 @@
                     icon="i-lucide-check"
                     @click="saveProfile"
                   />
-
                   <u-button
                     size="sm"
                     color="neutral"
@@ -63,7 +59,7 @@
                 </p>
 
                 <p class="text-muted text-sm mt-1">
-                  <u-icon name="i-heroicons-identification" class="inline mr-1" />
+                  <u-icon name="i-lucide-id-card" class="inline mr-1" />
                   Discord ID: {{ authStore.user.discordId }}
                 </p>
 
@@ -87,13 +83,12 @@
           <div>
             <h3 class="text-lg font-semibold osrs-font mb-4">{{ $t('profile.your_boards') }}</h3>
 
-            <div v-if="boardsPending" class="space-y-3">
+            <div v-if="loading" class="space-y-3">
               <u-skeleton v-for="i in 3" :key="i" class="h-20" />
             </div>
 
             <div v-else-if="playerBoards.length === 0" class="text-center py-8 text-muted">
-              <u-icon name="i-heroicons-squares-2x2" class="text-5xl mb-4 block mx-auto" />
-
+              <u-icon name="i-lucide-layout-grid" class="text-5xl mb-4 block mx-auto" />
               <p>{{ $t('profile.no_boards') }}</p>
             </div>
 
@@ -108,20 +103,18 @@
                       >
                         {{ pb.board.title }}
                       </nuxt-link>
-
                       <u-badge color="primary" variant="subtle">
-                        {{ formatSize(pb.board.size) }}
+                        {{ formatBoardSize(pb.board.size) }}
                       </u-badge>
                     </div>
 
                     <div class="flex items-center gap-4 text-sm text-muted flex-wrap">
                       <span>
-                        <u-icon name="i-heroicons-map-pin" class="inline mr-1" />
+                        <u-icon name="i-lucide-map-pin" class="inline mr-1" />
                         {{ $t('board.position', { pos: pb.currentPosition }) }}
                       </span>
-
                       <span>
-                        <u-icon name="i-heroicons-check-circle" class="inline mr-1" />
+                        <u-icon name="i-lucide-circle-check" class="inline mr-1" />
                         {{ pb.completedTiles.length }} {{ $t('profile.tiles_completed') }}
                       </span>
                     </div>
@@ -131,10 +124,8 @@
                   <div class="w-32 shrink-0">
                     <div class="flex justify-between text-xs text-muted mb-1">
                       <span>{{ $t('profile.progress') }}</span>
-
                       <span>{{ progressPct(pb) }}%</span>
                     </div>
-
                     <div class="h-2 rounded-full bg-muted overflow-hidden">
                       <div
                         class="h-full bg-primary-500 rounded-full transition-all"
@@ -145,13 +136,12 @@
 
                   <u-button
                     :to="`/boards/${pb.board.id}`"
-                    icon="i-heroicons-play"
+                    icon="i-lucide-play"
                     color="primary"
                     variant="outline"
                     size="sm"
-                  >
-                    {{ $t('boards.play') }}
-                  </u-button>
+                    :label="$t('boards.play')"
+                  />
                 </div>
               </u-card>
             </div>
@@ -163,112 +153,84 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ middleware: ['auth'] });
+import type { PlayerBoardEntity } from '~/types/graphql'
+import { useMyPlayerBoards } from '~/composables/usePlayers'
+import { useMe } from '~/composables/useUsers'
+import { formatBoardSize, BOARD_TILE_COUNT } from '~/utils/board'
 
-const authStore = useAuthStore();
-const { t } = useI18n();
-const toast = useToast();
+definePageMeta({ middleware: ['auth'] })
 
-// Nickname editing
-const editingProfile = ref(false);
-const nicknameInput = ref('');
-const savingProfile = ref(false);
+const authStore = useAuthStore()
+const { t } = useI18n()
+const toast = useToast()
 
-const UPDATE_PROFILE_MUTATION = `mutation UpdateProfile($nickname: String) {
-  updateProfile(nickname: $nickname) { id discordUsername nickname }
-}`;
+// ─── Profile editing ──────────────────────────────────────────────────────────
+
+const editingProfile = ref(false)
+const nicknameInput = ref('')
+const savingProfile = ref(false)
+
+const { updateProfile } = await useMe()
 
 function startEditingProfile() {
-  nicknameInput.value = authStore.user?.nickname ?? '';
-  editingProfile.value = true;
+  nicknameInput.value = authStore.user?.nickname ?? ''
+  editingProfile.value = true
 }
 
 function cancelEditingProfile() {
-  editingProfile.value = false;
+  editingProfile.value = false
 }
 
 async function saveProfile() {
-  savingProfile.value = true;
+  savingProfile.value = true
   try {
-    const result = await useGqlMutation<{
-      updateProfile: { id: string; discordUsername: string; nickname: string | null };
-    }>(UPDATE_PROFILE_MUTATION, { nickname: nicknameInput.value.trim() || null });
+    const updated = await updateProfile(nicknameInput.value.trim() || null)
     if (authStore.user) {
-      authStore.user.nickname = result.updateProfile.nickname;
+      authStore.user.nickname = updated.nickname
     }
-    editingProfile.value = false;
-    toast.add({ title: t('profile.nickname_saved'), color: 'success' });
+    editingProfile.value = false
+    toast.add({ title: t('profile.nickname_saved'), color: 'success' })
   } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' });
+    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
   } finally {
-    savingProfile.value = false;
+    savingProfile.value = false
   }
 }
 
-const MY_BOARDS_QUERY = `
-  query MyBoards {
-    myPlayerBoards {
-      id
-      currentPosition
-      board {
-        id
-        title
-        size
-      }
-      completedTiles {
-        id
-      }
-    }
-  }
-`;
+// ─── Player boards ────────────────────────────────────────────────────────────
 
-const { data: boardsData, pending: boardsPending } = await useGql<{ myPlayerBoards: any[] }>(
-  MY_BOARDS_QUERY,
-);
-const playerBoards = computed(() => boardsData.value?.myPlayerBoards ?? []);
+const { playerBoards, loading, load: loadBoards } = useMyPlayerBoards()
 
-// Map Prisma enum to display string
-const SIZE_DISPLAY: Record<string, string> = {
-  SIZE_5X5: '5×5',
-  SIZE_7X7: '7×7',
-  SIZE_9X9: '9×9',
-};
+onMounted(loadBoards)
 
-function formatSize(size: string): string {
-  return SIZE_DISPLAY[size] ?? size;
-}
-
-const TILE_COUNT: Record<string, number> = {
-  SIZE_5X5: 25,
-  SIZE_7X7: 49,
-  SIZE_9X9: 81,
-};
+// ─── Role display helpers ─────────────────────────────────────────────────────
 
 function roleColor(name: string): string {
   const map: Record<string, string> = {
     ADMIN: 'error',
-    EDITOR: 'amber',
-    TEAM_MANAGER: 'sky',
+    EDITOR: 'warning',
+    TEAM_MANAGER: 'info',
     PLAYER: 'primary',
-  };
-  return map[name] ?? 'neutral';
+  }
+  return map[name] ?? 'neutral'
 }
 
 function roleIcon(name: string): string {
   const map: Record<string, string> = {
-    ADMIN: 'i-heroicons-shield-check',
-    EDITOR: 'i-heroicons-pencil-square',
-    TEAM_MANAGER: 'i-heroicons-user-group',
-    PLAYER: 'i-heroicons-user',
-  };
-  return map[name] ?? 'i-heroicons-user';
+    ADMIN: 'i-lucide-shield-check',
+    EDITOR: 'i-lucide-pencil',
+    TEAM_MANAGER: 'i-lucide-users',
+    PLAYER: 'i-lucide-user',
+  }
+  return map[name] ?? 'i-lucide-user'
 }
 
-// Progress is position-based: how far the player has advanced on the board
-function progressPct(pb: any): number {
-  const total = TILE_COUNT[pb.board.size] ?? 25;
-  if (total <= 1) return 0;
-  const pos = Math.max(0, pb.currentPosition);
-  return Math.min(99, Math.floor((pos / (total - 1)) * 100));
+// ─── Progress helpers ─────────────────────────────────────────────────────────
+
+function progressPct(pb: PlayerBoardEntity): number {
+  const total = BOARD_TILE_COUNT[pb.board.size] ?? 25
+  if (total <= 1) return 0
+  const pos = Math.max(0, pb.currentPosition)
+  return Math.min(99, Math.floor((pos / (total - 1)) * 100))
 }
 </script>
