@@ -64,7 +64,7 @@ export async function useGql<T = Record<string, unknown>>(
       },
     );
     if (response.errors?.length) {
-      throw new Error(response.errors[0].message);
+      throw new Error(response.errors.map(e => e.message).join('; '));
     }
     return response.data;
   };
@@ -113,7 +113,7 @@ export async function useGqlMutation<T = Record<string, unknown>>(
   );
 
   if (response.errors?.length) {
-    throw new Error(response.errors[0].message);
+    throw new Error(response.errors.map(e => e.message).join('; '));
   }
 
   return response.data;

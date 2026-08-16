@@ -41,7 +41,7 @@
         :model-value="modelValue.size"
         :items="sizeOptions"
         class="w-full"
-        @update:model-value="emit('update:modelValue', { ...modelValue, size: $event })"
+        @update:model-value="emit('update:modelValue', { ...modelValue, size: $event as BoardFormData['size'] })"
       />
     </u-form-field>
 
@@ -55,7 +55,7 @@
         :model-value="modelValue.mode"
         :items="modeOptions"
         class="w-full"
-        @update:model-value="emit('update:modelValue', { ...modelValue, mode: $event })"
+        @update:model-value="emit('update:modelValue', { ...modelValue, mode: $event as BoardFormData['mode'] })"
       />
     </u-form-field>
   </div>

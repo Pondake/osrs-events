@@ -44,7 +44,7 @@
         <u-checkbox
           :model-value="modelValue.unlimitedRolls"
           :label="$t('admin.dice_roll_unlimited')"
-          @update:model-value="emit('update:modelValue', { ...modelValue, unlimitedRolls: $event })"
+          @update:model-value="emit('update:modelValue', { ...modelValue, unlimitedRolls: $event === true })"
         />
       </div>
     </u-form-field>
@@ -52,7 +52,8 @@
 </template>
 
 <script setup lang="ts">
-import type { CalendarDate } from '@internationalized/date'
+import { parseDate } from '@internationalized/date'
+import type { DateValue } from '@internationalized/date'
 import type { BoardFormData } from '~/components/Board/SettingsForm.vue'
 
 const props = defineProps<{
@@ -65,17 +66,29 @@ const emit = defineEmits<{
 
 const inputDate = useTemplateRef('inputDate')
 
+// BoardFormData carries ISO strings; the calendar components want DateValue.
+// This component is the only place the two representations meet.
+function toDateValue(iso: string | null): DateValue | undefined {
+  if (!iso) return undefined
+  try {
+    return parseDate(iso)
+  } catch {
+    // A malformed stored date should blank the field, not break the form.
+    return undefined
+  }
+}
+
 const dateRange = computed(() => ({
-  start: props.modelValue.startDate,
-  end: props.modelValue.endDate,
+  start: toDateValue(props.modelValue.startDate),
+  end: toDateValue(props.modelValue.endDate),
 }))
 
-function onDateRangeChange(val: { start: CalendarDate | null; end: CalendarDate | null } | null) {
+function onDateRangeChange(val: { start?: DateValue, end?: DateValue } | null | undefined) {
   if (!val) return
   emit('update:modelValue', {
     ...props.modelValue,
-    startDate: val.start ?? null,
-    endDate: val.end ?? null,
+    startDate: val.start?.toString() ?? null,
+    endDate: val.end?.toString() ?? null,
   })
 }
 </script>

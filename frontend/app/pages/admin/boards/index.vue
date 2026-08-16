@@ -127,7 +127,6 @@
 </template>
 
 <script setup lang="ts">
-import { parseDate } from '@internationalized/date'
 import type { BoardEntity } from '~/types/graphql'
 import { useBoards } from '~/composables/useBoards'
 import { formatDate, formatBoardSize } from '~/utils/board'
@@ -177,8 +176,8 @@ function openSettings(board: BoardEntity) {
       teamId: bt.teamId,
       team: bt.team,
     })),
-    startDate: board.startDate ? parseDate(board.startDate.toString().slice(0, 10)) : null,
-    endDate: board.endDate ? parseDate(board.endDate.toString().slice(0, 10)) : null,
+    startDate: board.startDate?.toString().slice(0, 10) ?? null,
+    endDate: board.endDate?.toString().slice(0, 10) ?? null,
     isListed: board.isListed,
     accessMode: board.accessMode as 'OPEN' | 'GUILD' | 'INVITE',
     requiredGuildId: board.requiredGuildId ?? null,
