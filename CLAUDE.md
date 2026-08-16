@@ -116,7 +116,14 @@ Register new modules in `AppModule` imports (`backend/src/app.module.ts`).
 ### Prisma
 - Schema: `backend/prisma/schema.prisma`
 - After changes: `pnpm prisma migrate dev --name <descriptive_name>` then `pnpm prisma generate`
-- Generated client: `backend/src/generated/prisma/` — **never edit**
+- Generated client: `backend/src/generated/prisma/` — **never edit**, and never commit
+  (gitignored; `postinstall` regenerates it)
+- **`postinstall` runs `prisma generate` only.** Never add `prisma migrate deploy`
+  to it: `postinstall` fires on every `pnpm install`, including build containers
+  with no database access (this broke the Vercel deploy) and every developer
+  machine — so a dev whose `.env` pointed at production would migrate production
+  just by installing dependencies.
+- Applying migrations is a deliberate release step: `pnpm migrate:deploy`.
 - Runtime: `PrismaPg` driver adapter (`@prisma/adapter-pg`)
 
 ### GraphQL resolvers
