@@ -80,8 +80,13 @@
     "ends": "Ends",
     "load_error": "Failed to load boards",
     "team_mode": "Team board",
-    "access_server": "Server",
-    "access_invite": "Invite only"
+    "access_open": "Open to all",
+    "access_server": "Discord server",
+    "access_invite": "Invite only",
+    "status_upcoming": "Upcoming",
+    "status_live": "Running",
+    "status_ended": "Ended",
+    "unlisted": "Hidden"
   },
   "board": {
     "edit_mode": "Edit mode",

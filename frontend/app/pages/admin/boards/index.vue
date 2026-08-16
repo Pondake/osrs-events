@@ -53,7 +53,7 @@
                 />
 
                 <u-badge
-                  v-if="(board as any).mode === 'TEAM'"
+                  v-if="board.mode === 'TEAM'"
                   color="warning"
                   variant="subtle"
                   :label="$t('boards.team_mode')"
@@ -64,6 +64,24 @@
                   color="neutral"
                   variant="subtle"
                   :label="$t('boards.roll_limit', { limit: board.diceRollLimit })"
+                />
+
+                <u-badge
+                  v-if="accessBadge(board.accessMode)"
+                  :color="accessBadge(board.accessMode)!.color"
+                  variant="subtle"
+                  :icon="accessBadge(board.accessMode)!.icon"
+                  :label="$t(accessBadge(board.accessMode)!.key)"
+                />
+
+                <!-- Unlike /boards, this list is unfiltered, so unlisted boards
+                     appear here and need to be distinguishable. -->
+                <u-badge
+                  v-if="!board.isListed"
+                  color="neutral"
+                  variant="outline"
+                  icon="i-lucide-eye-off"
+                  :label="$t('boards.unlisted')"
                 />
               </div>
             </template>
@@ -173,7 +191,7 @@ import type { BoardFormData } from '~/components/Board/SettingsForm.vue';
 import type { BoardEntity } from '~/types/graphql';
 
 import { useBoards } from '~/composables/useBoards';
-import { formatDate, formatBoardSize } from '~/utils/board';
+import { formatDate, formatBoardSize, BOARD_ACCESS_BADGE } from '~/utils/board';
 
 definePageMeta({ middleware: ['admin'] });
 
@@ -190,6 +208,10 @@ const filteredBoards = computed(() => {
 });
 
 // ─── Settings modal ───────────────────────────────────────────────────────────
+
+function accessBadge(mode: string | null | undefined) {
+  return mode ? BOARD_ACCESS_BADGE[mode] : undefined;
+}
 
 const showSettingsModal = ref(false);
 const editingBoardId = ref<string | null>(null);
