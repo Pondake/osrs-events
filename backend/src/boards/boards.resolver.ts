@@ -14,11 +14,19 @@ import { UserEntity } from '../users/entities/user.entity'
 export class BoardsResolver {
   constructor(private boardsService: BoardsService) {}
 
-  /** List all boards — public (optional auth for player-specific data) */
+  /** List all boards — public, only shows listed boards */
   @UseGuards(OptionalJwtAuthGuard)
   @Query(() => [BoardEntity], { name: 'boards' })
   findAll() {
     return this.boardsService.findAll()
+  }
+
+  /** List all boards including unlisted — admin/editor only */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'EDITOR')
+  @Query(() => [BoardEntity], { name: 'allBoards' })
+  findAllAdmin() {
+    return this.boardsService.findAllAdmin()
   }
 
   /** Get a single board by UUID */

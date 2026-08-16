@@ -66,6 +66,25 @@
                       {{ board.authors.map(a => a.user.nickname ?? a.user.discordUsername).join(', ') }}
                     </span>
                   </div>
+
+                  <div class="flex gap-1 mt-1">
+                    <u-badge
+                      v-if="(board as any).accessMode === 'GUILD'"
+                      color="info"
+                      variant="subtle"
+                      size="xs"
+                      icon="i-lucide-shield"
+                      :label="$t('boards.access_server')"
+                    />
+                    <u-badge
+                      v-else-if="(board as any).accessMode === 'INVITE'"
+                      color="warning"
+                      variant="subtle"
+                      size="xs"
+                      icon="i-lucide-lock"
+                      :label="$t('boards.access_invite')"
+                    />
+                  </div>
                 </div>
               </template>
 

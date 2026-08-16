@@ -26,7 +26,7 @@
               <u-button
                 variant="ghost"
                 color="error"
-                size="2xs"
+                size="xs"
                 icon="i-lucide-x"
                 :loading="removingMemberId === member.userId"
                 :disabled="!!removingMemberId && removingMemberId !== member.userId"

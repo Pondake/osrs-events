@@ -17,8 +17,29 @@ const TEAM_INCLUDE = {
 export class TeamsService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
+  /**
+   * List teams.
+   * - Admin: all teams
+   * - TEAM_MANAGER: teams whose guildId is in the viewer's UserGuild set, plus unguilded teams
+   */
+  async findAll(viewerUserId?: string, isAdmin = false) {
+    if (isAdmin || !viewerUserId) {
+      return this.prisma.team.findMany({ include: TEAM_INCLUDE, orderBy: { name: 'asc' } })
+    }
+
+    const userGuilds = await this.prisma.userGuild.findMany({
+      where: { userId: viewerUserId },
+      select: { guildId: true }
+    })
+    const guildIds = userGuilds.map(g => g.guildId)
+
     return this.prisma.team.findMany({
+      where: {
+        OR: [
+          { guildId: null },
+          { guildId: { in: guildIds } }
+        ]
+      },
       include: TEAM_INCLUDE,
       orderBy: { name: 'asc' },
     })
@@ -39,7 +60,7 @@ export class TeamsService {
 
   async create(input: CreateTeamInput, creatorId: string) {
     const team = await this.prisma.team.create({
-      data: { name: input.name, iconUrl: input.iconUrl },
+      data: { name: input.name, iconUrl: input.iconUrl, guildId: input.guildId, guildName: input.guildName },
     })
     // Auto-add the creator as the first member
     await this.prisma.teamMember.create({
@@ -52,7 +73,7 @@ export class TeamsService {
     await this.findByIdOrThrow(id)
     return this.prisma.team.update({
       where: { id },
-      data: { name: input.name, iconUrl: input.iconUrl },
+      data: { name: input.name, iconUrl: input.iconUrl, guildId: input.guildId, guildName: input.guildName },
       include: TEAM_INCLUDE,
     })
   }

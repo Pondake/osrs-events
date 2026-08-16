@@ -16,7 +16,9 @@
     "confirm": "Confirm",
     "back": "Back",
     "or": "or",
-    "not_affiliated": "Not affiliated with Jagex Ltd."
+    "not_affiliated": "Not affiliated with Jagex Ltd.",
+    "copy": "Copy",
+    "next": "Next"
   },
   "nav": {
     "boards": "Boards",
@@ -77,7 +79,9 @@
     "starts": "Starts",
     "ends": "Ends",
     "load_error": "Failed to load boards",
-    "team_mode": "Team board"
+    "team_mode": "Team board",
+    "access_server": "Server",
+    "access_invite": "Invite only"
   },
   "board": {
     "edit_mode": "Edit mode",
@@ -103,7 +107,23 @@
     "no_team_desc": "This is a team board. Join or create a team that has been added to this board to play.",
     "go_to_teams": "Go to Teams",
     "mode_solo": "Solo board",
-    "mode_team": "Team board"
+    "mode_team": "Team board",
+    "join_board": "Join this board",
+    "join_to_play": "Join to play",
+    "join_to_play_desc": "You need to join this board before you can play.",
+    "invite_only": "Invite only",
+    "invite_only_desc": "Enter an invite code or use a magic link to join this board.",
+    "guild_only": "Discord members only",
+    "guild_only_desc": "You're in {guild} — click below to join.",
+    "guild_only_blocked_desc": "This board is restricted to members of a specific Discord server.",
+    "requires_guild": "Requires membership in \"{guild}\".",
+    "relink_discord": "Re-link Discord",
+    "enter_code": "Enter code",
+    "join_with_code": "Join",
+    "joining": "Joining...",
+    "join_failed": "Couldn't join",
+    "joined_board": "You've joined the board!",
+    "unknown_guild": "a Discord server"
   },
   "tile_editor": {
     "title": "Edit Tile",
@@ -134,9 +154,27 @@
     "task_created": "Task created and assigned!"
   },
   "admin": {
+    "step_basics": "Basics",
+    "step_basics_desc": "Name, size & mode",
+    "step_schedule": "Schedule",
+    "step_schedule_desc": "Dates & dice rules",
+    "step_access": "Access",
+    "step_access_desc": "Visibility & access",
+    "step_editors": "Editors",
+    "step_editors_desc": "Authors & teams",
     "boards_title": "Manage Boards",
     "boards_subtitle": "Create and manage your event boards.",
     "create_board": "Create Board",
+    "invite_links": "Invite links",
+    "no_invites": "No invite links yet.",
+    "create_invite": "Create invite",
+    "invite_label": "Label (optional)",
+    "invite_label_placeholder": "e.g. Discord #events",
+    "invite_max_uses": "Max uses",
+    "invite_unlimited": "Unlimited",
+    "invite_created": "Invite link created!",
+    "invite_revoked": "Invite link revoked.",
+    "invite_copied": "Link copied to clipboard!",
     "board_title": "Board title",
     "board_description": "Description",
     "board_size": "Board size",
@@ -215,7 +253,11 @@
     "delete_user": "Delete user",
     "delete_user_confirm": "Are you sure you want to delete {name}? This cannot be undone.",
     "user_deleted": "User {name} deleted.",
-    "cannot_delete_admin": "Admin users cannot be deleted."
+    "cannot_delete_admin": "Admin users cannot be deleted.",
+    "cancel_create_title": "Discard changes?",
+    "cancel_create_desc": "You have unsaved changes. Are you sure you want to discard them?",
+    "cancel_create_keep": "Keep editing",
+    "cancel_create_discard": "Discard"
   },
   "profile": {
     "title": "Profile",
@@ -243,7 +285,8 @@
     "title_required": "Title is required",
     "title_too_long": "Title cannot exceed 100 characters",
     "desc_too_long": "Description cannot exceed 500 characters",
-    "size_required": "Please select a board size"
+    "size_required": "Please select a board size",
+    "server_required": "Please select a Discord server for this access mode"
   },
   "leaderboard": {
     "title": "Leaderboard",

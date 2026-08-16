@@ -42,6 +42,14 @@ onMounted(async () => {
       color: 'success',
     });
 
+    // Honour post-auth redirect (e.g. magic invite links)
+    const redirect = import.meta.client ? localStorage.getItem('post_auth_redirect') : null;
+    if (redirect) {
+      localStorage.removeItem('post_auth_redirect');
+      navigateTo(redirect, { replace: true });
+      return;
+    }
+
     // Replace history entry so the JWT token doesn't remain in browser history
     navigateTo('/boards', { replace: true });
   } else {

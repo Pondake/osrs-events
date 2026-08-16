@@ -218,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { type UserEntity, PermissionKey } from '~/types/graphql'
+import type { UserEntity, PermissionKey } from '~/types/graphql'
 import { useUsers, fetchUserPermissions, grantPermission, revokePermission, deleteUser as deleteUserMutation } from '~/composables/useUsers'
 import { useAuthStore } from '~/stores/auth'
 import { formatDate } from '~/utils/board'
@@ -306,9 +306,9 @@ function openRolesModal(user: UserEntity) {
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
 
-const permissionDefs = computed(() => [
-  { key: PermissionKey.CanCreateBoards, label: t('admin.perm_label_can_create_boards'), description: t('admin.perm_desc_can_create_boards') },
-  { key: PermissionKey.CanCreateTiles,  label: t('admin.perm_label_can_create_tiles'),  description: t('admin.perm_desc_can_create_tiles') },
+const permissionDefs = computed<{ key: PermissionKey, label: string, description: string }[]>(() => [
+  { key: 'CAN_CREATE_BOARDS', label: t('admin.perm_label_can_create_boards'), description: t('admin.perm_desc_can_create_boards') },
+  { key: 'CAN_CREATE_TILES', label: t('admin.perm_label_can_create_tiles'), description: t('admin.perm_desc_can_create_tiles') },
 ])
 
 const userPermissionsMap = ref<Record<string, string[]>>({})

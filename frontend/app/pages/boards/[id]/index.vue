@@ -78,7 +78,18 @@
 
     <!-- Board content -->
     <template v-else-if="board">
-      <u-page-body>
+      <!-- Access gate: user needs to join the board -->
+      <template v-if="showAccessGate">
+        <board-access-gate
+          :access-mode="boardAccessMode"
+          :required-guild-id="boardRequiredGuildId"
+          :joining="joiningBoard"
+          @join="doJoinBoard()"
+          @join-with-code="onJoinWithCode"
+        />
+      </template>
+
+      <u-page-body v-else>
         <u-container>
           <!-- TEAM mode: user has no team on this board -->
           <u-alert
@@ -201,6 +212,9 @@ const {
   totalTiles,
   boardMinWidth,
   isTeamBoard,
+  boardAccess,
+  joiningBoard,
+  doJoinBoard,
   playerBoard,
   playerBoardLoading,
   otherPlayerStates,
@@ -229,6 +243,22 @@ const {
   onCompleteTile,
   onUncompleteTile,
 } = useBoardPage(boardId, board, refresh, updateBoard as any)
+
+const boardAccessMode = computed(() => (board.value as any)?.accessMode ?? 'OPEN')
+const boardRequiredGuildId = computed(() => (board.value as any)?.requiredGuildId ?? null)
+
+// Show AccessGate when: user is authenticated, board has loaded, but has no PlayerBoard
+// and board access mode is not OPEN, OR board is OPEN but hasn't joined yet
+const showAccessGate = computed(() =>
+  !!board.value &&
+  !!authStore.user &&
+  !playerBoardLoading.value &&
+  !playerBoard.value
+)
+
+async function onJoinWithCode(code: string) {
+  await doJoinBoard(code)
+}
 
 function clearClickedTile() {
   clickedTile.value = null

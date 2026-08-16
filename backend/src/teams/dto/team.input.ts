@@ -7,6 +7,12 @@ export class CreateTeamInput {
 
   @Field({ nullable: true })
   iconUrl?: string
+
+  @Field({ nullable: true })
+  guildId?: string
+
+  @Field({ nullable: true })
+  guildName?: string
 }
 
 @InputType()
@@ -16,6 +22,12 @@ export class UpdateTeamInput {
 
   @Field({ nullable: true })
   iconUrl?: string
+
+  @Field({ nullable: true })
+  guildId?: string
+
+  @Field({ nullable: true })
+  guildName?: string
 }
 
 @InputType()

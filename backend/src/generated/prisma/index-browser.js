@@ -170,6 +170,9 @@ exports.Prisma.BoardScalarFieldEnum = {
   size: 'size',
   mode: 'mode',
   diceRollLimit: 'diceRollLimit',
+  isListed: 'isListed',
+  accessMode: 'accessMode',
+  requiredGuildId: 'requiredGuildId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -225,6 +228,8 @@ exports.Prisma.TeamScalarFieldEnum = {
   id: 'id',
   name: 'name',
   iconUrl: 'iconUrl',
+  guildId: 'guildId',
+  guildName: 'guildName',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -234,6 +239,37 @@ exports.Prisma.TeamMemberScalarFieldEnum = {
   teamId: 'teamId',
   userId: 'userId',
   createdAt: 'createdAt'
+};
+
+exports.Prisma.UserGuildScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  guildId: 'guildId',
+  guildName: 'guildName',
+  guildIcon: 'guildIcon',
+  syncedAt: 'syncedAt'
+};
+
+exports.Prisma.BoardInviteScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  token: 'token',
+  shortCode: 'shortCode',
+  label: 'label',
+  createdBy: 'createdBy',
+  expiresAt: 'expiresAt',
+  maxUses: 'maxUses',
+  useCount: 'useCount',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.BoardAccessScalarFieldEnum = {
+  id: 'id',
+  boardId: 'boardId',
+  userId: 'userId',
+  inviteId: 'inviteId',
+  accessMode: 'accessMode',
+  joinedAt: 'joinedAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -261,6 +297,12 @@ exports.BoardMode = exports.$Enums.BoardMode = {
   TEAM: 'TEAM'
 };
 
+exports.BoardAccessMode = exports.$Enums.BoardAccessMode = {
+  OPEN: 'OPEN',
+  GUILD: 'GUILD',
+  INVITE: 'INVITE'
+};
+
 exports.TileType = exports.$Enums.TileType = {
   NORMAL: 'NORMAL',
   SNAKE: 'SNAKE',
@@ -285,7 +327,10 @@ exports.Prisma.ModelName = {
   PlayerBoard: 'PlayerBoard',
   CompletedTile: 'CompletedTile',
   Team: 'Team',
-  TeamMember: 'TeamMember'
+  TeamMember: 'TeamMember',
+  UserGuild: 'UserGuild',
+  BoardInvite: 'BoardInvite',
+  BoardAccess: 'BoardAccess'
 };
 
 /**

@@ -93,6 +93,53 @@
 
 ---
 
+## Phase 3 — Board Access Control & Invites
+
+### ✅ Completed
+
+#### Schema & Backend
+
+- [x] **`BoardAccessMode` enum**: `OPEN` | `GUILD` | `INVITE`
+- [x] **`isListed` boolean** on `Board` (default `true`) — toggle board visibility on public list
+- [x] **`accessMode` + `requiredGuildId`** on `Board` — controls who can join
+- [x] **`UserGuild` model**: `id, userId, guildId, guildName, guildIcon?, syncedAt` — Discord server membership cache; `@@unique([userId, guildId])`
+- [x] **`BoardInvite` model**: `id, boardId, token (uuid unique), shortCode (6-char), createdBy, expiresAt?, maxUses?, useCount, createdAt`; `@@unique([boardId, shortCode])`
+- [x] **`BoardAccess` model**: `id, boardId, userId, inviteId?, accessMode, joinedAt`; `@@unique([boardId, userId])`
+- [x] **`Team.guildId` + `Team.guildName`** — teams scoped to Discord guilds
+- [x] Prisma migration `phase3_access_control`
+- [x] **Auth guilds scope**: `identify guilds` scope; guild list fetched after login; synced into `UserGuild` via `syncGuilds()` transaction
+- [x] **`InvitesModule`**: `createInvite`, `useInvite` (idempotent, validates expiry/maxUses, increments count), `revokeInvite`, `getInvitesByBoard`, unique 6-char `shortCode` generation
+- [x] **`AccessModule`**: `canJoin` (OPEN / GUILD / INVITE checks), `hasAccess`, `joinBoard` (creates `BoardAccess`, idempotent), `getMyBoardAccess`; returns `BoardAccessEntity`
+- [x] **`PlayersService` fix**: `myBoardState` resolver now calls `findPlayerBoard` (pure read, gated on `hasAccess`) instead of auto-creating — access control can no longer be bypassed
+- [x] **Boards module**: `isListed`, `accessMode`, `requiredGuildId` on entity, inputs, service; `findAll()` filters to `isListed: true`; `findAllAdmin()` bypasses filter; `allBoards` query for ADMIN/EDITOR
+- [x] **Teams guild scope**: `TeamsService.findAll()` filters by user's guilds when non-admin; `guildId`/`guildName` fields pass through create/update
+
+#### Frontend
+
+- [x] **Codegen** — `app/types/graphql.ts` regenerated: `BoardAccessMode`, `BoardAccessEntity`, `BoardInviteEntity`, `isListed`, `accessMode`, `requiredGuildId`, `guildId`, `guildName`
+- [x] **`useAccess.ts`** — `useMyBoardAccess(boardId)` reactive lookup; `joinBoard(boardId, tokenOrCode?)` imperative mutation
+- [x] **`useInvites.ts`** — `useBoardInvites(boardId)` reactive list; `createInvite`, `revokeInvite`
+- [x] **`useBoards.ts`** — `isListed accessMode requiredGuildId` in field selection; `useAllBoards()` for admin pages
+- [x] **`useTeams.ts`** — `guildId guildName` in `TEAM_FIELDS` and `TeamData` interface
+- [x] **`auth.ts` store** — `UserGuild` interface; `guilds` field on `User`
+- [x] **`SettingsForm.vue`** — `isListed` switch, `accessMode` selector, `requiredGuildId` guild picker (from logged-in user's guilds)
+- [x] **`SettingsModal.vue`** — `buildDefaultForm` + save input include `isListed`, `accessMode`, `requiredGuildId`; `InviteManager` shown inline when `accessMode === 'INVITE'` and editing existing board
+- [x] **`InviteManager.vue`** — lists active invites (shortCode, label, use count, expiry); create invite form (label, maxUses); revoke + copy-link per invite
+- [x] **`AccessGate.vue`** — shown when user has no `PlayerBoard`; adapts to OPEN / GUILD / INVITE access modes; handles code input for INVITE, relink-Discord prompt for blocked GUILD
+- [x] **`useBoardPage.ts`** — exposes `boardAccess`, `joiningBoard`, `doJoinBoard`; loads access on mount; `boardSettingsData` includes `isListed`, `accessMode`, `requiredGuildId`
+- [x] **Board detail page** (`boards/[id]/index.vue`) — shows `AccessGate` when `showAccessGate`; full game board only rendered after joining
+- [x] **Magic link page** (`boards/[id]/join/[token].vue`) — calls `joinBoard` on mount; stores redirect in `localStorage` if unauthenticated and retries after Discord OAuth
+- [x] **`auth/callback.vue`** — honours `post_auth_redirect` in `localStorage` before defaulting to `/boards`
+- [x] **Board list badges** (`boards/index.vue`) — GUILD badge (blue shield) and INVITE badge (orange lock) per board card
+- [x] **Admin board pages** — `create.vue` and `admin/boards/index.vue` `openSettings()` include `isListed`, `accessMode`, `requiredGuildId`
+- [x] **i18n** — all new keys added to `locales/en.json`
+
+### 🔄 Pending
+
+> 💡 **Deferred to later**: Team shareable invite links, guild-grouped team display in admin, per-guild member search filter for TEAM_MANAGERs.
+
+---
+
 ## Database Schema (Prisma v7)
 
 ### Enums
@@ -115,8 +162,15 @@
 
 ### Phase 2 additions
 - **UserPermission**: id, userId, permissionKey ← `@@unique([userId, permissionKey])` — granular per-user permissions independent of roles
-- **Team**: id, name, iconUrl?, createdAt, updatedAt
+- **Team**: id, name, iconUrl?, guildId?, guildName?, createdAt, updatedAt
 - **TeamMember** (pivot): id, teamId, userId ← `@@unique([teamId, userId])`
+
+### Phase 3 additions
+- `BoardAccessMode` enum: `OPEN` | `GUILD` | `INVITE`
+- **Board** additions: `isListed Boolean @default(true)`, `accessMode BoardAccessMode @default(OPEN)`, `requiredGuildId String?`
+- **UserGuild**: id, userId, guildId, guildName, guildIcon?, syncedAt ← `@@unique([userId, guildId])` — Discord server membership cache
+- **BoardInvite**: id, boardId, token (uuid unique), shortCode (6-char), createdBy, label?, expiresAt?, maxUses?, useCount, createdAt ← `@@unique([boardId, shortCode])`
+- **BoardAccess**: id, boardId, userId, inviteId?, accessMode, joinedAt ← `@@unique([boardId, userId])` — authoritative join record
 
 ---
 

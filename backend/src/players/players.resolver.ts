@@ -19,14 +19,18 @@ export class PlayersResolver {
     return this.playersService.getMyPlayerBoards(user.id)
   }
 
-  /** Get current player's state on a board */
+  /**
+   * Get current player's state on a board.
+   * Returns null if the user has no access (GUILD/INVITE board not yet joined).
+   * Creates a PlayerBoard on first access if the user is confirmed to have access.
+   */
   @UseGuards(JwtAuthGuard)
   @Query(() => PlayerBoardEntity, { name: 'myBoardState', nullable: true })
   getMyBoardState(
     @Args('boardId', { type: () => ID }) boardId: string,
     @CurrentUser() user: UserEntity
   ) {
-    return this.playersService.getOrCreatePlayerBoard(user.id, boardId)
+    return this.playersService.findPlayerBoard(user.id, boardId)
   }
 
   /** Get all players' states for a board (for viewing others' positions) */

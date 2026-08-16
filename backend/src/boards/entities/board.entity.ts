@@ -1,6 +1,7 @@
 import { ObjectType, Field, ID, Int, registerEnumType } from '@nestjs/graphql'
 import { UserEntity } from '../../users/entities/user.entity'
 import { TileEntity } from '../../tiles/entities/tile.entity'
+import { BoardAccessMode } from '../../access/entities/board-access.entity'
 
 export enum BoardSize {
   SIZE_5X5 = 'SIZE_5X5',
@@ -85,6 +86,15 @@ export class BoardEntity {
 
   @Field(() => Int, { nullable: true, description: 'null = unlimited rolls per day' })
   diceRollLimit?: number
+
+  @Field()
+  isListed: boolean
+
+  @Field(() => BoardAccessMode)
+  accessMode: BoardAccessMode
+
+  @Field({ nullable: true })
+  requiredGuildId?: string
 
   @Field(() => [BoardAuthorEntity])
   authors: BoardAuthorEntity[]

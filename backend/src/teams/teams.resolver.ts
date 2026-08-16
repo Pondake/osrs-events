@@ -13,12 +13,13 @@ import { UserEntity } from '../users/entities/user.entity'
 export class TeamsResolver {
   constructor(private teamsService: TeamsService) {}
 
-  /** List all teams (admin, editor or team manager) */
+  /** List teams — admins see all; TEAM_MANAGERs see only teams in their Discord guilds */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'EDITOR', 'TEAM_MANAGER')
   @Query(() => [TeamEntity], { name: 'teams' })
-  findAll() {
-    return this.teamsService.findAll()
+  findAll(@CurrentUser() user: UserEntity) {
+    const isAdmin = user.userRoles.some(r => r.role.name === 'ADMIN')
+    return this.teamsService.findAll(user.id, isAdmin)
   }
 
   /** Get a single team by id */

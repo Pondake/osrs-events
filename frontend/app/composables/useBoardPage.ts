@@ -3,6 +3,7 @@ import type { Ref } from 'vue'
 import type { TileEntity, RollResultEntity, BoardEntity, PlayerBoardEntity } from '~/types/graphql'
 import { useAuthStore } from '~/stores/auth'
 import { usePlayerBoard, useBoardPlayerStates } from '~/composables/usePlayers'
+import { useMyBoardAccess, joinBoard as joinBoardFn } from '~/composables/useAccess'
 import { usePermissions } from '~/composables/usePermissions'
 import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH } from '~/utils/board'
 import type { BoardFormData } from '~/components/Board/SettingsForm.vue'
@@ -47,9 +48,25 @@ export function useBoardPage(
 
   const { playerStates: allPlayerStates, load: loadPlayerStates } = useBoardPlayerStates(boardId)
 
+  const { access: boardAccess, load: loadBoardAccess } = useMyBoardAccess(boardId)
+
+  const joiningBoard = ref(false)
+
+  async function doJoinBoard(tokenOrCode?: string) {
+    joiningBoard.value = true
+    try {
+      await joinBoardFn(boardId, tokenOrCode)
+      await loadBoardAccess()
+      await loadPlayerBoard()
+    } finally {
+      joiningBoard.value = false
+    }
+  }
+
   onMounted(() => {
     loadPlayerBoard()
     loadPlayerStates()
+    if (authStore.user) loadBoardAccess()
   })
 
   const canEdit = computed(() =>
@@ -168,7 +185,7 @@ export function useBoardPage(
       title: board.value.title,
       description: board.value.description ?? '',
       size: board.value.size as 'SIZE_5X5' | 'SIZE_7X7' | 'SIZE_9X9',
-      mode: ((board.value as any).mode ?? 'SOLO') as 'SOLO' | 'TEAM',
+      mode: board.value.mode as 'SOLO' | 'TEAM',
       diceRollLimit: board.value.diceRollLimit ?? 3,
       unlimitedRolls: board.value.diceRollLimit === null,
       selectedAuthors: board.value.authors.map(a => ({
@@ -176,7 +193,7 @@ export function useBoardPage(
         discordUsername: a.user.discordUsername,
         avatarUrl: a.user.avatarUrl,
       })),
-      assignedTeams: ((board.value as any).boardTeams ?? []).map((bt: any) => ({
+      assignedTeams: (board.value.boardTeams ?? []).map(bt => ({
         teamId: bt.teamId,
         team: bt.team,
       })),
@@ -186,6 +203,9 @@ export function useBoardPage(
       endDate: board.value.endDate
         ? parseDate(board.value.endDate.toString().slice(0, 10))
         : null,
+      isListed: board.value.isListed,
+      accessMode: board.value.accessMode as 'OPEN' | 'GUILD' | 'INVITE',
+      requiredGuildId: board.value.requiredGuildId ?? null,
     }
   })
 
@@ -296,6 +316,10 @@ export function useBoardPage(
     totalTiles,
     boardMinWidth,
     isTeamBoard,
+    // Access
+    boardAccess,
+    joiningBoard,
+    doJoinBoard,
     // Player
     playerBoard,
     playerBoardLoading,

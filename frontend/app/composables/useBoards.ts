@@ -9,7 +9,9 @@ import type {
 // ─── Field selections ────────────────────────────────────────────────────────
 
 const BOARD_SUMMARY_FIELDS = `
-  id title description startDate endDate size mode diceRollLimit createdAt updatedAt
+  id title description startDate endDate size mode diceRollLimit
+  isListed accessMode requiredGuildId
+  createdAt updatedAt
   authors { id isOwner user { id discordUsername nickname avatarUrl } }
   boardTeams { id boardId teamId team { id name iconUrl } }
 `
@@ -27,6 +29,12 @@ const BOARD_FULL_FIELDS = `
 const BOARDS_QUERY = `
   query Boards {
     boards { ${BOARD_SUMMARY_FIELDS} }
+  }
+`
+
+const ALL_BOARDS_QUERY = `
+  query AllBoards {
+    allBoards { ${BOARD_SUMMARY_FIELDS} }
   }
 `
 
@@ -175,6 +183,22 @@ export async function removeTeamFromBoard(boardId: string, teamId: string): Prom
     { boardId, teamId },
   )
   return result.removeTeamFromBoard
+}
+
+/**
+ * Reactive list of all boards including unlisted — for admin pages.
+ */
+export async function useAllBoards() {
+  const { data, pending, error, refresh } = await useGql<{ allBoards: BoardEntity[] }>(ALL_BOARDS_QUERY)
+
+  return {
+    boards: computed(() => data.value?.allBoards ?? []),
+    pending,
+    error,
+    refresh,
+    createBoard,
+    deleteBoard,
+  }
 }
 
 /**

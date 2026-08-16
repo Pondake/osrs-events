@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
 import { HttpService } from '@nestjs/axios'
 import { firstValueFrom } from 'rxjs'
-import { UsersService } from '../users/users.service'
+import { UsersService, type DiscordGuildDto } from '../users/users.service'
 import type { JwtPayload } from './strategies/jwt.strategy'
 
 interface DiscordTokenResponse {
@@ -20,6 +20,8 @@ interface DiscordUser {
   avatar: string | null
   discriminator: string
 }
+
+type DiscordGuild = DiscordGuildDto
 
 @Injectable()
 export class AuthService {
@@ -78,6 +80,19 @@ export class AuthService {
       avatarUrl
     })
 
+    // Fetch and sync Discord guild memberships
+    try {
+      const guildsResponse = await firstValueFrom(
+        this.httpService.get<DiscordGuild[]>('https://discord.com/api/users/@me/guilds', {
+          headers: { Authorization: `Bearer ${discordAccessToken}` }
+        })
+      )
+      await this.usersService.syncGuilds(user.id, guildsResponse.data)
+    } catch (err: unknown) {
+      // Non-fatal: guilds sync failure should not block login
+      this.logger.warn(`Guild sync failed for user ${user.id}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+
     // Sign and return JWT
     const payload: JwtPayload = { sub: user.id, discordId: user.discordId }
     return this.jwtService.sign(payload)
@@ -93,7 +108,7 @@ export class AuthService {
       client_id: clientId,
       redirect_uri: callbackUrl,
       response_type: 'code',
-      scope: 'identify'
+      scope: 'identify guilds'
     })
     return `https://discord.com/api/oauth2/authorize?${params.toString()}`
   }

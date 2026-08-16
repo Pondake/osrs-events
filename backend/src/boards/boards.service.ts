@@ -24,7 +24,17 @@ const BOARD_INCLUDE = {
 export class BoardsService {
   constructor(private prisma: PrismaService) {}
 
+  /** Public board list — only listed boards */
   async findAll() {
+    return this.prisma.board.findMany({
+      where: { isListed: true },
+      include: BOARD_INCLUDE,
+      orderBy: { startDate: 'desc' }
+    })
+  }
+
+  /** Admin board list — all boards regardless of isListed */
+  async findAllAdmin() {
     return this.prisma.board.findMany({
       include: BOARD_INCLUDE,
       orderBy: { startDate: 'desc' }
@@ -62,6 +72,9 @@ export class BoardsService {
         size: input.size,
         mode: input.mode ?? 'SOLO',
         diceRollLimit: input.diceRollLimit ?? null,
+        isListed: input.isListed ?? true,
+        accessMode: input.accessMode ?? 'OPEN',
+        requiredGuildId: input.requiredGuildId ?? null,
         authors: {
           create: [
             { userId: creatorId, isOwner: true },

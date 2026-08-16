@@ -27,6 +27,12 @@ export class TeamEntity {
   @Field({ nullable: true })
   iconUrl?: string
 
+  @Field({ nullable: true })
+  guildId?: string
+
+  @Field({ nullable: true })
+  guildName?: string
+
   @Field(() => [TeamMemberEntity])
   members: TeamMemberEntity[]
 

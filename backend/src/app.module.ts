@@ -12,6 +12,8 @@ import { TasksModule } from './tasks/tasks.module'
 import { PlayersModule } from './players/players.module'
 import { TeamsModule } from './teams/teams.module'
 import { PermissionsModule } from './permissions/permissions.module'
+import { InvitesModule } from './invites/invites.module'
+import { AccessModule } from './access/access.module'
 import { SeedModule } from './seed/seed.module'
 
 @Module({
@@ -51,6 +53,8 @@ import { SeedModule } from './seed/seed.module'
     PlayersModule,
     TeamsModule,
     PermissionsModule,
+    InvitesModule,
+    AccessModule,
     // SeedModule, enable to seed when running the app
   ]
 })
