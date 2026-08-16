@@ -12,13 +12,17 @@ export class UsersResolver {
   constructor(private usersService: UsersService) {}
 
   /**
-   * Get all users — optionally filtered by search term (admin only)
+   * Get all users — optionally filtered by search term or limited to N most recent.
+   * Accessible by admins and team managers (for member search).
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'TEAM_MANAGER')
   @Query(() => [UserEntity], { name: 'users' })
-  findAll(@Args('search', { nullable: true }) search?: string) {
-    return this.usersService.findAll(search)
+  findAll(
+    @Args('search', { nullable: true }) search?: string,
+    @Args('limit', { nullable: true, type: () => Number }) limit?: number,
+  ) {
+    return this.usersService.findAll(search, limit)
   }
 
   /**
@@ -68,5 +72,23 @@ export class UsersResolver {
   ) {
     await this.usersService.removeRole(userId, roleName)
     return this.usersService.findById(userId)
+  }
+
+  /**
+   * Delete a user account (admin only).
+   * Admins cannot delete other admins — remove their ADMIN role first.
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Mutation(() => Boolean)
+  async deleteUser(
+    @CurrentUser() currentUser: UserEntity,
+    @Args('userId', { type: () => ID }) userId: string,
+  ) {
+    if (userId === currentUser.id) {
+      throw new Error('You cannot delete your own account.')
+    }
+    await this.usersService.deleteUser(userId)
+    return true
   }
 }

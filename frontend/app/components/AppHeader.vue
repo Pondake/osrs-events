@@ -4,10 +4,9 @@
     :toggle="navigation.length > 0"
     :ui="{ content: 'top-[var(--ui-header-height)]' }"
     :menu="{
-  direction: 'top',
+      direction: 'top',
       inset: true,
       shouldScaleBackground: true,
-      ui: { body: 'bg-red-200', overlay: ' bg-red-200 top-[var(--ui-header-height)]' },
     }"
   >
     <template #title>
@@ -18,7 +17,6 @@
 
     <!-- Desktop navigation — client-only to avoid SSR hydration mismatch -->
     <client-only>
-      <!-- Skeleton while auth hydrates -->
       <template #fallback>
         <div class="hidden md:flex gap-3 items-center">
           <u-skeleton class="h-5 w-14 rounded" />
@@ -36,8 +34,6 @@
       <auth-user-menu />
     </template>
 
-    <!-- Mobile panel — only provided when there are navigation items.
-         UHeader hides the hamburger toggle when no panel slot is present. -->
     <template v-if="authStore.hydrated && navigation.length > 0" #body>
       <div class="p-4">
         <u-navigation-menu :items="navigation" orientation="vertical" />
@@ -55,20 +51,70 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 
 const navigation = computed<NavigationMenuItem[]>(() => {
-  // Only populate once client-side auth state is known
   if (!authStore.hydrated) return [];
 
   const items: NavigationMenuItem[] = [];
+  const isAdmin = authStore.isAdmin;
+  const isEditor = authStore.user?.roles?.includes('EDITOR') ?? false;
+  const isTeamManager = authStore.user?.roles?.includes('TEAM_MANAGER') ?? false;
+  const canManageBoards = isAdmin || isEditor;
 
-  if (authStore.isAuthenticated) {
+  if (!authStore.isAuthenticated) return [];
+
+  // ── Boards ──────────────────────────────────────────────────────────
+  if (canManageBoards) {
+    items.push({
+      label: t('nav.boards'),
+      icon: 'i-lucide-layout-grid',
+      children: [
+        {
+          label: t('nav.boards'),
+          to: '/boards',
+          icon: 'i-lucide-layout-grid',
+          description: t('nav.boards_desc'),
+        },
+        {
+          label: t('nav.admin_boards'),
+          to: '/admin/boards',
+          icon: 'i-lucide-settings',
+          description: t('nav.admin_boards_desc'),
+        },
+      ],
+    });
+  } else {
     items.push({ label: t('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid' });
   }
 
-  if (authStore.isAdmin) {
-    items.push(
-      { label: t('nav.admin_boards'), to: '/admin/boards', icon: 'i-lucide-settings' },
-      { label: t('nav.tasks'), to: '/admin/tasks', icon: 'i-lucide-list-checks' },
-    );
+  // ── Teams ───────────────────────────────────────────────────────────
+  if (isAdmin || isTeamManager) {
+    items.push({ label: t('nav.teams'), to: '/teams', icon: 'i-lucide-users' });
+  }
+
+  // ── Tasks ───────────────────────────────────────────────────────────
+  if (isAdmin || isEditor) {
+    items.push({ label: t('nav.tasks'), to: '/admin/tasks', icon: 'i-lucide-list-checks' });
+  }
+
+  // ── Admin ───────────────────────────────────────────────────────────
+  if (isAdmin) {
+    items.push({
+      label: t('nav.admin'),
+      icon: 'i-lucide-shield',
+      children: [
+        {
+          label: t('nav.admin_users'),
+          to: '/admin/users',
+          icon: 'i-lucide-user-cog',
+          description: t('nav.admin_users_desc'),
+        },
+        {
+          label: t('nav.admin_teams'),
+          to: '/admin/teams',
+          icon: 'i-lucide-users',
+          description: t('nav.admin_teams_desc'),
+        },
+      ],
+    });
   }
 
   return items;

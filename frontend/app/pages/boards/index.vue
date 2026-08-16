@@ -1,9 +1,12 @@
 <template>
   <nuxt-layout :title="$t('boards.title')" :description="$t('boards.subtitle')">
     <template v-if="authStore.isAdmin || authStore.isEditor" #links>
-      <u-button color="primary" icon="i-lucide-plus" to="/admin/boards/create">
-        {{ $t('admin.create_board') }}
-      </u-button>
+      <u-button
+        color="primary"
+        icon="i-lucide-plus"
+        :label="$t('admin.create_board')"
+        @click="showCreateModal = true"
+      />
     </template>
 
     <u-page-body>
@@ -33,11 +36,32 @@
 
         <!-- Board cards -->
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <nuxt-link v-for="board in boards" :key="board.id" :to="`/boards/${board.id}`">
+          <nuxt-link
+            v-for="{ board, status, access } in decoratedBoards"
+            :key="board.id"
+            :to="`/boards/${board.id}`"
+          >
             <u-page-card
-              :title="board.title"
               class="h-full hover:border-primary transition-colors cursor-pointer"
+              :ui="{ body: 'w-full' }"
             >
+              <!-- PageCard's wrapper is items-start, so body needs w-full above
+                   for the status to reach the right edge of the card. -->
+              <template #title>
+                <div class="flex items-center justify-between gap-3 w-full">
+                  <span class="truncate">{{ board.title }}</span>
+
+                  <div
+                    class="flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 shrink-0"
+                    :class="status.class"
+                  >
+                    <u-icon :name="status.icon" class="size-3.5" />
+
+                    <span>{{ $t(status.key) }}</span>
+                  </div>
+                </div>
+              </template>
+
               <template #description>
                 <div class="flex flex-col gap-2 mt-2">
                   <div class="flex items-center gap-2 text-sm text-muted">
@@ -49,7 +73,7 @@
                   <div class="flex items-center gap-2 text-sm text-muted">
                     <u-icon name="i-lucide-grid-3x3" class="size-4" />
 
-                    <span>{{ boardSizeLabel(board.size) }}</span>
+                    <span>{{ $t('boards.size', { size: formatBoardSize(board.size) }) }}</span>
                   </div>
 
                   <div
@@ -61,13 +85,30 @@
                     <span>{{ $t('boards.roll_limit', { limit: board.diceRollLimit }) }}</span>
                   </div>
 
+                  <div v-if="access" class="flex items-center gap-2 text-sm text-muted">
+                    <u-icon :name="access.icon" class="size-4" />
+
+                    <span>{{ $t(access.key) }}</span>
+                  </div>
+
+                  <!-- Team boards share one board per team, so this changes how
+                       the board plays, not just who can join. -->
+                  <div
+                    v-if="board.mode === 'TEAM'"
+                    class="flex items-center gap-2 text-sm text-muted"
+                  >
+                    <u-icon name="i-lucide-users" class="size-4" />
+
+                    <span>{{ $t('boards.team_mode') }}</span>
+                  </div>
+
                   <div class="flex items-center gap-2 mt-1">
                     <div class="flex -space-x-2">
                       <u-avatar
                         v-for="author in board.authors.slice(0, 3)"
                         :key="author.id"
-                        :src="author.user.avatarUrl"
-                        :alt="author.user.nickname || author.user.discordUsername"
+                        :src="author.user.avatarUrl ?? undefined"
+                        :alt="author.user.nickname ?? author.user.discordUsername"
                         size="xs"
                         class="ring-2 ring-background"
                       />
@@ -75,12 +116,7 @@
 
                     <span class="text-xs text-muted">
                       {{
-                        board.authors
-                          .map(
-                            (a: { user: { discordUsername: string; nickname: string | null } }) =>
-                              a.user.nickname || a.user.discordUsername,
-                          )
-                          .join(', ')
+                        board.authors.map(a => a.user.nickname ?? a.user.discordUsername).join(', ')
                       }}
                     </span>
                   </div>
@@ -93,59 +129,50 @@
                   color="primary"
                   trailing-icon="i-lucide-arrow-right"
                   size="sm"
-                >
-                  {{ $t('boards.play') }}
-                </u-button>
+                  :label="$t('boards.play')"
+                />
               </template>
             </u-page-card>
           </nuxt-link>
         </div>
       </u-container>
     </u-page-body>
+
+    <board-settings-modal v-model:open="showCreateModal" :board-id="null" @saved="onBoardCreated" />
   </nuxt-layout>
 </template>
 
 <script setup lang="ts">
+import { useBoards } from '~/composables/useBoards';
 import { useAuthStore } from '~/stores/auth';
+import {
+  formatDate,
+  formatBoardSize,
+  boardEventStatus,
+  BOARD_ACCESS_META,
+  BOARD_STATUS_STYLE,
+} from '~/utils/board';
 
-const { t } = useI18n();
 const authStore = useAuthStore();
 
-interface BoardAuthor {
-  id: string;
-  user: { id: string; discordUsername: string; nickname: string | null; avatarUrl: string | null };
-}
-interface Board {
-  id: string;
-  title: string;
-  startDate: string;
-  endDate: string;
-  size: string;
-  diceRollLimit: number | null;
-  authors: BoardAuthor[];
-}
+const { boards, pending, error, refresh } = await useBoards();
 
-const BOARDS_QUERY = `query Boards {
-  boards {
-    id title startDate endDate size diceRollLimit
-    authors { id user { id discordUsername nickname avatarUrl } }
-  }
-}`;
+const showCreateModal = ref(false);
 
-const { data, pending, error } = await useGql<{ boards: Board[] }>(BOARDS_QUERY);
-const boards = computed(() => data.value?.boards ?? []);
+// Resolve each card's badges once rather than recomputing them per binding in
+// the template. An unknown access mode yields no badge rather than a broken
+// one, should the backend gain a mode the frontend does not know yet.
+const decoratedBoards = computed(() =>
+  boards.value.map(board => ({
+    board,
+    status: BOARD_STATUS_STYLE[boardEventStatus(board.startDate, board.endDate)],
+    access: board.accessMode ? BOARD_ACCESS_META[board.accessMode] : undefined,
+  })),
+);
 
-function boardSizeLabel(size: string) {
-  const map: Record<string, string> = { SIZE_5X5: '5×5', SIZE_7X7: '7×7', SIZE_9X9: '9×9' };
-  return t('boards.size', { size: map[size] ?? size });
-}
-
-function formatDate(date: string | null | undefined) {
-  if (!date) return '—';
-  return new Date(date).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+// A new board is only listed here when isListed is on, so refresh rather than
+// assuming it will appear.
+async function onBoardCreated() {
+  await refresh();
 }
 </script>

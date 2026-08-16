@@ -1,0 +1,7 @@
+# Per-developer Claude Code settings — shared config lives in CLAUDE.md
+# and .claude/commands/, both of which are tracked.
+.claude/settings.local.json
+
+# OS cruft
+.DS_Store
+Thumbs.db

@@ -54,6 +54,7 @@ export class AuthController {
       nickname: string | null
       avatarUrl: string | null
       userRoles: Array<{ role: { name: string } }>
+      userGuilds?: Array<{ guildId: string; guildName: string }>
     }
     return {
       id: user.id,
@@ -61,7 +62,8 @@ export class AuthController {
       discordUsername: user.discordUsername,
       nickname: user.nickname ?? null,
       avatarUrl: user.avatarUrl,
-      roles: user.userRoles.map((ur) => ur.role.name)
+      roles: user.userRoles.map((ur) => ur.role.name),
+      guilds: (user.userGuilds ?? []).map(g => ({ guildId: g.guildId, guildName: g.guildName }))
     }
   }
 }

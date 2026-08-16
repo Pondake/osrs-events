@@ -127,7 +127,7 @@ async function searchWiki() {
       .slice(0, 10)
       .map((p: any) => ({ title: p.title, iconUrl: p.thumbnail.source }));
   } catch {
-    toast.add({ title: t('errors.generic'), color: 'error' });
+    toast.add({ title: t('errors.generic'), color: 'error', id: 'validation' });
   } finally {
     searching.value = false;
   }

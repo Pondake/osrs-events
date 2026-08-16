@@ -1,5 +1,11 @@
 <template>
-  <u-app :toaster="{ position: 'top-center', expand: true }">
+  <u-app
+    :toaster="{
+      position: 'top-center',
+      expand: true,
+      class: 'top-[calc(var(--ui-header-height)+var(--spacing)*6)]',
+    }"
+  >
     <app-header />
 
     <nuxt-page />

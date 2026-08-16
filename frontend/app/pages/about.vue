@@ -41,9 +41,8 @@
                 size="sm"
                 icon="i-lucide-arrow-right"
                 trailing
-              >
-                {{ $t('about.privacy_cta') }}
-              </u-button>
+                :label="$t('about.privacy_cta')"
+              />
             </div>
           </div>
         </section>
@@ -71,9 +70,8 @@
                 size="sm"
                 icon="i-lucide-coffee"
                 trailing
-              >
-                {{ $t('about.donate_cta') }}
-              </u-button>
+                :label="$t('about.donate_cta')"
+              />
             </div>
           </div>
         </section>
@@ -101,9 +99,8 @@
                   color="primary"
                   size="sm"
                   icon="i-lucide-mail"
-                >
-                  {{ $t('about.support_email') }}
-                </u-button>
+                  :label="$t('about.support_email')"
+                />
               </div>
             </div>
           </div>

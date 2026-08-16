@@ -39,16 +39,33 @@
       </p>
     </div>
 
-    <!-- Player avatars -->
+    <!-- Player / team avatars -->
     <div v-if="players.length > 0" class="tile-avatar">
-      <u-avatar
-        v-for="player in players.slice(0, 4)"
-        :key="player.id"
-        :src="player.avatarUrl ?? undefined"
-        :alt="player.discordUsername"
-        size="2xs"
-        class="ring-1 ring-background"
-      />
+      <template v-for="player in players.slice(0, 4)" :key="player.id">
+        <!-- Team token: show team icon (pixelated sprite style) -->
+        <img
+          v-if="player.isTeam && player.avatarUrl"
+          :src="player.avatarUrl"
+          :alt="player.discordUsername"
+          class="size-5 object-contain rounded-sm ring-1 ring-background"
+          style="image-rendering: pixelated"
+        />
+        <!-- Fallback team badge (no icon) -->
+        <span
+          v-else-if="player.isTeam"
+          class="size-5 rounded-sm ring-1 ring-background bg-primary/20 flex items-center justify-center text-[7px] font-bold text-primary leading-none"
+        >
+          {{ player.discordUsername.slice(0, 2).toUpperCase() }}
+        </span>
+        <!-- Regular player avatar -->
+        <u-avatar
+          v-else
+          :src="player.avatarUrl ?? undefined"
+          :alt="player.discordUsername"
+          size="2xs"
+          class="ring-1 ring-background"
+        />
+      </template>
 
       <span v-if="players.length > 4" class="text-[8px] text-muted leading-none">
         +{{ players.length - 4 }}
@@ -70,34 +87,36 @@ interface PlayerAvatar {
   id: string;
   discordUsername: string;
   avatarUrl: string | null;
+  isTeam?: boolean;
 }
 
-interface Props {
-  position: number;
-  displayNumber: number;
-  title?: string | null;
-  iconUrl?: string | null;
-  type: 'NORMAL' | 'SNAKE' | 'LADDER';
-  targetPosition?: number | null;
-  completed?: boolean;
-  isCurrent?: boolean;
-  isPast?: boolean;
-  players?: PlayerAvatar[];
-  editMode?: boolean;
-  isEmpty?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  title: null,
-  iconUrl: null,
-  targetPosition: null,
-  completed: false,
-  isCurrent: false,
-  isPast: false,
-  players: () => [],
-  editMode: false,
-  isEmpty: false,
-});
+const props = withDefaults(
+  defineProps<{
+    position: number;
+    displayNumber: number;
+    title?: string | null;
+    iconUrl?: string | null;
+    type: 'NORMAL' | 'SNAKE' | 'LADDER';
+    targetPosition?: number | null;
+    completed?: boolean;
+    isCurrent?: boolean;
+    isPast?: boolean;
+    players?: PlayerAvatar[];
+    editMode?: boolean;
+    isEmpty?: boolean;
+  }>(),
+  {
+    title: null,
+    iconUrl: null,
+    targetPosition: null,
+    completed: false,
+    isCurrent: false,
+    isPast: false,
+    players: () => [],
+    editMode: false,
+    isEmpty: false,
+  },
+);
 
 const emit = defineEmits<{ click: [position: number] }>();
 

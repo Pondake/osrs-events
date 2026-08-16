@@ -1,13 +1,27 @@
 {
   "version": "0.2.0",
   "configurations": [
-  
     {
       "name": "Nuxt: Dev Server",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
+      "cwd": "${workspaceRoot}/frontend",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+
+    {
+      "name": "Generate types (watch)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["generate:watch"],
       "cwd": "${workspaceRoot}/frontend",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
@@ -40,30 +54,16 @@
       "env": {
         "NODE_ENV": "development"
       }
-    },
-    {
-      "name": "NestJS: Debug",
-      "type": "node",
-      "request": "launch",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "start:debug"],
-      "cwd": "${workspaceRoot}/backend",
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "skipFiles": ["<node_internals>/**"],
-      "env": {
-        "NODE_ENV": "development"
-      }
     }
   ],
   "compounds": [
     {
       "name": "Full Stack: Dev",
-      "configurations": ["Nuxt: Dev Server", "NestJS: Dev Server"]
-    },
-    {
-      "name": "Full Stack: Debug",
-      "configurations": ["Nuxt: Dev Server", "NestJS: Debug"]
+      "configurations": [
+        "Nuxt: Dev Server",
+        "NestJS: Dev Server",
+        "Generate types (watch)"
+      ]
     }
   ]
 }
