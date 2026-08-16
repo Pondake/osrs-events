@@ -68,6 +68,23 @@
                     <span>{{ $t('boards.roll_limit', { limit: board.diceRollLimit }) }}</span>
                   </div>
 
+                  <div v-if="access" class="flex items-center gap-2 text-sm text-muted">
+                    <u-icon :name="access.icon" class="size-4" />
+
+                    <span>{{ $t(access.key) }}</span>
+                  </div>
+
+                  <!-- Team boards share one board per team, so this changes how
+                       the board plays, not just who can join. -->
+                  <div
+                    v-if="board.mode === 'TEAM'"
+                    class="flex items-center gap-2 text-sm text-muted"
+                  >
+                    <u-icon name="i-lucide-users" class="size-4" />
+
+                    <span>{{ $t('boards.team_mode') }}</span>
+                  </div>
+
                   <div class="flex items-center gap-2 mt-1">
                     <div class="flex -space-x-2">
                       <u-avatar
@@ -87,36 +104,16 @@
                     </span>
                   </div>
 
-                  <div class="flex flex-wrap gap-1 mt-1">
-                    <!-- Whether the event is running is otherwise only
-                         inferable by comparing the two dates above. -->
-                    <u-badge
-                      :color="status.color"
-                      variant="subtle"
-                      size="xs"
-                      :icon="status.icon"
-                      :label="$t(status.key)"
-                    />
+                  <!-- Whether the event is running is otherwise only inferable
+                       by comparing the two dates above, so it gets a tinted
+                       pill rather than sitting in the muted meta list. -->
+                  <div
+                    class="flex items-center gap-2 text-sm font-medium rounded-md px-2 py-1 w-fit mt-1"
+                    :class="status.class"
+                  >
+                    <u-icon :name="status.icon" class="size-4" />
 
-                    <u-badge
-                      v-if="access"
-                      :color="access.color"
-                      variant="subtle"
-                      size="xs"
-                      :icon="access.icon"
-                      :label="$t(access.key)"
-                    />
-
-                    <!-- Team boards share one board per team, so this changes
-                         how the board plays, not just who can join. -->
-                    <u-badge
-                      v-if="board.mode === 'TEAM'"
-                      color="primary"
-                      variant="subtle"
-                      size="xs"
-                      icon="i-lucide-users"
-                      :label="$t('boards.team_mode')"
-                    />
+                    <span>{{ $t(status.key) }}</span>
                   </div>
                 </div>
               </template>
@@ -147,8 +144,8 @@ import {
   formatDate,
   formatBoardSize,
   boardEventStatus,
-  BOARD_ACCESS_BADGE,
-  BOARD_STATUS_BADGE,
+  BOARD_ACCESS_META,
+  BOARD_STATUS_STYLE,
 } from '~/utils/board';
 
 const authStore = useAuthStore();
@@ -163,8 +160,8 @@ const showCreateModal = ref(false);
 const decoratedBoards = computed(() =>
   boards.value.map(board => ({
     board,
-    status: BOARD_STATUS_BADGE[boardEventStatus(board.startDate, board.endDate)],
-    access: board.accessMode ? BOARD_ACCESS_BADGE[board.accessMode] : undefined,
+    status: BOARD_STATUS_STYLE[boardEventStatus(board.startDate, board.endDate)],
+    access: board.accessMode ? BOARD_ACCESS_META[board.accessMode] : undefined,
   })),
 );
 
