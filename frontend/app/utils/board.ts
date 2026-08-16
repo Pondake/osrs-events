@@ -37,32 +37,47 @@ export function formatDate(
   });
 }
 
-type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral';
-
-export interface BoardBadge {
+export interface BoardMeta {
   icon: string;
-  color: BadgeColor;
   /** i18n key — utils stay translation-free, the component calls t() */
   key: string;
 }
 
 /**
- * Every board gets an access badge, including OPEN. Showing it only for the
- * restricted modes made "no badge" ambiguous: it could mean open, or it could
- * mean the badge had not loaded.
+ * Every board shows its access mode, including OPEN. Showing it only for the
+ * restricted modes made "nothing" ambiguous: it could mean open, or it could
+ * mean the indicator had not rendered.
  */
-export const BOARD_ACCESS_BADGE: Record<string, BoardBadge> = {
-  OPEN: { icon: 'i-lucide-globe', color: 'neutral', key: 'boards.access_open' },
-  GUILD: { icon: 'i-lucide-shield', color: 'info', key: 'boards.access_server' },
-  INVITE: { icon: 'i-lucide-lock', color: 'warning', key: 'boards.access_invite' },
+export const BOARD_ACCESS_META: Record<string, BoardMeta> = {
+  OPEN: { icon: 'i-lucide-globe', key: 'boards.access_open' },
+  GUILD: { icon: 'i-lucide-shield', key: 'boards.access_server' },
+  INVITE: { icon: 'i-lucide-lock', key: 'boards.access_invite' },
 };
 
 export type BoardEventStatus = 'upcoming' | 'live' | 'ended';
 
-export const BOARD_STATUS_BADGE: Record<BoardEventStatus, BoardBadge> = {
-  upcoming: { icon: 'i-lucide-clock', color: 'info', key: 'boards.status_upcoming' },
-  live: { icon: 'i-lucide-circle-play', color: 'success', key: 'boards.status_live' },
-  ended: { icon: 'i-lucide-flag', color: 'neutral', key: 'boards.status_ended' },
+export interface BoardStatusStyle extends BoardMeta {
+  /** Soft-tinted pill; status is the one thing worth pulling the eye. */
+  class: string;
+}
+
+// lucide has no chequered flag — `flag` is the closest finish marker it ships.
+export const BOARD_STATUS_STYLE: Record<BoardEventStatus, BoardStatusStyle> = {
+  upcoming: {
+    icon: 'i-lucide-clock',
+    key: 'boards.status_upcoming',
+    class: 'bg-info/10 text-info',
+  },
+  live: {
+    icon: 'i-lucide-circle-play',
+    key: 'boards.status_live',
+    class: 'bg-success/10 text-success',
+  },
+  ended: {
+    icon: 'i-lucide-flag',
+    key: 'boards.status_ended',
+    class: 'bg-error/10 text-error',
+  },
 };
 
 /** YYYY-MM-DD in UTC, so SSR and the client agree regardless of local timezone. */

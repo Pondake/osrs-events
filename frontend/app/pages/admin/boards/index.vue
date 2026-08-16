@@ -67,11 +67,11 @@
                 />
 
                 <u-badge
-                  v-if="accessBadge(board.accessMode)"
-                  :color="accessBadge(board.accessMode)!.color"
+                  v-if="accessMeta(board.accessMode)"
+                  color="neutral"
                   variant="subtle"
-                  :icon="accessBadge(board.accessMode)!.icon"
-                  :label="$t(accessBadge(board.accessMode)!.key)"
+                  :icon="accessMeta(board.accessMode)!.icon"
+                  :label="$t(accessMeta(board.accessMode)!.key)"
                 />
 
                 <!-- Unlike /boards, this list is unfiltered, so unlisted boards
@@ -191,7 +191,7 @@ import type { BoardFormData } from '~/components/Board/SettingsForm.vue';
 import type { BoardEntity } from '~/types/graphql';
 
 import { useBoards } from '~/composables/useBoards';
-import { formatDate, formatBoardSize, BOARD_ACCESS_BADGE } from '~/utils/board';
+import { formatDate, formatBoardSize, BOARD_ACCESS_META } from '~/utils/board';
 
 definePageMeta({ middleware: ['admin'] });
 
@@ -209,8 +209,8 @@ const filteredBoards = computed(() => {
 
 // ─── Settings modal ───────────────────────────────────────────────────────────
 
-function accessBadge(mode: string | null | undefined) {
-  return mode ? BOARD_ACCESS_BADGE[mode] : undefined;
+function accessMeta(mode: string | null | undefined) {
+  return mode ? BOARD_ACCESS_META[mode] : undefined;
 }
 
 const showSettingsModal = ref(false);
