@@ -29,7 +29,9 @@
         v-for="entry in displayedEntries"
         :key="entry.playerId"
         class="flex items-center gap-2 px-2 py-1.5 rounded-lg"
-        :class="isCurrentEntry(entry) ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/30'"
+        :class="
+          isCurrentEntry(entry) ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/30'
+        "
       >
         <span class="text-xs font-bold text-muted w-4 shrink-0 text-center">
           {{ entry.rank }}
@@ -44,6 +46,7 @@
             class="size-6 object-contain shrink-0"
             style="image-rendering: pixelated"
           />
+
           <span
             v-else
             class="size-6 rounded shrink-0 bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary"
@@ -64,9 +67,7 @@
           {{ entry.team?.name ?? entry.user.nickname ?? entry.user.discordUsername }}
         </span>
 
-        <span class="text-xs text-muted shrink-0">
-          #{{ entry.currentPosition + 1 }}
-        </span>
+        <span class="text-xs text-muted shrink-0"> #{{ entry.currentPosition + 1 }} </span>
 
         <span
           class="text-xs font-semibold w-12 text-right shrink-0"
@@ -91,20 +92,17 @@
 </template>
 
 <script setup lang="ts">
-import {
-  leaderboardRemainingClass,
-  type LeaderboardEntry,
-} from '~/composables/usePlayers'
+import { leaderboardRemainingClass, type LeaderboardEntry } from '~/composables/usePlayers';
 
 const props = defineProps<{
-  boardId: string
-  currentPlayerId?: string
-  currentTeamId?: string
-}>()
+  boardId: string;
+  currentPlayerId?: string;
+  currentTeamId?: string;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
-const PREVIEW_COUNT = 5
+const PREVIEW_COUNT = 5;
 
 const LEADERBOARD_QUERY = `
   query BoardLeaderboard($boardId: ID!) {
@@ -116,44 +114,44 @@ const LEADERBOARD_QUERY = `
       }
     }
   }
-`
+`;
 
-const entries = ref<LeaderboardEntry[]>([])
-const loading = ref(false)
+const entries = ref<LeaderboardEntry[]>([]);
+const loading = ref(false);
 
 async function load() {
-  loading.value = true
+  loading.value = true;
   try {
     const result = await useGqlMutation<{
-      boardLeaderboard: { entries: LeaderboardEntry[] } | null
-    }>(LEADERBOARD_QUERY, { boardId: props.boardId })
-    entries.value = result.boardLeaderboard?.entries ?? []
+      boardLeaderboard: { entries: LeaderboardEntry[] } | null;
+    }>(LEADERBOARD_QUERY, { boardId: props.boardId });
+    entries.value = result.boardLeaderboard?.entries ?? [];
   } catch {
-    entries.value = []
+    entries.value = [];
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-onMounted(load)
-defineExpose({ refresh: load })
+onMounted(load);
+defineExpose({ refresh: load });
 
-const displayedEntries = computed(() => entries.value.slice(0, PREVIEW_COUNT))
+const displayedEntries = computed(() => entries.value.slice(0, PREVIEW_COUNT));
 
 /** Highlight if this is the current player's or team's entry */
 function isCurrentEntry(entry: LeaderboardEntry): boolean {
-  if (props.currentTeamId && entry.team?.id === props.currentTeamId) return true
-  return entry.playerId === props.currentPlayerId
+  if (props.currentTeamId && entry.team?.id === props.currentTeamId) return true;
+  return entry.playerId === props.currentPlayerId;
 }
 
 function remainingClass(entry: LeaderboardEntry): string {
-  return leaderboardRemainingClass(entry)
+  return leaderboardRemainingClass(entry);
 }
 
 function remainingTitle(entry: LeaderboardEntry): string {
-  if (entry.pathHasSnake && entry.pathHasLadder) return t('leaderboard.path_snake_and_ladder')
-  if (entry.pathHasSnake) return t('leaderboard.path_has_snake')
-  if (entry.pathHasLadder) return t('leaderboard.path_has_ladder')
-  return t('leaderboard.tiles_remaining')
+  if (entry.pathHasSnake && entry.pathHasLadder) return t('leaderboard.path_snake_and_ladder');
+  if (entry.pathHasSnake) return t('leaderboard.path_has_snake');
+  if (entry.pathHasLadder) return t('leaderboard.path_has_ladder');
+  return t('leaderboard.tiles_remaining');
 }
 </script>

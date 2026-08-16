@@ -33,21 +33,24 @@
 </template>
 
 <script setup lang="ts">
-import type { TileEntity, PlayerBoardEntity, BoardSize } from '~/types/graphql'
+import type { TileEntity, PlayerBoardEntity, BoardSize } from '~/types/graphql';
 
-const props = withDefaults(defineProps<{
-  tiles: TileEntity[];
-  boardSize: BoardSize;
-  currentPosition?: number;
-  completedTilePositions?: number[];
-  playerStates?: PlayerBoardEntity[];
-  editMode?: boolean;
-}>(), {
-  currentPosition: -1,
-  completedTilePositions: () => [],
-  playerStates: () => [],
-  editMode: false,
-});
+const props = withDefaults(
+  defineProps<{
+    tiles: TileEntity[];
+    boardSize: BoardSize;
+    currentPosition?: number;
+    completedTilePositions?: number[];
+    playerStates?: PlayerBoardEntity[];
+    editMode?: boolean;
+  }>(),
+  {
+    currentPosition: -1,
+    completedTilePositions: () => [],
+    playerStates: () => [],
+    editMode: false,
+  },
+);
 
 const emit = defineEmits<{ tileClick: [position: number] }>();
 
@@ -73,14 +76,16 @@ const orderedTiles = computed(() => {
       const adjustedCol = leftToRight ? col : n - 1 - col;
       const position = row * n + adjustedCol;
 
-      const tile = tileMap.get(position) ?? {
-        id: `empty-${position}`,
-        position,
-        type: 'NORMAL' as TileEntity['type'],
-        targetPosition: null,
-        titleOverride: null,
-        task: null,
-      } as TileEntity;
+      const tile =
+        tileMap.get(position) ??
+        ({
+          id: `empty-${position}`,
+          position,
+          type: 'NORMAL' as TileEntity['type'],
+          targetPosition: null,
+          titleOverride: null,
+          task: null,
+        } as TileEntity);
 
       // Display number: 1-based, position 0 = tile 1
       const displayNumber = position + 1;
@@ -95,7 +100,11 @@ const completedPositions = computed(() => new Set(props.completedTilePositions))
 const connections = computed(() =>
   props.tiles
     .filter(t => (t.type === 'SNAKE' || t.type === 'LADDER') && t.targetPosition !== null)
-    .map(t => ({ from: t.position, to: t.targetPosition as number, type: t.type as 'SNAKE' | 'LADDER' })),
+    .map(t => ({
+      from: t.position,
+      to: t.targetPosition as number,
+      type: t.type as 'SNAKE' | 'LADDER',
+    })),
 );
 
 function playersOnTile(position: number) {
@@ -106,7 +115,7 @@ function playersOnTile(position: number) {
       discordUsername: (p as any).team?.name ?? p.user?.discordUsername ?? 'Player',
       avatarUrl: (p as any).team?.iconUrl ?? p.user?.avatarUrl ?? null,
       isTeam: !!(p as any).team,
-    }))
+    }));
 }
 
 function handleTileClick(position: number) {

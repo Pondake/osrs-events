@@ -18,13 +18,20 @@
         <div class="flex-1 min-w-0 space-y-0.5">
           <div class="flex items-center gap-2">
             <span class="font-mono text-sm font-semibold">{{ invite.shortCode }}</span>
-            <u-badge v-if="invite.label" color="neutral" variant="subtle" size="xs">{{ invite.label }}</u-badge>
+
+            <u-badge v-if="invite.label" color="neutral" variant="subtle" size="xs">{{
+              invite.label
+            }}</u-badge>
           </div>
+
           <div class="text-xs text-muted flex flex-wrap gap-3">
             <span>
               <u-icon name="i-lucide-users" class="inline mr-0.5" />
-              {{ invite.useCount }}<template v-if="invite.maxUses"> / {{ invite.maxUses }}</template>
+
+              {{ invite.useCount
+              }}<template v-if="invite.maxUses"> / {{ invite.maxUses }}</template>
             </span>
+
             <span v-if="invite.expiresAt">
               <u-icon name="i-lucide-clock" class="inline mr-0.5" />
               {{ formatDate(invite.expiresAt) }}
@@ -40,6 +47,7 @@
           :aria-label="$t('common.copy')"
           @click="copyLink(invite)"
         />
+
         <u-button
           icon="i-lucide-trash"
           color="error"
@@ -60,7 +68,11 @@
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <u-form-field :label="$t('admin.invite_label')" name="label">
-          <u-input v-model="newLabel" :placeholder="$t('admin.invite_label_placeholder')" class="w-full" />
+          <u-input
+            v-model="newLabel"
+            :placeholder="$t('admin.invite_label_placeholder')"
+            class="w-full"
+          />
         </u-form-field>
 
         <u-form-field :label="$t('admin.invite_max_uses')" name="maxUses">
@@ -88,70 +100,71 @@
 </template>
 
 <script setup lang="ts">
-import { useBoardInvites } from '~/composables/useInvites'
-import type { BoardInviteEntity } from '~/types/graphql'
+import type { BoardInviteEntity } from '~/types/graphql';
+
+import { useBoardInvites } from '~/composables/useInvites';
 
 const props = defineProps<{
-  boardId: string
-}>()
+  boardId: string;
+}>();
 
-const toast = useToast()
-const { t } = useI18n()
-const runtimeConfig = useRuntimeConfig()
+const toast = useToast();
+const { t } = useI18n();
+const runtimeConfig = useRuntimeConfig();
 
-const { invites, loading, load, createInvite, revokeInvite } = useBoardInvites(props.boardId)
+const { invites, loading, load, createInvite, revokeInvite } = useBoardInvites(props.boardId);
 
-onMounted(() => load())
+onMounted(() => load());
 
 // ─── Create ───────────────────────────────────────────────────────────────────
 
-const newLabel = ref('')
-const newMaxUses = ref<number | null>(null)
-const creating = ref(false)
+const newLabel = ref('');
+const newMaxUses = ref<number | null>(null);
+const creating = ref(false);
 
 async function doCreate() {
-  creating.value = true
+  creating.value = true;
   try {
     await createInvite({
       label: newLabel.value.trim() || undefined,
       maxUses: newMaxUses.value ?? undefined,
-    })
-    newLabel.value = ''
-    newMaxUses.value = null
-    toast.add({ title: t('admin.invite_created'), color: 'success' })
+    });
+    newLabel.value = '';
+    newMaxUses.value = null;
+    toast.add({ title: t('admin.invite_created'), color: 'success' });
   } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
+    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' });
   } finally {
-    creating.value = false
+    creating.value = false;
   }
 }
 
 // ─── Revoke ───────────────────────────────────────────────────────────────────
 
-const revokingId = ref<string | null>(null)
+const revokingId = ref<string | null>(null);
 
 async function doRevoke(inviteId: string) {
-  revokingId.value = inviteId
+  revokingId.value = inviteId;
   try {
-    await revokeInvite(inviteId)
-    toast.add({ title: t('admin.invite_revoked'), color: 'neutral' })
+    await revokeInvite(inviteId);
+    toast.add({ title: t('admin.invite_revoked'), color: 'neutral' });
   } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
+    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' });
   } finally {
-    revokingId.value = null
+    revokingId.value = null;
   }
 }
 
 // ─── Copy link ────────────────────────────────────────────────────────────────
 
 function copyLink(invite: BoardInviteEntity) {
-  const origin = import.meta.client ? window.location.origin : ''
-  const url = `${origin}/boards/${props.boardId}/join/${invite.token}`
-  navigator.clipboard.writeText(url)
-  toast.add({ title: t('admin.invite_copied'), color: 'success' })
+  const origin = import.meta.client ? window.location.origin : '';
+  const url = `${origin}/boards/${props.boardId}/join/${invite.token}`;
+  navigator.clipboard.writeText(url);
+  toast.add({ title: t('admin.invite_copied'), color: 'success' });
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString()
+  return new Date(iso).toLocaleDateString();
 }
 </script>

@@ -90,30 +90,33 @@ interface PlayerAvatar {
   isTeam?: boolean;
 }
 
-const props = withDefaults(defineProps<{
-  position: number;
-  displayNumber: number;
-  title?: string | null;
-  iconUrl?: string | null;
-  type: 'NORMAL' | 'SNAKE' | 'LADDER';
-  targetPosition?: number | null;
-  completed?: boolean;
-  isCurrent?: boolean;
-  isPast?: boolean;
-  players?: PlayerAvatar[];
-  editMode?: boolean;
-  isEmpty?: boolean;
-}>(), {
-  title: null,
-  iconUrl: null,
-  targetPosition: null,
-  completed: false,
-  isCurrent: false,
-  isPast: false,
-  players: () => [],
-  editMode: false,
-  isEmpty: false,
-});
+const props = withDefaults(
+  defineProps<{
+    position: number;
+    displayNumber: number;
+    title?: string | null;
+    iconUrl?: string | null;
+    type: 'NORMAL' | 'SNAKE' | 'LADDER';
+    targetPosition?: number | null;
+    completed?: boolean;
+    isCurrent?: boolean;
+    isPast?: boolean;
+    players?: PlayerAvatar[];
+    editMode?: boolean;
+    isEmpty?: boolean;
+  }>(),
+  {
+    title: null,
+    iconUrl: null,
+    targetPosition: null,
+    completed: false,
+    isCurrent: false,
+    isPast: false,
+    players: () => [],
+    editMode: false,
+    isEmpty: false,
+  },
+);
 
 const emit = defineEmits<{ click: [position: number] }>();
 

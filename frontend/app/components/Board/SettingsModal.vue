@@ -7,17 +7,14 @@
   >
     <!-- CREATE MODE: stepper -->
     <template v-if="!boardId" #body>
-      <u-stepper
-        ref="stepper"
-        v-model="currentStep"
-        linear
-        :items="steps"
-        class="mb-8"
-      />
+      <u-stepper ref="stepper" v-model="currentStep" linear :items="steps" class="mb-8" />
 
       <div v-show="currentStep === 0"><board-form-basics-section v-model="form" /></div>
+
       <div v-show="currentStep === 1"><board-form-schedule-section v-model="form" /></div>
+
       <div v-show="currentStep === 2"><board-form-access-section v-model="form" /></div>
+
       <div v-show="currentStep === 3">
         <board-form-editors-section
           v-model="form"
@@ -33,8 +30,11 @@
     <template v-else #body>
       <u-tabs :items="tabItems">
         <template #basics><board-form-basics-section v-model="form" /></template>
+
         <template #schedule><board-form-schedule-section v-model="form" /></template>
+
         <template #access><board-form-access-section v-model="form" /></template>
+
         <template #editors>
           <board-form-editors-section
             v-model="form"
@@ -44,6 +44,7 @@
             @remove-team="onRemoveTeam"
           />
         </template>
+
         <template #invites>
           <board-invite-manager :board-id="boardId!" />
         </template>
@@ -61,6 +62,7 @@
           :disabled="currentStep === 0"
           @click="stepperRef?.prev()"
         />
+
         <div class="flex gap-3">
           <u-button
             color="neutral"
@@ -68,6 +70,7 @@
             :label="$t('common.cancel')"
             @click="requestCancel()"
           />
+
           <u-button
             v-if="currentStep < steps.length - 1"
             color="primary"
@@ -75,6 +78,7 @@
             :label="$t('common.next')"
             @click="tryNext()"
           />
+
           <u-button
             v-else
             color="primary"
@@ -96,6 +100,7 @@
           :label="$t('common.cancel')"
           @click="$emit('update:open', false)"
         />
+
         <u-button
           color="primary"
           icon="i-lucide-check"
@@ -112,82 +117,117 @@
     <template #body>
       <p class="text-sm text-muted">{{ $t('admin.cancel_create_desc') }}</p>
     </template>
+
     <template #footer>
       <div class="flex justify-end gap-3 w-full">
-        <u-button color="neutral" variant="ghost" :label="$t('admin.cancel_create_keep')" @click="showCancelConfirm = false" />
-        <u-button color="error" :label="$t('admin.cancel_create_discard')" @click="confirmDiscard()" />
+        <u-button
+          color="neutral"
+          variant="ghost"
+          :label="$t('admin.cancel_create_keep')"
+          @click="showCancelConfirm = false"
+        />
+
+        <u-button
+          color="error"
+          :label="$t('admin.cancel_create_discard')"
+          @click="confirmDiscard()"
+        />
       </div>
     </template>
   </u-modal>
 </template>
 
 <script setup lang="ts">
-import { today, getLocalTimeZone } from '@internationalized/date'
-import { useAuthStore } from '~/stores/auth'
-import { createBoard, updateBoard, addTeamToBoard, removeTeamFromBoard } from '~/composables/useBoards'
-import type { BoardEntity } from '~/types/graphql'
-import type { BoardFormData, AssignedTeam } from './SettingsForm.vue'
+import { today, getLocalTimeZone } from '@internationalized/date';
+
+import type { BoardFormData, AssignedTeam } from './SettingsForm.vue';
+import type { BoardEntity } from '~/types/graphql';
+
+import {
+  createBoard,
+  updateBoard,
+  addTeamToBoard,
+  removeTeamFromBoard,
+} from '~/composables/useBoards';
+import { useAuthStore } from '~/stores/auth';
 
 const props = defineProps<{
-  open: boolean
-  boardId?: string | null
-  initialData?: Partial<BoardFormData>
-}>()
+  open: boolean;
+  boardId?: string | null;
+  initialData?: Partial<BoardFormData>;
+}>();
 
 const emit = defineEmits<{
-  'update:open': [value: boolean]
-  'saved': [board: BoardEntity]
-}>()
+  'update:open': [value: boolean];
+  saved: [board: BoardEntity];
+}>();
 
-const authStore = useAuthStore()
-const toast = useToast()
-const { t } = useI18n()
+const authStore = useAuthStore();
+const toast = useToast();
+const { t } = useI18n();
 
-const todayDate = today(getLocalTimeZone())
+const todayDate = today(getLocalTimeZone());
 
 // ─── Stepper (create mode) ────────────────────────────────────────────────────
 
-const currentStep = ref(0)
-const stepperRef = useTemplateRef('stepper')
+const currentStep = ref(0);
+const stepperRef = useTemplateRef('stepper');
 
 const steps = computed(() => [
-  { title: t('admin.step_basics'), description: t('admin.step_basics_desc'), icon: 'i-lucide-layout-grid' },
-  { title: t('admin.step_schedule'), description: t('admin.step_schedule_desc'), icon: 'i-lucide-calendar' },
-  { title: t('admin.step_access'), description: t('admin.step_access_desc'), icon: 'i-lucide-lock' },
-  { title: t('admin.step_editors'), description: t('admin.step_editors_desc'), icon: 'i-lucide-users' },
-])
+  {
+    title: t('admin.step_basics'),
+    description: t('admin.step_basics_desc'),
+    icon: 'i-lucide-layout-grid',
+  },
+  {
+    title: t('admin.step_schedule'),
+    description: t('admin.step_schedule_desc'),
+    icon: 'i-lucide-calendar',
+  },
+  {
+    title: t('admin.step_access'),
+    description: t('admin.step_access_desc'),
+    icon: 'i-lucide-lock',
+  },
+  {
+    title: t('admin.step_editors'),
+    description: t('admin.step_editors_desc'),
+    icon: 'i-lucide-users',
+  },
+]);
 
 function validateStep(step: number): string | null {
-  if (step === 0 && !form.value.title.trim()) return t('validation.title_required')
-  if (step === 2 && form.value.accessMode === 'GUILD' && !form.value.requiredGuildId) return t('validation.server_required')
-  return null
+  if (step === 0 && !form.value.title.trim()) return t('validation.title_required');
+  if (step === 2 && form.value.accessMode === 'GUILD' && !form.value.requiredGuildId)
+    return t('validation.server_required');
+  return null;
 }
 
 function tryNext() {
-  const error = validateStep(currentStep.value)
+  const error = validateStep(currentStep.value);
   if (error) {
-    toast.add({ title: error, color: 'error', id: 'step-validation' })
-    return
+    toast.add({ title: error, color: 'error', id: 'step-validation' });
+    return;
   }
-  stepperRef.value?.next()
+  stepperRef.value?.next();
 }
 
 // ─── Tabs (edit mode) ─────────────────────────────────────────────────────────
 
-type TabSlot = 'basics' | 'schedule' | 'access' | 'editors' | 'invites'
+type TabSlot = 'basics' | 'schedule' | 'access' | 'editors' | 'invites';
 
-const tabItems = computed<{ label: string, icon: string, slot: TabSlot }[]>(() => {
-  const items: { label: string, icon: string, slot: TabSlot }[] = [
+const tabItems = computed<{ label: string; icon: string; slot: TabSlot }[]>(() => {
+  const items: { label: string; icon: string; slot: TabSlot }[] = [
     { label: t('admin.step_basics'), icon: 'i-lucide-layout-grid', slot: 'basics' },
     { label: t('admin.step_schedule'), icon: 'i-lucide-calendar', slot: 'schedule' },
     { label: t('admin.step_access'), icon: 'i-lucide-lock', slot: 'access' },
     { label: t('admin.step_editors'), icon: 'i-lucide-users', slot: 'editors' },
-  ]
+  ];
   if (props.boardId && form.value.accessMode === 'INVITE') {
-    items.push({ label: t('admin.invite_links'), icon: 'i-lucide-link', slot: 'invites' })
+    items.push({ label: t('admin.invite_links'), icon: 'i-lucide-link', slot: 'invites' });
   }
-  return items
-})
+  return items;
+});
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
 
@@ -206,58 +246,62 @@ function buildDefaultForm(): BoardFormData {
     isListed: props.initialData?.isListed ?? true,
     accessMode: props.initialData?.accessMode ?? 'OPEN',
     requiredGuildId: props.initialData?.requiredGuildId ?? null,
-  }
+  };
 }
 
-const form = ref<BoardFormData>(buildDefaultForm())
+const form = ref<BoardFormData>(buildDefaultForm());
 
-watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    form.value = buildDefaultForm()
-    currentStep.value = 0
-  }
-})
+watch(
+  () => props.open,
+  isOpen => {
+    if (isOpen) {
+      form.value = buildDefaultForm();
+      currentStep.value = 0;
+    }
+  },
+);
 
-const saving = ref(false)
+const saving = ref(false);
 
 // ─── Cancel confirmation (create mode) ───────────────────────────────────────
 
-const showCancelConfirm = ref(false)
+const showCancelConfirm = ref(false);
 
-const isDirty = computed(() =>
-  form.value.title.trim() !== '' ||
-  form.value.description.trim() !== '' ||
-  form.value.accessMode !== 'OPEN' ||
-  !form.value.isListed ||
-  form.value.selectedAuthors.length > 1 ||
-  form.value.assignedTeams.length > 0
-)
+const isDirty = computed(
+  () =>
+    form.value.title.trim() !== '' ||
+    form.value.description.trim() !== '' ||
+    form.value.accessMode !== 'OPEN' ||
+    !form.value.isListed ||
+    form.value.selectedAuthors.length > 1 ||
+    form.value.assignedTeams.length > 0,
+);
 
 function requestCancel() {
   if (!props.boardId && isDirty.value) {
-    showCancelConfirm.value = true
+    showCancelConfirm.value = true;
   } else {
-    emit('update:open', false)
+    emit('update:open', false);
   }
 }
 
 function confirmDiscard() {
-  showCancelConfirm.value = false
-  emit('update:open', false)
+  showCancelConfirm.value = false;
+  emit('update:open', false);
 }
 
 // Form holds YYYY-MM-DD; the API expects a full ISO timestamp.
 function toISO(d: string | null): string | null {
-  return d ? `${d}T00:00:00.000Z` : null
+  return d ? `${d}T00:00:00.000Z` : null;
 }
 
 async function onSave() {
   if (!form.value.title.trim()) {
-    toast.add({ title: t('validation.title_required'), color: 'error', id: 'step-validation' })
-    return
+    toast.add({ title: t('validation.title_required'), color: 'error', id: 'step-validation' });
+    return;
   }
 
-  saving.value = true
+  saving.value = true;
   try {
     const input = {
       title: form.value.title.trim(),
@@ -271,32 +315,37 @@ async function onSave() {
       isListed: form.value.isListed,
       accessMode: form.value.accessMode,
       requiredGuildId: form.value.requiredGuildId ?? undefined,
-    }
+    };
 
-    let board: BoardEntity
+    let board: BoardEntity;
 
     if (props.boardId) {
-      board = await updateBoard(props.boardId, input)
-      toast.add({ title: t('admin.board_updated'), color: 'success', id: 'board-save' })
+      board = await updateBoard(props.boardId, input);
+      toast.add({ title: t('admin.board_updated'), color: 'success', id: 'board-save' });
     } else {
-      board = await createBoard(input)
+      board = await createBoard(input);
       for (const bt of form.value.assignedTeams) {
-        await addTeamToBoard(board.id, bt.teamId)
+        await addTeamToBoard(board.id, bt.teamId);
       }
-      toast.add({ title: t('admin.board_created'), color: 'success', id: 'board-save' })
+      toast.add({ title: t('admin.board_created'), color: 'success', id: 'board-save' });
     }
 
-    emit('saved', board)
-    emit('update:open', false)
+    emit('saved', board);
+    emit('update:open', false);
   } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error', id: 'board-save-error' })
+    toast.add({
+      title: t('errors.generic'),
+      description: (e as Error).message,
+      color: 'error',
+      id: 'board-save-error',
+    });
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 async function onAddTeam(team: { id: string; name: string; iconUrl: string | null }) {
-  if (form.value.assignedTeams.some(bt => bt.teamId === team.id)) return
+  if (form.value.assignedTeams.some(bt => bt.teamId === team.id)) return;
 
   if (!props.boardId) {
     form.value = {
@@ -305,19 +354,24 @@ async function onAddTeam(team: { id: string; name: string; iconUrl: string | nul
         ...form.value.assignedTeams,
         { teamId: team.id, team: { id: team.id, name: team.name, iconUrl: team.iconUrl } },
       ],
-    }
-    return
+    };
+    return;
   }
 
   try {
-    const result = await addTeamToBoard(props.boardId, team.id)
+    const result = await addTeamToBoard(props.boardId, team.id);
     form.value = {
       ...form.value,
       assignedTeams: [...form.value.assignedTeams, { teamId: result.teamId, team: result.team }],
-    }
-    toast.add({ title: t('admin.team_added'), color: 'success', id: 'team-update' })
+    };
+    toast.add({ title: t('admin.team_added'), color: 'success', id: 'team-update' });
   } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error', id: 'team-update-error' })
+    toast.add({
+      title: t('errors.generic'),
+      description: (e as Error).message,
+      color: 'error',
+      id: 'team-update-error',
+    });
   }
 }
 
@@ -326,19 +380,24 @@ async function onRemoveTeam(teamId: string) {
     form.value = {
       ...form.value,
       assignedTeams: form.value.assignedTeams.filter(bt => bt.teamId !== teamId),
-    }
-    return
+    };
+    return;
   }
 
   try {
-    await removeTeamFromBoard(props.boardId, teamId)
+    await removeTeamFromBoard(props.boardId, teamId);
     form.value = {
       ...form.value,
       assignedTeams: form.value.assignedTeams.filter(bt => bt.teamId !== teamId),
-    }
-    toast.add({ title: t('admin.team_removed'), color: 'neutral', id: 'team-update' })
+    };
+    toast.add({ title: t('admin.team_removed'), color: 'neutral', id: 'team-update' });
   } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error', id: 'team-update-error' })
+    toast.add({
+      title: t('errors.generic'),
+      description: (e as Error).message,
+      color: 'error',
+      id: 'team-update-error',
+    });
   }
 }
 </script>

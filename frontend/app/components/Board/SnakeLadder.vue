@@ -37,12 +37,15 @@ interface Connection {
   type: 'SNAKE' | 'LADDER';
 }
 
-const props = withDefaults(defineProps<{
-  connections: Connection[];
-  boardSize: number;
-  tileSize: number;
-  gap?: number;
-}>(), { gap: 4 });
+const props = withDefaults(
+  defineProps<{
+    connections: Connection[];
+    boardSize: number;
+    tileSize: number;
+    gap?: number;
+  }>(),
+  { gap: 4 },
+);
 
 // Total SVG size = board visual size (tiles * size + gaps)
 const svgSize = computed(

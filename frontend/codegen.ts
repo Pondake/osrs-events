@@ -1,4 +1,4 @@
-import type { CodegenConfig } from '@graphql-codegen/cli'
+import type { CodegenConfig } from '@graphql-codegen/cli';
 
 /**
  * GraphQL Codegen config.
@@ -24,6 +24,6 @@ const config: CodegenConfig = {
       },
     },
   },
-}
+};
 
-export default config
+export default config;

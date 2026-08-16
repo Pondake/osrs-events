@@ -1,5 +1,9 @@
 <template>
-  <nuxt-layout :title="board?.title || ''" :description="board?.description || ''" :pending="pending">
+  <nuxt-layout
+    :title="board?.title || ''"
+    :description="board?.description || ''"
+    :pending="pending"
+  >
     <template #links>
       <div class="flex gap-2 shrink-0 flex-wrap">
         <!-- Show other players toggle -->
@@ -46,11 +50,7 @@
             <div class="flex-1 w-full min-w-0 overflow-x-auto">
               <div class="board-parchment rounded-xl p-3 osrs-border">
                 <div class="board-grid board-grid-7">
-                  <u-skeleton
-                    v-for="i in 49"
-                    :key="i"
-                    class="board-tile rounded-[6px]"
-                  />
+                  <u-skeleton v-for="i in 49" :key="i" class="board-tile rounded-[6px]" />
                 </div>
               </div>
             </div>
@@ -58,7 +58,9 @@
             <!-- Sidebar skeleton -->
             <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
               <u-skeleton class="h-48 rounded-xl" />
+
               <u-skeleton class="h-28 rounded-xl" />
+
               <u-skeleton class="h-24 rounded-xl" />
             </div>
           </div>
@@ -111,47 +113,47 @@
             </template>
           </u-alert>
 
-          <Transition name="board-fade" appear>
-          <div class="flex flex-col lg:flex-row gap-8 items-start pb-8">
-            <!-- Game board -->
-            <div class="flex-1 w-full min-w-0 overflow-x-auto">
-              <div :class="boardMinWidth">
-                <board-game-board
-                  :tiles="board.tiles ?? []"
-                  :board-size="board.size"
-                  :current-position="playerBoard?.currentPosition ?? -1"
-                  :completed-tile-positions="completedPositions"
-                  :player-states="boardPlayerStates"
+          <transition name="board-fade" appear>
+            <div class="flex flex-col lg:flex-row gap-8 items-start pb-8">
+              <!-- Game board -->
+              <div class="flex-1 w-full min-w-0 overflow-x-auto">
+                <div :class="boardMinWidth">
+                  <board-game-board
+                    :tiles="board.tiles ?? []"
+                    :board-size="board.size"
+                    :current-position="playerBoard?.currentPosition ?? -1"
+                    :completed-tile-positions="completedPositions"
+                    :player-states="boardPlayerStates"
+                    :edit-mode="editMode"
+                    @tile-click="handleTileClick"
+                  />
+                </div>
+              </div>
+
+              <!-- Sidebar (info + dice + leaderboard) -->
+              <div class="w-full lg:w-64 shrink-0">
+                <board-sidebar
+                  v-model:edit-roll-limit="editRollLimit"
+                  v-model:edit-unlimited="editUnlimited"
+                  :board="board"
+                  :my-board-state="playerBoard"
+                  :clicked-tile="clickedTile"
+                  :completed-positions="completedPositions"
+                  :rolling="rolling"
+                  :last-roll-result="lastRollResult"
+                  :completing="completing"
                   :edit-mode="editMode"
-                  @tile-click="handleTileClick"
+                  :saving-roll-limit="savingRollLimit"
+                  :leaderboard-key="leaderboardKey"
+                  @roll="onRoll"
+                  @complete-tile="onCompleteTile"
+                  @uncomplete-tile="onUncompleteTile"
+                  @save-roll-limit="saveRollLimit"
+                  @clear-tile="clearClickedTile"
                 />
               </div>
             </div>
-
-            <!-- Sidebar (info + dice + leaderboard) -->
-            <div class="w-full lg:w-64 shrink-0">
-              <board-sidebar
-                :board="board"
-                :my-board-state="playerBoard"
-                :clicked-tile="clickedTile"
-                :completed-positions="completedPositions"
-                v-model:edit-roll-limit="editRollLimit"
-                v-model:edit-unlimited="editUnlimited"
-                :rolling="rolling"
-                :last-roll-result="lastRollResult"
-                :completing="completing"
-                :edit-mode="editMode"
-                :saving-roll-limit="savingRollLimit"
-                :leaderboard-key="leaderboardKey"
-                @roll="onRoll"
-                @complete-tile="onCompleteTile"
-                @uncomplete-tile="onUncompleteTile"
-                @save-roll-limit="saveRollLimit"
-                @clear-tile="clearClickedTile"
-              />
-            </div>
-          </div>
-          </Transition>
+          </transition>
         </u-container>
       </u-page-body>
     </template>
@@ -161,9 +163,11 @@
       <template #body>
         <div class="text-center py-6">
           <p class="text-6xl mb-4">🎉</p>
+
           <p class="text-muted">{{ $t('board.bingo_desc') }}</p>
         </div>
       </template>
+
       <template #footer>
         <u-button block color="primary" :label="$t('common.close')" @click="showBingo = false" />
       </template>
@@ -172,10 +176,14 @@
     <!-- Tile editor modal -->
     <tile-edit-modal
       v-if="editMode && editingTile"
-      :tile="(editingTile as any)"
+      :tile="editingTile as any"
       :total-tiles="totalTiles"
       :open="!!editingTile"
-      @update:open="v => { if (!v) editingTile = null }"
+      @update:open="
+        v => {
+          if (!v) editingTile = null;
+        }
+      "
       @saved="refresh"
       @deleted="refresh"
       @task-updated="onTaskUpdated"
@@ -194,17 +202,17 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-import { useBoard } from '~/composables/useBoards'
-import { useBoardPage } from '~/composables/useBoardPage'
+import { useBoardPage } from '~/composables/useBoardPage';
+import { useBoard } from '~/composables/useBoards';
+import { useAuthStore } from '~/stores/auth';
 
-const authStore = useAuthStore()
-const route = useRoute()
-const boardId = route.params.id as string
+const authStore = useAuthStore();
+const route = useRoute();
+const boardId = route.params.id as string;
 
 // ─── SSR board data ───────────────────────────────────────────────────────────
 
-const { board, pending, error, refresh, updateBoard } = await useBoard(boardId)
+const { board, pending, error, refresh, updateBoard } = await useBoard(boardId);
 
 // ─── All game logic via composable ───────────────────────────────────────────
 
@@ -242,32 +250,31 @@ const {
   onRoll,
   onCompleteTile,
   onUncompleteTile,
-} = useBoardPage(boardId, board, refresh, updateBoard as any)
+} = useBoardPage(boardId, board, refresh, updateBoard as any);
 
-const boardAccessMode = computed(() => (board.value as any)?.accessMode ?? 'OPEN')
-const boardRequiredGuildId = computed(() => (board.value as any)?.requiredGuildId ?? null)
+const boardAccessMode = computed(() => (board.value as any)?.accessMode ?? 'OPEN');
+const boardRequiredGuildId = computed(() => (board.value as any)?.requiredGuildId ?? null);
 
 // Show AccessGate when: user is authenticated, board has loaded, but has no PlayerBoard
 // and board access mode is not OPEN, OR board is OPEN but hasn't joined yet
-const showAccessGate = computed(() =>
-  !!board.value &&
-  !!authStore.user &&
-  !playerBoardLoading.value &&
-  !playerBoard.value
-)
+const showAccessGate = computed(
+  () => !!board.value && !!authStore.user && !playerBoardLoading.value && !playerBoard.value,
+);
 
 async function onJoinWithCode(code: string) {
-  await doJoinBoard(code)
+  await doJoinBoard(code);
 }
 
 function clearClickedTile() {
-  clickedTile.value = null
+  clickedTile.value = null;
 }
 </script>
 
 <style scoped>
 .board-fade-enter-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 .board-fade-enter-from {
   opacity: 0;

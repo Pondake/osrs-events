@@ -2,7 +2,9 @@
   <u-container class="my-12">
     <div class="max-w-md mx-auto text-center space-y-4">
       <u-icon :name="gateIcon" class="text-5xl text-muted block mx-auto" />
+
       <h2 class="text-xl font-semibold osrs-font">{{ gateTitle }}</h2>
+
       <p class="text-muted text-sm">{{ gateDescription }}</p>
 
       <!-- OPEN / GUILD (user has guild) -->
@@ -24,6 +26,7 @@
           maxlength="6"
           @keyup.enter="submitCode"
         />
+
         <u-button
           color="primary"
           :loading="joining"
@@ -35,8 +38,11 @@
       <!-- GUILD — user missing guild -->
       <div v-else-if="accessMode === 'GUILD' && !userHasGuild" class="space-y-2">
         <p class="text-sm text-warning">
-          {{ $t('board.requires_guild', { guild: requiredGuildName ?? $t('board.unknown_guild') }) }}
+          {{
+            $t('board.requires_guild', { guild: requiredGuildName ?? $t('board.unknown_guild') })
+          }}
         </p>
+
         <u-button
           color="neutral"
           variant="outline"
@@ -51,65 +57,69 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
+import { useAuthStore } from '~/stores/auth';
 
 const props = defineProps<{
-  accessMode: 'OPEN' | 'GUILD' | 'INVITE'
-  requiredGuildId: string | null
-  joining: boolean
-}>()
+  accessMode: 'OPEN' | 'GUILD' | 'INVITE';
+  requiredGuildId: string | null;
+  joining: boolean;
+}>();
 
 const emit = defineEmits<{
-  join: []
-  'join-with-code': [code: string]
-}>()
+  join: [];
+  'join-with-code': [code: string];
+}>();
 
-const authStore = useAuthStore()
+const authStore = useAuthStore();
 
 const userHasGuild = computed(() =>
   props.accessMode === 'GUILD' && props.requiredGuildId
     ? (authStore.user?.guilds ?? []).some(g => g.guildId === props.requiredGuildId)
-    : false
-)
+    : false,
+);
 
-const requiredGuildName = computed(() =>
-  (authStore.user?.guilds ?? []).find(g => g.guildId === props.requiredGuildId)?.guildName ?? null
-)
+const requiredGuildName = computed(
+  () =>
+    (authStore.user?.guilds ?? []).find(g => g.guildId === props.requiredGuildId)?.guildName ??
+    null,
+);
 
-const canJoinDirectly = computed(() =>
-  props.accessMode === 'OPEN' || (props.accessMode === 'GUILD' && userHasGuild.value)
-)
+const canJoinDirectly = computed(
+  () => props.accessMode === 'OPEN' || (props.accessMode === 'GUILD' && userHasGuild.value),
+);
 
 const gateIcon = computed(() => {
-  if (props.accessMode === 'INVITE') return 'i-lucide-lock'
-  if (props.accessMode === 'GUILD') return 'i-lucide-shield'
-  return 'i-lucide-log-in'
-})
+  if (props.accessMode === 'INVITE') return 'i-lucide-lock';
+  if (props.accessMode === 'GUILD') return 'i-lucide-shield';
+  return 'i-lucide-log-in';
+});
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 const gateTitle = computed(() => {
-  if (props.accessMode === 'INVITE') return t('board.invite_only')
-  if (props.accessMode === 'GUILD') return t('board.guild_only')
-  return t('board.join_to_play')
-})
+  if (props.accessMode === 'INVITE') return t('board.invite_only');
+  if (props.accessMode === 'GUILD') return t('board.guild_only');
+  return t('board.join_to_play');
+});
 
 const gateDescription = computed(() => {
-  if (props.accessMode === 'INVITE') return t('board.invite_only_desc')
-  if (props.accessMode === 'GUILD' && !userHasGuild.value) return t('board.guild_only_blocked_desc')
-  if (props.accessMode === 'GUILD') return t('board.guild_only_desc', { guild: requiredGuildName.value ?? '' })
-  return t('board.join_to_play_desc')
-})
+  if (props.accessMode === 'INVITE') return t('board.invite_only_desc');
+  if (props.accessMode === 'GUILD' && !userHasGuild.value)
+    return t('board.guild_only_blocked_desc');
+  if (props.accessMode === 'GUILD')
+    return t('board.guild_only_desc', { guild: requiredGuildName.value ?? '' });
+  return t('board.join_to_play_desc');
+});
 
-const codeInput = ref('')
+const codeInput = ref('');
 
 function submitCode() {
-  const code = codeInput.value.trim().toUpperCase()
-  if (!code) return
-  emit('join-with-code', code)
+  const code = codeInput.value.trim().toUpperCase();
+  if (!code) return;
+  emit('join-with-code', code);
 }
 
 function relinkDiscord() {
-  authStore.loginWithDiscord()
+  authStore.loginWithDiscord();
 }
 </script>
