@@ -42,9 +42,26 @@
             :to="`/boards/${board.id}`"
           >
             <u-page-card
-              :title="board.title"
               class="h-full hover:border-primary transition-colors cursor-pointer"
+              :ui="{ body: 'w-full' }"
             >
+              <!-- PageCard's wrapper is items-start, so body needs w-full above
+                   for the status to reach the right edge of the card. -->
+              <template #title>
+                <div class="flex items-center justify-between gap-3 w-full">
+                  <span class="truncate">{{ board.title }}</span>
+
+                  <div
+                    class="flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 shrink-0"
+                    :class="status.class"
+                  >
+                    <u-icon :name="status.icon" class="size-3.5" />
+
+                    <span>{{ $t(status.key) }}</span>
+                  </div>
+                </div>
+              </template>
+
               <template #description>
                 <div class="flex flex-col gap-2 mt-2">
                   <div class="flex items-center gap-2 text-sm text-muted">
@@ -102,18 +119,6 @@
                         board.authors.map(a => a.user.nickname ?? a.user.discordUsername).join(', ')
                       }}
                     </span>
-                  </div>
-
-                  <!-- Whether the event is running is otherwise only inferable
-                       by comparing the two dates above, so it gets a tinted
-                       pill rather than sitting in the muted meta list. -->
-                  <div
-                    class="flex items-center gap-2 text-sm font-medium rounded-md px-2 py-1 w-fit mt-1"
-                    :class="status.class"
-                  >
-                    <u-icon :name="status.icon" class="size-4" />
-
-                    <span>{{ $t(status.key) }}</span>
                   </div>
                 </div>
               </template>
