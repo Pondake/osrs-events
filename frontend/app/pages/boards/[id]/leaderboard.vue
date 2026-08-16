@@ -26,15 +26,21 @@
 
         <div v-else-if="!entries.length" class="text-center py-16">
           <u-icon name="i-lucide-users" class="size-12 text-muted mx-auto mb-4" />
+
           <p class="text-lg font-medium osrs-font">{{ $t('leaderboard.no_players') }}</p>
         </div>
 
         <div v-else class="flex flex-col gap-1">
           <!-- Column headers -->
-          <div class="flex items-center gap-2 px-2 pb-2 border-b border-default text-xs text-muted uppercase tracking-wide font-semibold">
+          <div
+            class="flex items-center gap-2 px-2 pb-2 border-b border-default text-xs text-muted uppercase tracking-wide font-semibold"
+          >
             <span class="w-6 text-center shrink-0">#</span>
+
             <span class="flex-1">{{ $t('leaderboard.col_player') }}</span>
+
             <span class="w-16 text-right shrink-0">{{ $t('leaderboard.col_tile') }}</span>
+
             <span class="w-20 text-right shrink-0">{{ $t('leaderboard.col_remaining') }}</span>
           </div>
 
@@ -42,13 +48,20 @@
             v-for="entry in entries"
             :key="entry.playerId"
             class="flex items-center gap-2 px-2 py-2 rounded-lg transition-colors"
-            :class="entry.rank === 1 ? 'bg-amber-500/10 ring-1 ring-amber-500/30' : 'hover:bg-muted/30'"
+            :class="
+              entry.rank === 1 ? 'bg-amber-500/10 ring-1 ring-amber-500/30' : 'hover:bg-muted/30'
+            "
           >
             <span class="w-6 text-center text-sm shrink-0">
               <template v-if="entry.rank === 1">🥇</template>
+
               <template v-else-if="entry.rank === 2">🥈</template>
+
               <template v-else-if="entry.rank === 3">🥉</template>
-              <template v-else><span class="text-xs text-muted font-bold">{{ entry.rank }}</span></template>
+
+              <template v-else
+                ><span class="text-xs text-muted font-bold">{{ entry.rank }}</span></template
+              >
             </span>
 
             <u-avatar
@@ -86,26 +99,30 @@
 </template>
 
 <script setup lang="ts">
-import { useBoard } from '~/composables/useBoards'
-import { useLeaderboard, leaderboardRemainingClass, type LeaderboardEntry } from '~/composables/usePlayers'
+import { useBoard } from '~/composables/useBoards';
+import {
+  useLeaderboard,
+  leaderboardRemainingClass,
+  type LeaderboardEntry,
+} from '~/composables/usePlayers';
 
-const { t } = useI18n()
-const route = useRoute()
-const boardId = route.params.id as string
+const { t } = useI18n();
+const route = useRoute();
+const boardId = route.params.id as string;
 
 const [{ board }, { entries, pending, error }] = await Promise.all([
   useBoard(boardId),
   useLeaderboard(boardId),
-])
+]);
 
 function remainingClass(entry: LeaderboardEntry): string {
-  return leaderboardRemainingClass(entry)
+  return leaderboardRemainingClass(entry);
 }
 
 function remainingTitle(entry: LeaderboardEntry): string {
-  if (entry.pathHasSnake && entry.pathHasLadder) return t('leaderboard.path_snake_and_ladder')
-  if (entry.pathHasSnake) return t('leaderboard.path_has_snake')
-  if (entry.pathHasLadder) return t('leaderboard.path_has_ladder')
-  return t('leaderboard.tiles_remaining')
+  if (entry.pathHasSnake && entry.pathHasLadder) return t('leaderboard.path_snake_and_ladder');
+  if (entry.pathHasSnake) return t('leaderboard.path_has_snake');
+  if (entry.pathHasLadder) return t('leaderboard.path_has_ladder');
+  return t('leaderboard.tiles_remaining');
 }
 </script>

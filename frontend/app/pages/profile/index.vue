@@ -4,6 +4,7 @@
       <u-container class="max-w-3xl">
         <div v-if="!authStore.user" class="text-center py-12 text-muted">
           <u-skeleton class="h-24 w-24 rounded-full mx-auto mb-4" />
+
           <u-skeleton class="h-6 w-48 mx-auto" />
         </div>
 
@@ -22,6 +23,7 @@
                 <!-- Editable display name -->
                 <div v-if="!editingProfile" class="flex items-center gap-2">
                   <h2 class="text-2xl font-bold osrs-font">{{ authStore.displayName }}</h2>
+
                   <u-button
                     size="xs"
                     color="neutral"
@@ -38,6 +40,7 @@
                     class="flex-1"
                     size="sm"
                   />
+
                   <u-button
                     size="sm"
                     color="primary"
@@ -45,6 +48,7 @@
                     icon="i-lucide-check"
                     @click="saveProfile"
                   />
+
                   <u-button
                     size="sm"
                     color="neutral"
@@ -89,6 +93,7 @@
 
             <div v-else-if="joinedBoards.length === 0" class="text-center py-8 text-muted">
               <u-icon name="i-lucide-layout-grid" class="text-5xl mb-4 block mx-auto" />
+
               <p>{{ $t('profile.no_boards') }}</p>
             </div>
 
@@ -103,6 +108,7 @@
                       >
                         {{ pb.board.title }}
                       </nuxt-link>
+
                       <u-badge color="primary" variant="subtle">
                         {{ formatBoardSize(pb.board.size) }}
                       </u-badge>
@@ -113,6 +119,7 @@
                         <u-icon name="i-lucide-map-pin" class="inline mr-1" />
                         {{ $t('board.position', { pos: pb.currentPosition }) }}
                       </span>
+
                       <span>
                         <u-icon name="i-lucide-circle-check" class="inline mr-1" />
                         {{ pb.completedTiles.length }} {{ $t('profile.tiles_completed') }}
@@ -124,8 +131,10 @@
                   <div class="w-32 shrink-0">
                     <div class="flex justify-between text-xs text-muted mb-1">
                       <span>{{ $t('profile.progress') }}</span>
+
                       <span>{{ progressPct(pb) }}%</span>
                     </div>
+
                     <div class="h-2 rounded-full bg-muted overflow-hidden">
                       <div
                         class="h-full bg-primary-500 rounded-full transition-all"
@@ -153,68 +162,69 @@
 </template>
 
 <script setup lang="ts">
-import type { PlayerBoardEntity } from '~/types/graphql'
-import { useMyPlayerBoards } from '~/composables/usePlayers'
-import { useMe } from '~/composables/useUsers'
-import { formatBoardSize, BOARD_TILE_COUNT } from '~/utils/board'
+import type { PlayerBoardEntity } from '~/types/graphql';
 
-definePageMeta({ middleware: ['auth'] })
+import { useMyPlayerBoards } from '~/composables/usePlayers';
+import { useMe } from '~/composables/useUsers';
+import { formatBoardSize, BOARD_TILE_COUNT } from '~/utils/board';
 
-const authStore = useAuthStore()
-const { t } = useI18n()
-const toast = useToast()
+definePageMeta({ middleware: ['auth'] });
+
+const authStore = useAuthStore();
+const { t } = useI18n();
+const toast = useToast();
 
 // ─── Profile editing ──────────────────────────────────────────────────────────
 
-const editingProfile = ref(false)
-const nicknameInput = ref('')
-const savingProfile = ref(false)
+const editingProfile = ref(false);
+const nicknameInput = ref('');
+const savingProfile = ref(false);
 
-const { updateProfile } = await useMe()
+const { updateProfile } = await useMe();
 
 function startEditingProfile() {
-  nicknameInput.value = authStore.user?.nickname ?? ''
-  editingProfile.value = true
+  nicknameInput.value = authStore.user?.nickname ?? '';
+  editingProfile.value = true;
 }
 
 function cancelEditingProfile() {
-  editingProfile.value = false
+  editingProfile.value = false;
 }
 
 async function saveProfile() {
-  savingProfile.value = true
+  savingProfile.value = true;
   try {
-    const updated = await updateProfile(nicknameInput.value.trim() || null)
+    const updated = await updateProfile(nicknameInput.value.trim() || null);
     if (authStore.user) {
-      authStore.user.nickname = updated.nickname ?? null
+      authStore.user.nickname = updated.nickname ?? null;
     }
-    editingProfile.value = false
-    toast.add({ title: t('profile.nickname_saved'), color: 'success' })
+    editingProfile.value = false;
+    toast.add({ title: t('profile.nickname_saved'), color: 'success' });
   } catch (e) {
-    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' })
+    toast.add({ title: t('errors.generic'), description: (e as Error).message, color: 'error' });
   } finally {
-    savingProfile.value = false
+    savingProfile.value = false;
   }
 }
 
 // ─── Player boards ────────────────────────────────────────────────────────────
 
-const { playerBoards, loading, load: loadBoards } = useMyPlayerBoards()
+const { playerBoards, loading, load: loadBoards } = useMyPlayerBoards();
 
-onMounted(loadBoards)
+onMounted(loadBoards);
 
 // PlayerBoardEntity.board is nullable because it is only populated when the
 // service includes the relation. This query always requests it, so narrow to
 // the entries that actually have one rather than guarding at every use site.
-type PlayerBoardWithBoard = PlayerBoardEntity & { board: NonNullable<PlayerBoardEntity['board']> }
+type PlayerBoardWithBoard = PlayerBoardEntity & { board: NonNullable<PlayerBoardEntity['board']> };
 
-const joinedBoards = computed(
-  () => playerBoards.value.filter((pb): pb is PlayerBoardWithBoard => Boolean(pb.board)),
-)
+const joinedBoards = computed(() =>
+  playerBoards.value.filter((pb): pb is PlayerBoardWithBoard => Boolean(pb.board)),
+);
 
 // ─── Role display helpers ─────────────────────────────────────────────────────
 
-type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral';
 
 function roleColor(name: string): BadgeColor {
   const map: Record<string, BadgeColor> = {
@@ -222,8 +232,8 @@ function roleColor(name: string): BadgeColor {
     EDITOR: 'warning',
     TEAM_MANAGER: 'info',
     PLAYER: 'primary',
-  }
-  return map[name] ?? 'neutral'
+  };
+  return map[name] ?? 'neutral';
 }
 
 function roleIcon(name: string): string {
@@ -232,16 +242,16 @@ function roleIcon(name: string): string {
     EDITOR: 'i-lucide-pencil',
     TEAM_MANAGER: 'i-lucide-users',
     PLAYER: 'i-lucide-user',
-  }
-  return map[name] ?? 'i-lucide-user'
+  };
+  return map[name] ?? 'i-lucide-user';
 }
 
 // ─── Progress helpers ─────────────────────────────────────────────────────────
 
 function progressPct(pb: PlayerBoardWithBoard): number {
-  const total = BOARD_TILE_COUNT[pb.board.size] ?? 25
-  if (total <= 1) return 0
-  const pos = Math.max(0, pb.currentPosition)
-  return Math.min(99, Math.floor((pos / (total - 1)) * 100))
+  const total = BOARD_TILE_COUNT[pb.board.size] ?? 25;
+  if (total <= 1) return 0;
+  const pos = Math.max(0, pb.currentPosition);
+  return Math.min(99, Math.floor((pos / (total - 1)) * 100));
 }
 </script>

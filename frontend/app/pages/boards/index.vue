@@ -1,7 +1,12 @@
 <template>
   <nuxt-layout :title="$t('boards.title')" :description="$t('boards.subtitle')">
     <template v-if="authStore.isAdmin || authStore.isEditor" #links>
-      <u-button color="primary" icon="i-lucide-plus" to="/admin/boards/create" :label="$t('admin.create_board')" />
+      <u-button
+        color="primary"
+        icon="i-lucide-plus"
+        to="/admin/boards/create"
+        :label="$t('admin.create_board')"
+      />
     </template>
 
     <u-page-body>
@@ -23,7 +28,9 @@
         <!-- Empty -->
         <div v-else-if="!boards.length" class="text-center py-16">
           <u-icon name="i-lucide-layout-grid" class="size-12 text-muted mx-auto mb-4" />
+
           <p class="text-lg font-medium">{{ $t('boards.no_boards') }}</p>
+
           <p class="text-sm text-muted mt-1">{{ $t('boards.no_boards_desc') }}</p>
         </div>
 
@@ -38,16 +45,22 @@
                 <div class="flex flex-col gap-2 mt-2">
                   <div class="flex items-center gap-2 text-sm text-muted">
                     <u-icon name="i-lucide-calendar" class="size-4" />
+
                     <span>{{ formatDate(board.startDate) }} – {{ formatDate(board.endDate) }}</span>
                   </div>
 
                   <div class="flex items-center gap-2 text-sm text-muted">
                     <u-icon name="i-lucide-grid-3x3" class="size-4" />
+
                     <span>{{ $t('boards.size', { size: formatBoardSize(board.size) }) }}</span>
                   </div>
 
-                  <div v-if="board.diceRollLimit" class="flex items-center gap-2 text-sm text-muted">
+                  <div
+                    v-if="board.diceRollLimit"
+                    class="flex items-center gap-2 text-sm text-muted"
+                  >
                     <u-icon name="i-lucide-dice-6" class="size-4" />
+
                     <span>{{ $t('boards.roll_limit', { limit: board.diceRollLimit }) }}</span>
                   </div>
 
@@ -62,8 +75,11 @@
                         class="ring-2 ring-background"
                       />
                     </div>
+
                     <span class="text-xs text-muted">
-                      {{ board.authors.map(a => a.user.nickname ?? a.user.discordUsername).join(', ') }}
+                      {{
+                        board.authors.map(a => a.user.nickname ?? a.user.discordUsername).join(', ')
+                      }}
                     </span>
                   </div>
 
@@ -76,6 +92,7 @@
                       icon="i-lucide-shield"
                       :label="$t('boards.access_server')"
                     />
+
                     <u-badge
                       v-else-if="(board as any).accessMode === 'INVITE'"
                       color="warning"
@@ -106,11 +123,11 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-import { useBoards } from '~/composables/useBoards'
-import { formatDate, formatBoardSize } from '~/utils/board'
+import { useBoards } from '~/composables/useBoards';
+import { useAuthStore } from '~/stores/auth';
+import { formatDate, formatBoardSize } from '~/utils/board';
 
-const authStore = useAuthStore()
+const authStore = useAuthStore();
 
-const { boards, pending, error } = await useBoards()
+const { boards, pending, error } = await useBoards();
 </script>

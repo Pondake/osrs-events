@@ -22,7 +22,13 @@
         :model-value="modelValue.accessMode"
         :items="accessModeOptions"
         class="w-full"
-        @update:model-value="emit('update:modelValue', { ...modelValue, accessMode: $event as BoardFormData['accessMode'], requiredGuildId: null })"
+        @update:model-value="
+          emit('update:modelValue', {
+            ...modelValue,
+            accessMode: $event as BoardFormData['accessMode'],
+            requiredGuildId: null,
+          })
+        "
       />
     </u-form-field>
 
@@ -58,7 +64,9 @@
           :items="guildOptions"
           :placeholder="$t('admin.required_server_placeholder')"
           class="w-full"
-          @update:model-value="emit('update:modelValue', { ...modelValue, requiredGuildId: $event ?? null })"
+          @update:model-value="
+            emit('update:modelValue', { ...modelValue, requiredGuildId: $event ?? null })
+          "
         />
       </u-form-field>
     </template>
@@ -66,26 +74,27 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-import type { BoardFormData } from '~/components/Board/SettingsForm.vue'
+import type { BoardFormData } from '~/components/Board/SettingsForm.vue';
+
+import { useAuthStore } from '~/stores/auth';
 
 defineProps<{
-  modelValue: BoardFormData
-}>()
+  modelValue: BoardFormData;
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: BoardFormData]
-}>()
+  'update:modelValue': [value: BoardFormData];
+}>();
 
-const authStore = useAuthStore()
+const authStore = useAuthStore();
 
 const guildOptions = computed(() =>
-  (authStore.user?.guilds ?? []).map(g => ({ label: g.guildName, value: g.guildId }))
-)
+  (authStore.user?.guilds ?? []).map(g => ({ label: g.guildName, value: g.guildId })),
+);
 
 const accessModeOptions = [
   { label: 'Open — anyone can join', value: 'OPEN' },
   { label: 'Discord Server — members only', value: 'GUILD' },
   { label: 'Invite only', value: 'INVITE' },
-]
+];
 </script>

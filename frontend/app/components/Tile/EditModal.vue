@@ -297,20 +297,20 @@
 </template>
 
 <script setup lang="ts">
-import type { TaskFormData } from '~/components/Task/EditForm.vue'
-import type { TaskEntity, TileType } from '~/types/graphql'
+import type { TaskFormData } from '~/components/Task/EditForm.vue';
+import type { TaskEntity, TileType } from '~/types/graphql';
 
-import TaskEditForm from '~/components/Task/EditForm.vue'
+import TaskEditForm from '~/components/Task/EditForm.vue';
 
 // TileData is the editor's working shape — a partial TileEntity used for create/edit forms.
 interface TileData {
-  id?: string
-  position: number
-  boardId: string
-  task: TaskEntity | null
-  titleOverride: string | null
-  type: TileType
-  targetPosition: number | null
+  id?: string;
+  position: number;
+  boardId: string;
+  task: TaskEntity | null;
+  titleOverride: string | null;
+  type: TileType;
+  targetPosition: number | null;
 }
 
 const props = defineProps<{

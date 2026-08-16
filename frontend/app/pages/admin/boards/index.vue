@@ -10,7 +10,12 @@
             class="flex-1"
           />
 
-          <u-button icon="i-lucide-plus" color="primary" :label="$t('admin.create_board')" @click="openCreate()" />
+          <u-button
+            icon="i-lucide-plus"
+            color="primary"
+            :label="$t('admin.create_board')"
+            @click="openCreate()"
+          />
         </div>
 
         <div v-if="pending" class="flex justify-center py-12">
@@ -26,6 +31,7 @@
 
         <div v-else-if="filteredBoards.length === 0" class="text-center py-12 text-muted">
           <u-icon name="i-lucide-layout-grid" class="text-5xl mb-4 block mx-auto" />
+
           <p>{{ $t('boards.no_boards') }}</p>
         </div>
 
@@ -39,9 +45,26 @@
             <template #title>
               <div class="flex items-center gap-3">
                 <h3 class="text-lg font-semibold osrs-font truncate">{{ board.title }}</h3>
-                <u-badge color="primary" variant="subtle" :label="$t('boards.size', { size: formatBoardSize(board.size) })" />
-                <u-badge v-if="(board as any).mode === 'TEAM'" color="warning" variant="subtle" :label="$t('boards.team_mode')" />
-                <u-badge v-if="board.diceRollLimit" color="neutral" variant="subtle" :label="$t('boards.roll_limit', { limit: board.diceRollLimit })" />
+
+                <u-badge
+                  color="primary"
+                  variant="subtle"
+                  :label="$t('boards.size', { size: formatBoardSize(board.size) })"
+                />
+
+                <u-badge
+                  v-if="(board as any).mode === 'TEAM'"
+                  color="warning"
+                  variant="subtle"
+                  :label="$t('boards.team_mode')"
+                />
+
+                <u-badge
+                  v-if="board.diceRollLimit"
+                  color="neutral"
+                  variant="subtle"
+                  :label="$t('boards.roll_limit', { limit: board.diceRollLimit })"
+                />
               </div>
             </template>
 
@@ -53,13 +76,17 @@
                       <u-icon name="i-lucide-calendar" class="inline mr-1" />
                       {{ $t('boards.starts') }}: {{ formatDate(board.startDate) }}
                     </span>
+
                     <span v-if="board.endDate">
                       <u-icon name="i-lucide-calendar" class="inline mr-1" />
                       {{ $t('boards.ends') }}: {{ formatDate(board.endDate) }}
                     </span>
+
                     <span>
                       <u-icon name="i-lucide-users" class="inline mr-1" />
-                      {{ board.authors.map(a => a.user.nickname ?? a.user.discordUsername).join(', ') }}
+                      {{
+                        board.authors.map(a => a.user.nickname ?? a.user.discordUsername).join(', ')
+                      }}
                     </span>
                   </div>
                 </div>
@@ -72,6 +99,7 @@
                     variant="ghost"
                     size="sm"
                   />
+
                   <u-button
                     icon="i-lucide-settings"
                     color="neutral"
@@ -79,6 +107,7 @@
                     size="sm"
                     @click.prevent="openSettings(board)"
                   />
+
                   <u-button
                     icon="i-lucide-trash"
                     color="error"
@@ -111,13 +140,26 @@
           <template #header>
             <h3 class="text-lg font-semibold">{{ $t('common.delete') }}</h3>
           </template>
+
           <p>
             {{ $t('admin.delete_board_confirm', { title: boardToDelete?.title }) }}
           </p>
+
           <template #footer>
             <div class="flex justify-end gap-2">
-              <u-button color="neutral" variant="ghost" :label="$t('common.cancel')" @click="showDeleteModal = false" />
-              <u-button color="error" :loading="deletingId !== null" :label="$t('common.delete')" @click="doDelete" />
+              <u-button
+                color="neutral"
+                variant="ghost"
+                :label="$t('common.cancel')"
+                @click="showDeleteModal = false"
+              />
+
+              <u-button
+                color="error"
+                :loading="deletingId !== null"
+                :label="$t('common.delete')"
+                @click="doDelete"
+              />
             </div>
           </template>
         </u-card>
@@ -127,39 +169,40 @@
 </template>
 
 <script setup lang="ts">
-import type { BoardEntity } from '~/types/graphql'
-import { useBoards } from '~/composables/useBoards'
-import { formatDate, formatBoardSize } from '~/utils/board'
-import type { BoardFormData } from '~/components/Board/SettingsForm.vue'
+import type { BoardFormData } from '~/components/Board/SettingsForm.vue';
+import type { BoardEntity } from '~/types/graphql';
 
-definePageMeta({ middleware: ['admin'] })
+import { useBoards } from '~/composables/useBoards';
+import { formatDate, formatBoardSize } from '~/utils/board';
 
-const { t } = useI18n()
-const toast = useToast()
+definePageMeta({ middleware: ['admin'] });
 
-const { boards, pending, error, refresh, deleteBoard } = await useBoards()
+const { t } = useI18n();
+const toast = useToast();
 
-const searchQuery = ref('')
+const { boards, pending, error, refresh, deleteBoard } = await useBoards();
+
+const searchQuery = ref('');
 const filteredBoards = computed(() => {
-  if (!searchQuery.value.trim()) return boards.value
-  const q = searchQuery.value.toLowerCase()
-  return boards.value.filter(b => b.title.toLowerCase().includes(q))
-})
+  if (!searchQuery.value.trim()) return boards.value;
+  const q = searchQuery.value.toLowerCase();
+  return boards.value.filter(b => b.title.toLowerCase().includes(q));
+});
 
 // ─── Settings modal ───────────────────────────────────────────────────────────
 
-const showSettingsModal = ref(false)
-const editingBoardId = ref<string | null>(null)
-const editingBoardData = ref<Partial<BoardFormData> | undefined>(undefined)
+const showSettingsModal = ref(false);
+const editingBoardId = ref<string | null>(null);
+const editingBoardData = ref<Partial<BoardFormData> | undefined>(undefined);
 
 function openCreate() {
-  editingBoardId.value = null
-  editingBoardData.value = undefined
-  showSettingsModal.value = true
+  editingBoardId.value = null;
+  editingBoardData.value = undefined;
+  showSettingsModal.value = true;
 }
 
 function openSettings(board: BoardEntity) {
-  editingBoardId.value = board.id
+  editingBoardId.value = board.id;
   editingBoardData.value = {
     title: board.title,
     description: board.description ?? '',
@@ -181,38 +224,38 @@ function openSettings(board: BoardEntity) {
     isListed: board.isListed,
     accessMode: board.accessMode as 'OPEN' | 'GUILD' | 'INVITE',
     requiredGuildId: board.requiredGuildId ?? null,
-  }
-  showSettingsModal.value = true
+  };
+  showSettingsModal.value = true;
 }
 
 async function onBoardSaved() {
-  await refresh()
+  await refresh();
 }
 
 // ─── Delete ───────────────────────────────────────────────────────────────────
 
-const showDeleteModal = ref(false)
-const boardToDelete = ref<BoardEntity | null>(null)
-const deletingId = ref<string | null>(null)
+const showDeleteModal = ref(false);
+const boardToDelete = ref<BoardEntity | null>(null);
+const deletingId = ref<string | null>(null);
 
 function confirmDelete(board: BoardEntity) {
-  boardToDelete.value = board
-  showDeleteModal.value = true
+  boardToDelete.value = board;
+  showDeleteModal.value = true;
 }
 
 async function doDelete() {
-  if (!boardToDelete.value) return
-  deletingId.value = boardToDelete.value.id
+  if (!boardToDelete.value) return;
+  deletingId.value = boardToDelete.value.id;
   try {
-    await deleteBoard(boardToDelete.value.id)
-    toast.add({ title: t('admin.board_deleted'), color: 'success' })
-    showDeleteModal.value = false
-    boardToDelete.value = null
-    await refresh()
+    await deleteBoard(boardToDelete.value.id);
+    toast.add({ title: t('admin.board_deleted'), color: 'success' });
+    showDeleteModal.value = false;
+    boardToDelete.value = null;
+    await refresh();
   } catch {
-    toast.add({ title: t('errors.generic'), color: 'error' })
+    toast.add({ title: t('errors.generic'), color: 'error' });
   } finally {
-    deletingId.value = null
+    deletingId.value = null;
   }
 }
 </script>

@@ -69,23 +69,21 @@ export async function useGql<T = Record<string, unknown>>(
     return response.data;
   };
 
-  const { data, pending, error, refresh } = await useAsyncData<T>(
-    cacheKey,
-    fetcher,
-    {
-      server: options?.server !== false,
-      // lazy: true — resolves the await immediately on the client so Vue's
-      // Suspense boundary is never blocked.  On SSR this has no effect; Nuxt
-      // still waits for all useAsyncData fetchers before rendering the HTML.
-      lazy: true,
-    },
-  );
+  const { data, pending, error, refresh } = await useAsyncData<T>(cacheKey, fetcher, {
+    server: options?.server !== false,
+    // lazy: true — resolves the await immediately on the client so Vue's
+    // Suspense boundary is never blocked.  On SSR this has no effect; Nuxt
+    // still waits for all useAsyncData fetchers before rendering the HTML.
+    lazy: true,
+  });
 
   return {
     data: data as Ref<T | null>,
     pending: pending as Ref<boolean>,
     error: error as unknown as Ref<Error | null>,
-    refresh: async () => { await refresh(); },
+    refresh: async () => {
+      await refresh();
+    },
   };
 }
 
