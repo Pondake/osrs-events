@@ -63,7 +63,7 @@
                 </p>
 
                 <p class="text-muted text-sm mt-1">
-                  <u-icon name="i-heroicons-identification" class="inline mr-1" />
+                  <u-icon name="i-lucide-id-card" class="inline mr-1" />
                   Discord ID: {{ authStore.user.discordId }}
                 </p>
 
@@ -87,18 +87,18 @@
           <div>
             <h3 class="text-lg font-semibold osrs-font mb-4">{{ $t('profile.your_boards') }}</h3>
 
-            <div v-if="boardsPending" class="space-y-3">
+            <div v-if="loading" class="space-y-3">
               <u-skeleton v-for="i in 3" :key="i" class="h-20" />
             </div>
 
-            <div v-else-if="playerBoards.length === 0" class="text-center py-8 text-muted">
-              <u-icon name="i-heroicons-squares-2x2" class="text-5xl mb-4 block mx-auto" />
+            <div v-else-if="joinedBoards.length === 0" class="text-center py-8 text-muted">
+              <u-icon name="i-lucide-layout-grid" class="text-5xl mb-4 block mx-auto" />
 
               <p>{{ $t('profile.no_boards') }}</p>
             </div>
 
             <div v-else class="space-y-3">
-              <u-card v-for="pb in playerBoards" :key="pb.id" class="osrs-border">
+              <u-card v-for="pb in joinedBoards" :key="pb.id" class="osrs-border">
                 <div class="flex items-center justify-between gap-4 flex-wrap">
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-3 mb-1 flex-wrap">
@@ -110,18 +110,18 @@
                       </nuxt-link>
 
                       <u-badge color="primary" variant="subtle">
-                        {{ formatSize(pb.board.size) }}
+                        {{ formatBoardSize(pb.board.size) }}
                       </u-badge>
                     </div>
 
                     <div class="flex items-center gap-4 text-sm text-muted flex-wrap">
                       <span>
-                        <u-icon name="i-heroicons-map-pin" class="inline mr-1" />
+                        <u-icon name="i-lucide-map-pin" class="inline mr-1" />
                         {{ $t('board.position', { pos: pb.currentPosition }) }}
                       </span>
 
                       <span>
-                        <u-icon name="i-heroicons-check-circle" class="inline mr-1" />
+                        <u-icon name="i-lucide-circle-check" class="inline mr-1" />
                         {{ pb.completedTiles.length }} {{ $t('profile.tiles_completed') }}
                       </span>
                     </div>
@@ -145,13 +145,12 @@
 
                   <u-button
                     :to="`/boards/${pb.board.id}`"
-                    icon="i-heroicons-play"
+                    icon="i-lucide-play"
                     color="primary"
                     variant="outline"
                     size="sm"
-                  >
-                    {{ $t('boards.play') }}
-                  </u-button>
+                    :label="$t('boards.play')"
+                  />
                 </div>
               </u-card>
             </div>
@@ -163,20 +162,25 @@
 </template>
 
 <script setup lang="ts">
+import type { PlayerBoardEntity } from '~/types/graphql';
+
+import { useMyPlayerBoards } from '~/composables/usePlayers';
+import { useMe } from '~/composables/useUsers';
+import { formatBoardSize, BOARD_TILE_COUNT } from '~/utils/board';
+
 definePageMeta({ middleware: ['auth'] });
 
 const authStore = useAuthStore();
 const { t } = useI18n();
 const toast = useToast();
 
-// Nickname editing
+// ─── Profile editing ──────────────────────────────────────────────────────────
+
 const editingProfile = ref(false);
 const nicknameInput = ref('');
 const savingProfile = ref(false);
 
-const UPDATE_PROFILE_MUTATION = `mutation UpdateProfile($nickname: String) {
-  updateProfile(nickname: $nickname) { id discordUsername nickname }
-}`;
+const { updateProfile } = await useMe();
 
 function startEditingProfile() {
   nicknameInput.value = authStore.user?.nickname ?? '';
@@ -190,11 +194,9 @@ function cancelEditingProfile() {
 async function saveProfile() {
   savingProfile.value = true;
   try {
-    const result = await useGqlMutation<{
-      updateProfile: { id: string; discordUsername: string; nickname: string | null };
-    }>(UPDATE_PROFILE_MUTATION, { nickname: nicknameInput.value.trim() || null });
+    const updated = await updateProfile(nicknameInput.value.trim() || null);
     if (authStore.user) {
-      authStore.user.nickname = result.updateProfile.nickname;
+      authStore.user.nickname = updated.nickname ?? null;
     }
     editingProfile.value = false;
     toast.add({ title: t('profile.nickname_saved'), color: 'success' });
@@ -205,50 +207,30 @@ async function saveProfile() {
   }
 }
 
-const MY_BOARDS_QUERY = `
-  query MyBoards {
-    myPlayerBoards {
-      id
-      currentPosition
-      board {
-        id
-        title
-        size
-      }
-      completedTiles {
-        id
-      }
-    }
-  }
-`;
+// ─── Player boards ────────────────────────────────────────────────────────────
 
-const { data: boardsData, pending: boardsPending } = await useGql<{ myPlayerBoards: any[] }>(
-  MY_BOARDS_QUERY,
+const { playerBoards, loading, load: loadBoards } = useMyPlayerBoards();
+
+onMounted(loadBoards);
+
+// PlayerBoardEntity.board is nullable because it is only populated when the
+// service includes the relation. This query always requests it, so narrow to
+// the entries that actually have one rather than guarding at every use site.
+type PlayerBoardWithBoard = PlayerBoardEntity & { board: NonNullable<PlayerBoardEntity['board']> };
+
+const joinedBoards = computed(() =>
+  playerBoards.value.filter((pb): pb is PlayerBoardWithBoard => Boolean(pb.board)),
 );
-const playerBoards = computed(() => boardsData.value?.myPlayerBoards ?? []);
 
-// Map Prisma enum to display string
-const SIZE_DISPLAY: Record<string, string> = {
-  SIZE_5X5: '5×5',
-  SIZE_7X7: '7×7',
-  SIZE_9X9: '9×9',
-};
+// ─── Role display helpers ─────────────────────────────────────────────────────
 
-function formatSize(size: string): string {
-  return SIZE_DISPLAY[size] ?? size;
-}
+type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral';
 
-const TILE_COUNT: Record<string, number> = {
-  SIZE_5X5: 25,
-  SIZE_7X7: 49,
-  SIZE_9X9: 81,
-};
-
-function roleColor(name: string): string {
-  const map: Record<string, string> = {
+function roleColor(name: string): BadgeColor {
+  const map: Record<string, BadgeColor> = {
     ADMIN: 'error',
-    EDITOR: 'amber',
-    TEAM_MANAGER: 'sky',
+    EDITOR: 'warning',
+    TEAM_MANAGER: 'info',
     PLAYER: 'primary',
   };
   return map[name] ?? 'neutral';
@@ -256,17 +238,18 @@ function roleColor(name: string): string {
 
 function roleIcon(name: string): string {
   const map: Record<string, string> = {
-    ADMIN: 'i-heroicons-shield-check',
-    EDITOR: 'i-heroicons-pencil-square',
-    TEAM_MANAGER: 'i-heroicons-user-group',
-    PLAYER: 'i-heroicons-user',
+    ADMIN: 'i-lucide-shield-check',
+    EDITOR: 'i-lucide-pencil',
+    TEAM_MANAGER: 'i-lucide-users',
+    PLAYER: 'i-lucide-user',
   };
-  return map[name] ?? 'i-heroicons-user';
+  return map[name] ?? 'i-lucide-user';
 }
 
-// Progress is position-based: how far the player has advanced on the board
-function progressPct(pb: any): number {
-  const total = TILE_COUNT[pb.board.size] ?? 25;
+// ─── Progress helpers ─────────────────────────────────────────────────────────
+
+function progressPct(pb: PlayerBoardWithBoard): number {
+  const total = BOARD_TILE_COUNT[pb.board.size] ?? 25;
   if (total <= 1) return 0;
   const pos = Math.max(0, pb.currentPosition);
   return Math.min(99, Math.floor((pos / (total - 1)) * 100));

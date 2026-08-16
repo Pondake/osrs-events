@@ -14,6 +14,19 @@ export class PlayerBoardBoardSummary {
   size: string
 }
 
+// Lightweight team summary — avoids circular imports with team.entity.ts
+@ObjectType()
+export class PlayerBoardTeamSummary {
+  @Field(() => ID)
+  id: string
+
+  @Field()
+  name: string
+
+  @Field({ nullable: true })
+  iconUrl?: string
+}
+
 export enum CompletionSource {
   MANUAL = 'MANUAL',
   RUNELITE = 'RUNELITE'
@@ -47,6 +60,9 @@ export class PlayerBoardEntity {
   @Field(() => ID)
   boardId: string
 
+  @Field(() => ID, { nullable: true })
+  teamId?: string
+
   @Field(() => Int)
   currentPosition: number
 
@@ -64,6 +80,9 @@ export class PlayerBoardEntity {
 
   @Field(() => UserEntity, { nullable: true })
   user?: UserEntity
+
+  @Field(() => PlayerBoardTeamSummary, { nullable: true })
+  team?: PlayerBoardTeamSummary
 
   @Field()
   createdAt: Date

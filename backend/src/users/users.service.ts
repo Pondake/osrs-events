@@ -1,10 +1,16 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 
 interface UpsertDiscordUserDto {
   discordId: string
   discordUsername: string
   avatarUrl: string | null
+}
+
+export interface DiscordGuildDto {
+  id: string
+  name: string
+  icon: string | null
 }
 
 @Injectable()
@@ -18,9 +24,8 @@ export class UsersService {
     return this.prisma.user.findUnique({
       where: { id },
       include: {
-        userRoles: {
-          include: { role: true }
-        }
+        userRoles: { include: { role: true } },
+        userGuilds: true
       }
     })
   }
@@ -78,9 +83,28 @@ export class UsersService {
   }
 
   /**
-   * List all users with roles — optional case-insensitive search by username
+   * Replace a user's cached Discord guild memberships (delete-all + re-insert in transaction).
    */
-  async findAll(search?: string) {
+  async syncGuilds(userId: string, guilds: DiscordGuildDto[]) {
+    await this.prisma.$transaction([
+      this.prisma.userGuild.deleteMany({ where: { userId } }),
+      this.prisma.userGuild.createMany({
+        data: guilds.map(g => ({
+          userId,
+          guildId: g.id,
+          guildName: g.name,
+          guildIcon: g.icon ?? null,
+          syncedAt: new Date()
+        }))
+      })
+    ])
+  }
+
+  /**
+   * List all users with roles — optional case-insensitive search by username,
+   * optional limit to N most recently joined users.
+   */
+  async findAll(search?: string, limit?: number) {
     return this.prisma.user.findMany({
       where: search
         ? { discordUsername: { contains: search, mode: 'insensitive' } }
@@ -90,7 +114,8 @@ export class UsersService {
           include: { role: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      ...(limit ? { take: limit } : {}),
     })
   }
 
@@ -124,6 +149,22 @@ export class UsersService {
         }
       }
     })
+  }
+
+  /**
+   * Delete a user account.
+   * Admins cannot be deleted — assign/remove the ADMIN role first.
+   */
+  async deleteUser(targetUserId: string): Promise<void> {
+    const target = await this.findById(targetUserId)
+    if (!target) throw new NotFoundException('User not found')
+
+    const isAdmin = target.userRoles.some(ur => ur.role.name === 'ADMIN')
+    if (isAdmin) {
+      throw new ForbiddenException('Admin users cannot be deleted. Remove the ADMIN role first.')
+    }
+
+    await this.prisma.user.delete({ where: { id: targetUserId } })
   }
 
   /**

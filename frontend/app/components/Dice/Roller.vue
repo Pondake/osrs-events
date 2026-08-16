@@ -79,21 +79,22 @@
 </template>
 
 <script setup lang="ts">
-interface Props {
-  rolling?: boolean;
-  lastRoll?: number | null;
-  rollsToday?: number;
-  rollLimit?: number | null;
-  disabled?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  rolling: false,
-  lastRoll: null,
-  rollsToday: 0,
-  rollLimit: null,
-  disabled: false,
-});
+const props = withDefaults(
+  defineProps<{
+    rolling?: boolean;
+    lastRoll?: number | null;
+    rollsToday?: number;
+    rollLimit?: number | null;
+    disabled?: boolean;
+  }>(),
+  {
+    rolling: false,
+    lastRoll: null,
+    rollsToday: 0,
+    rollLimit: null,
+    disabled: false,
+  },
+);
 
 const emit = defineEmits<{ roll: [] }>();
 

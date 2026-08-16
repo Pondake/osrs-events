@@ -122,9 +122,8 @@
                   color="primary"
                   variant="outline"
                   icon="i-lucide-mail"
-                >
-                  {{ $t('privacy.rights_contact_cta') }}
-                </u-button>
+                  :label="$t('privacy.rights_contact_cta')"
+                />
               </div>
             </div>
           </u-card>
