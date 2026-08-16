@@ -110,7 +110,6 @@ const props = defineProps<{
 
 const toast = useToast();
 const { t } = useI18n();
-const runtimeConfig = useRuntimeConfig();
 
 const { invites, loading, load, createInvite, revokeInvite } = useBoardInvites(props.boardId);
 

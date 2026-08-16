@@ -140,7 +140,7 @@
 <script setup lang="ts">
 import { today, getLocalTimeZone } from '@internationalized/date';
 
-import type { BoardFormData, AssignedTeam } from './SettingsForm.vue';
+import type { BoardFormData } from './SettingsForm.vue';
 import type { BoardEntity } from '~/types/graphql';
 
 import {

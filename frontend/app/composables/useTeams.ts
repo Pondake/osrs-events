@@ -24,12 +24,6 @@ const ALL_TEAMS_QUERY = `
   }
 `;
 
-const TEAM_QUERY = `
-  query Team($id: ID!) {
-    team(id: $id) { ${TEAM_FIELDS} }
-  }
-`;
-
 const CREATE_TEAM_MUTATION = `
   mutation CreateTeam($input: CreateTeamInput!) {
     createTeam(input: $input) { ${TEAM_FIELDS} }
