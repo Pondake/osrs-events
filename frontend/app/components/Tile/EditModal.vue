@@ -300,8 +300,6 @@
 import type { TaskFormData } from '~/components/Task/EditForm.vue';
 import type { TaskEntity, TileType } from '~/types/graphql';
 
-import TaskEditForm from '~/components/Task/EditForm.vue';
-
 // TileData is the editor's working shape — a partial TileEntity used for create/edit forms.
 interface TileData {
   id?: string;

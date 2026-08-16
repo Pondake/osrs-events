@@ -220,7 +220,6 @@ const {
   totalTiles,
   boardMinWidth,
   isTeamBoard,
-  boardAccess,
   joiningBoard,
   doJoinBoard,
   playerBoard,
@@ -252,7 +251,7 @@ const {
   onUncompleteTile,
 } = useBoardPage(boardId, board, refresh, updateBoard as any);
 
-const boardAccessMode = computed(() => (board.value as any)?.accessMode ?? 'OPEN');
+const boardAccessMode = computed(() => board.value?.accessMode ?? 'OPEN');
 const boardRequiredGuildId = computed(() => (board.value as any)?.requiredGuildId ?? null);
 
 // Show AccessGate when: user is authenticated, board has loaded, but has no PlayerBoard

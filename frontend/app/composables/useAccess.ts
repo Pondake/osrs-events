@@ -1,4 +1,4 @@
-import type { BoardAccessEntity, PlayerBoardEntity } from '~/types/graphql';
+import type { BoardAccessEntity } from '~/types/graphql';
 
 const BOARD_ACCESS_FIELDS = `id boardId userId inviteId accessMode joinedAt`;
 

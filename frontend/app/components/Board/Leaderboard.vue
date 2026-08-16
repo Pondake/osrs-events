@@ -134,7 +134,6 @@ async function load() {
 }
 
 onMounted(load);
-defineExpose({ refresh: load });
 
 const displayedEntries = computed(() => entries.value.slice(0, PREVIEW_COUNT));
 
@@ -154,4 +153,7 @@ function remainingTitle(entry: LeaderboardEntry): string {
   if (entry.pathHasLadder) return t('leaderboard.path_has_ladder');
   return t('leaderboard.tiles_remaining');
 }
+
+// Must be the last statement in <script setup> (vue/define-macros-order).
+defineExpose({ refresh: load });
 </script>
