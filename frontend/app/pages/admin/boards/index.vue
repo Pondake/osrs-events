@@ -10,7 +10,7 @@
             class="flex-1"
           />
 
-          <u-button to="/admin/boards/create" icon="i-lucide-plus" color="primary" :label="$t('admin.create_board')" />
+          <u-button icon="i-lucide-plus" color="primary" :label="$t('admin.create_board')" @click="openCreate()" />
         </div>
 
         <div v-if="pending" class="flex justify-center py-12">
@@ -153,13 +153,19 @@ const showSettingsModal = ref(false)
 const editingBoardId = ref<string | null>(null)
 const editingBoardData = ref<Partial<BoardFormData> | undefined>(undefined)
 
+function openCreate() {
+  editingBoardId.value = null
+  editingBoardData.value = undefined
+  showSettingsModal.value = true
+}
+
 function openSettings(board: BoardEntity) {
   editingBoardId.value = board.id
   editingBoardData.value = {
     title: board.title,
     description: board.description ?? '',
     size: board.size as 'SIZE_5X5' | 'SIZE_7X7' | 'SIZE_9X9',
-    mode: ((board as any).mode ?? 'SOLO') as 'SOLO' | 'TEAM',
+    mode: board.mode as 'SOLO' | 'TEAM',
     diceRollLimit: board.diceRollLimit ?? 3,
     unlimitedRolls: board.diceRollLimit === null,
     selectedAuthors: board.authors.map(a => ({
@@ -167,12 +173,15 @@ function openSettings(board: BoardEntity) {
       discordUsername: a.user.discordUsername,
       avatarUrl: a.user.avatarUrl,
     })),
-    assignedTeams: ((board as any).boardTeams ?? []).map((bt: any) => ({
+    assignedTeams: (board.boardTeams ?? []).map(bt => ({
       teamId: bt.teamId,
       team: bt.team,
     })),
     startDate: board.startDate ? parseDate(board.startDate.toString().slice(0, 10)) : null,
     endDate: board.endDate ? parseDate(board.endDate.toString().slice(0, 10)) : null,
+    isListed: board.isListed,
+    accessMode: board.accessMode as 'OPEN' | 'GUILD' | 'INVITE',
+    requiredGuildId: board.requiredGuildId ?? null,
   }
   showSettingsModal.value = true
 }

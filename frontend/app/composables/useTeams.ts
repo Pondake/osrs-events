@@ -6,7 +6,7 @@ const TEAM_MEMBER_FIELDS = `
 `
 
 const TEAM_FIELDS = `
-  id name iconUrl createdAt updatedAt
+  id name iconUrl guildId guildName createdAt updatedAt
   members { ${TEAM_MEMBER_FIELDS} }
 `
 
@@ -77,6 +77,8 @@ export interface TeamData {
   id: string
   name: string
   iconUrl: string | null
+  guildId: string | null
+  guildName: string | null
   createdAt: string
   updatedAt: string
   members: TeamMemberData[]
@@ -103,14 +105,14 @@ export function useMyTeams() {
     }
   }
 
-  async function createTeam(input: { name: string; iconUrl?: string | null }): Promise<TeamData> {
+  async function createTeam(input: { name: string; iconUrl?: string | null; guildId?: string | null; guildName?: string | null }): Promise<TeamData> {
     const result = await useGqlMutation<{ createTeam: TeamData }>(CREATE_TEAM_MUTATION, { input })
     return result.createTeam
   }
 
   async function updateTeam(
     id: string,
-    input: { name?: string; iconUrl?: string | null },
+    input: { name?: string; iconUrl?: string | null; guildId?: string | null; guildName?: string | null },
   ): Promise<TeamData> {
     const result = await useGqlMutation<{ updateTeam: TeamData }>(UPDATE_TEAM_MUTATION, {
       id,
@@ -167,14 +169,14 @@ export function useAllTeams() {
     }
   }
 
-  async function createTeam(input: { name: string; iconUrl?: string | null }): Promise<TeamData> {
+  async function createTeam(input: { name: string; iconUrl?: string | null; guildId?: string | null; guildName?: string | null }): Promise<TeamData> {
     const result = await useGqlMutation<{ createTeam: TeamData }>(CREATE_TEAM_MUTATION, { input })
     return result.createTeam
   }
 
   async function updateTeam(
     id: string,
-    input: { name?: string; iconUrl?: string | null },
+    input: { name?: string; iconUrl?: string | null; guildId?: string | null; guildName?: string | null },
   ): Promise<TeamData> {
     const result = await useGqlMutation<{ updateTeam: TeamData }>(UPDATE_TEAM_MUTATION, { id, input })
     return result.updateTeam

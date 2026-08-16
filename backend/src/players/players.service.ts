@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { AccessService } from '../access/access.service'
 import type { Board, Tile } from '../generated/prisma/index.js'
 
 /** Common include for PlayerBoard queries */
@@ -15,7 +16,10 @@ const PLAYER_BOARD_INCLUDE = {
 
 @Injectable()
 export class PlayersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private accessService: AccessService
+  ) {}
 
   /**
    * Resolve the correct PlayerBoard for a user + board combination.
@@ -65,6 +69,17 @@ export class PlayersService {
       data: { userId, boardId, currentPosition: 0 },
       include: PLAYER_BOARD_INCLUDE,
     })
+  }
+
+  /**
+   * Pure read: return an existing PlayerBoard only if the user has confirmed access.
+   * Creates a PlayerBoard when access is confirmed but no record exists yet.
+   * Returns null if the user has no access or no team (for TEAM boards).
+   */
+  async findPlayerBoard(userId: string, boardId: string) {
+    const hasAccess = await this.accessService.hasAccess(userId, boardId)
+    if (!hasAccess) return null
+    return this.getOrCreatePlayerBoard(userId, boardId)
   }
 
   /**

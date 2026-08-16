@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia';
 
+export interface UserGuild {
+  guildId: string;
+  guildName: string;
+}
+
 export interface User {
   id: string;
   discordId: string;
@@ -7,6 +12,7 @@ export interface User {
   nickname: string | null;
   avatarUrl: string | null;
   roles: string[];
+  guilds: UserGuild[];
 }
 
 export const useAuthStore = defineStore('auth', {

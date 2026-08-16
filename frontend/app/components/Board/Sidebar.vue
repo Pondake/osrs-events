@@ -166,7 +166,7 @@
           {{ $t('board.tile_info') }}
         </p>
         <u-button
-          size="2xs"
+          size="xs"
           variant="ghost"
           color="neutral"
           icon="i-lucide-x"

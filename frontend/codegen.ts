@@ -16,7 +16,9 @@ const config: CodegenConfig = {
       plugins: ['typescript'],
       config: {
         scalars: { DateTime: 'string' },
-        enumsAsTypes: false,
+        // String-literal unions, not TS enums — the codebase assigns raw
+        // literals ('OPEN', 'SIZE_5X5') rather than importing enum members.
+        enumsAsTypes: true,
         maybeValue: 'T | null | undefined',
         skipTypename: true,
       },

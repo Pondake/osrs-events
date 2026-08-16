@@ -33,6 +33,8 @@ model User {
   boardAuthors    BoardAuthor[]
   playerBoards    PlayerBoard[]
   teamMembers     TeamMember[]
+  userGuilds      UserGuild[]
+  boardAccesses   BoardAccess[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 }
@@ -91,21 +93,32 @@ enum BoardMode {
   TEAM
 }
 
+enum BoardAccessMode {
+  OPEN
+  GUILD
+  INVITE
+}
+
 model Board {
-  id             String        @id @default(uuid()) @db.Uuid
-  title          String
-  description    String?
-  startDate      DateTime?
-  endDate        DateTime?
-  size           BoardSize     @default(SIZE_7X7)
-  mode           BoardMode     @default(SOLO)
-  diceRollLimit  Int?          // null = unlimited
-  authors        BoardAuthor[]
-  tiles          Tile[]
-  playerBoards   PlayerBoard[]
-  boardTeams     BoardTeam[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id              String          @id @default(uuid()) @db.Uuid
+  title           String
+  description     String?
+  startDate       DateTime?
+  endDate         DateTime?
+  size            BoardSize       @default(SIZE_7X7)
+  mode            BoardMode       @default(SOLO)
+  diceRollLimit   Int?            // null = unlimited
+  isListed        Boolean         @default(true)
+  accessMode      BoardAccessMode @default(OPEN)
+  requiredGuildId String?         // Discord guild snowflake; only set when accessMode = GUILD
+  authors         BoardAuthor[]
+  tiles           Tile[]
+  playerBoards    PlayerBoard[]
+  boardTeams      BoardTeam[]
+  boardInvites    BoardInvite[]
+  boardAccesses   BoardAccess[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }
 
 // ─────────────────────────────────────────────
@@ -212,6 +225,8 @@ model Team {
   id           String        @id @default(uuid()) @db.Uuid
   name         String
   iconUrl      String?       // decorative OSRS Wiki icon, same picker as tasks
+  guildId      String?       // Discord guild snowflake this team belongs to
+  guildName    String?       // cached for display without live Discord calls
   members      TeamMember[]
   boardTeams   BoardTeam[]
   playerBoards PlayerBoard[]
@@ -231,4 +246,57 @@ model TeamMember {
   createdAt DateTime @default(now())
 
   @@unique([teamId, userId])
+}
+
+// ─────────────────────────────────────────────
+// Discord guild memberships (cached on login)
+// ─────────────────────────────────────────────
+model UserGuild {
+  id        String   @id @default(uuid()) @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  guildId   String   // Discord snowflake — stored as String (exceeds JS int range)
+  guildName String
+  guildIcon String?
+  syncedAt  DateTime @default(now())
+
+  @@unique([userId, guildId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// Board invite links / codes
+// ─────────────────────────────────────────────
+model BoardInvite {
+  id        String        @id @default(uuid()) @db.Uuid
+  board     Board         @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId   String        @db.Uuid
+  token     String        @unique @default(uuid())
+  shortCode String        // 6-char alphanumeric, unique per board
+  label     String?
+  createdBy String        @db.Uuid
+  expiresAt DateTime?
+  maxUses   Int?
+  useCount  Int           @default(0)
+  createdAt DateTime      @default(now())
+  accesses  BoardAccess[]
+
+  @@unique([boardId, shortCode])
+}
+
+// ─────────────────────────────────────────────
+// Board access grants (authoritative join record)
+// ─────────────────────────────────────────────
+model BoardAccess {
+  id         String          @id @default(uuid()) @db.Uuid
+  board      Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId    String          @db.Uuid
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String          @db.Uuid
+  invite     BoardInvite?    @relation(fields: [inviteId], references: [id], onDelete: SetNull)
+  inviteId   String?         @db.Uuid
+  accessMode BoardAccessMode
+  joinedAt   DateTime        @default(now())
+
+  @@unique([boardId, userId])
 }

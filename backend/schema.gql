@@ -7,6 +7,21 @@ input AddTeamMemberInput {
   userId: ID!
 }
 
+type BoardAccessEntity {
+  accessMode: BoardAccessMode!
+  boardId: ID!
+  id: ID!
+  inviteId: ID
+  joinedAt: DateTime!
+  userId: ID!
+}
+
+enum BoardAccessMode {
+  GUILD
+  INVITE
+  OPEN
+}
+
 type BoardAuthorEntity {
   id: ID!
   isOwner: Boolean!
@@ -14,6 +29,7 @@ type BoardAuthorEntity {
 }
 
 type BoardEntity {
+  accessMode: BoardAccessMode!
   authors: [BoardAuthorEntity!]!
   boardTeams: [BoardTeamEntity!]
   createdAt: DateTime!
@@ -23,12 +39,26 @@ type BoardEntity {
   diceRollLimit: Int
   endDate: DateTime
   id: ID!
+  isListed: Boolean!
   mode: BoardMode!
+  requiredGuildId: String
   size: BoardSize!
   startDate: DateTime
   tiles: [TileEntity!]
   title: String!
   updatedAt: DateTime!
+}
+
+type BoardInviteEntity {
+  boardId: ID!
+  createdAt: DateTime!
+  expiresAt: DateTime
+  id: ID!
+  label: String
+  maxUses: Int
+  shortCode: String!
+  token: String!
+  useCount: Int!
 }
 
 enum BoardMode {
@@ -69,15 +99,26 @@ enum CompletionSource {
 }
 
 input CreateBoardInput {
+  accessMode: BoardAccessMode
+
   """UUIDs of admin users to set as authors"""
   authorIds: [ID!]!
   description: String
   diceRollLimit: Int
   endDate: DateTime
+  isListed: Boolean
   mode: BoardMode
+  requiredGuildId: String
   size: BoardSize!
   startDate: DateTime
   title: String!
+}
+
+input CreateInviteInput {
+  boardId: ID!
+  expiresAt: DateTime
+  label: String
+  maxUses: Int
 }
 
 input CreateTaskInput {
@@ -87,6 +128,8 @@ input CreateTaskInput {
 }
 
 input CreateTeamInput {
+  guildId: String
+  guildName: String
   iconUrl: String
   name: String!
 }
@@ -121,6 +164,7 @@ type Mutation {
   clearSnakeLadder(id: ID!): TileEntity!
   completeTile(boardId: ID!, tileId: ID!): PlayerBoardEntity!
   createBoard(input: CreateBoardInput!): BoardEntity!
+  createInvite(input: CreateInviteInput!): BoardInviteEntity!
   createTask(input: CreateTaskInput!): TaskEntity!
   createTeam(input: CreateTeamInput!): TeamEntity!
   deleteBoard(id: ID!): BoardEntity!
@@ -129,10 +173,12 @@ type Mutation {
   deleteTile(id: ID!): TileEntity!
   deleteUser(userId: ID!): Boolean!
   grantPermission(permissionKey: PermissionKey!, userId: ID!): UserPermissionEntity!
+  joinBoard(boardId: ID!, tokenOrCode: String): BoardAccessEntity!
   removeBoardAuthor(boardId: ID!, userId: ID!): Boolean!
   removeRole(roleName: String!, userId: ID!): UserEntity!
   removeTeamFromBoard(boardId: ID!, teamId: ID!): Boolean!
   removeTeamMember(teamId: ID!, userId: ID!): TeamEntity!
+  revokeInvite(inviteId: ID!): Boolean!
   revokePermission(permissionKey: PermissionKey!, userId: ID!): Boolean!
   rollDice(boardId: ID!): RollResultEntity!
   uncompleteTile(boardId: ID!, tileId: ID!): PlayerBoardEntity
@@ -178,11 +224,14 @@ type PlayerBoardTeamSummary {
 }
 
 type Query {
+  allBoards: [BoardEntity!]!
   board(id: ID!): BoardEntity
+  boardInvites(boardId: ID!): [BoardInviteEntity!]!
   boardLeaderboard(boardId: ID!): LeaderboardEntity
   boardPlayerStates(boardId: ID!): [PlayerBoardEntity!]!
   boards: [BoardEntity!]!
   me: UserEntity
+  myBoardAccess(boardId: ID!): BoardAccessEntity
   myBoardState(boardId: ID!): PlayerBoardEntity
   myPermissions: [UserPermissionEntity!]!
   myPlayerBoards: [PlayerBoardEntity!]!
@@ -225,6 +274,8 @@ type TaskEntity {
 
 type TeamEntity {
   createdAt: DateTime!
+  guildId: String
+  guildName: String
   iconUrl: String
   id: ID!
   members: [TeamMemberEntity!]!
@@ -260,11 +311,14 @@ enum TileType {
 }
 
 input UpdateBoardInput {
+  accessMode: BoardAccessMode
   authorIds: [ID!]
   description: String
   diceRollLimit: Int
   endDate: DateTime
+  isListed: Boolean
   mode: BoardMode
+  requiredGuildId: String
   size: BoardSize
   startDate: DateTime
   title: String
@@ -277,6 +331,8 @@ input UpdateTaskInput {
 }
 
 input UpdateTeamInput {
+  guildId: String
+  guildName: String
   iconUrl: String
   name: String
 }

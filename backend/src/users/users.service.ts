@@ -7,6 +7,12 @@ interface UpsertDiscordUserDto {
   avatarUrl: string | null
 }
 
+export interface DiscordGuildDto {
+  id: string
+  name: string
+  icon: string | null
+}
+
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
@@ -18,9 +24,8 @@ export class UsersService {
     return this.prisma.user.findUnique({
       where: { id },
       include: {
-        userRoles: {
-          include: { role: true }
-        }
+        userRoles: { include: { role: true } },
+        userGuilds: true
       }
     })
   }
@@ -75,6 +80,24 @@ export class UsersService {
     })
 
     return user
+  }
+
+  /**
+   * Replace a user's cached Discord guild memberships (delete-all + re-insert in transaction).
+   */
+  async syncGuilds(userId: string, guilds: DiscordGuildDto[]) {
+    await this.prisma.$transaction([
+      this.prisma.userGuild.deleteMany({ where: { userId } }),
+      this.prisma.userGuild.createMany({
+        data: guilds.map(g => ({
+          userId,
+          guildId: g.id,
+          guildName: g.name,
+          guildIcon: g.icon ?? null,
+          syncedAt: new Date()
+        }))
+      })
+    ])
   }
 
   /**

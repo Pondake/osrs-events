@@ -1,5 +1,6 @@
 import { InputType, Field, Int, ID } from '@nestjs/graphql'
 import { BoardSize, BoardMode } from '../entities/board.entity'
+import { BoardAccessMode } from '../../access/entities/board-access.entity'
 
 @InputType()
 export class CreateBoardInput {
@@ -26,6 +27,15 @@ export class CreateBoardInput {
 
   @Field(() => [ID], { description: 'UUIDs of admin users to set as authors' })
   authorIds: string[]
+
+  @Field({ nullable: true })
+  isListed?: boolean
+
+  @Field(() => BoardAccessMode, { nullable: true })
+  accessMode?: BoardAccessMode
+
+  @Field({ nullable: true })
+  requiredGuildId?: string
 }
 
 @InputType()
@@ -53,4 +63,13 @@ export class UpdateBoardInput {
 
   @Field(() => [ID], { nullable: true })
   authorIds?: string[]
+
+  @Field({ nullable: true })
+  isListed?: boolean
+
+  @Field(() => BoardAccessMode, { nullable: true })
+  accessMode?: BoardAccessMode
+
+  @Field({ nullable: true })
+  requiredGuildId?: string
 }
