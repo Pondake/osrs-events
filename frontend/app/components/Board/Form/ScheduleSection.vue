@@ -4,14 +4,15 @@
     <u-form-field
       :label="$t('admin.date_range')"
       :description="$t('admin.date_range_desc')"
-      name="dateRange"
+      name="startDate"
     >
+      <!-- No w-full: the base slot is inline-flex, so stretching it just left a
+           wide empty gap between the segments and the calendar button. -->
       <u-input-date
         ref="inputDate"
         :model-value="dateRange"
         range
         locale="nl"
-        class="w-full"
         @update:model-value="onDateRangeChange"
       >
         <template #trailing>
@@ -26,11 +27,19 @@
             />
 
             <template #content>
+              <!-- soft variant keeps the days between start and end subdued;
+                   only the two endpoints get the solid accent treatment. -->
               <u-calendar
                 :model-value="dateRange"
                 class="p-2"
                 :number-of-months="2"
                 range
+                variant="soft"
+                :ui="{
+                  headCell: 'text-muted font-normal',
+                  cellTrigger:
+                    'data-[selection-start]:bg-primary data-[selection-start]:text-inverted data-[selection-end]:bg-primary data-[selection-end]:text-inverted',
+                }"
                 @update:model-value="onDateRangeChange"
               />
             </template>
