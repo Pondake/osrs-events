@@ -36,7 +36,11 @@
 
         <!-- Board cards -->
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <nuxt-link v-for="board in boards" :key="board.id" :to="`/boards/${board.id}`">
+          <nuxt-link
+            v-for="{ board, status, access } in decoratedBoards"
+            :key="board.id"
+            :to="`/boards/${board.id}`"
+          >
             <u-page-card
               :title="board.title"
               class="h-full hover:border-primary transition-colors cursor-pointer"
@@ -83,23 +87,35 @@
                     </span>
                   </div>
 
-                  <div class="flex gap-1 mt-1">
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    <!-- Whether the event is running is otherwise only
+                         inferable by comparing the two dates above. -->
                     <u-badge
-                      v-if="board.accessMode === 'GUILD'"
-                      color="info"
+                      :color="status.color"
                       variant="subtle"
                       size="xs"
-                      icon="i-lucide-shield"
-                      :label="$t('boards.access_server')"
+                      :icon="status.icon"
+                      :label="$t(status.key)"
                     />
 
                     <u-badge
-                      v-else-if="board.accessMode === 'INVITE'"
-                      color="warning"
+                      v-if="access"
+                      :color="access.color"
                       variant="subtle"
                       size="xs"
-                      icon="i-lucide-lock"
-                      :label="$t('boards.access_invite')"
+                      :icon="access.icon"
+                      :label="$t(access.key)"
+                    />
+
+                    <!-- Team boards share one board per team, so this changes
+                         how the board plays, not just who can join. -->
+                    <u-badge
+                      v-if="board.mode === 'TEAM'"
+                      color="primary"
+                      variant="subtle"
+                      size="xs"
+                      icon="i-lucide-users"
+                      :label="$t('boards.team_mode')"
                     />
                   </div>
                 </div>
@@ -127,13 +143,30 @@
 <script setup lang="ts">
 import { useBoards } from '~/composables/useBoards';
 import { useAuthStore } from '~/stores/auth';
-import { formatDate, formatBoardSize } from '~/utils/board';
+import {
+  formatDate,
+  formatBoardSize,
+  boardEventStatus,
+  BOARD_ACCESS_BADGE,
+  BOARD_STATUS_BADGE,
+} from '~/utils/board';
 
 const authStore = useAuthStore();
 
 const { boards, pending, error, refresh } = await useBoards();
 
 const showCreateModal = ref(false);
+
+// Resolve each card's badges once rather than recomputing them per binding in
+// the template. An unknown access mode yields no badge rather than a broken
+// one, should the backend gain a mode the frontend does not know yet.
+const decoratedBoards = computed(() =>
+  boards.value.map(board => ({
+    board,
+    status: BOARD_STATUS_BADGE[boardEventStatus(board.startDate, board.endDate)],
+    access: board.accessMode ? BOARD_ACCESS_BADGE[board.accessMode] : undefined,
+  })),
+);
 
 // A new board is only listed here when isListed is on, so refresh rather than
 // assuming it will appear.

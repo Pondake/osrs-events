@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--port", "4317"],
+      "cwd": "frontend",
+      "port": 4317
+    }
+  ]
+}
