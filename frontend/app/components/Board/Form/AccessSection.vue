@@ -1,18 +1,6 @@
 <template>
   <div class="space-y-6">
-    <!-- Listed toggle -->
-    <u-form-field
-      :label="$t('admin.board_listed')"
-      :description="$t('admin.board_listed_desc')"
-      name="isListed"
-    >
-      <u-switch
-        :model-value="modelValue.isListed"
-        @update:model-value="emit('update:modelValue', { ...modelValue, isListed: $event })"
-      />
-    </u-form-field>
-
-    <!-- Access mode -->
+    <!-- Access mode comes first: it decides what "public" even means below. -->
     <u-form-field
       :label="$t('admin.access_mode')"
       :description="$t('admin.access_mode_desc')"
@@ -58,6 +46,7 @@
         :label="$t('admin.required_server')"
         :description="$t('admin.required_server_desc')"
         name="requiredGuildId"
+        required
       >
         <u-select
           :model-value="modelValue.requiredGuildId ?? undefined"
@@ -70,6 +59,21 @@
         />
       </u-form-field>
     </template>
+
+    <u-separator />
+
+    <!-- Visibility. Its description changes with the access mode above, since
+         "public" means something different for an invite-only board. -->
+    <u-form-field
+      :label="$t('admin.board_listed')"
+      :description="listedDescription"
+      name="isListed"
+    >
+      <u-switch
+        :model-value="modelValue.isListed"
+        @update:model-value="emit('update:modelValue', { ...modelValue, isListed: $event })"
+      />
+    </u-form-field>
   </div>
 </template>
 
@@ -78,7 +82,7 @@ import type { BoardFormData } from '~/components/Board/SettingsForm.vue';
 
 import { useAuthStore } from '~/stores/auth';
 
-defineProps<{
+const props = defineProps<{
   modelValue: BoardFormData;
 }>();
 
@@ -87,14 +91,27 @@ const emit = defineEmits<{
 }>();
 
 const authStore = useAuthStore();
+const { t } = useI18n();
 
 const guildOptions = computed(() =>
   (authStore.user?.guilds ?? []).map(g => ({ label: g.guildName, value: g.guildId })),
 );
 
-const accessModeOptions = [
-  { label: 'Open — anyone can join', value: 'OPEN' },
-  { label: 'Discord Server — members only', value: 'GUILD' },
-  { label: 'Invite only', value: 'INVITE' },
-];
+const accessModeOptions = computed(() => [
+  { label: t('admin.access_mode_open'), value: 'OPEN' },
+  { label: t('admin.access_mode_guild'), value: 'GUILD' },
+  { label: t('admin.access_mode_invite'), value: 'INVITE' },
+]);
+
+const listedDescription = computed(() => {
+  if (!props.modelValue.isListed) return t('admin.board_listed_off');
+  if (props.modelValue.accessMode === 'OPEN') return t('admin.board_listed_desc_open');
+
+  return t('admin.board_listed_desc_restricted', {
+    requirement:
+      props.modelValue.accessMode === 'GUILD'
+        ? t('admin.board_listed_requirement_guild')
+        : t('admin.board_listed_requirement_invite'),
+  });
+});
 </script>

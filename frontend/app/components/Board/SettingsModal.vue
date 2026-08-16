@@ -7,48 +7,69 @@
   >
     <!-- CREATE MODE: stepper -->
     <template v-if="!boardId" #body>
-      <u-stepper ref="stepper" v-model="currentStep" linear :items="steps" class="mb-8" />
+      <u-form
+        :id="FORM_ID"
+        ref="formRef"
+        :schema="schema"
+        :state="form"
+        @submit="onSave"
+        @error="onValidationError"
+      >
+        <u-stepper ref="stepper" v-model="currentStep" linear :items="steps" class="mb-8" />
 
-      <div v-show="currentStep === 0"><board-form-basics-section v-model="form" /></div>
+        <!-- v-show, not v-if: every step stays mounted so validation errors on
+             a step the user has moved past still have somewhere to render. -->
+        <div v-show="currentStep === 0"><board-form-basics-section v-model="form" /></div>
 
-      <div v-show="currentStep === 1"><board-form-schedule-section v-model="form" /></div>
+        <div v-show="currentStep === 1"><board-form-schedule-section v-model="form" /></div>
 
-      <div v-show="currentStep === 2"><board-form-access-section v-model="form" /></div>
+        <div v-show="currentStep === 2"><board-form-access-section v-model="form" /></div>
 
-      <div v-show="currentStep === 3">
-        <board-form-editors-section
-          v-model="form"
-          :current-user-id="authStore.user?.id"
-          :board-id="null"
-          @add-team="onAddTeam"
-          @remove-team="onRemoveTeam"
-        />
-      </div>
+        <div v-show="currentStep === 3">
+          <board-form-editors-section
+            v-model="form"
+            :current-user-id="authStore.user?.id"
+            :board-id="null"
+            @add-team="onAddTeam"
+            @remove-team="onRemoveTeam"
+          />
+        </div>
+      </u-form>
     </template>
 
     <!-- EDIT MODE: tabs -->
     <template v-else #body>
-      <u-tabs :items="tabItems">
-        <template #basics><board-form-basics-section v-model="form" /></template>
+      <u-form
+        :id="FORM_ID"
+        ref="formRef"
+        :schema="schema"
+        :state="form"
+        @submit="onSave"
+        @error="onValidationError"
+      >
+        <!-- unmount-on-hide=false for the same reason as v-show above. -->
+        <u-tabs v-model="activeTab" :items="tabItems" :unmount-on-hide="false">
+          <template #basics><board-form-basics-section v-model="form" /></template>
 
-        <template #schedule><board-form-schedule-section v-model="form" /></template>
+          <template #schedule><board-form-schedule-section v-model="form" /></template>
 
-        <template #access><board-form-access-section v-model="form" /></template>
+          <template #access><board-form-access-section v-model="form" /></template>
 
-        <template #editors>
-          <board-form-editors-section
-            v-model="form"
-            :current-user-id="authStore.user?.id"
-            :board-id="boardId"
-            @add-team="onAddTeam"
-            @remove-team="onRemoveTeam"
-          />
-        </template>
+          <template #editors>
+            <board-form-editors-section
+              v-model="form"
+              :current-user-id="authStore.user?.id"
+              :board-id="boardId"
+              @add-team="onAddTeam"
+              @remove-team="onRemoveTeam"
+            />
+          </template>
 
-        <template #invites>
-          <board-invite-manager :board-id="boardId!" />
-        </template>
-      </u-tabs>
+          <template #invites>
+            <board-invite-manager :board-id="boardId!" />
+          </template>
+        </u-tabs>
+      </u-form>
     </template>
 
     <!-- CREATE footer: back / next / create -->
@@ -81,11 +102,12 @@
 
           <u-button
             v-else
+            type="submit"
+            :form="FORM_ID"
             color="primary"
             icon="i-lucide-check"
             :loading="saving"
             :label="$t('common.create')"
-            @click="onSave"
           />
         </div>
       </div>
@@ -102,11 +124,12 @@
         />
 
         <u-button
+          type="submit"
+          :form="FORM_ID"
           color="primary"
           icon="i-lucide-check"
           :loading="saving"
           :label="$t('common.save')"
-          @click="onSave"
         />
       </div>
     </template>
@@ -141,6 +164,7 @@
 import { today, getLocalTimeZone } from '@internationalized/date';
 
 import type { BoardFormData } from './SettingsForm.vue';
+import type { FormErrorEvent } from '@nuxt/ui';
 import type { BoardEntity } from '~/types/graphql';
 
 import {
@@ -149,6 +173,7 @@ import {
   addTeamToBoard,
   removeTeamFromBoard,
 } from '~/composables/useBoards';
+import { createBoardSchema, BOARD_STEP_FIELDS, BOARD_STEP_ORDER } from '~/schemas/board';
 import { useAuthStore } from '~/stores/auth';
 
 const props = defineProps<{
@@ -167,6 +192,14 @@ const toast = useToast();
 const { t } = useI18n();
 
 const todayDate = today(getLocalTimeZone());
+
+// Footer buttons sit outside the <form>, so they submit it via the `form`
+// attribute. UForm also keys its internal event bus off this id, hence useId()
+// rather than a constant — two mounted modals must not share a bus.
+const FORM_ID = `board-settings-form-${useId()}`;
+
+const schema = computed(() => createBoardSchema(t));
+const formRef = useTemplateRef('formRef');
 
 // ─── Stepper (create mode) ────────────────────────────────────────────────────
 
@@ -196,35 +229,78 @@ const steps = computed(() => [
   },
 ]);
 
-function validateStep(step: number): string | null {
-  if (step === 0 && !form.value.title.trim()) return t('validation.title_required');
-  if (step === 2 && form.value.accessMode === 'GUILD' && !form.value.requiredGuildId)
-    return t('validation.server_required');
-  return null;
+/**
+ * Validate only the fields belonging to the current step. UForm renders the
+ * errors inline against each field, so there is no toast here — a toast for a
+ * field-level problem hides the field it is talking about.
+ */
+async function tryNext() {
+  const step = BOARD_STEP_ORDER[currentStep.value];
+  if (!step) return;
+
+  try {
+    await formRef.value?.validate({ name: [...BOARD_STEP_FIELDS[step]] });
+    stepperRef.value?.next();
+  } catch {
+    // UForm has already marked the offending fields; nothing to add.
+  }
 }
 
-function tryNext() {
-  const error = validateStep(currentStep.value);
-  if (error) {
-    toast.add({ title: error, color: 'error', id: 'step-validation' });
-    return;
+/**
+ * A field can fail on a step or tab the user is not currently looking at, which
+ * would otherwise look like the save button silently doing nothing. Jump to the
+ * first section that has an error.
+ */
+function onValidationError(event: FormErrorEvent) {
+  const firstName = event.errors?.[0]?.name;
+  if (!firstName) return;
+
+  const index = BOARD_STEP_ORDER.findIndex(step =>
+    (BOARD_STEP_FIELDS[step] as readonly string[]).includes(firstName),
+  );
+  if (index === -1) return;
+
+  if (props.boardId) {
+    activeTab.value = BOARD_STEP_ORDER[index] as TabSlot;
+  } else {
+    currentStep.value = index;
   }
-  stepperRef.value?.next();
 }
 
 // ─── Tabs (edit mode) ─────────────────────────────────────────────────────────
 
 type TabSlot = 'basics' | 'schedule' | 'access' | 'editors' | 'invites';
 
-const tabItems = computed<{ label: string; icon: string; slot: TabSlot }[]>(() => {
-  const items: { label: string; icon: string; slot: TabSlot }[] = [
-    { label: t('admin.step_basics'), icon: 'i-lucide-layout-grid', slot: 'basics' },
-    { label: t('admin.step_schedule'), icon: 'i-lucide-calendar', slot: 'schedule' },
-    { label: t('admin.step_access'), icon: 'i-lucide-lock', slot: 'access' },
-    { label: t('admin.step_editors'), icon: 'i-lucide-users', slot: 'editors' },
+const activeTab = ref<TabSlot>('basics');
+
+// `value` mirrors `slot` so v-model addresses tabs by name rather than index —
+// onValidationError needs to jump to a tab by name.
+type TabItem = { label: string; icon: string; slot: TabSlot; value: TabSlot };
+
+const tabItems = computed<TabItem[]>(() => {
+  const items: TabItem[] = [
+    {
+      label: t('admin.step_basics'),
+      icon: 'i-lucide-layout-grid',
+      slot: 'basics',
+      value: 'basics',
+    },
+    {
+      label: t('admin.step_schedule'),
+      icon: 'i-lucide-calendar',
+      slot: 'schedule',
+      value: 'schedule',
+    },
+    { label: t('admin.step_access'), icon: 'i-lucide-lock', slot: 'access', value: 'access' },
+    { label: t('admin.step_editors'), icon: 'i-lucide-users', slot: 'editors', value: 'editors' },
   ];
   if (props.boardId && form.value.accessMode === 'INVITE') {
-    items.push({ label: t('admin.invite_links'), icon: 'i-lucide-link', slot: 'invites' });
+    items.push({
+      label: t('admin.invite_links'),
+      icon: 'i-lucide-link',
+      slot: 'invites',
+      value: 'invites',
+    });
   }
   return items;
 });
@@ -257,6 +333,8 @@ watch(
     if (isOpen) {
       form.value = buildDefaultForm();
       currentStep.value = 0;
+      activeTab.value = 'basics';
+      formRef.value?.clear();
     }
   },
 );
@@ -295,12 +373,8 @@ function toISO(d: string | null): string | null {
   return d ? `${d}T00:00:00.000Z` : null;
 }
 
+// Only fires once the schema passes — UForm validates before emitting @submit.
 async function onSave() {
-  if (!form.value.title.trim()) {
-    toast.add({ title: t('validation.title_required'), color: 'error', id: 'step-validation' });
-    return;
-  }
-
   saving.value = true;
   try {
     const input = {

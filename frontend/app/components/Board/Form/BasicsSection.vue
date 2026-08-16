@@ -68,6 +68,9 @@
 <script setup lang="ts">
 import type { BoardFormData } from '~/components/Board/SettingsForm.vue';
 
+import { BOARD_SIZES } from '~/schemas/board';
+import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '~/utils/board';
+
 defineProps<{
   modelValue: BoardFormData;
 }>();
@@ -76,14 +79,20 @@ const emit = defineEmits<{
   'update:modelValue': [value: BoardFormData];
 }>();
 
-const sizeOptions = [
-  { label: '5×5 (25 tiles)', value: 'SIZE_5X5' },
-  { label: '7×7 (49 tiles)', value: 'SIZE_7X7' },
-  { label: '9×9 (81 tiles)', value: 'SIZE_9X9' },
-];
+const { t } = useI18n();
 
-const modeOptions = [
-  { label: 'Solo', value: 'SOLO' },
-  { label: 'Team', value: 'TEAM' },
-];
+const sizeOptions = computed(() =>
+  BOARD_SIZES.map(size => ({
+    label: t('admin.board_size_option', {
+      size: BOARD_SIZE_LABEL[size],
+      tiles: BOARD_TILE_COUNT[size],
+    }),
+    value: size,
+  })),
+);
+
+const modeOptions = computed(() => [
+  { label: t('admin.board_mode_solo'), value: 'SOLO' },
+  { label: t('admin.board_mode_team'), value: 'TEAM' },
+]);
 </script>

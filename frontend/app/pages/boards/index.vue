@@ -4,8 +4,8 @@
       <u-button
         color="primary"
         icon="i-lucide-plus"
-        to="/admin/boards/create"
         :label="$t('admin.create_board')"
+        @click="showCreateModal = true"
       />
     </template>
 
@@ -85,7 +85,7 @@
 
                   <div class="flex gap-1 mt-1">
                     <u-badge
-                      v-if="(board as any).accessMode === 'GUILD'"
+                      v-if="board.accessMode === 'GUILD'"
                       color="info"
                       variant="subtle"
                       size="xs"
@@ -94,7 +94,7 @@
                     />
 
                     <u-badge
-                      v-else-if="(board as any).accessMode === 'INVITE'"
+                      v-else-if="board.accessMode === 'INVITE'"
                       color="warning"
                       variant="subtle"
                       size="xs"
@@ -119,6 +119,8 @@
         </div>
       </u-container>
     </u-page-body>
+
+    <board-settings-modal v-model:open="showCreateModal" :board-id="null" @saved="onBoardCreated" />
   </nuxt-layout>
 </template>
 
@@ -129,5 +131,13 @@ import { formatDate, formatBoardSize } from '~/utils/board';
 
 const authStore = useAuthStore();
 
-const { boards, pending, error } = await useBoards();
+const { boards, pending, error, refresh } = await useBoards();
+
+const showCreateModal = ref(false);
+
+// A new board is only listed here when isListed is on, so refresh rather than
+// assuming it will appear.
+async function onBoardCreated() {
+  await refresh();
+}
 </script>

@@ -4,7 +4,8 @@
     <u-form-field
       :label="$t('admin.editors')"
       :description="$t('admin.editors_desc')"
-      name="editors"
+      name="selectedAuthors"
+      required
     >
       <div class="space-y-2">
         <div class="flex gap-2">
@@ -39,6 +40,10 @@
             class="flex items-center gap-1"
           >
             {{ author.discordUsername }}
+            <span v-if="author.id === currentUserId" class="opacity-70">
+              ({{ $t('admin.you_suffix') }})
+            </span>
+
             <button
               v-if="author.id !== currentUserId"
               type="button"
@@ -59,7 +64,7 @@
       <u-form-field
         :label="$t('admin.team_assignment')"
         :description="$t('admin.team_assignment_desc')"
-        name="teams"
+        name="assignedTeams"
       >
         <!-- Currently assigned teams -->
         <div v-if="modelValue.assignedTeams.length > 0" class="flex flex-wrap gap-2 mb-3">
