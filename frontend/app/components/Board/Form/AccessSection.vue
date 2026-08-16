@@ -2,8 +2,8 @@
   <div class="space-y-6">
     <!-- Listed toggle -->
     <u-form-field
-      label="Listed"
-      description="Show this board in the public boards list"
+      :label="$t('admin.board_listed')"
+      :description="$t('admin.board_listed_desc')"
       name="isListed"
     >
       <u-switch
@@ -14,15 +14,15 @@
 
     <!-- Access mode -->
     <u-form-field
-      label="Access mode"
-      description="Control who can join this board"
+      :label="$t('admin.access_mode')"
+      :description="$t('admin.access_mode_desc')"
       name="accessMode"
     >
       <u-select
         :model-value="modelValue.accessMode"
         :items="accessModeOptions"
         class="w-full"
-        @update:model-value="emit('update:modelValue', { ...modelValue, accessMode: $event, requiredGuildId: null })"
+        @update:model-value="emit('update:modelValue', { ...modelValue, accessMode: $event as BoardFormData['accessMode'], requiredGuildId: null })"
       />
     </u-form-field>
 
@@ -32,8 +32,8 @@
         v-if="guildOptions.length === 0"
         color="warning"
         icon="i-lucide-alert-triangle"
-        title="No Discord servers found"
-        description="Your Discord server list hasn't been synced yet. Log out and log back in with Discord to load your servers. If the problem persists, contact the developer."
+        :title="$t('admin.no_guilds_found')"
+        :description="$t('admin.no_guilds_found_desc')"
       >
         <template #actions>
           <u-button
@@ -41,7 +41,7 @@
             color="warning"
             variant="subtle"
             icon="i-lucide-log-out"
-            label="Re-authenticate with Discord"
+            :label="$t('admin.reauthenticate_discord')"
             @click="authStore.loginWithDiscord()"
           />
         </template>
@@ -49,16 +49,16 @@
 
       <u-form-field
         v-else
-        label="Required Discord server"
-        description="Only members of this server can join"
+        :label="$t('admin.required_server')"
+        :description="$t('admin.required_server_desc')"
         name="requiredGuildId"
       >
         <u-select
-          :model-value="modelValue.requiredGuildId"
+          :model-value="modelValue.requiredGuildId ?? undefined"
           :items="guildOptions"
-          placeholder="Select a server…"
+          :placeholder="$t('admin.required_server_placeholder')"
           class="w-full"
-          @update:model-value="emit('update:modelValue', { ...modelValue, requiredGuildId: $event })"
+          @update:model-value="emit('update:modelValue', { ...modelValue, requiredGuildId: $event ?? null })"
         />
       </u-form-field>
     </template>

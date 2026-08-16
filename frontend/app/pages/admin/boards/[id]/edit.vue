@@ -228,9 +228,11 @@ const form = reactive({
 })
 
 const inputDate = useTemplateRef('inputDate')
-const dateRange = shallowRef<{ start: CalendarDate | null; end: CalendarDate | null }>({
-  start: null,
-  end: null,
+// The calendar components model an absent bound as undefined, not null, and
+// DateRange requires both keys to be present even when their value is undefined.
+const dateRange = shallowRef<{ start: CalendarDate | undefined, end: CalendarDate | undefined }>({
+  start: undefined,
+  end: undefined,
 })
 
 // Populate form once the board loads
@@ -243,8 +245,8 @@ watch(board, (b) => {
   form.unlimitedRolls = b.diceRollLimit == null
 
   dateRange.value = {
-    start: b.startDate ? parseDate(b.startDate.slice(0, 10)) : null,
-    end:   b.endDate   ? parseDate(b.endDate.slice(0, 10))   : null,
+    start: b.startDate ? parseDate(b.startDate.slice(0, 10)) : undefined,
+    end:   b.endDate   ? parseDate(b.endDate.slice(0, 10))   : undefined,
   }
 }, { immediate: true })
 
@@ -306,7 +308,7 @@ const submitting = ref(false)
 async function onSubmit(_event: FormSubmitEvent<Schema>) {
   submitting.value = true
   try {
-    const toISO = (d: CalendarDate | null) => (d ? `${d.toString()}T00:00:00.000Z` : null)
+    const toISO = (d?: CalendarDate) => (d ? `${d.toString()}T00:00:00.000Z` : null)
 
     const input = {
       title:          form.title.trim(),

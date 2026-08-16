@@ -281,8 +281,8 @@ async function toggleRole(user: UserEntity, role: string, value: boolean) {
     const updated = value
       ? await assignRole(user.id, role)
       : await removeRole(user.id, role)
-    const idx = users.value.findIndex(u => u.id === user.id)
-    if (idx >= 0) users.value[idx].userRoles = updated.userRoles
+    const target = users.value.find(u => u.id === user.id)
+    if (target) target.userRoles = updated.userRoles
     toast.add({
       title: value ? t('admin.role_assigned', { role }) : t('admin.role_removed', { role }),
       color: value ? 'success' : 'neutral',

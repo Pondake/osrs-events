@@ -122,8 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { today, getLocalTimeZone, parseDate } from '@internationalized/date'
-import type { CalendarDate } from '@internationalized/date'
+import { today, getLocalTimeZone } from '@internationalized/date'
 import { useAuthStore } from '~/stores/auth'
 import { createBoard, updateBoard, addTeamToBoard, removeTeamFromBoard } from '~/composables/useBoards'
 import type { BoardEntity } from '~/types/graphql'
@@ -202,8 +201,8 @@ function buildDefaultForm(): BoardFormData {
     unlimitedRolls: props.initialData?.unlimitedRolls ?? false,
     selectedAuthors: props.initialData?.selectedAuthors ?? (authStore.user ? [authStore.user] : []),
     assignedTeams: props.initialData?.assignedTeams ?? [],
-    startDate: props.initialData?.startDate ?? todayDate,
-    endDate: props.initialData?.endDate ?? todayDate.add({ months: 1 }),
+    startDate: props.initialData?.startDate ?? todayDate.toString(),
+    endDate: props.initialData?.endDate ?? todayDate.add({ months: 1 }).toString(),
     isListed: props.initialData?.isListed ?? true,
     accessMode: props.initialData?.accessMode ?? 'OPEN',
     requiredGuildId: props.initialData?.requiredGuildId ?? null,
@@ -247,8 +246,9 @@ function confirmDiscard() {
   emit('update:open', false)
 }
 
-function toISO(d: CalendarDate | null): string | null {
-  return d ? `${d.toString()}T00:00:00.000Z` : null
+// Form holds YYYY-MM-DD; the API expects a full ISO timestamp.
+function toISO(d: string | null): string | null {
+  return d ? `${d}T00:00:00.000Z` : null
 }
 
 async function onSave() {

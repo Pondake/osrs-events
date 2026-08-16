@@ -87,13 +87,13 @@
               <u-skeleton v-for="i in 3" :key="i" class="h-20" />
             </div>
 
-            <div v-else-if="playerBoards.length === 0" class="text-center py-8 text-muted">
+            <div v-else-if="joinedBoards.length === 0" class="text-center py-8 text-muted">
               <u-icon name="i-lucide-layout-grid" class="text-5xl mb-4 block mx-auto" />
               <p>{{ $t('profile.no_boards') }}</p>
             </div>
 
             <div v-else class="space-y-3">
-              <u-card v-for="pb in playerBoards" :key="pb.id" class="osrs-border">
+              <u-card v-for="pb in joinedBoards" :key="pb.id" class="osrs-border">
                 <div class="flex items-center justify-between gap-4 flex-wrap">
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-3 mb-1 flex-wrap">
@@ -186,7 +186,7 @@ async function saveProfile() {
   try {
     const updated = await updateProfile(nicknameInput.value.trim() || null)
     if (authStore.user) {
-      authStore.user.nickname = updated.nickname
+      authStore.user.nickname = updated.nickname ?? null
     }
     editingProfile.value = false
     toast.add({ title: t('profile.nickname_saved'), color: 'success' })
@@ -203,10 +203,21 @@ const { playerBoards, loading, load: loadBoards } = useMyPlayerBoards()
 
 onMounted(loadBoards)
 
+// PlayerBoardEntity.board is nullable because it is only populated when the
+// service includes the relation. This query always requests it, so narrow to
+// the entries that actually have one rather than guarding at every use site.
+type PlayerBoardWithBoard = PlayerBoardEntity & { board: NonNullable<PlayerBoardEntity['board']> }
+
+const joinedBoards = computed(
+  () => playerBoards.value.filter((pb): pb is PlayerBoardWithBoard => Boolean(pb.board)),
+)
+
 // ─── Role display helpers ─────────────────────────────────────────────────────
 
-function roleColor(name: string): string {
-  const map: Record<string, string> = {
+type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+
+function roleColor(name: string): BadgeColor {
+  const map: Record<string, BadgeColor> = {
     ADMIN: 'error',
     EDITOR: 'warning',
     TEAM_MANAGER: 'info',
@@ -227,7 +238,7 @@ function roleIcon(name: string): string {
 
 // ─── Progress helpers ─────────────────────────────────────────────────────────
 
-function progressPct(pb: PlayerBoardEntity): number {
+function progressPct(pb: PlayerBoardWithBoard): number {
   const total = BOARD_TILE_COUNT[pb.board.size] ?? 25
   if (total <= 1) return 0
   const pos = Math.max(0, pb.currentPosition)

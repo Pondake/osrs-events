@@ -1,4 +1,3 @@
-import { parseDate } from '@internationalized/date'
 import type { Ref } from 'vue'
 import type { TileEntity, RollResultEntity, BoardEntity, PlayerBoardEntity } from '~/types/graphql'
 import { useAuthStore } from '~/stores/auth'
@@ -197,12 +196,8 @@ export function useBoardPage(
         teamId: bt.teamId,
         team: bt.team,
       })),
-      startDate: board.value.startDate
-        ? parseDate(board.value.startDate.toString().slice(0, 10))
-        : null,
-      endDate: board.value.endDate
-        ? parseDate(board.value.endDate.toString().slice(0, 10))
-        : null,
+      startDate: board.value.startDate?.toString().slice(0, 10) ?? null,
+      endDate: board.value.endDate?.toString().slice(0, 10) ?? null,
       isListed: board.value.isListed,
       accessMode: board.value.accessMode as 'OPEN' | 'GUILD' | 'INVITE',
       requiredGuildId: board.value.requiredGuildId ?? null,
