@@ -1,0 +1,18 @@
+# Normalise all text to LF in the repository and in the working tree.
+#
+# .editorconfig already declares end_of_line = lf and Prettier defaults to lf,
+# but core.autocrlf=true was checking files out as CRLF on Windows, so every
+# file failed prettier/prettier with "Delete `␍`". Setting eol=lf here overrides
+# core.autocrlf for everyone, regardless of their local git config.
+* text=auto eol=lf
+
+# Binary assets — never touch these.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.wasm binary
