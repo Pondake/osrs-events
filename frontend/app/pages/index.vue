@@ -65,6 +65,35 @@
         ]"
       />
 
+      <!-- ── Guides ───────────────────────────────────────────────── -->
+      <u-page-section
+        :title="$t('home.guides_title')"
+        :description="$t('home.guides_subtitle')"
+        :links="[
+          {
+            label: $t('nav.snakes'),
+            to: '/osrs-snakes-and-ladders',
+            icon: 'i-lucide-arrow-up-from-line',
+            color: 'primary',
+            variant: 'outline',
+          },
+          {
+            label: $t('nav.clan_events'),
+            to: '/osrs-clan-events',
+            icon: 'i-lucide-users',
+            color: 'neutral',
+            variant: 'outline',
+          },
+          {
+            label: $t('nav.event_ideas'),
+            to: '/osrs-event-ideas',
+            icon: 'i-lucide-lightbulb',
+            color: 'neutral',
+            variant: 'outline',
+          },
+        ]"
+      />
+
       <!-- ── Admin section (admins/editors only) ───────────────────── -->
       <u-page-section
         v-if="authStore.hydrated && authStore.isAdmin"
@@ -98,6 +127,47 @@ const authStore = useAuthStore();
 const { t } = useI18n();
 const route = useRoute();
 const toast = useToast();
+const siteConfig = useSiteConfig();
+
+useSeo({
+  title: t('seo.home_title'),
+  description: t('seo.home_desc'),
+  jsonLd: [
+    {
+      '@type': 'Organization',
+      '@id': `${siteConfig.url}#organization`,
+      name: siteConfig.name,
+      url: siteConfig.url,
+      // Google reads this for the icon beside the site name in search results.
+      // It wants a raster image of at least 112×112, so point at the PWA icon
+      // rather than favicon.svg.
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteConfig.url}/android-chrome-512x512.png`,
+        width: 512,
+        height: 512,
+      },
+    },
+    {
+      '@type': 'WebSite',
+      name: siteConfig.name,
+      url: siteConfig.url,
+      description: t('seo.home_desc'),
+      publisher: { '@id': `${siteConfig.url}#organization` },
+    },
+    {
+      '@type': 'WebApplication',
+      name: siteConfig.name,
+      url: siteConfig.url,
+      applicationCategory: 'GameApplication',
+      operatingSystem: 'Any',
+      description: t('seo.home_desc'),
+      // Free with no paid tier — stating this explicitly is what makes the
+      // "free" claim eligible for rich results rather than just body copy.
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    },
+  ],
+});
 
 // Handle error redirected from backend (e.g. Discord OAuth failed)
 onMounted(() => {

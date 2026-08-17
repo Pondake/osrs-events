@@ -115,6 +115,13 @@ const [{ board }, { entries, pending, error }] = await Promise.all([
   useLeaderboard(boardId),
 ]);
 
+// Mirrors the board page: private boards keep their leaderboard out of search.
+useSeo(() => ({
+  title: t('seo.leaderboard_title', { title: board.value?.title ?? '' }),
+  description: t('seo.leaderboard_desc', { title: board.value?.title ?? '' }),
+  noindex: !(board.value?.isListed && board.value?.accessMode === 'OPEN'),
+}));
+
 function remainingClass(entry: LeaderboardEntry): string {
   return leaderboardRemainingClass(entry);
 }

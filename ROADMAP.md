@@ -112,7 +112,17 @@ Teams are currently global — any TEAM_MANAGER can see and manage all teams. In
 
 ## Phase 5 — Rebrand & Bingo Mode
 
+> **Search context (Aug 2026).** Nearly all organic demand in this niche is for
+> *bingo*, and it is a crowded field: aiobingo.com, slepeosrs.com,
+> osrsbingohub.com, rune-bingo.com, thebirdhouse.games and osrs-tracker.com all
+> compete for it, several with automated drop tracking. "OSRS Snakes & Ladders"
+> has far lower volume but effectively no competition — which is why the SEO
+> work targets it first. Bingo is worth building for product reasons, but do not
+> expect it to rank without automated tracking and genuinely better guide content
+> than aiobingo.com's `/osrs-bingo-guide`.
+
 - [ ] Full rebrand: "OSRS Snakes & Ladders" → **"OSRS Events"** (logo, SEO, copy)
+      — footer wordmark and SEO metadata already updated; logo assets outstanding
 - [ ] Proper logo and branding assets
 - [ ] When creating a board/event, choose the **event type**:
   - Snakes & Ladders (existing)
@@ -126,7 +136,53 @@ Teams are currently global — any TEAM_MANAGER can see and manage all teams. In
 
 ---
 
-## Phase 6 — More Event Types
+## Phase 6 — Content CMS & Layout Editor
+
+> Goal: stop shipping a deploy every time a word on a marketing page changes.
+
+The SEO landing pages (`/osrs-snakes-and-ladders`, `/osrs-clan-events`,
+`/osrs-event-ideas`), the home page and the about/donate pages are currently
+hardcoded Vue templates with their copy in `frontend/locales/en.json`. Every
+copy tweak is a code change, a PR and a redeploy — which in practice means the
+copy never gets tweaked, and SEO content that should be iterated monthly goes
+stale instead.
+
+### Content model
+
+- [ ] `Page` model: `slug`, `title`, `metaTitle`, `metaDescription`, `ogImage?`,
+      `status` (DRAFT | PUBLISHED), `publishedAt?`, `updatedAt`
+- [ ] `PageBlock` model: `pageId`, `position`, `type`, `data` (JSON)
+- [ ] Block types to cover what the current pages already do: `hero`, `prose`,
+      `feature_grid`, `steps`, `faq`, `cta`, `card_links`
+- [ ] Keep i18n intact — blocks store copy per locale, not raw strings
+
+### Layout editor
+
+- [ ] Admin route `/admin/pages` — list, create, duplicate, publish
+- [ ] Block-based editor: add/remove/reorder blocks (drag and drop)
+- [ ] Live preview pane rendering the real front-end components, not an approximation
+- [ ] Draft vs published split, so edits are previewable before they go live
+- [ ] Per-page SEO fields wired straight into `useSeo` (title, description, OG image, noindex)
+
+### Front-end
+
+- [ ] `[...slug].vue` catch-all that renders published `Page` records through a
+      block renderer component
+- [ ] Migrate the three landing pages + home + about + donate into the CMS
+- [ ] Keep the sitemap in sync — published pages become a sitemap source
+      alongside `/api/__sitemap__/boards`
+
+### Why this matters
+
+- [ ] SEO content needs iteration; ranking pages get rewritten, expanded and
+      re-tested against search results, and that cannot need a developer
+- [ ] Non-developers (clan admins, whoever runs the project later) should be
+      able to fix a typo or add an FAQ entry
+- [ ] Blocked on nothing — can start any time after Phase 4
+
+---
+
+## Phase 7 — More Event Types
 
 > To be decided. Brainstorm options with the community and team.
 

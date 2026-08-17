@@ -135,7 +135,7 @@
 <script setup lang="ts">
 const { t } = useI18n();
 
-useHead({ title: t('terms.title') });
+useSeo({ title: t('seo.terms_title'), description: t('seo.terms_desc') });
 
 const accountRules = [
   t('terms.account_rule_discord'),
