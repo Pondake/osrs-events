@@ -1,56 +1,52 @@
 <template>
   <div>
-    <!-- ClientOnly prevents SSR hydration mismatch — skeleton shown on server via #fallback -->
-    <client-only>
-      <u-dropdown-menu v-if="authStore.isAuthenticated" :items="items">
-        <u-button color="neutral" variant="ghost" class="gap-2">
-          <u-avatar
-            v-if="authStore.user?.avatarUrl"
-            :src="authStore.user.avatarUrl"
-            :alt="authStore.user.discordUsername"
+    <!-- Rendered on the server too: auth state is resolved during SSR and
+         transferred via the Pinia payload, so this branch resolves the same way
+         on the first client render. -->
+    <u-dropdown-menu v-if="authStore.isAuthenticated" :items="items">
+      <u-button color="neutral" variant="ghost" class="gap-2">
+        <u-avatar
+          v-if="authStore.user?.avatarUrl"
+          :src="authStore.user.avatarUrl"
+          :alt="authStore.user.discordUsername"
+          size="xs"
+        />
+
+        <u-icon v-else name="i-lucide-user" class="size-5" />
+
+        <span class="hidden sm:inline text-sm">{{ authStore.displayName }}</span>
+
+        <template v-if="authStore.user?.roles?.length">
+          <u-badge
+            v-for="role in authStore.user.roles"
+            :key="role"
+            :color="roleBadgeColor(role)"
+            variant="subtle"
             size="xs"
-          />
+            class="hidden sm:inline-flex"
+          >
+            {{ role }}
+          </u-badge>
+        </template>
 
-          <u-icon v-else name="i-lucide-user" class="size-5" />
-
-          <span class="hidden sm:inline text-sm">{{ authStore.displayName }}</span>
-
-          <template v-if="authStore.user?.roles?.length">
-            <u-badge
-              v-for="role in authStore.user.roles"
-              :key="role"
-              :color="roleBadgeColor(role)"
-              variant="subtle"
-              size="xs"
-              class="hidden sm:inline-flex"
-            >
-              {{ role }}
-            </u-badge>
-          </template>
-
-          <u-icon name="i-lucide-chevron-down" class="size-4 text-muted" />
-        </u-button>
-      </u-dropdown-menu>
-
-      <!-- Login button — only shown when not authenticated -->
-      <!-- On mobile: compact (icon + short label). On sm+: full label. -->
-      <u-button
-        v-else
-        color="primary"
-        variant="solid"
-        icon="i-simple-icons-discord"
-        :loading="authStore.loading"
-        @click="authStore.loginWithDiscord()"
-      >
-        <span class="sm:hidden">{{ $t('common.login') }}</span>
-
-        <span class="hidden sm:inline">{{ $t('common.login_discord') }}</span>
+        <u-icon name="i-lucide-chevron-down" class="size-4 text-muted" />
       </u-button>
+    </u-dropdown-menu>
 
-      <template #fallback>
-        <u-skeleton class="h-8 w-28 rounded-full" />
-      </template>
-    </client-only>
+    <!-- Login button — only shown when not authenticated -->
+    <!-- On mobile: compact (icon + short label). On sm+: full label. -->
+    <u-button
+      v-else
+      color="primary"
+      variant="solid"
+      icon="i-simple-icons-discord"
+      :loading="authStore.loading"
+      @click="authStore.loginWithDiscord()"
+    >
+      <span class="sm:hidden">{{ $t('common.login') }}</span>
+
+      <span class="hidden sm:inline">{{ $t('common.login_discord') }}</span>
+    </u-button>
   </div>
 </template>
 

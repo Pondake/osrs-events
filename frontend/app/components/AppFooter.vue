@@ -29,7 +29,11 @@
 const footerRef = ref<{ $el: HTMLElement } | null>(null);
 const { t } = useI18n();
 
-const currentYear = new Date().getFullYear();
+// Read in UTC, not local time: the server renders in UTC while the browser
+// renders in the visitor's zone, so around New Year a local-time read would
+// disagree across the two and mismatch on hydration. Same UTC-day convention
+// as boardEventStatus in utils/board.ts.
+const currentYear = new Date().getUTCFullYear();
 
 const footerLinks = [
   { to: '/about', label: t('nav.about') },

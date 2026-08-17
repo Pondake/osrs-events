@@ -9,24 +9,17 @@
       shouldScaleBackground: true,
     }"
   >
+    <!-- u-header already wraps this slot in its own link to `/`. Adding a
+         nuxt-link here would nest <a> inside <a>, which the HTML parser hoists
+         apart — producing a hydration mismatch on every page. -->
     <template #title>
-      <nuxt-link to="/" class="flex items-center gap-2">
-        <span class="osrs-title text-lg font-bold text-highlighted">⚔️ OSRS Events</span>
-      </nuxt-link>
+      <span class="osrs-title text-lg font-bold text-highlighted">⚔️ OSRS Events</span>
     </template>
 
-    <!-- Desktop navigation — client-only to avoid SSR hydration mismatch -->
-    <client-only>
-      <template #fallback>
-        <div class="hidden md:flex gap-3 items-center">
-          <u-skeleton class="h-5 w-14 rounded" />
-
-          <u-skeleton class="h-5 w-24 rounded" />
-        </div>
-      </template>
-
-      <u-navigation-menu v-if="navigation.length" :items="navigation" />
-    </client-only>
+    <!-- Rendered on the server too: auth state is resolved during SSR and
+         transferred via the Pinia payload, so `navigation` is identical on the
+         first client render. -->
+    <u-navigation-menu v-if="navigation.length" :items="navigation" />
 
     <template #right>
       <u-color-mode-button />
@@ -34,7 +27,7 @@
       <auth-user-menu />
     </template>
 
-    <template v-if="authStore.hydrated && navigation.length > 0" #body>
+    <template v-if="navigation.length > 0" #body>
       <div class="p-4">
         <u-navigation-menu :items="navigation" orientation="vertical" />
       </div>
@@ -51,8 +44,6 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 
 const navigation = computed<NavigationMenuItem[]>(() => {
-  if (!authStore.hydrated) return [];
-
   const items: NavigationMenuItem[] = [];
   const isAdmin = authStore.isAdmin;
   const isEditor = authStore.user?.roles?.includes('EDITOR') ?? false;

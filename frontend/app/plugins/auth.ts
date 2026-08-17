@@ -3,13 +3,17 @@ import { useAuthStore } from '~/stores/auth';
 /**
  * Universal plugin: runs on both SSR and client.
  *
- * On SSR  — reads the JWT from the request cookie, sets it on the store, fetches /auth/me.
- *           The resulting user + token state is serialized and sent to the client.
- * On client — Pinia state is already hydrated from SSR (user + token already set).
- *             We skip fetchMe if user is already present, and migrate any legacy
- *             localStorage token to a cookie for future SSR requests.
+ * On SSR  — reads the JWT from the request cookie, sets it on the store, fetches
+ *           /auth/me and marks the store hydrated. All of that is serialized
+ *           into the Nuxt payload.
+ *
+ * On client — Pinia has already restored that payload, so the store matches the
+ *           server exactly and the first client render reproduces the server
+ *           HTML. Anything that could *change* auth state is therefore deferred
+ *           until after hydration (see below) rather than run in the plugin
+ *           body, which executes before the app mounts.
  */
-export default defineNuxtPlugin(async () => {
+export default defineNuxtPlugin(nuxtApp => {
   const authStore = useAuthStore();
 
   if (import.meta.server) {
@@ -18,16 +22,37 @@ export default defineNuxtPlugin(async () => {
     if (tokenCookie.value) {
       authStore.token = tokenCookie.value;
     }
-  } else {
-    // Client: migrate localStorage token to cookie (one-time migration for existing users)
+
+    if (authStore.token && !authStore.user) {
+      // Awaited so the rendered HTML already reflects the logged-in state.
+      return authStore.fetchMe().then(() => {
+        authStore.hydrated = true;
+      });
+    }
+
+    authStore.hydrated = true;
+    return;
+  }
+
+  // ── Client ────────────────────────────────────────────────────────────
+  // Legacy users who logged in before cookie auth existed still only have a
+  // token in localStorage, which SSR cannot see — so the server renders them
+  // logged out. Restoring that token here in the plugin body would flip the
+  // store to logged-in *before* the app mounts, so Vue's first client render
+  // would disagree with the server HTML: a hydration mismatch on every
+  // auth-dependent branch (header nav, user menu, home CTA).
+  //
+  // Deferring to app:suspense:resolve — which fires once hydration is complete
+  // — turns that into an ordinary post-hydration re-render instead. Writing the
+  // cookie also means the *next* SSR request renders them logged in directly,
+  // so the fallback costs one render, once.
+  nuxtApp.hooks.hook('app:suspense:resolve', async () => {
     authStore.loadFromStorage();
-  }
 
-  // Fetch user if we have a token but no user yet.
-  // On the client after SSR, user is already populated from the transferred Pinia state.
-  if (authStore.token && !authStore.user) {
-    await authStore.fetchMe();
-  }
+    if (authStore.token && !authStore.user) {
+      await authStore.fetchMe();
+    }
 
-  authStore.hydrated = true;
+    authStore.hydrated = true;
+  });
 });
