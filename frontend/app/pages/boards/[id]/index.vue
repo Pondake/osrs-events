@@ -206,6 +206,7 @@ import { useBoardPage } from '~/composables/useBoardPage';
 import { useBoard } from '~/composables/useBoards';
 import { useAuthStore } from '~/stores/auth';
 
+const { t } = useI18n();
 const authStore = useAuthStore();
 const route = useRoute();
 const boardId = route.params.id as string;
@@ -213,6 +214,18 @@ const boardId = route.params.id as string;
 // ─── SSR board data ───────────────────────────────────────────────────────────
 
 const { board, pending, error, refresh, updateBoard } = await useBoard(boardId);
+
+// ─── SEO ─────────────────────────────────────────────────────────────────────
+
+// Only boards that are both listed and open to everyone belong in search
+// results — GUILD and INVITE boards are private clan events. The board loads
+// via SSR, so this resolves before the HTML is sent. While it is still pending
+// the page stays noindex, which fails closed rather than leaking a private board.
+useSeo(() => ({
+  title: board.value?.title ?? t('boards.title'),
+  description: board.value?.description || t('seo.board_desc', { title: board.value?.title ?? '' }),
+  noindex: !(board.value?.isListed && board.value?.accessMode === 'OPEN'),
+}));
 
 // ─── All game logic via composable ───────────────────────────────────────────
 

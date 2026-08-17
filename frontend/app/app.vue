@@ -16,17 +16,13 @@
 
 <script setup lang="ts">
 useHead({
+  // Pages set a bare title via useSeo; the brand is appended here so it is not
+  // repeated in every page's copy. Titles that already carry the brand (the
+  // home page) are left alone rather than doubling it up.
+  titleTemplate: title =>
+    !title ? 'OSRS Events' : title.includes('OSRS Events') ? title : `${title} · OSRS Events`,
   meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
-  link: [{ rel: 'icon', href: '/favicon.ico' }],
+  // Icon links live in nuxt.config.ts app.head — keep one source of truth.
   htmlAttrs: { lang: 'en' },
-});
-
-useSeoMeta({
-  title: 'OSRS Events',
-  description:
-    'An Old School RuneScape themed events platform. Join boards, roll dice and complete OSRS tasks with your clan.',
-  ogTitle: 'OSRS Events',
-  ogDescription:
-    'An Old School RuneScape themed events platform. Join boards, roll dice and complete OSRS tasks with your clan.',
 });
 </script>

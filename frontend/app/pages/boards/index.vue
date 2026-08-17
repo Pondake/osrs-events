@@ -153,7 +153,10 @@ import {
   BOARD_STATUS_STYLE,
 } from '~/utils/board';
 
+const { t } = useI18n();
 const authStore = useAuthStore();
+
+useSeo({ title: t('seo.boards_title'), description: t('seo.boards_desc') });
 
 const { boards, pending, error, refresh } = await useBoards();
 

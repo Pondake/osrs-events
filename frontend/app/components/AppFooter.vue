@@ -2,7 +2,7 @@
   <u-footer ref="footerRef">
     <template #left>
       <div class="flex flex-col gap-1">
-        <p class="text-sm text-muted">OSRS Snakes &amp; Ladders &bull; &copy; {{ currentYear }}</p>
+        <p class="text-sm text-muted">OSRS Events &bull; &copy; {{ currentYear }}</p>
 
         <p class="text-xs text-muted italic">
           {{ $t('common.not_affiliated') }}
@@ -35,7 +35,12 @@ const { t } = useI18n();
 // as boardEventStatus in utils/board.ts.
 const currentYear = new Date().getUTCFullYear();
 
+// The guide pages are listed first: the footer is the only site-wide crawl path
+// to them, so they need to be reachable from every page.
 const footerLinks = [
+  { to: '/osrs-snakes-and-ladders', label: t('nav.snakes') },
+  { to: '/osrs-clan-events', label: t('nav.clan_events') },
+  { to: '/osrs-event-ideas', label: t('nav.event_ideas') },
   { to: '/about', label: t('nav.about') },
   { to: '/donate', label: t('nav.donate') },
   { to: '/privacy', label: t('nav.privacy') },

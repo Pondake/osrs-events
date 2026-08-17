@@ -145,7 +145,7 @@
 <script setup lang="ts">
 const { t } = useI18n();
 
-useHead({ title: t('privacy.title') });
+useSeo({ title: t('seo.privacy_title'), description: t('seo.privacy_desc') });
 
 const dataItems = [
   {

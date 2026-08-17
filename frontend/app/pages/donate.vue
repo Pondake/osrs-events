@@ -102,5 +102,5 @@
 <script setup lang="ts">
 const { t } = useI18n();
 
-useHead({ title: t('donate.title') });
+useSeo({ title: t('seo.donate_title'), description: t('seo.donate_desc') });
 </script>

@@ -124,7 +124,7 @@
 <script setup lang="ts">
 const { t } = useI18n();
 
-useHead({ title: t('about.title') });
+useSeo({ title: t('seo.about_title'), description: t('seo.about_desc') });
 
 const features = [
   {
