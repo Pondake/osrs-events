@@ -1,24 +1,19 @@
 <?php
 
+use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\LandingController;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-// Prototype-only stand-in for Discord OAuth (osrs-events' real login flow).
-// Just enough to exercise an authenticated, session-dependent SSR page —
-// evaluating Socialite + Discord wiring is out of scope for this slice.
-Route::get('/login', function () {
-    $user = User::firstOrCreate(
-        ['email' => 'prototype@osrs-events.test'],
-        ['name' => 'Prototype Player', 'password' => bcrypt(str()->random(32))],
-    );
+Route::get('/auth/discord/redirect', [DiscordController::class, 'redirect'])->name('login');
+Route::get('/auth/discord/callback', [DiscordController::class, 'callback'])->name('auth.discord.callback');
 
-    Auth::login($user);
+Route::post('/logout', function () {
+    Auth::logout();
 
-    return redirect()->intended('/');
-})->name('login');
+    return redirect('/');
+})->middleware('auth')->name('logout');
 
 Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadders'])
     ->name('landing.snakes');

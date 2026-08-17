@@ -12,6 +12,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('board_id')->constrained('boards')->cascadeOnDelete();
             $table->unsignedInteger('position');
+            $table->foreignUuid('task_id')->nullable()->constrained('tasks')->nullOnDelete();
             $table->string('title_override')->nullable();
             $table->enum('type', ['NORMAL', 'SNAKE', 'LADDER'])->default('NORMAL');
             $table->unsignedInteger('target_position')->nullable();
