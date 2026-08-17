@@ -43,7 +43,13 @@
                 description="Turn any Old School RuneScape clan event into a Snakes and Ladders board — set the tiles, invite your team, and race to the top."
             >
                 <template #links>
-                    <u-button size="xl" color="primary" icon="i-lucide-plus" label="Start a board" href="/boards" />
+                    <!-- Board creation lives behind a modal on /boards (not yet
+                         ported — see docs/backlog.md), so unauthenticated visitors
+                         go straight through Discord login rather than to a page
+                         they can't act on yet, matching the old Nuxt page's
+                         behavior (frontend/app/pages/osrs-snakes-and-ladders.vue,
+                         kept in stale/ for reference). -->
+                    <u-button size="xl" color="primary" icon="i-lucide-plus" label="Start a board" :href="route('login')" />
                     <u-button
                         to="/boards"
                         size="xl"

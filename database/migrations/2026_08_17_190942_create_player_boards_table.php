@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('player_boards', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignUuid('board_id')->constrained('boards')->cascadeOnDelete();
             $table->foreignUuid('team_id')->nullable()->constrained('teams')->cascadeOnDelete();
             $table->unsignedInteger('current_position')->default(0);

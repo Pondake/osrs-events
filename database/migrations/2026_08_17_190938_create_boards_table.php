@@ -29,7 +29,11 @@ return new class extends Migration
             $table->enum('size', ['SIZE_5X5', 'SIZE_7X7', 'SIZE_9X9'])->default('SIZE_7X7');
             $table->enum('mode', ['SOLO', 'TEAM'])->default('SOLO');
             $table->enum('access_mode', ['OPEN', 'GUILD', 'INVITE'])->default('OPEN');
+            $table->string('required_guild_id')->nullable();
             $table->boolean('is_listed')->default(true);
+            $table->timestamp('start_date')->nullable();
+            $table->timestamp('end_date')->nullable();
+            $table->unsignedInteger('dice_roll_limit')->nullable();
             $table->timestamps();
         });
     }

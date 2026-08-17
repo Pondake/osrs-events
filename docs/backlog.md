@@ -34,16 +34,27 @@ Roadmap, in order:
 Full findings and rationale: see the published prototype report from this
 branch's SSR evaluation. Concrete carry-over work:
 
-- [ ] Port remaining 11 of 16 Prisma models to Eloquent: `BoardAuthor`,
-  `BoardAccess`, `BoardInvite`, `UserGuild`, `TeamMember`, `UserPermission`,
-  `UserRole`, `Role`, `Task`, plus the `BoardAccessMode` (OPEN/GUILD/INVITE)
-  matrix and `BoardInvite.useCount` transaction logic. This is the genuinely
-  hard part — no framework shortcut either way, needs a real rewrite of the
-  access-control logic, not a line-for-line port.
-- [ ] Decide UUID-vs-bigint once, for every table. This prototype left
-  `users` on Laravel's default bigint id while every other table uses UUID
-  to match Prisma — a deliberate inconsistency to surface the decision, not
-  a resolution of it.
+- [x] ~~Port remaining 11 of 16 Prisma models to Eloquent~~ — done. All 16
+  models now have Eloquent equivalents (`BoardAuthor`, `BoardAccess`,
+  `BoardInvite`, `UserGuild`, `TeamMember`, `UserPermission`, `UserRole`,
+  `Role`, `Task`, `BoardTeam` + the original 5 from the prototype), UUID PKs
+  throughout including `users` (settled the UUID-vs-bigint question in
+  UUID's favor, so no mixed-key schema). **Not done**: the actual
+  `BoardAccessMode` (OPEN/GUILD/INVITE) authorization logic and
+  `BoardInvite.use_count` increment-on-join transaction — the tables exist,
+  the enforcement code doesn't yet. See Security below.
+- [x] ~~Port Discord OAuth + guild sync~~ — done.
+  `app/Http/Controllers/Auth/DiscordController.php` via
+  `laravel/socialite` + `socialiteproviders/discord`, matching the old
+  NestJS `AuthService`/`UsersService` behavior: new users get the PLAYER
+  role, guild sync is delete-all-and-reinsert in a transaction and is
+  non-fatal on failure. One bug found and fixed while wiring it up:
+  Socialite's `->scopes()` *merges* with the driver's default scope list
+  instead of replacing it — was silently requesting an unwanted `email`
+  scope until switched to `->setScopes()`. Needs real
+  `DISCORD_CLIENT_ID`/`DISCORD_CLIENT_SECRET` in `.env` before the callback
+  can be tested end-to-end (redirect construction was verified via curl;
+  the actual Discord round-trip wasn't, no credentials in this environment).
 - [ ] Rewrite the GraphQL code-first API surface as Inertia controllers —
   full rewrite, not a port; the resolver layer has no Laravel equivalent.
 - [ ] Port ~20 Nuxt pages/components to Inertia + Vue pages.
@@ -53,8 +64,6 @@ branch's SSR evaluation. Concrete carry-over work:
   support). Whatever's chosen needs the same SSR-safety scrutiny as the
   `<Head>` bug below — an i18n composable that touches `localStorage`/cookies
   on mount will fail the same silent way.
-- [ ] Port Discord OAuth + guild sync from the NestJS implementation to
-  Laravel Socialite's Discord driver.
 - [ ] Watch for these five SSR gotchas found during the prototype — all fixed
   once, but easy to reintroduce while porting 20 more pages:
   1. Nuxt UI icons render empty in server HTML (fill in after client
@@ -100,15 +109,11 @@ branch's SSR evaluation. Concrete carry-over work:
 
 ## Security (step 4)
 
-- [ ] Audit every route for auth middleware — this prototype's `/boards/{board}`
-  slice used `auth` with no further authorization check (any logged-in user
-  can view any board regardless of the real `BoardAccessMode` matrix, since
-  that matrix isn't ported yet — see Migration above). Not safe as-is.
-- [ ] The `/login` route added in this prototype is a **dev-only stand-in**
-  that logs in a fixed test user with no credential check whatsoever — it
-  must not exist in anything resembling a real deployment. Delete it once
-  real Discord OAuth is wired up.
-- [ ] Rate limiting / throttling on all auth routes.
+- [ ] Audit every route for auth middleware — `/boards/{board}` uses `auth`
+  with no further authorization check (any logged-in user can view any board
+  regardless of the real `BoardAccessMode` matrix, since that matrix isn't
+  ported yet — see Migration above). Not safe as-is.
+- [ ] Rate limiting / throttling on the Discord OAuth routes.
 - [ ] CSRF, session, and cookie config review once real deployment domains
   are known (currently defaults from a fresh `laravel/laravel` scaffold).
 - [ ] Revisit `BoardInvite` token/`useCount` handling for race conditions

@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    // osrs-events' only login path — see app/Http/Controllers/Auth/DiscordController.php
+    // and the socialiteproviders/discord event listener in AppServiceProvider::boot().
+    'discord' => [
+        'client_id' => env('DISCORD_CLIENT_ID'),
+        'client_secret' => env('DISCORD_CLIENT_SECRET'),
+        'redirect' => env('DISCORD_REDIRECT_URI'),
+    ],
+
 ];

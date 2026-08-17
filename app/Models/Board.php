@@ -25,4 +25,24 @@ class Board extends Model
     {
         return $this->hasMany(PlayerBoard::class);
     }
+
+    public function authors(): HasMany
+    {
+        return $this->hasMany(BoardAuthor::class);
+    }
+
+    public function boardTeams(): HasMany
+    {
+        return $this->hasMany(BoardTeam::class);
+    }
+
+    public function invites(): HasMany
+    {
+        return $this->hasMany(BoardInvite::class);
+    }
+
+    public function accesses(): HasMany
+    {
+        return $this->hasMany(BoardAccess::class);
+    }
 }
