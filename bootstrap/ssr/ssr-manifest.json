@@ -1,0 +1,254 @@
+{
+  "node_modules/.pnpm/@iconify+vue@5.0.1_vue@3.5.41_typescript@6.0.3_/node_modules/@iconify/vue/dist/iconify.mjs": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Alert.vue": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/App.vue": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Avatar.vue": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Badge.vue": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Button.vue": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Card.vue": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Chip.vue": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Container.vue": [
+    "/build/assets/Main-BTQptCM4.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Main.vue": [
+    "/build/assets/Main-BTQptCM4.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/OverlayProvider.vue": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Page.vue": [
+    "/build/assets/Main-BTQptCM4.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/PageFeature.vue": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/PageHeader.vue": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/PageHero.vue": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/PageSection.vue": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Progress.vue": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Toast.vue": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/components/Toaster.vue": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/defineLocale.js": [
+    "/build/assets/useLocale-B1UhdR4w.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useAvatarGroup.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useComponentIcons.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useComponentProps.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useFieldGroup.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useFormField.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useForwardProps.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useLocale.js": [
+    "/build/assets/useLocale-B1UhdR4w.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useOverlay.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/usePortal.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/usePrefix.js": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/composables/useToast.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/locale/en.js": [
+    "/build/assets/useLocale-B1UhdR4w.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/plugins/colors.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/utils/index.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/utils/link.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/utils/locale.js": [
+    "/build/assets/useLocale-B1UhdR4w.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/utils/tv.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/components/Icon.vue": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/composables/useAppConfig.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/overrides/inertia/Link.vue": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/overrides/inertia/LinkBase.vue": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/plugins/color-mode.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/plugins/head.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/plugins/icons.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/plugins/router.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/stubs/base.js": [],
+  "node_modules/.pnpm/@nuxt+ui@4.10.0_7aaf5b96743bc488032fba6aed608feb/node_modules/@nuxt/ui/dist/runtime/vue/stubs/inertia.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/@unhead+vue@2.1.17_vue@3.5.41_typescript@6.0.3_/node_modules/@unhead/vue/dist/client.mjs": [],
+  "node_modules/.pnpm/@unhead+vue@2.1.17_vue@3.5.41_typescript@6.0.3_/node_modules/@unhead/vue/dist/shared/vue.Cd6dkybA.mjs": [],
+  "node_modules/.pnpm/@unhead+vue@2.1.17_vue@3.5.41_typescript@6.0.3_/node_modules/@unhead/vue/dist/shared/vue.N9zWjxoK.mjs": [],
+  "node_modules/.pnpm/@vueuse+core@14.4.0_vue@3.5.41_typescript@6.0.3_/node_modules/@vueuse/core/dist/index.js": [],
+  "node_modules/.pnpm/@vueuse+shared@14.4.0_vue@3.5.41_typescript@6.0.3_/node_modules/@vueuse/shared/dist/index.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/defu@6.1.7/node_modules/defu/dist/defu.mjs": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/hookable@6.1.1/node_modules/hookable/dist/index.mjs": [],
+  "node_modules/.pnpm/laravel-vite-plugin@3.2.0_f_6c4aec2d1b46d1e26ec8f67562bfffa2/node_modules/laravel-vite-plugin/inertia-helpers/index.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Collection/Collection.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/ConfigProvider/ConfigProvider.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/DismissableLayer/DismissableLayer.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/DismissableLayer/DismissableLayerBranch.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/FocusScope/utils.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Presence/Presence.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Presence/usePresence.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Primitive/Primitive.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Primitive/Slot.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Primitive/usePrimitiveElement.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Progress/ProgressIndicator.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Progress/ProgressRoot.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Teleport/Teleport.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/FocusProxy.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastAction.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastAnnounce.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastAnnounceExclude.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastClose.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastDescription.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastPortal.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastProvider.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastRoot.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastRootImpl.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastTitle.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/ToastViewport.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Toast/utils.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/Tooltip/TooltipProvider.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/VisuallyHidden/VisuallyHidden.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/shared/createContext.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/shared/getActiveElement.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/shared/nullish.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/shared/renderSlotFragments.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/shared/useEmitAsProps.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/shared/useForwardExpose.js": [],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/shared/useForwardProps.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/reka-ui@2.10.1_vue@3.5.41_typescript@6.0.3_/node_modules/reka-ui/dist/shared/useStateMachine.js": [],
+  "node_modules/.pnpm/tailwind-variants@3.3.1_tai_a0d26b71ce9e28cd9d002deff65621c9/node_modules/tailwind-variants/dist/chunk-OYFAXDFZ.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/tailwind-variants@3.3.1_tai_a0d26b71ce9e28cd9d002deff65621c9/node_modules/tailwind-variants/dist/chunk-SUL6UUW2.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/tailwind-variants@3.3.1_tai_a0d26b71ce9e28cd9d002deff65621c9/node_modules/tailwind-variants/dist/index.js": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/ufo@1.6.4/node_modules/ufo/dist/index.mjs": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "node_modules/.pnpm/unhead@2.1.17/node_modules/unhead/dist/client.mjs": [],
+  "node_modules/.pnpm/unhead@2.1.17/node_modules/unhead/dist/shared/unhead.AvDFlk_u.mjs": [],
+  "node_modules/.pnpm/unhead@2.1.17/node_modules/unhead/dist/shared/unhead.BrXkGDAU.mjs": [],
+  "node_modules/.pnpm/unhead@2.1.17/node_modules/unhead/dist/shared/unhead.ChXiQvI8.mjs": [],
+  "node_modules/.pnpm/unhead@2.1.17/node_modules/unhead/dist/shared/unhead.J7R8psSN.mjs": [],
+  "resources/js/AppRoot.vue": [],
+  "resources/js/Composables/useSeo.js": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "resources/js/Pages/BoardShow.vue": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "resources/js/Pages/SnakesAndLadders.vue": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "resources/js/ssr.js": [],
+  "vendor/tightenco/ziggy/dist/index.esm.js": [],
+  "virtual:nuxt-ui-app-config": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "virtual:nuxt-ui-icons": [],
+  "virtual:nuxt-ui-plugins": [],
+  "virtual:nuxt-ui-templates/ui/alert.ts": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/avatar.ts": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/badge.ts": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/button.ts": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/card.ts": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/chip.ts": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/container.ts": [
+    "/build/assets/Main-BTQptCM4.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/link.ts": [
+    "/build/assets/Button-BsqkFqP1.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/main.ts": [
+    "/build/assets/Main-BTQptCM4.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/page-feature.ts": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/page-header.ts": [
+    "/build/assets/BoardShow-C9jVH_jI.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/page-hero.ts": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/page-section.ts": [
+    "/build/assets/SnakesAndLadders-BJYcscTz.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/page.ts": [
+    "/build/assets/Main-BTQptCM4.js"
+  ],
+  "virtual:nuxt-ui-templates/ui/progress.ts": [],
+  "virtual:nuxt-ui-templates/ui/toast.ts": [],
+  "virtual:nuxt-ui-templates/ui/toaster.ts": []
+}
