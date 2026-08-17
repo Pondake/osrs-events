@@ -13,7 +13,7 @@ import { useAuthStore } from '~/stores/auth';
  *           until after hydration (see below) rather than run in the plugin
  *           body, which executes before the app mounts.
  */
-export default defineNuxtPlugin(nuxtApp => {
+export default defineNuxtPlugin(async nuxtApp => {
   const authStore = useAuthStore();
 
   if (import.meta.server) {
@@ -25,9 +25,7 @@ export default defineNuxtPlugin(nuxtApp => {
 
     if (authStore.token && !authStore.user) {
       // Awaited so the rendered HTML already reflects the logged-in state.
-      return authStore.fetchMe().then(() => {
-        authStore.hydrated = true;
-      });
+      await authStore.fetchMe();
     }
 
     authStore.hydrated = true;
