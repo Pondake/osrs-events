@@ -16,3 +16,10 @@
 *.woff binary
 *.woff2 binary
 *.wasm binary
+
+# Laravel diff hints
+*.blade.php diff=html
+*.css diff=css
+*.html diff=html
+*.md diff=markdown
+*.php diff=php

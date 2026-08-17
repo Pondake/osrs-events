@@ -5,3 +5,29 @@
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# Old NestJS + Nuxt stack, kept on disk for reference during the Laravel
+# migration (see docs/backlog.md) but not tracked — a full second stack's
+# node_modules/vendor/lockfiles have no business bloating this repo's history.
+/stale/
+
+# Laravel (moved here from laravel-app/ — see docs/backlog.md)
+*.log
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.phpunit.cache
+/auth.json
+/node_modules
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+_ide_helper.php
+Homestead.json
+Homestead.yaml
