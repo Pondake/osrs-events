@@ -280,8 +280,10 @@ function onAuthorSearch() {
         const response = await fetch(`/users/search?search=${encodeURIComponent(authorSearch.value)}`, {
             headers: { Accept: 'application/json' },
         });
-        const results = await response.json();
-        authorResults.value = results.filter((u) => !selectedAuthors.value.some((a) => a.id === u.id));
+        const results = response.ok ? await response.json() : [];
+        authorResults.value = (Array.isArray(results) ? results : []).filter(
+            (u) => !selectedAuthors.value.some((a) => a.id === u.id),
+        );
     }, 300);
 }
 
