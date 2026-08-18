@@ -18,11 +18,8 @@ Roadmap, in order:
 
 ## Housekeeping (before step 2 starts)
 
-- [ ] Rewrite `CLAUDE.md` for the new layout and stack. It still documents
-  the NestJS + Nuxt conventions (pnpm workspace paths, GraphQL codegen,
-  Prisma) and the old `backend/`/`frontend/` structure — none of it matches
-  the repo as it now stands. Left untouched deliberately during the cleanup
-  since it's a real rewrite, not a move.
+- [x] ~~Rewrite `CLAUDE.md` for the new layout and stack~~ — done (see
+  Migration's i18n entry below for why this got forced sooner than planned).
 - [ ] Revisit `docs/ROADMAP.md` and `docs/PROGRESS.md` once the repo
   cleanup + migration are far enough along to know what of the old roadmap
   still applies, what's obsolete, and what should fold into this file instead.
@@ -151,18 +148,36 @@ branch's SSR evaluation. Concrete carry-over work:
   SSR log. Wiring is in `vite.config.js` (the `i18n()` plugin), `app.js`, and
   `ssr.js`. `lang/php_*.json` (auto-generated from PHP lang files by the Vite
   plugin, if any get added) is gitignored per the package's own guidance.
-- [ ] **Not done**: port the actual 598 keys from
-  `stale/frontend/locales/en.json` into `lang/en.json`, and rewire every page
-  built so far (15+ files: all of `Boards/`, `Teams/`, `Admin/`, the
-  marketing pages, `BoardSettingsModal`/`TaskSettingsModal`/
-  `TeamSettingsModal`) from hardcoded English strings to `$t()` calls. This
-  is real, large, mechanical work — CLAUDE.md's own model-selection rule
-  calls i18n key additions Haiku-tier, distinct from the architecture/
-  integration decisions in this file. Nuxt's nested `home.title`-style key
-  structure ports directly to `lang/en.json`'s flat JSON format (Laravel's
-  JSON translation format uses the literal dotted string as the key, e.g.
-  `"home.title": "..."`, not a nested object) — a straight value copy per
-  key, not a restructuring.
+- [x] ~~Port the actual 598 keys from `stale/frontend/locales/en.json` into
+  `lang/en.json`, and rewire every page from hardcoded English strings to
+  `$t()`/`trans()` calls~~ — done. All 598 keys flattened into
+  `lang/en.json`'s dotted-key format (628 after adding ~30 keys that turned
+  up missing during the rewire — new UI text the old app's locale file never
+  had, like invite-expiry copy and admin search placeholders), and all 26
+  Vue files (every page + every modal component) rewired.
+  **Real bug found and fixed while verifying this live, not just a port**:
+  `app.js`'s client-side `i18nVue` plugin loads the language file via an
+  async dynamic import and previously mounted the app before that promise
+  resolved. Any `trans()` call at `<script setup>` top level (SEO
+  title/description via `useSeoData`, script-built label arrays) ran before
+  messages existed and permanently cached the raw untranslated key — the
+  browser tab literally showed `"seo.home_title - OSRS Events"` after
+  hydration despite the server-rendered HTML having the correct title,
+  because `useSeoData`'s `resolved` computed captured `trans()`'s fallback
+  value once and never re-evaluated it. `$t()` calls inside templates were
+  never affected (they're reactive to the message store loading). Fixed by
+  `await`ing `loadLanguageAsync('en')` (same shared `I18n` instance the
+  plugin registers, per its `shared: true` default) before `app.mount()`.
+  SSR was never affected — the package's `I18n` constructor uses a
+  synchronous `loadLanguage` server-side already.
+  Also found while dispatching this as parallel sub-agent work: a stale
+  `CLAUDE.md` (still describing the pre-migration NestJS+Nuxt stack) caused
+  one fresh agent to distrust the actual filesystem and refuse the task
+  outright, and a second agent to falsely report success on two files
+  (`Privacy.vue`/`Terms.vue`) it never actually wrote — both had to be
+  redone with tighter verification (`git status`/grep counts) built into the
+  task itself. `CLAUDE.md` is now rewritten for the current stack; see the
+  Housekeeping item above, now resolved.
 - [ ] Watch for these SSR gotchas found so far — all fixed once, but easy to
   reintroduce while porting the rest:
   1. Nuxt UI icons render empty in server HTML (fill in after client
