@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TileController;
 use App\Http\Controllers\UserSearchController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -104,13 +105,36 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Local-only: logs in the seeded prototype user without a real Discord
-// round-trip, since this environment has no Discord app credentials.
-// Guarded by environment() so it can never exist outside local — see
-// docs/backlog.md, which tracks removing it once Dusk/feature tests cover
-// the auth flow properly instead.
+// Local-only: logs in as a seeded user without a real Discord round-trip,
+// since this environment has no Discord app credentials. Guarded by
+// environment() so it can never exist outside local, regardless of the
+// password check below — see docs/backlog.md, which tracks removing it
+// once Dusk/feature tests cover the auth flow properly instead.
+//
+// Two identities:
+// - ?as=player (default) — the DatabaseSeeder prototype_player, no password
+//   needed, matches the original convenience behavior.
+// - ?as=admin&pass=... — the AdminUserSeeder account, gated on ADMIN_PASS
+//   (.env) as a shared secret. Not real auth security (this whole route
+//   only exists in local()), just enough that the login isn't a bare
+//   unauthenticated link to an admin session.
 if (app()->environment('local')) {
-    Route::get('/dev-login', function () {
+    Route::get('/dev-login', function (Request $request) {
+        if ($request->query('as') === 'admin') {
+            $expected = env('ADMIN_PASS');
+            if (! $expected) {
+                abort(400, 'ADMIN_PASS is not set in .env — see .env.example.');
+            }
+            abort_unless(hash_equals($expected, (string) $request->query('pass', '')), 403, 'Wrong password.');
+
+            $admin = \App\Models\User::where('discord_id', 'local-admin-seed')->first();
+            abort_unless($admin, 404, 'No admin test account seeded — run `php artisan db:seed`.');
+
+            Auth::login($admin);
+
+            return redirect('/admin/boards');
+        }
+
         Auth::login(\App\Models\User::where('discord_id', '000000000000000001')->firstOrFail());
 
         return redirect('/boards');
