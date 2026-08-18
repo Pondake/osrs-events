@@ -51,7 +51,7 @@
                                     icon="i-lucide-search"
                                     :placeholder="$t('common.search')"
                                     class="w-full"
-                                    @input="onAuthorSearch"
+                                    @update:model-value="onAuthorSearch"
                                 />
 
                                 <div v-if="authorResults.length" class="rounded-md ring ring-default divide-y divide-default">

@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Ported from the old GraphQL `users(search)` query (see stale/frontend's
@@ -15,13 +14,21 @@ use Illuminate\Support\Facades\Auth;
  * but excludes existing team members server-side since it's scoped to one
  * team; this one isn't scoped to anything, so already-selected authors are
  * filtered out client-side instead (same as the old app's fetchUsers()).
+ *
+ * No extra permission gate beyond the route's own 'auth' middleware — a
+ * board *owner* who can open BoardSettingsModal in the first place (via
+ * canEditBoard(), not the global canCreateBoards permission) needs to
+ * search for co-editors too, and this endpoint has no board context to
+ * check canEditBoard() against. A first version gated on
+ * canCreateBoards/admin, which 403'd for exactly that case — caught live
+ * while testing the actual search box, not by reading the code. The
+ * returned fields (username, nickname, avatar) aren't sensitive; any
+ * logged-in user reaching this route at all is enough.
  */
 class UserSearchController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        abort_unless(Auth::user()->hasPermission('canCreateBoards') || Auth::user()->isAdmin(), 403);
-
         $search = $request->string('search')->toString();
 
         $users = User::when($search, fn ($q) => $q->where('discord_username', 'like', "%{$search}%"))
