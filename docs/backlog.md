@@ -94,12 +94,29 @@ branch's SSR evaluation. Concrete carry-over work:
   `OsrsClanEvents`' login CTA hit a fifth Ziggy footgun (see #10 below):
   calling `route()` from a `computed()` in `<script setup>` instead of
   directly in the template.
-- [ ] Pick an i18n solution for 598 keys currently in
-  `stale/frontend/locales/en.json` — no drop-in replacement for
-  `@nuxtjs/i18n`. Leading candidate: `laravel-vue-i18n` (documented SSR
-  support). Whatever's chosen needs the same SSR-safety scrutiny as the bugs
-  below — an i18n composable that touches `localStorage`/cookies on mount
-  will fail the same silent way.
+- [x] ~~Pick an i18n solution, verify it's SSR-safe~~ — done.
+  `laravel-vue-i18n` (npm package, not a composer one — despite the name it's
+  pure Vue/Vite, nothing PHP-side to require). Its own README documents SSR
+  needing the *eager* glob variant (`import.meta.glob(..., { eager: true })`)
+  in `ssr.js` instead of the Promise-returning one `app.js` uses — this was
+  actually verified end-to-end, not just trusted from the docs: a real
+  `lang/en.json` test key was curled from raw SSR HTML and the *resolved
+  translated string* was present, not the raw key, with zero warnings in the
+  SSR log. Wiring is in `vite.config.js` (the `i18n()` plugin), `app.js`, and
+  `ssr.js`. `lang/php_*.json` (auto-generated from PHP lang files by the Vite
+  plugin, if any get added) is gitignored per the package's own guidance.
+- [ ] **Not done**: port the actual 598 keys from
+  `stale/frontend/locales/en.json` into `lang/en.json`, and rewire every page
+  built so far (15+ files: all of `Boards/`, `Teams/`, `Admin/`, the
+  marketing pages, `BoardSettingsModal`/`TaskSettingsModal`/
+  `TeamSettingsModal`) from hardcoded English strings to `$t()` calls. This
+  is real, large, mechanical work — CLAUDE.md's own model-selection rule
+  calls i18n key additions Haiku-tier, distinct from the architecture/
+  integration decisions in this file. Nuxt's nested `home.title`-style key
+  structure ports directly to `lang/en.json`'s flat JSON format (Laravel's
+  JSON translation format uses the literal dotted string as the key, e.g.
+  `"home.title": "..."`, not a nested object) — a straight value copy per
+  key, not a restructuring.
 - [ ] Watch for these SSR gotchas found so far — all fixed once, but easy to
   reintroduce while porting the rest:
   1. Nuxt UI icons render empty in server HTML (fill in after client
