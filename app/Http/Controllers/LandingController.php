@@ -8,6 +8,11 @@ use Inertia\Response;
 
 class LandingController extends Controller
 {
+    public function home(): Response
+    {
+        return Inertia::render('Home');
+    }
+
     /**
      * SEO-heaviest of the three Nuxt landing pages — the one the prototype
      * was scoped to, since it carries both FAQPage and HowTo JSON-LD plus a
@@ -92,5 +97,39 @@ class LandingController extends Controller
             'sizes' => $sizes,
             'faqs' => $faqs,
         ]);
+    }
+
+    public function clanEvents(): Response
+    {
+        $faqs = [
+            ['question' => 'Do I need to be a clan leader to run an event?', 'answer' => 'No. Anyone can create a board. If you lock it to a Discord server, players just need to be members of that server to join.'],
+            ['question' => 'Can we run more than one event at once?', 'answer' => 'Yes. There is no limit on boards, and each one has its own access rules, teams and leaderboard.'],
+            ['question' => 'Can two clans compete against each other?', 'answer' => 'Yes. Use a team board with one team per clan, or an open board that both rosters can join.'],
+            ['question' => 'What happens when an event ends?', 'answer' => 'The board stays available to read after its end date, so you keep the final standings and can look back at previous events.'],
+            ['question' => 'Is any of this paid?', 'answer' => 'No. Every feature is free, with no ads and no paid tier. Donations cover hosting.'],
+        ];
+
+        $this->shareFaqJsonLd($faqs);
+
+        return Inertia::render('OsrsClanEvents', ['faqs' => $faqs]);
+    }
+
+    public function eventIdeas(): Response
+    {
+        return Inertia::render('OsrsEventIdeas');
+    }
+
+    /** @param array<int, array{question: string, answer: string}> $faqs */
+    private function shareFaqJsonLd(array $faqs): void
+    {
+        View::share('jsonLd', [json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'FAQPage',
+            'mainEntity' => array_map(fn ($faq) => [
+                '@type' => 'Question',
+                'name' => $faq['question'],
+                'acceptedAnswer' => ['@type' => 'Answer', 'text' => $faq['answer']],
+            ], $faqs),
+        ])]);
     }
 }

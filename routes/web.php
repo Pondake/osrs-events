@@ -10,6 +10,7 @@ use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\TeamController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/auth/discord/redirect', [DiscordController::class, 'redirect'])->name('login');
 Route::get('/auth/discord/callback', [DiscordController::class, 'callback'])->name('auth.discord.callback');
@@ -20,8 +21,16 @@ Route::post('/logout', function () {
     return redirect('/');
 })->middleware('auth')->name('logout');
 
+Route::get('/', [LandingController::class, 'home'])->name('home');
 Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadders'])
     ->name('landing.snakes');
+Route::get('/osrs-clan-events', [LandingController::class, 'clanEvents'])->name('landing.clan-events');
+Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name('landing.event-ideas');
+
+Route::get('/about', fn () => Inertia::render('About'))->name('about');
+Route::get('/donate', fn () => Inertia::render('Donate'))->name('donate');
+Route::get('/privacy', fn () => Inertia::render('Privacy'))->name('privacy');
+Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
 
 Route::get('/boards', [BoardController::class, 'index'])->name('boards.index');
 Route::get('/boards/{board}', [BoardController::class, 'show'])
