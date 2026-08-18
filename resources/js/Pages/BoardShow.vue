@@ -49,7 +49,16 @@
                     </template>
                 </u-page-header>
 
-                <div class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
+                <u-card v-if="!hasTeam" class="mt-8">
+                    <div class="flex flex-col items-center text-center gap-3 py-6">
+                        <u-icon name="i-lucide-users" class="size-10 text-muted" />
+                        <p class="font-semibold text-lg">{{ $t('board.no_team_title') }}</p>
+                        <p class="text-sm text-muted max-w-md">{{ $t('board.no_team_desc') }}</p>
+                        <u-button color="primary" :label="$t('board.go_to_teams')" href="/teams" />
+                    </div>
+                </u-card>
+
+                <div v-else class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
                     <div class="flex-1 w-full min-w-0 overflow-x-auto">
                         <div :class="[gridClass, minWidthClass]" class="grid gap-1.5">
                             <!-- Not gated on playerBoard existing — reaching this
@@ -143,6 +152,7 @@ const props = defineProps({
     board: { type: Object, required: true },
     tiles: { type: Array, required: true },
     playerBoard: { type: Object, default: null },
+    hasTeam: { type: Boolean, default: true },
     canEdit: { type: Boolean, default: false },
 });
 
