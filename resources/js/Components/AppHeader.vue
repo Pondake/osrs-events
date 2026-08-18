@@ -1,15 +1,24 @@
 <template>
-    <u-header>
-        <!-- u-header already wraps this slot's content in its own ULink
-             pointed at its `to` prop (default "/", left at that default) —
-             confirmed by reading Header.vue's source after this crashed the
-             entire SSR Node process. A raw <a href="/"> here nests <a>
-             inside u-header's own <a>, which threw
-             "Cannot read properties of undefined (reading 'startsWith')"
-             deep in Nuxt UI's own Link active-route-detection logic during
-             SSR — not a graceful per-request failure, an uncaught exception
-             that killed the whole long-running SSR process. Plain content,
-             no link, is what the slot actually wants. -->
+    <!-- u-header always wraps its #title slot in its own internal ULink
+         (default `to="/"`) — not optional, baked into Header.vue itself, so
+         a raw <a> or plain <span> in the slot doesn't avoid it, it just nests
+         inside it. That ULink's isLinkActive computed reads
+         `page.url.startsWith(href.value)` (Link.vue in @nuxt/ui's inertia
+         override) on every render. Confirmed live via a Vue dev-mode
+         unminified stack trace (`<Link to="/" ... data-slot="title">` inside
+         <Header>) throwing "Cannot read properties of undefined (reading
+         'startsWith')" on every page during client hydration — page.url
+         isn't reliably populated yet at the point AppHeader's title first
+         renders, since AppHeader sits before the actual Inertia page
+         component in AppRoot.vue's template (same root cause as the
+         nav-menu/user-menu crash below, just on a component we don't
+         control the internals of). Passing `to=""` makes `href.value` a
+         falsy empty string, so isLinkActive's `if (!href.value) return
+         false` guard short-circuits before ever reaching .startsWith — the
+         title still renders the same span content, still renders
+         server-side (unlike ClientOnly-wrapping the whole header would
+         require), it just stops being a clickable link to "/". -->
+    <u-header to="">
         <template #title>
             <span class="text-lg font-bold text-highlighted">⚔️ OSRS Events</span>
         </template>
