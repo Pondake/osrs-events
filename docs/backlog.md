@@ -389,6 +389,18 @@ branch's SSR evaluation. Concrete carry-over work:
 - [ ] `stale/` can be deleted once the migration is verified complete and the
   team is confident nothing needs porting from it anymore.
 
+## Branding
+
+- [ ] **Header logo** — currently just the "⚔️" emoji + "OSRS Events" text
+  (`AppHeader.vue`), no image. Confirmed this was never actually
+  implemented even in the old Nuxt app either — its own `AppHeader.vue` had
+  the identical emoji+text title, and `osrs-events-10a.svg`/
+  `osrs-events-10a-trophy.svg` (present in `stale/frontend/public/`) are
+  never referenced by any component source, only by Nuxt's own build
+  cache — an orphaned asset, not a wired-up logo that regressed. User has
+  said they dislike that logo anyway and will replace it with something
+  new later — don't port the old SVG, wait for the replacement design.
+
 ## Admin & users (step 3)
 
 - [ ] Design what "admin functionality" beyond board CRUD actually needs to
