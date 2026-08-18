@@ -7,8 +7,11 @@ use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\PlayerBoardController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TeamController;
+use App\Http\Controllers\TileController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -37,6 +40,10 @@ Route::get('/boards', [BoardController::class, 'index'])->name('boards.index');
 Route::get('/boards/{board}', [BoardController::class, 'show'])
     ->middleware('auth')
     ->name('boards.show');
+Route::get('/boards/{board}/leaderboard', [LeaderboardController::class, 'show'])
+    ->middleware('auth')
+    ->name('boards.leaderboard');
+Route::get('/boards/{board}/join/{token}', [BoardController::class, 'joinByLink'])->name('boards.join-link');
 
 Route::middleware('auth')->group(function () {
     Route::post('/boards', [BoardController::class, 'store'])->name('boards.store');
@@ -47,8 +54,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/boards/{board}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('boards.tiles.toggle');
     Route::post('/boards/{board}/join', [BoardController::class, 'join'])->name('boards.join');
 
+    Route::get('/boards/{board}/invites', [BoardInviteController::class, 'index'])->name('boards.invites.index');
     Route::post('/boards/{board}/invites', [BoardInviteController::class, 'store'])->name('boards.invites.store');
     Route::delete('/boards/{board}/invites/{invite}', [BoardInviteController::class, 'destroy'])->name('boards.invites.destroy');
+
+    Route::post('/boards/{board}/tiles', [TileController::class, 'upsert'])->name('boards.tiles.upsert');
+    Route::delete('/boards/{board}/tiles/{tile}', [TileController::class, 'destroy'])->name('boards.tiles.destroy');
+    Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
+
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
@@ -56,6 +71,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
     Route::post('/teams/{team}/members', [TeamController::class, 'addMember'])->name('teams.members.add');
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember'])->name('teams.members.remove');
+    Route::get('/teams/{team}/users/search', [TeamController::class, 'searchUsers'])->name('teams.users.search');
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/boards', [AdminBoardController::class, 'index'])->name('boards.index');

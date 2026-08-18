@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Board;
 use App\Models\BoardInvite;
 use App\Services\BoardAccessService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,13 @@ use Illuminate\Support\Facades\Auth;
 /** Ported from InvitesService — every action requires board-owner-or-admin. */
 class BoardInviteController extends Controller
 {
+    public function index(Board $board): JsonResponse
+    {
+        abort_unless(Auth::user()->isBoardOwnerOrAdmin($board), 403);
+
+        return response()->json($board->invites()->orderByDesc('created_at')->get());
+    }
+
     public function store(Request $request, Board $board, BoardAccessService $access): RedirectResponse
     {
         abort_unless(Auth::user()->isBoardOwnerOrAdmin($board), 403);

@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Team;
 use App\Models\TeamMember;
+use App\Models\User;
 use App\Models\UserGuild;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -104,5 +106,20 @@ class TeamController extends Controller
     {
         $user = Auth::user();
         abort_unless($user->isAdmin() || $user->hasRole('TEAM_MANAGER'), 403);
+    }
+
+    /** Lightweight user search for the members modal's add-member autocomplete. */
+    public function searchUsers(Request $request, Team $team): JsonResponse
+    {
+        $search = $request->string('search')->toString();
+        $existingMemberIds = $team->members()->pluck('user_id');
+
+        $users = User::when($search, fn ($q) => $q->where('discord_username', 'like', "%{$search}%"))
+            ->whereNotIn('id', $existingMemberIds)
+            ->orderBy('discord_username')
+            ->limit(20)
+            ->get(['id', 'discord_username', 'nickname', 'avatar_url']);
+
+        return response()->json($users);
     }
 }

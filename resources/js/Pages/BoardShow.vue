@@ -11,21 +11,47 @@
                         <u-badge :label="board.mode" color="neutral" variant="subtle" />
                     </template>
                     <template #links>
+                        <div v-if="canEdit" class="flex gap-2">
+                            <u-button
+                                :color="editMode ? 'primary' : 'neutral'"
+                                :variant="editMode ? 'solid' : 'outline'"
+                                size="sm"
+                                :icon="editMode ? 'i-lucide-eye' : 'i-lucide-pencil'"
+                                :label="editMode ? 'View mode' : 'Edit tiles'"
+                                @click="editMode = !editMode"
+                            />
+                            <u-button
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-settings"
+                                label="Edit board"
+                                @click="showSettingsModal = true"
+                            />
+                            <u-button
+                                :href="`/boards/${board.id}/leaderboard`"
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-trophy"
+                                label="Leaderboard"
+                            />
+                        </div>
                         <u-button
-                            v-if="canEdit"
+                            v-else
+                            :href="`/boards/${board.id}/leaderboard`"
                             color="neutral"
                             variant="outline"
                             size="sm"
-                            icon="i-lucide-settings"
-                            label="Edit board"
-                            @click="showSettingsModal = true"
+                            icon="i-lucide-trophy"
+                            label="Leaderboard"
                         />
                     </template>
                 </u-page-header>
 
                 <div class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
                     <div class="flex-1 w-full min-w-0 overflow-x-auto">
-                        <div :class="gridClass" class="grid gap-1.5">
+                        <div :class="[gridClass, minWidthClass]" class="grid gap-1.5">
                             <!-- Not gated on playerBoard existing — reaching this
                                  page at all already implies BoardAccess (see
                                  BoardController::show()'s access-gate redirect),
@@ -39,13 +65,13 @@
                                  cold-start flow through a real browser, not just
                                  curling a pre-seeded player's board. -->
                             <button
-                                v-for="tile in tiles"
-                                :key="tile.id"
+                                v-for="tile in orderedTiles"
+                                :key="tile.position"
                                 type="button"
                                 class="aspect-square rounded-md border flex items-center justify-center text-xs font-semibold transition-colors cursor-pointer hover:border-primary"
                                 :class="tileClasses(tile)"
                                 :title="tile.title_override ?? tile.task?.title"
-                                @click="toggleTile(tile)"
+                                @click="handleTileClick(tile)"
                             >
                                 {{ tile.position + 1 }}
                             </button>
@@ -92,17 +118,26 @@
 
         <client-only>
             <board-settings-modal v-model:open="showSettingsModal" :board="board" />
+            <tile-edit-modal
+                v-if="editingTile"
+                :open="editingTile !== null"
+                :board-id="board.id"
+                :position="editingTile.position"
+                :tile="editingTile.id ? editingTile : null"
+                @update:open="(v) => !v && (editingTile = null)"
+            />
         </client-only>
     </u-main>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
-import { defineAsyncComponent } from 'vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH } from '@/Support/board';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
+const TileEditModal = defineAsyncComponent(() => import('@/Components/TileEditModal.vue'));
 
 const props = defineProps({
     board: { type: Object, required: true },
@@ -112,14 +147,42 @@ const props = defineProps({
 });
 
 const showSettingsModal = ref(false);
+const editingTile = ref(null);
+const editMode = ref(false);
 const rolling = ref(false);
 
-// Tailwind's build-time scanner can't see a dynamically interpolated class
-// name (`grid-cols-${cols}`) — this affects Nuxt just as much as Inertia,
-// not a framework difference, but it does mean the class list has to be
-// written out literally somewhere for the scanner to pick up.
 const GRID_CLASSES = { SIZE_5X5: 'grid-cols-5', SIZE_7X7: 'grid-cols-7', SIZE_9X9: 'grid-cols-9' };
 const gridClass = computed(() => GRID_CLASSES[props.board.size] ?? GRID_CLASSES.SIZE_7X7);
+const minWidthClass = computed(() => BOARD_MIN_WIDTH[props.board.size] ?? BOARD_MIN_WIDTH.SIZE_7X7);
+
+const cols = computed(() => ({ SIZE_5X5: 5, SIZE_7X7: 7, SIZE_9X9: 9 }[props.board.size] ?? 7));
+const tileCount = computed(() => BOARD_TILE_COUNT[props.board.size] ?? 49);
+
+// Ported from the old GameBoard.vue's orderedTiles: a board doesn't get a
+// full grid of Tile rows created on creation — only positions someone has
+// actually configured exist. Missing positions render as NORMAL placeholder
+// tiles (matching the old "empty-{position}" convention) so the grid is
+// always complete regardless of how many tiles have been set up. Displayed
+// in boustrophedon (snake) order — row 0 at the bottom-left, alternating
+// direction per row — the actual Snakes & Ladders board numbering, not a
+// plain reading order.
+const orderedTiles = computed(() => {
+    const n = cols.value;
+    const tileMap = new Map(props.tiles.map((t) => [t.position, t]));
+    const result = [];
+
+    for (let row = n - 1; row >= 0; row--) {
+        const leftToRight = row % 2 === 0;
+        for (let col = 0; col < n; col++) {
+            const adjustedCol = leftToRight ? col : n - 1 - col;
+            const position = row * n + adjustedCol;
+            if (position >= tileCount.value) continue;
+            result.push(tileMap.get(position) ?? { id: null, position, type: 'NORMAL', target_position: null, task: null, title_override: null });
+        }
+    }
+
+    return result;
+});
 
 function tileClasses(tile) {
     if (props.playerBoard?.completedTileIds.includes(tile.id)) {
@@ -127,7 +190,17 @@ function tileClasses(tile) {
     }
     if (tile.type === 'SNAKE') return 'bg-error/10 border-error/30';
     if (tile.type === 'LADDER') return 'bg-success/10 border-success/30';
+    if (tile.id === null) return 'bg-elevated/50 border-dashed border-default text-muted';
     return 'bg-elevated border-default';
+}
+
+function handleTileClick(tile) {
+    if (editMode.value) {
+        editingTile.value = tile;
+        return;
+    }
+    if (tile.id === null) return; // nothing to toggle on an unconfigured tile in play mode
+    toggleTile(tile);
 }
 
 function roll() {
