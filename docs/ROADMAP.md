@@ -2,6 +2,16 @@
 
 > Phase planning for future development. Active phase is tracked in [PROGRESS.md](./PROGRESS.md).
 
+> **Stack note (post-migration).** Phases 1-3 below describe the original
+> NestJS + Nuxt implementation. The app has since moved to Laravel +
+> Inertia + Vue (`experiment/laravel-stack`) — see `docs/backlog.md` for
+> that migration's status. Phase 3's access control, invites, and TEAM
+> mode now have equivalent, verified implementations in the new stack too
+> (backlog.md's Migration and Security sections). The six unchecked
+> guild-grouping polish items below were never carried over and are still
+> genuinely outstanding either way. Phases 4-7 are product roadmap, not
+> stack-specific — they still apply to the current app as-is.
+
 ---
 
 

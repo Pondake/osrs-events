@@ -20,9 +20,17 @@ Roadmap, in order:
 
 - [x] ~~Rewrite `CLAUDE.md` for the new layout and stack~~ — done (see
   Migration's i18n entry below for why this got forced sooner than planned).
-- [ ] Revisit `docs/ROADMAP.md` and `docs/PROGRESS.md` once the repo
-  cleanup + migration are far enough along to know what of the old roadmap
-  still applies, what's obsolete, and what should fold into this file instead.
+- [x] ~~Revisit `docs/ROADMAP.md` and `docs/PROGRESS.md`~~ — done, now that
+  migration is far enough along to actually answer this. `PROGRESS.md` is
+  correctly left alone — it's a historical record of the NestJS+Nuxt
+  implementation and doesn't claim to be anything else. `ROADMAP.md` got a
+  clarifying note instead of a rewrite: Phases 1-3 describe the old stack,
+  but Phase 3's access control/invites/TEAM mode now have equivalent
+  verified implementations here too (this file's Migration/Security
+  sections); Phases 4-7 are product roadmap, not stack-specific, and still
+  apply as-is. Nothing in either file needed real changes — the underlying
+  question was "does this doc still make sense," and it does, once
+  labeled correctly.
 - [ ] Decide whether `docs/README.md` should be restored to repo root — moving
   it means GitHub no longer renders a landing readme for the repo.
 
