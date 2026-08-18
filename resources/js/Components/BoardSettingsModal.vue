@@ -89,6 +89,33 @@
                         </div>
                     </div>
                 </template>
+
+                <template v-if="form.mode === 'TEAM'" #teams>
+                    <div class="py-2">
+                        <p v-if="!isEdit" class="text-sm text-muted py-8 text-center">{{ $t('admin.save_first') }}</p>
+                        <div v-else class="space-y-4">
+                            <p class="text-sm text-muted">{{ $t('admin.team_assignment_desc') }}</p>
+
+                            <div class="flex gap-2">
+                                <u-select
+                                    v-model="teamToAdd"
+                                    :items="availableTeams.map((t) => ({ label: t.name, value: t.id }))"
+                                    :placeholder="$t('admin.select_team_placeholder')"
+                                    class="w-full"
+                                />
+                                <u-button icon="i-lucide-plus" :disabled="!teamToAdd" :loading="addingTeam" @click="addTeam" />
+                            </div>
+
+                            <div class="divide-y divide-default rounded-md ring ring-default">
+                                <div v-for="team in assignedTeams" :key="team.id" class="flex items-center justify-between gap-3 px-3 py-2">
+                                    <span class="text-sm">{{ team.name }}</span>
+                                    <u-button icon="i-lucide-x" size="xs" color="error" variant="ghost" @click="removeTeam(team)" />
+                                </div>
+                                <p v-if="!assignedTeams.length" class="px-3 py-4 text-center text-sm text-muted">{{ $t('admin.no_teams_assigned') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </u-tabs>
         </template>
 
@@ -121,23 +148,24 @@ const isOpen = computed({
 
 const isEdit = computed(() => props.board !== null);
 
-// Static. A computed() version was tried first, on the theory that a new
-// `items` array reference on every render was resetting u-tabs back to the
-// first tab — that theory turned out to be unverified and probably wrong:
-// clicking ANY tab (even the pre-existing Access one) appeared to silently
-// fail during testing, static array or not, until the test itself turned
-// out to be the problem — Reka UI's Tabs (underneath u-tabs) requires the
-// tab trigger to actually hold DOM focus (checks document.activeElement) to
-// register a click; a synthetic el.click() without el.focus() first is a
-// silent no-op regardless of how `items` is computed. Kept as a static
-// array anyway since content-gating inside the tabpanel (see the template's
-// v-if on the invites slot) is the more normal Vue pattern either way, not
-// because the reactive-array theory was confirmed.
-const tabs = [
+// A computed() array reference changing on every render was originally
+// suspected of resetting u-tabs back to the first tab — that theory turned
+// out to be unverified and probably wrong: clicking ANY tab (even a static
+// one) appeared to silently fail during testing regardless, until the test
+// itself turned out to be the problem — Reka UI's Tabs (underneath u-tabs)
+// requires the tab trigger to actually hold DOM focus (checks
+// document.activeElement) to register a click; a synthetic el.click()
+// without el.focus() first is a silent no-op regardless of how `items` is
+// computed. Now genuinely computed (not static) so the Teams tab only
+// appears for TEAM-mode boards — `u-tabs` only renders a slot whose entry
+// exists in `items`, so gating the slot's own template with v-if alone
+// isn't enough without also gating it here.
+const tabs = computed(() => [
     { label: trans('admin.step_basics'), slot: 'basics' },
     { label: trans('admin.step_access'), slot: 'access' },
     { label: trans('admin.invite_links'), slot: 'invites' },
-];
+    ...(form.mode === 'TEAM' ? [{ label: trans('admin.team_assignment'), slot: 'teams' }] : []),
+]);
 
 const sizeOptions = ['SIZE_5X5', 'SIZE_7X7', 'SIZE_9X9'].map((size) => ({
     label: trans('admin.board_size_option', { size: BOARD_SIZE_LABEL[size], tiles: BOARD_TILE_COUNT[size] }),
@@ -180,6 +208,7 @@ watch(
         form.defaults(board ? { ...blankForm(), ...board } : blankForm());
         form.reset();
         if (board && board.access_mode === 'INVITE') fetchInvites();
+        if (board && board.mode === 'TEAM') fetchTeams();
     },
     { immediate: true },
 );
@@ -233,5 +262,50 @@ async function revokeInvite(invite) {
         headers: { Accept: 'application/json', ...xsrfHeader() },
     });
     await fetchInvites();
+}
+
+// Same fetch()-not-Inertia rationale as invites above.
+const assignedTeams = ref([]);
+const availableTeams = ref([]);
+const teamToAdd = ref(null);
+const addingTeam = ref(false);
+
+async function fetchTeams() {
+    const response = await fetch(`/boards/${props.board.id}/teams`, { headers: { Accept: 'application/json' } });
+    const data = await response.json();
+    assignedTeams.value = data.assigned;
+    availableTeams.value = data.available;
+}
+
+// Covers switching an existing board's mode to TEAM mid-edit, not just
+// opening the modal on an already-TEAM board (the watch(board) above).
+watch(
+    () => form.mode,
+    (mode) => {
+        if (isEdit.value && mode === 'TEAM' && assignedTeams.value.length === 0 && availableTeams.value.length === 0) {
+            fetchTeams();
+        }
+    },
+);
+
+async function addTeam() {
+    if (!teamToAdd.value) return;
+    addingTeam.value = true;
+    await fetch(`/boards/${props.board.id}/teams`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...xsrfHeader() },
+        body: JSON.stringify({ team_id: teamToAdd.value }),
+    });
+    teamToAdd.value = null;
+    await fetchTeams();
+    addingTeam.value = false;
+}
+
+async function removeTeam(team) {
+    await fetch(`/boards/${props.board.id}/teams/${team.id}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json', ...xsrfHeader() },
+    });
+    await fetchTeams();
 }
 </script>

@@ -60,6 +60,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/boards/{board}/tiles', [TileController::class, 'upsert'])->name('boards.tiles.upsert');
     Route::delete('/boards/{board}/tiles/{tile}', [TileController::class, 'destroy'])->name('boards.tiles.destroy');
+
+    Route::get('/boards/{board}/teams', [BoardController::class, 'teamsIndex'])->name('boards.teams.index');
+    Route::post('/boards/{board}/teams', [BoardController::class, 'addTeam'])->name('boards.teams.add');
+    Route::delete('/boards/{board}/teams/{team}', [BoardController::class, 'removeTeam'])->name('boards.teams.remove');
     Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
 
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');

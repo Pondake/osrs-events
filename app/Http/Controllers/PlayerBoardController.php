@@ -4,42 +4,33 @@ namespace App\Http\Controllers;
 
 use App\Models\Board;
 use App\Models\CompletedTile;
-use App\Models\PlayerBoard;
 use App\Models\Tile;
 use App\Services\BoardAccessService;
+use App\Services\PlayerBoardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Ported from the old PlayersService — SOLO mode only (getOrCreatePlayerBoard's
- * TEAM-mode branch, which shares one PlayerBoard per team via BoardTeam/TeamMember,
- * is not ported yet since Team pages aren't built — see docs/backlog.md).
- */
+/** Ported from the old PlayersService — see PlayerBoardService for the SOLO/TEAM split. */
 class PlayerBoardController extends Controller
 {
-    private function playerBoardFor(Board $board): PlayerBoard
-    {
-        return PlayerBoard::firstOrCreate(
-            ['user_id' => Auth::id(), 'board_id' => $board->id],
-            ['id' => (string) str()->uuid(), 'current_position' => 0],
-        );
-    }
-
     /**
      * Roll a d6, move the player, apply snake/ladder jumps, enforce the
      * board's daily roll limit. Landing on a snake un-completes every tile
      * between the snake's head and its target — same as the old
      * rollDice()'s "slide back down" behavior.
      */
-    public function roll(Board $board, BoardAccessService $access): RedirectResponse
+    public function roll(Board $board, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
     {
         abort_unless($access->hasAccess(Auth::user(), $board), 403);
 
         $tiles = $board->tiles()->orderBy('position')->get();
         $maxPosition = $tiles->count() - 1;
 
-        $playerBoard = $this->playerBoardFor($board);
+        $playerBoard = $playerBoards->getOrCreate($board, Auth::user());
+        if ($playerBoard === null) {
+            return back()->with('board-save-error', "You don't have a team on this board yet.");
+        }
 
         if ($board->dice_roll_limit !== null) {
             $isToday = $playerBoard->last_roll_date?->isToday() ?? false;
@@ -91,11 +82,14 @@ class PlayerBoardController extends Controller
         return back()->with('board-save', "Rolled a {$rolled}" . ($jump ? " and hit a {$jump}!" : '.'));
     }
 
-    public function toggleTile(Board $board, Tile $tile, BoardAccessService $access): RedirectResponse
+    public function toggleTile(Board $board, Tile $tile, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
     {
         abort_unless($access->hasAccess(Auth::user(), $board), 403);
 
-        $playerBoard = $this->playerBoardFor($board);
+        $playerBoard = $playerBoards->getOrCreate($board, Auth::user());
+        if ($playerBoard === null) {
+            return back()->with('board-save-error', "You don't have a team on this board yet.");
+        }
 
         $existing = CompletedTile::where('player_board_id', $playerBoard->id)
             ->where('tile_id', $tile->id)

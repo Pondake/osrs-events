@@ -4,7 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Board;
 use App\Models\BoardAuthor;
+use App\Models\BoardTeam;
+use App\Models\Team;
+use App\Models\UserGuild;
 use App\Services\BoardAccessService;
+use App\Services\PlayerBoardService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,7 +44,7 @@ class BoardController extends Controller
      * view any board). GUILD/INVITE boards the user hasn't joined render
      * Boards/AccessGate instead of the board itself.
      */
-    public function show(Board $board, BoardAccessService $access): Response
+    public function show(Board $board, BoardAccessService $access, PlayerBoardService $playerBoards): Response
     {
         $user = Auth::user();
 
@@ -55,10 +60,10 @@ class BoardController extends Controller
 
         $board->load([...self::BOARD_WITH, 'tiles.task']);
 
-        $playerBoard = $board->playerBoards()
-            ->where('user_id', $user->id)
-            ->with('completedTiles:id,player_board_id,tile_id')
-            ->first();
+        // Pure read — playerBoards->find() never creates a row; the first
+        // roll/toggle (PlayerBoardController) is what creates it, same as
+        // SOLO mode's existing cold-start behavior.
+        $playerBoard = $playerBoards->find($board, $user)?->load('completedTiles:id,player_board_id,tile_id');
 
         return Inertia::render('BoardShow', [
             'board' => $board,
@@ -67,6 +72,10 @@ class BoardController extends Controller
                 ...$playerBoard->only(['id', 'current_position', 'dice_rolls_today']),
                 'completedTileIds' => $playerBoard->completedTiles->pluck('tile_id'),
             ],
+            // TEAM boards where the user isn't on any assigned team can't
+            // play at all — BoardShow.vue renders a dedicated "no team on
+            // this board" empty state instead of the grid for this case.
+            'hasTeam' => $playerBoards->hasTeam($board, $user),
             'canEdit' => $user->canEditBoard($board),
         ]);
     }
@@ -208,5 +217,55 @@ class BoardController extends Controller
         $board->delete();
 
         return redirect()->route('boards.index')->with('board-save', 'Board deleted.');
+    }
+
+    /**
+     * JSON, for BoardSettingsModal's Teams tab (same fetch()-not-Inertia
+     * pattern as invites — the modal isn't a page component). Returns both
+     * the board's currently-assigned teams and the set of other teams the
+     * current user could add, using the same guild-based visibility rule as
+     * TeamController::index().
+     */
+    public function teamsIndex(Request $request, Board $board): JsonResponse
+    {
+        abort_unless($request->user()->canEditBoard($board), 403);
+
+        $assignedTeamIds = $board->boardTeams()->pluck('team_id');
+
+        $availableQuery = Team::query()->orderBy('name');
+        if (! $request->user()->isAdmin()) {
+            $guildIds = UserGuild::where('user_id', $request->user()->id)->pluck('guild_id');
+            $availableQuery->where(fn ($q) => $q->whereNull('guild_id')->orWhereIn('guild_id', $guildIds));
+        }
+
+        return response()->json([
+            'assigned' => $board->boardTeams()->with('team')->get()->pluck('team'),
+            'available' => $availableQuery->whereNotIn('id', $assignedTeamIds)->get(['id', 'name']),
+        ]);
+    }
+
+    /** Ported from BoardsService::addTeamToBoard() — idempotent (upsert). */
+    public function addTeam(Request $request, Board $board): RedirectResponse
+    {
+        abort_unless($request->user()->canEditBoard($board), 403);
+
+        $data = $request->validate(['team_id' => ['required', 'uuid', 'exists:teams,id']]);
+
+        BoardTeam::firstOrCreate(
+            ['board_id' => $board->id, 'team_id' => $data['team_id']],
+            ['id' => (string) str()->uuid()],
+        );
+
+        return back()->with('board-save', 'Team added to board.');
+    }
+
+    /** Ported from BoardsService::removeTeamFromBoard(). */
+    public function removeTeam(Board $board, Team $team): RedirectResponse
+    {
+        abort_unless(Auth::user()->canEditBoard($board), 403);
+
+        BoardTeam::where('board_id', $board->id)->where('team_id', $team->id)->delete();
+
+        return back()->with('board-save', 'Team removed from board.');
     }
 }

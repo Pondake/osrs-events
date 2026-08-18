@@ -131,6 +131,7 @@
     "admin.search_tasks_placeholder": "Search tasks…",
     "admin.search_users_placeholder": "Search by Discord username…",
     "admin.search_wiki": "Search the OSRS Wiki...",
+    "admin.select_team_placeholder": "Select a team…",
     "admin.start_date": "Start date",
     "admin.step_access": "Access",
     "admin.step_access_desc": "Visibility & access",
