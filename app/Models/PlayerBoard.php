@@ -13,6 +13,10 @@ class PlayerBoard extends Model
 
     protected $fillable = ['user_id', 'board_id', 'team_id', 'current_position', 'dice_rolls_today', 'last_roll_date'];
 
+    protected $casts = [
+        'last_roll_date' => 'datetime',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

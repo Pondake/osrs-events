@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Board;
+use App\Models\BoardAuthor;
 use App\Models\CompletedTile;
 use App\Models\PlayerBoard;
 use App\Models\Role;
@@ -27,6 +28,8 @@ class DatabaseSeeder extends Seeder
 
         UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $playerRole->id]);
 
+        $isNewBoard = Board::where('title', 'Winter Clan Grind')->doesntExist();
+
         $board = Board::firstOrCreate(
             ['title' => 'Winter Clan Grind'],
             [
@@ -38,6 +41,15 @@ class DatabaseSeeder extends Seeder
                 'is_listed' => true,
             ],
         );
+
+        if ($isNewBoard) {
+            BoardAuthor::create([
+                'id' => (string) str()->uuid(),
+                'board_id' => $board->id,
+                'user_id' => $user->id,
+                'is_owner' => true,
+            ]);
+        }
 
         if ($board->tiles()->count() === 0) {
             $tiles = collect(range(0, 48))->map(fn ($position) => [

@@ -10,23 +10,38 @@
                     <template #headline>
                         <u-badge :label="board.mode" color="neutral" variant="subtle" />
                     </template>
+                    <template #links>
+                        <u-button
+                            v-if="canEdit"
+                            color="neutral"
+                            variant="outline"
+                            size="sm"
+                            icon="i-lucide-settings"
+                            label="Edit board"
+                            @click="showSettingsModal = true"
+                        />
+                    </template>
                 </u-page-header>
 
                 <div class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
                     <div class="flex-1 w-full min-w-0 overflow-x-auto">
                         <div :class="gridClass" class="grid gap-1.5">
-                            <div
+                            <button
                                 v-for="tile in tiles"
                                 :key="tile.id"
-                                class="aspect-square rounded-md border flex items-center justify-center text-xs font-semibold"
-                                :class="tileClasses(tile)"
+                                type="button"
+                                class="aspect-square rounded-md border flex items-center justify-center text-xs font-semibold transition-colors"
+                                :class="[tileClasses(tile), playerBoard ? 'cursor-pointer hover:border-primary' : 'cursor-default']"
+                                :title="tile.title_override ?? tile.task?.title"
+                                :disabled="!playerBoard"
+                                @click="toggleTile(tile)"
                             >
                                 {{ tile.position + 1 }}
-                            </div>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="w-full lg:w-64 shrink-0">
+                    <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
                         <u-card v-if="playerBoard">
                             <template #header>
                                 <span class="font-semibold">Your progress</span>
@@ -40,12 +55,26 @@
                                     <dt class="text-muted">Tiles completed</dt>
                                     <dd>{{ playerBoard.completedTileIds.length }}</dd>
                                 </div>
+                                <div v-if="board.dice_roll_limit" class="flex justify-between">
+                                    <dt class="text-muted">Rolls today</dt>
+                                    <dd>{{ playerBoard.dice_rolls_today }} / {{ board.dice_roll_limit }}</dd>
+                                </div>
                             </dl>
+                            <template #footer>
+                                <u-button
+                                    color="primary"
+                                    block
+                                    icon="i-lucide-dice-6"
+                                    label="Roll dice"
+                                    :loading="rolling"
+                                    @click="roll"
+                                />
+                            </template>
                         </u-card>
                         <u-alert
                             v-else
                             title="Not joined yet"
-                            description="You haven't joined this board — this session has an authenticated user but no PlayerBoard row for it."
+                            description="You haven't joined this board yet — rolling the dice or completing a tile joins you automatically."
                             color="neutral"
                             variant="soft"
                         />
@@ -53,28 +82,30 @@
                 </div>
             </u-container>
         </u-page>
+
+        <client-only>
+            <board-settings-modal v-model:open="showSettingsModal" :board="board" />
+        </client-only>
     </u-main>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-// Explicit import, deliberately — @nuxt/ui's autoImport (vite.config.js)
-// only catches identifiers referenced in <script>. A <Head> used purely as a
-// template tag, with no script-side reference, never gets auto-imported: it
-// silently fails to resolve (a Vue "Failed to resolve component" warning in
-// dev, printed only to the SSR Node process's own stderr — nothing in the
-// browser console, nothing in a production build) and the page ships with
-// NO title/meta at all. Confirmed by curling this exact route: raw SSR HTML
-// had zero <head> tags from this page until this import was added.
-// SnakesAndLadders.vue never hit this because its Head reference happens to
-// come from a script-level composable destructure, not the template alone.
-import { Head } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
+import { defineAsyncComponent } from 'vue';
+import ClientOnly from '@/Components/ClientOnly.vue';
+
+const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 
 const props = defineProps({
     board: { type: Object, required: true },
     tiles: { type: Array, required: true },
     playerBoard: { type: Object, default: null },
+    canEdit: { type: Boolean, default: false },
 });
+
+const showSettingsModal = ref(false);
+const rolling = ref(false);
 
 // Tailwind's build-time scanner can't see a dynamically interpolated class
 // name (`grid-cols-${cols}`) — this affects Nuxt just as much as Inertia,
@@ -90,5 +121,15 @@ function tileClasses(tile) {
     if (tile.type === 'SNAKE') return 'bg-error/10 border-error/30';
     if (tile.type === 'LADDER') return 'bg-success/10 border-success/30';
     return 'bg-elevated border-default';
+}
+
+function roll() {
+    rolling.value = true;
+    router.post(`/boards/${props.board.id}/roll`, {}, { preserveScroll: true, onFinish: () => (rolling.value = false) });
+}
+
+function toggleTile(tile) {
+    if (!props.playerBoard) return;
+    router.post(`/boards/${props.board.id}/tiles/${tile.id}/toggle`, {}, { preserveScroll: true });
 }
 </script>
