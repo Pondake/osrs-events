@@ -1,17 +1,17 @@
 <template>
-    <Head title="Teams" />
+    <Head :title="$t('teams.title')" />
 
     <u-main>
         <u-page>
             <u-container class="py-12">
                 <div class="flex items-center justify-between gap-4 mb-8">
-                    <h1 class="text-3xl font-bold text-highlighted">Teams</h1>
-                    <u-button color="primary" icon="i-lucide-plus" label="Create team" @click="showCreateModal = true" />
+                    <h1 class="text-3xl font-bold text-highlighted">{{ $t('teams.title') }}</h1>
+                    <u-button color="primary" icon="i-lucide-plus" :label="$t('teams.create_team')" @click="showCreateModal = true" />
                 </div>
 
                 <div v-if="!teams.length" class="text-center py-16">
                     <u-icon name="i-lucide-users" class="size-12 text-muted mx-auto mb-4" />
-                    <p class="text-lg font-medium">No teams yet</p>
+                    <p class="text-lg font-medium">{{ $t('teams.no_teams') }}</p>
                 </div>
 
                 <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -31,13 +31,13 @@
                                 <u-avatar :src="member.user.avatar_url ?? undefined" size="3xs" />
                                 <span>{{ member.user.nickname ?? member.user.discord_username }}</span>
                             </li>
-                            <li v-if="!team.members.length" class="text-sm text-muted italic">No members yet.</li>
+                            <li v-if="!team.members.length" class="text-sm text-muted italic">{{ $t('teams.no_members') }}</li>
                         </ul>
 
                         <template v-if="canManage" #footer>
                             <div class="flex gap-2">
-                                <u-button size="xs" color="neutral" variant="outline" label="Manage members" icon="i-lucide-users" @click="managingTeamId = team.id" />
-                                <u-button size="xs" color="error" variant="outline" label="Delete" icon="i-lucide-trash-2" @click="destroyTeam(team)" />
+                                <u-button size="xs" color="neutral" variant="outline" :label="$t('teams.manage_members', { name: team.name })" icon="i-lucide-users" @click="managingTeamId = team.id" />
+                                <u-button size="xs" color="error" variant="outline" :label="$t('common.delete')" icon="i-lucide-trash-2" @click="destroyTeam(team)" />
                             </div>
                         </template>
                     </u-card>

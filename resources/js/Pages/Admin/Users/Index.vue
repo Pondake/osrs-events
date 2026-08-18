@@ -1,12 +1,12 @@
 <template>
-    <Head title="Manage users" />
+    <Head :title="$t('admin.users_title')" />
 
     <u-main>
         <u-page>
             <u-container class="py-12">
-                <h1 class="text-3xl font-bold text-highlighted mb-8">Users</h1>
+                <h1 class="text-3xl font-bold text-highlighted mb-8">{{ $t('nav.admin_users') }}</h1>
 
-                <u-input v-model="search" placeholder="Search by Discord username…" icon="i-lucide-search" class="w-full max-w-sm mb-6" @update:model-value="doSearch" />
+                <u-input v-model="search" :placeholder="$t('admin.search_users_placeholder')" icon="i-lucide-search" class="w-full max-w-sm mb-6" @update:model-value="doSearch" />
 
                 <div class="divide-y divide-default rounded-lg ring ring-default bg-default">
                     <div v-for="user in users" :key="user.id" class="flex items-center justify-between gap-4 px-4 py-3 flex-wrap">
@@ -25,7 +25,7 @@
                             <u-select
                                 :model-value="null"
                                 :items="roleOptions"
-                                placeholder="+ role"
+                                :placeholder="$t('admin.role_placeholder')"
                                 size="xs"
                                 class="w-28"
                                 @update:model-value="(role) => assignRole(user, role)"
@@ -33,14 +33,14 @@
                             <u-select
                                 :model-value="null"
                                 :items="permissionKeys"
-                                placeholder="+ permission"
+                                :placeholder="$t('admin.permission_placeholder')"
                                 size="xs"
                                 class="w-36"
                                 @update:model-value="(key) => grantPermission(user, key)"
                             />
                         </div>
                     </div>
-                    <p v-if="!users.length" class="px-4 py-8 text-center text-muted text-sm">No users found.</p>
+                    <p v-if="!users.length" class="px-4 py-8 text-center text-muted text-sm">{{ $t('admin.no_users') }}</p>
                 </div>
             </u-container>
         </u-page>

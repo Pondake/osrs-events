@@ -61,6 +61,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import UserMenu from '@/Components/UserMenu.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
@@ -80,26 +81,26 @@ const navigation = computed(() => {
     items.push(
         canManageBoards
             ? {
-                  label: 'Boards',
+                  label: trans('nav.boards'),
                   icon: 'i-lucide-layout-grid',
                   children: [
-                      { label: 'Boards', to: '/boards', icon: 'i-lucide-layout-grid', description: 'Browse and play boards' },
-                      { label: 'Manage boards', to: '/admin/boards', icon: 'i-lucide-settings', description: 'Every board, including unlisted ones' },
+                      { label: trans('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid', description: trans('nav.boards_desc') },
+                      { label: trans('nav.admin_boards'), to: '/admin/boards', icon: 'i-lucide-settings', description: trans('nav.admin_boards_desc') },
                   ],
               }
-            : { label: 'Boards', to: '/boards', icon: 'i-lucide-layout-grid' },
+            : { label: trans('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid' },
     );
 
     if (isAdmin.value || isTeamManager.value) {
-        items.push({ label: 'Teams', to: '/teams', icon: 'i-lucide-users' });
+        items.push({ label: trans('nav.teams'), to: '/teams', icon: 'i-lucide-users' });
     }
 
     if (isAdmin.value || isEditor.value) {
-        items.push({ label: 'Tasks', to: '/admin/tasks', icon: 'i-lucide-list-checks' });
+        items.push({ label: trans('nav.tasks'), to: '/admin/tasks', icon: 'i-lucide-list-checks' });
     }
 
     if (isAdmin.value) {
-        items.push({ label: 'Users', to: '/admin/users', icon: 'i-lucide-user-cog' });
+        items.push({ label: trans('nav.admin_users'), to: '/admin/users', icon: 'i-lucide-user-cog' });
     }
 
     return items;

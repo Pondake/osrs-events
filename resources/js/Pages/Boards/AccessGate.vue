@@ -6,14 +6,14 @@
             <u-container class="max-w-lg py-20 text-center">
                 <u-icon :name="icon" class="size-12 text-muted mx-auto mb-4" />
                 <h1 class="text-2xl font-bold text-highlighted mb-2">{{ board.title }}</h1>
-                <p class="text-muted mb-8">{{ reason ?? 'You need access to view this board.' }}</p>
+                <p class="text-muted mb-8">{{ reason ?? $t('errors.forbidden') }}</p>
 
                 <form v-if="canRequestInvite" class="flex gap-2 max-w-xs mx-auto" @submit.prevent="submitInvite">
-                    <u-input v-model="tokenOrCode" placeholder="Invite code" class="flex-1" />
-                    <u-button type="submit" color="primary" label="Join" :loading="form.processing" />
+                    <u-input v-model="tokenOrCode" :placeholder="$t('board.enter_code')" class="flex-1" />
+                    <u-button type="submit" color="primary" :label="$t('board.join_with_code')" :loading="form.processing" />
                 </form>
 
-                <u-button v-else-if="board.access_mode === 'OPEN'" href="/boards" color="neutral" variant="outline" label="Back to boards" class="mt-2" />
+                <u-button v-else-if="board.access_mode === 'OPEN'" href="/boards" color="neutral" variant="outline" :label="$t('boards.back_to_boards')" class="mt-2" />
 
                 <p v-if="form.errors.access" class="text-error text-sm mt-4">{{ form.errors.access }}</p>
             </u-container>

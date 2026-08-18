@@ -1,5 +1,5 @@
 <template>
-    <Head title="Profile" />
+    <Head :title="$t('profile.title')" />
 
     <u-main>
         <u-page>
@@ -19,7 +19,7 @@
                                 <u-button size="sm" color="neutral" variant="ghost" icon="i-lucide-x" @click="editing = false" />
                             </div>
 
-                            <p v-if="user.nickname" class="text-xs text-muted mt-0.5">Discord: {{ user.discordUsername }}</p>
+                            <p v-if="user.nickname" class="text-xs text-muted mt-0.5">{{ $t('profile.username') }}: {{ user.discordUsername }}</p>
 
                             <div class="flex flex-wrap gap-2 mt-3">
                                 <u-badge v-for="role in roles" :key="role" :color="roleColor(role)" variant="subtle" :icon="roleIcon(role)" :label="role" />
@@ -29,11 +29,11 @@
                 </u-card>
 
                 <div>
-                    <h3 class="text-lg font-semibold text-highlighted mb-4">Your boards</h3>
+                    <h3 class="text-lg font-semibold text-highlighted mb-4">{{ $t('profile.your_boards') }}</h3>
 
                     <div v-if="!playerBoards.length" class="text-center py-8 text-muted">
                         <u-icon name="i-lucide-layout-grid" class="size-10 mx-auto mb-3 block" />
-                        <p>You haven't joined any boards yet.</p>
+                        <p>{{ $t('profile.no_boards') }}</p>
                     </div>
 
                     <div v-else class="space-y-3">
@@ -47,14 +47,14 @@
                                         <u-badge color="primary" variant="subtle" :label="formatBoardSize(pb.board.size)" />
                                     </div>
                                     <div class="flex items-center gap-4 text-sm text-muted flex-wrap">
-                                        <span><u-icon name="i-lucide-map-pin" class="inline mr-1" />Tile {{ pb.current_position + 1 }}</span>
-                                        <span><u-icon name="i-lucide-circle-check" class="inline mr-1" />{{ pb.completed_tiles.length }} completed</span>
+                                        <span><u-icon name="i-lucide-map-pin" class="inline mr-1" />{{ $t('board.tile', { n: pb.current_position + 1 }) }}</span>
+                                        <span><u-icon name="i-lucide-circle-check" class="inline mr-1" />{{ pb.completed_tiles.length }} {{ $t('profile.tiles_completed') }}</span>
                                     </div>
                                 </div>
 
                                 <div class="w-32 shrink-0">
                                     <div class="flex justify-between text-xs text-muted mb-1">
-                                        <span>Progress</span>
+                                        <span>{{ $t('profile.progress') }}</span>
                                         <span>{{ progressPct(pb) }}%</span>
                                     </div>
                                     <div class="h-2 rounded-full bg-muted overflow-hidden">
@@ -62,7 +62,7 @@
                                     </div>
                                 </div>
 
-                                <u-button :href="`/boards/${pb.board.id}`" icon="i-lucide-play" color="primary" variant="outline" size="sm" label="Play" />
+                                <u-button :href="`/boards/${pb.board.id}`" icon="i-lucide-play" color="primary" variant="outline" size="sm" :label="$t('boards.play')" />
                             </div>
                         </u-card>
                     </div>

@@ -39,8 +39,8 @@
     <u-main>
         <u-page>
             <u-page-hero
-                title="OSRS Snakes and Ladders for your clan"
-                description="Turn any Old School RuneScape clan event into a Snakes and Ladders board — set the tiles, invite your team, and race to the top."
+                :title="$t('landing.snakes.title')"
+                :description="$t('landing.snakes.lead')"
             >
                 <template #links>
                     <!-- Board creation lives behind a modal on /boards (not yet
@@ -49,46 +49,43 @@
                          they can't act on yet, matching the old Nuxt page's
                          behavior (frontend/app/pages/osrs-snakes-and-ladders.vue,
                          kept in stale/ for reference). -->
-                    <u-button size="xl" color="primary" icon="i-lucide-plus" label="Start a board" :href="route('login')" />
+                    <u-button size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" :href="route('login')" />
                     <u-button
                         to="/boards"
                         size="xl"
                         color="neutral"
                         variant="outline"
                         trailing-icon="i-lucide-arrow-right"
-                        label="Browse boards"
+                        :label="$t('landing.cta_browse')"
                     />
                 </template>
             </u-page-hero>
 
             <u-page-section
-                title="How it works"
-                description="Five steps from empty board to a running clan event."
+                :title="$t('landing.snakes.how_title')"
+                :description="$t('landing.snakes.how_subtitle')"
                 :features="steps"
             />
 
-            <u-page-section title="Why Snakes and Ladders">
+            <u-page-section :title="$t('landing.snakes.why_title')">
                 <u-container class="max-w-3xl">
                     <p class="text-lg text-muted leading-relaxed">
-                        Clan events are more fun with structure and a little bit of luck. Snakes and Ladders boards
-                        give every member a shared goal, a visible race, and the chance of a lucky climb — or an
-                        unlucky slide back down.
+                        {{ $t('landing.snakes.why_body') }}
                     </p>
                 </u-container>
             </u-page-section>
 
-            <u-page-section title="Board sizes" description="Pick the size that fits your event." :features="sizes" />
+            <u-page-section :title="$t('landing.snakes.sizes_title')" :description="$t('landing.snakes.sizes_subtitle')" :features="sizes" />
 
-            <u-page-section title="Solo or team mode">
+            <u-page-section :title="$t('landing.snakes.modes_title')">
                 <u-container class="max-w-3xl">
                     <p class="text-lg text-muted leading-relaxed">
-                        Boards support both individual players racing independently and teams pooling progress
-                        together — pick whichever fits your clan's event.
+                        {{ $t('landing.snakes.modes_body') }}
                     </p>
                 </u-container>
             </u-page-section>
 
-            <u-page-section title="Frequently asked questions">
+            <u-page-section :title="$t('landing.faq_title')">
                 <u-container class="max-w-3xl">
                     <dl class="divide-y divide-default">
                         <div v-for="faq in faqs" :key="faq.question" class="py-6 first:pt-0 last:pb-0">
@@ -103,6 +100,7 @@
 </template>
 
 <script setup>
+import { trans } from 'laravel-vue-i18n';
 import { useSeoData } from '@/Composables/useSeo';
 
 const props = defineProps({
@@ -112,9 +110,8 @@ const props = defineProps({
 });
 
 const { resolved, canonical, imageUrl, robots, Head } = useSeoData({
-    title: 'OSRS Snakes and Ladders — clan event boards',
-    description:
-        'Create a Snakes and Ladders board for your Old School RuneScape clan. Set custom tiles, invite your team via Discord, and race to the top.',
+    title: trans('landing.snakes.meta_title'),
+    description: trans('landing.snakes.meta_desc'),
     jsonLd: [
         {
             '@type': 'FAQPage',
@@ -126,8 +123,8 @@ const { resolved, canonical, imageUrl, robots, Head } = useSeoData({
         },
         {
             '@type': 'HowTo',
-            name: 'How it works',
-            description: 'Five steps from empty board to a running clan event.',
+            name: trans('landing.snakes.how_title'),
+            description: trans('landing.snakes.how_subtitle'),
             step: props.steps.map((step, i) => ({
                 '@type': 'HowToStep',
                 position: i + 1,

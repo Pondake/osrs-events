@@ -1,9 +1,9 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="`Edit tile ${position + 1}`">
+    <u-modal v-model:open="isOpen" :title="`${$t('tile_editor.title')} ${position + 1}`">
         <template #body>
             <div class="space-y-4 py-2">
-                <u-form-field label="Task">
-                    <u-input v-model="taskSearch" placeholder="Search tasks…" icon="i-lucide-search" class="w-full" @update:model-value="debouncedSearch" />
+                <u-form-field :label="$t('tile_editor.task_label')">
+                    <u-input v-model="taskSearch" :placeholder="$t('tile_editor.task_placeholder')" icon="i-lucide-search" class="w-full" @update:model-value="debouncedSearch" />
                     <div v-if="taskResults.length" class="mt-2 divide-y divide-default rounded-md ring ring-default max-h-48 overflow-y-auto">
                         <button
                             v-for="task in taskResults"
@@ -23,15 +23,15 @@
                     </div>
                 </u-form-field>
 
-                <u-form-field label="Title override" description="Shown instead of the task title, if set.">
+                <u-form-field :label="$t('tile_editor.title_override')" :description="$t('tile_editor.title_override_desc')">
                     <u-input v-model="form.title_override" class="w-full" />
                 </u-form-field>
 
                 <div class="grid grid-cols-2 gap-4">
-                    <u-form-field label="Tile type">
+                    <u-form-field :label="$t('tile_editor.tile_type')">
                         <u-select v-model="form.type" :items="typeOptions" class="w-full" />
                     </u-form-field>
-                    <u-form-field v-if="form.type !== 'NORMAL'" label="Target position">
+                    <u-form-field v-if="form.type !== 'NORMAL'" :label="$t('tile_editor.target_tile')">
                         <u-input v-model.number="form.target_position" type="number" min="0" class="w-full" />
                     </u-form-field>
                 </div>
@@ -40,10 +40,10 @@
 
         <template #footer>
             <div class="flex justify-between gap-2 w-full">
-                <u-button v-if="tile" color="error" variant="outline" label="Clear tile" @click="clearTile" />
+                <u-button v-if="tile" color="error" variant="outline" :label="$t('tile_editor.clear_tile')" @click="clearTile" />
                 <div class="flex gap-2 ml-auto">
-                    <u-button color="neutral" variant="outline" label="Cancel" @click="isOpen = false" />
-                    <u-button color="primary" label="Save" :loading="form.processing" @click="submit" />
+                    <u-button color="neutral" variant="outline" :label="$t('common.cancel')" @click="isOpen = false" />
+                    <u-button color="primary" :label="$t('common.save')" :loading="form.processing" @click="submit" />
                 </div>
             </div>
         </template>
@@ -53,6 +53,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -66,9 +67,9 @@ const emit = defineEmits(['update:open']);
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
 const typeOptions = [
-    { label: 'Normal', value: 'NORMAL' },
-    { label: 'Snake (slides back)', value: 'SNAKE' },
-    { label: 'Ladder (jumps ahead)', value: 'LADDER' },
+    { label: trans('tile_editor.type_normal'), value: 'NORMAL' },
+    { label: trans('tile_editor.type_snake_full'), value: 'SNAKE' },
+    { label: trans('tile_editor.type_ladder_full'), value: 'LADDER' },
 ];
 
 const taskSearch = ref('');
