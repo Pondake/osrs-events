@@ -61,12 +61,11 @@ branch's SSR evaluation. Concrete carry-over work:
   browser against a fresh SSR build — dice roll and tile toggle both
   confirmed via direct DB state checks (`current_position` and
   `CompletedTile` count changing), not just "no error shown".
-  **Known simplifications, not oversights**: co-author management (old
-  `EditorsSection.vue`) isn't ported — needs a user-search endpoint that
-  doesn't exist yet. TEAM mode (`getOrCreatePlayerBoard`'s shared-PlayerBoard-
-  per-team branch) isn't ported — `PlayerBoardController` only handles SOLO.
-  Create uses tabs instead of CLAUDE.md's stepper-with-per-step-validation
-  convention, to avoid building that plumbing for one form in this pass.
+  **Known simplification, not an oversight**: create still uses tabs instead
+  of CLAUDE.md's stepper-with-per-step-validation convention, to avoid
+  building that plumbing for one form in this pass.
+  Co-author management and TEAM mode (both originally listed as known gaps
+  here) are now done — see their own entries below.
 - [x] ~~Rewrite the GraphQL code-first API surface as Inertia controllers~~ —
   done, full rewrite as intended (not a mechanical port; the resolver layer
   has no Laravel equivalent). Boards, teams, tasks, admin, invites, access,
@@ -344,6 +343,31 @@ branch's SSR evaluation. Concrete carry-over work:
   Not ported yet: the `.board-svg-overlay` snake/ladder connector-line
   styling has a CSS class now but no actual SVG lines drawn on `BoardShow.vue`
   (tracked below).
+- [x] ~~TEAM mode gameplay~~ — done. New `PlayerBoardService` ports
+  `getOrCreatePlayerBoard()`'s TEAM branch (one shared `PlayerBoard` per
+  team, resolved via `BoardTeam` -> `TeamMember`), used by
+  `PlayerBoardController::roll()`/`toggleTile()` and `BoardController::show()`.
+  `BoardShow.vue` renders a dedicated "no team on this board" empty state
+  (`board.no_team_title`/`no_team_desc`) instead of the grid when the user
+  has no team on a TEAM board. Verified via `tinker` against real DB rows,
+  not just reading the code: two team members share one `PlayerBoard` row,
+  a user with no team gets `null` not an error. Also built the
+  board-team assignment UI that never existed at all — nothing let an admin
+  actually add a team to a board before this, so TEAM mode was unreachable
+  regardless of the gameplay logic. New `BoardController::teamsIndex()`/
+  `addTeam()`/`removeTeam()` (ported from `BoardsService::addTeamToBoard()`/
+  `removeTeamFromBoard()`) plus a Teams tab in `BoardSettingsModal.vue`
+  (only shown for TEAM-mode boards).
+- [x] ~~Co-author management~~ — done. Ported from the old
+  `EditorsSection.vue`. Needed a generic user-search endpoint that didn't
+  exist (`TeamController::searchUsers()` is scoped to one team's
+  non-members, not reusable) — new `GET /users/search`
+  (`UserSearchController`, gated on `canCreateBoards`/admin, same as board
+  create/edit itself). `BoardSettingsModal`'s Basics tab now has a
+  search-and-add editors list seeded from the board's existing authors on
+  edit; the true owner can't be removed via this UI, matching the backend
+  (which already preserves owner rows regardless of submitted
+  `author_ids`).
 - [ ] `stale/` can be deleted once the migration is verified complete and the
   team is confident nothing needs porting from it anymore.
 
