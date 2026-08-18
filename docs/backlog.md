@@ -340,9 +340,7 @@ branch's SSR evaluation. Concrete carry-over work:
   `manifest.webmanifest` that existed in `stale/frontend/public/` but never
   made it into the new `public/` during the repo restructure — the new app
   had been serving with only Laravel's stock `favicon.ico` this whole time.
-  Not ported yet: the `.board-svg-overlay` snake/ladder connector-line
-  styling has a CSS class now but no actual SVG lines drawn on `BoardShow.vue`
-  (tracked below).
+  Snake/ladder connector lines are ported too now — see below.
 - [x] ~~TEAM mode gameplay~~ — done. New `PlayerBoardService` ports
   `getOrCreatePlayerBoard()`'s TEAM branch (one shared `PlayerBoard` per
   team, resolved via `BoardTeam` -> `TeamMember`), used by
@@ -368,6 +366,18 @@ branch's SSR evaluation. Concrete carry-over work:
   edit; the true owner can't be removed via this UI, matching the backend
   (which already preserves owner rows regardless of submitted
   `author_ids`).
+- [x] ~~Snake/ladder SVG connector lines + dice-roll animation~~ — done.
+  Ports `Board/SnakeLadder.vue` and `Dice/Roller.vue`. Connectors use
+  percentage coordinates (`viewBox 0 0 100 100`) instead of the old
+  pixel-based version, since this grid is fluid-width (Tailwind
+  `grid-cols-N` + `aspect-square`, nothing fixed to measure) — scales for
+  free with no `ResizeObserver`. `DiceRoller.vue` needed the server's actual
+  rolled value to pick a die face, which no flash prop carried yet (the
+  existing `board-save` flash is a pre-formatted sentence, not a number) —
+  added a `lastRoll` flash key alongside it. Verified live end-to-end via
+  the existing `/dev-login` route (real gameplay, not just reading the
+  code): correct die face, toast, and the connector lines redrawing around
+  the new position after a snake hit.
 - [ ] `stale/` can be deleted once the migration is verified complete and the
   team is confident nothing needs porting from it anymore.
 
