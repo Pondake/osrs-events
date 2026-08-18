@@ -303,6 +303,32 @@ branch's SSR evaluation. Concrete carry-over work:
   `<client-only>` — they cost nothing server-rendered (behind
   `v-if="isAuthenticated"` for an anonymous crawler anyway, and the footer
   already carries the crawl-relevant marketing links as plain `<a>` tags).
+  **Follow-up found later**: the plain-text title fix above didn't actually
+  eliminate `u-header`'s internal link — `Header.vue` unconditionally wraps
+  `#title` in its own `ULink :to="props.to"` (default `/`) regardless of what
+  the slot content is, so the same `page.url.startsWith(href)` crash was
+  still firing client-side on every single page's hydration (confirmed via
+  an unminified dev-mode Vue stack trace: `<Link to="/" ... data-slot="title">
+  inside <Header>`). Not process-fatal client-side like the SSR case was, but
+  a real per-page console error on every load. Fixed by passing `to=""` to
+  `<u-header>` itself so `href.value` is falsy and `isLinkActive`'s own guard
+  short-circuits before reaching `.startsWith` — title still renders
+  server-side, just as a non-clickable element now (lost the click-logo-to-
+  go-home affordance; nav menu/footer still cover navigation).
+- [x] ~~Theming — wire real brand colors + fonts~~ — done. The app had been
+  running on `@nuxt/ui`'s untouched defaults (blue primary/green neutral)
+  because the `ui()` Vite plugin was never given a theme config at all.
+  Ported `ui.config.ts` from `stale/frontend/app/ui.config.ts` (`primary:
+  purple`, `neutral: stone`) and wired it into `vite.config.js`'s `ui: {}`
+  option. Also ported the Cinzel/Cinzel Decorative heading fonts and
+  board-tile snake/ladder/current/completed CSS from the old
+  `assets/css/main.css`, and restored the full favicon/PWA icon set +
+  `manifest.webmanifest` that existed in `stale/frontend/public/` but never
+  made it into the new `public/` during the repo restructure — the new app
+  had been serving with only Laravel's stock `favicon.ico` this whole time.
+  Not ported yet: the `.board-svg-overlay` snake/ladder connector-line
+  styling has a CSS class now but no actual SVG lines drawn on `BoardShow.vue`
+  (tracked below).
 - [ ] `stale/` can be deleted once the migration is verified complete and the
   team is confident nothing needs porting from it anymore.
 
