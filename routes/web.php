@@ -17,8 +17,17 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/auth/discord/redirect', [DiscordController::class, 'redirect'])->name('login');
-Route::get('/auth/discord/callback', [DiscordController::class, 'callback'])->name('auth.discord.callback');
+// Throttled per-IP — these are unauthenticated by definition, so nothing
+// else gates how often they can be hit. `redirect` just builds a URL to
+// Discord (cheap, but still a public entry point); `callback` does the
+// actual OAuth token exchange + DB writes (new user/guild sync), the more
+// expensive and more sensitive of the two, so it gets the tighter limit.
+Route::get('/auth/discord/redirect', [DiscordController::class, 'redirect'])
+    ->middleware('throttle:20,1')
+    ->name('login');
+Route::get('/auth/discord/callback', [DiscordController::class, 'callback'])
+    ->middleware('throttle:10,1')
+    ->name('auth.discord.callback');
 
 Route::post('/logout', function () {
     Auth::logout();
