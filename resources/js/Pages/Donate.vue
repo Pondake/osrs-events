@@ -8,54 +8,50 @@
         <u-page>
             <u-container class="max-w-3xl py-12">
                 <div class="mb-10">
-                    <h1 class="text-3xl font-bold text-highlighted">Support Us</h1>
-                    <p class="text-muted mt-2">OSRS Events is free — and always will be. But hosting costs gold coins too.</p>
+                    <h1 class="text-3xl font-bold text-highlighted">{{ $t('donate.title') }}</h1>
+                    <p class="text-muted mt-2">{{ $t('donate.subtitle') }}</p>
                 </div>
 
                 <p class="text-lg text-muted leading-relaxed mb-10">
-                    Running this platform takes time and money. If you enjoy it and want to help keep it going, here are two ways
-                    to show your support — one real, one very RuneScape.
+                    {{ $t('donate.intro') }}
                 </p>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
                     <u-card>
                         <template #header>
-                            <span class="text-sm font-medium text-muted">Real money ☕</span>
+                            <span class="text-sm font-medium text-muted">{{ $t('donate.kofi_tag') }}</span>
                         </template>
                         <p class="text-muted leading-relaxed">
-                            Ko-fi lets you send a small one-time tip (like buying someone a coffee). No subscription required — any
-                            amount is greatly appreciated and goes directly towards server costs.
+                            {{ $t('donate.kofi_desc') }}
                         </p>
                         <template #footer>
-                            <u-button href="https://ko-fi.com" target="_blank" color="warning" icon="i-lucide-coffee" label="Buy me a coffee on Ko-fi" />
+                            <u-button href="https://ko-fi.com" target="_blank" color="warning" icon="i-lucide-coffee" :label="$t('donate.kofi_button')" />
                         </template>
                     </u-card>
 
                     <u-card>
                         <template #header>
-                            <span class="text-sm font-medium text-muted">In-game currency 🪙</span>
+                            <span class="text-sm font-medium text-muted">{{ $t('donate.gp_tag') }}</span>
                         </template>
                         <p class="text-muted leading-relaxed mb-2">
-                            Prefer to tip in Gielinor's finest currency? We will genuinely accept it. No, it will not pay any real
-                            bills. But it will warm our heart and give us a reason to log in.
+                            {{ $t('donate.gp_desc') }}
                         </p>
                         <u-alert
                             color="neutral"
                             variant="subtle"
                             size="sm"
-                            title="GP is accepted purely as a gesture of goodwill."
-                            description="We cannot guarantee any response time — the developer may be AFK at Lumbridge."
+                            :title="$t('donate.gp_warning_title')"
+                            :description="$t('donate.gp_warning_desc')"
                         />
                         <template #footer>
-                            <u-button href="mailto:dev@absolit.nl?subject=GP Donation" color="neutral" variant="outline" icon="i-lucide-mail" label="Send GP donation email" />
+                            <u-button href="mailto:dev@absolit.nl?subject=GP Donation" color="neutral" variant="outline" icon="i-lucide-mail" :label="$t('donate.gp_how_cta')" />
                         </template>
                     </u-card>
                 </div>
 
-                <u-alert color="primary" variant="subtle" icon="i-lucide-sword" title="Thank you!">
+                <u-alert color="primary" variant="subtle" icon="i-lucide-sword" :title="$t('donate.thanks_title')">
                     <template #description>
-                        Whether you donate or not, thank you for playing. Every player who joins a board and enjoys the game makes
-                        this project worthwhile. See you in Gielinor! 🗡️
+                        {{ $t('donate.thanks_body') }}
                     </template>
                 </u-alert>
             </u-container>
@@ -64,10 +60,11 @@
 </template>
 
 <script setup>
+import { trans } from 'laravel-vue-i18n';
 import { useSeoData } from '@/Composables/useSeo';
 
 const { resolved, canonical, Head } = useSeoData({
-    title: 'Support OSRS Events',
-    description: 'OSRS Events is free and carries no ads. Donations cover hosting costs so clans can keep running events at no charge.',
+    title: trans('seo.donate_title'),
+    description: trans('seo.donate_desc'),
 });
 </script>

@@ -17,7 +17,7 @@
                                 :variant="editMode ? 'solid' : 'outline'"
                                 size="sm"
                                 :icon="editMode ? 'i-lucide-eye' : 'i-lucide-pencil'"
-                                :label="editMode ? 'View mode' : 'Edit tiles'"
+                                :label="editMode ? $t('board.view_mode') : $t('board.edit_mode')"
                                 @click="editMode = !editMode"
                             />
                             <u-button
@@ -25,7 +25,7 @@
                                 variant="outline"
                                 size="sm"
                                 icon="i-lucide-settings"
-                                label="Edit board"
+                                :label="$t('board.edit_board')"
                                 @click="showSettingsModal = true"
                             />
                             <u-button
@@ -34,7 +34,7 @@
                                 variant="outline"
                                 size="sm"
                                 icon="i-lucide-trophy"
-                                label="Leaderboard"
+                                :label="$t('leaderboard.title')"
                             />
                         </div>
                         <u-button
@@ -44,7 +44,7 @@
                             variant="outline"
                             size="sm"
                             icon="i-lucide-trophy"
-                            label="Leaderboard"
+                            :label="$t('leaderboard.title')"
                         />
                     </template>
                 </u-page-header>
@@ -81,31 +81,31 @@
                     <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
                         <u-card>
                             <template #header>
-                                <span class="font-semibold">Your progress</span>
+                                <span class="font-semibold">{{ $t('board.your_progress') }}</span>
                             </template>
                             <dl v-if="playerBoard" class="text-sm space-y-2">
                                 <div class="flex justify-between">
-                                    <dt class="text-muted">Current tile</dt>
+                                    <dt class="text-muted">{{ $t('board.current_tile') }}</dt>
                                     <dd>{{ playerBoard.current_position + 1 }} / {{ tiles.length }}</dd>
                                 </div>
                                 <div class="flex justify-between">
-                                    <dt class="text-muted">Tiles completed</dt>
+                                    <dt class="text-muted">{{ $t('board.tiles_completed') }}</dt>
                                     <dd>{{ playerBoard.completedTileIds.length }}</dd>
                                 </div>
                                 <div v-if="board.dice_roll_limit" class="flex justify-between">
-                                    <dt class="text-muted">Rolls today</dt>
+                                    <dt class="text-muted">{{ $t('board.rolls_today') }}</dt>
                                     <dd>{{ playerBoard.dice_rolls_today }} / {{ board.dice_roll_limit }}</dd>
                                 </div>
                             </dl>
                             <p v-else class="text-sm text-muted">
-                                Roll the dice or complete a tile to get started — your first roll starts your progress.
+                                {{ $t('board.get_started_desc') }}
                             </p>
                             <template #footer>
                                 <u-button
                                     color="primary"
                                     block
                                     icon="i-lucide-dice-6"
-                                    label="Roll dice"
+                                    :label="$t('board.roll_dice')"
                                     :loading="rolling"
                                     @click="roll"
                                 />

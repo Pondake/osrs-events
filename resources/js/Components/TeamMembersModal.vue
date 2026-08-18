@@ -1,9 +1,9 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="`Manage members — ${team.name}`">
+    <u-modal v-model:open="isOpen" :title="$t('teams.manage_members', { name: team.name })">
         <template #body>
             <div class="flex flex-col gap-4">
                 <div>
-                    <p class="text-xs font-medium text-muted uppercase tracking-wide mb-2">Members</p>
+                    <p class="text-xs font-medium text-muted uppercase tracking-wide mb-2">{{ $t('teams.members') }}</p>
                     <div v-if="team.members.length" class="flex flex-col gap-1">
                         <div v-for="member in team.members" :key="member.id" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-elevated">
                             <u-avatar :src="member.user.avatar_url ?? undefined" size="xs" />
@@ -11,14 +11,14 @@
                             <u-button variant="ghost" color="error" size="xs" icon="i-lucide-x" @click="removeMember(member.user)" />
                         </div>
                     </div>
-                    <p v-else class="text-xs text-muted italic px-1">No members yet.</p>
+                    <p v-else class="text-xs text-muted italic px-1">{{ $t('teams.no_members') }}</p>
                 </div>
 
                 <u-separator />
 
                 <div>
-                    <p class="text-xs font-medium text-muted uppercase tracking-wide mb-2">Add member</p>
-                    <u-input v-model="search" placeholder="Search by Discord username…" icon="i-lucide-search" class="w-full mb-2" @update:model-value="debouncedSearch" />
+                    <p class="text-xs font-medium text-muted uppercase tracking-wide mb-2">{{ $t('teams.add_member') }}</p>
+                    <u-input v-model="search" :placeholder="$t('teams.search_users_placeholder')" icon="i-lucide-search" class="w-full mb-2" @update:model-value="debouncedSearch" />
                     <div class="flex flex-col gap-1 max-h-52 overflow-y-auto">
                         <div
                             v-for="user in results"
@@ -29,14 +29,14 @@
                             <u-avatar :src="user.avatar_url ?? undefined" size="xs" />
                             <span class="text-sm flex-1">{{ user.nickname ?? user.discord_username }}</span>
                         </div>
-                        <p v-if="search && !results.length" class="text-xs text-muted italic px-1 py-2">No matching users.</p>
+                        <p v-if="search && !results.length" class="text-xs text-muted italic px-1 py-2">{{ $t('teams.no_users_found') }}</p>
                     </div>
                 </div>
             </div>
         </template>
 
         <template #footer>
-            <u-button color="neutral" variant="outline" label="Done" class="ml-auto" @click="isOpen = false" />
+            <u-button color="neutral" variant="outline" :label="$t('common.close')" class="ml-auto" @click="isOpen = false" />
         </template>
     </u-modal>
 </template>
