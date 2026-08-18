@@ -26,14 +26,25 @@
                 <div class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
                     <div class="flex-1 w-full min-w-0 overflow-x-auto">
                         <div :class="gridClass" class="grid gap-1.5">
+                            <!-- Not gated on playerBoard existing — reaching this
+                                 page at all already implies BoardAccess (see
+                                 BoardController::show()'s access-gate redirect),
+                                 and PlayerBoardController lazily creates the
+                                 PlayerBoard row on first roll/toggle, same as the
+                                 old getOrCreatePlayerBoard(). Gating the click on
+                                 playerBoard already existing was a genuine
+                                 dead-end bug: a brand-new player could never
+                                 start, since nothing before this point ever
+                                 creates that row. Caught by testing the actual
+                                 cold-start flow through a real browser, not just
+                                 curling a pre-seeded player's board. -->
                             <button
                                 v-for="tile in tiles"
                                 :key="tile.id"
                                 type="button"
-                                class="aspect-square rounded-md border flex items-center justify-center text-xs font-semibold transition-colors"
-                                :class="[tileClasses(tile), playerBoard ? 'cursor-pointer hover:border-primary' : 'cursor-default']"
+                                class="aspect-square rounded-md border flex items-center justify-center text-xs font-semibold transition-colors cursor-pointer hover:border-primary"
+                                :class="tileClasses(tile)"
                                 :title="tile.title_override ?? tile.task?.title"
-                                :disabled="!playerBoard"
                                 @click="toggleTile(tile)"
                             >
                                 {{ tile.position + 1 }}
@@ -42,11 +53,11 @@
                     </div>
 
                     <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
-                        <u-card v-if="playerBoard">
+                        <u-card>
                             <template #header>
                                 <span class="font-semibold">Your progress</span>
                             </template>
-                            <dl class="text-sm space-y-2">
+                            <dl v-if="playerBoard" class="text-sm space-y-2">
                                 <div class="flex justify-between">
                                     <dt class="text-muted">Current tile</dt>
                                     <dd>{{ playerBoard.current_position + 1 }} / {{ tiles.length }}</dd>
@@ -60,6 +71,9 @@
                                     <dd>{{ playerBoard.dice_rolls_today }} / {{ board.dice_roll_limit }}</dd>
                                 </div>
                             </dl>
+                            <p v-else class="text-sm text-muted">
+                                Roll the dice or complete a tile to get started — your first roll starts your progress.
+                            </p>
                             <template #footer>
                                 <u-button
                                     color="primary"
@@ -71,13 +85,6 @@
                                 />
                             </template>
                         </u-card>
-                        <u-alert
-                            v-else
-                            title="Not joined yet"
-                            description="You haven't joined this board yet — rolling the dice or completing a tile joins you automatically."
-                            color="neutral"
-                            variant="soft"
-                        />
                     </div>
                 </div>
             </u-container>
@@ -129,7 +136,6 @@ function roll() {
 }
 
 function toggleTile(tile) {
-    if (!props.playerBoard) return;
     router.post(`/boards/${props.board.id}/tiles/${tile.id}/toggle`, {}, { preserveScroll: true });
 }
 </script>

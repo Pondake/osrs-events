@@ -225,13 +225,30 @@ branch's SSR evaluation. Concrete carry-over work:
 
 ## Security (step 4)
 
-- [ ] Audit every route for auth middleware — `/boards/{board}` uses `auth`
-  with no further authorization check (any logged-in user can view any board
-  regardless of the real `BoardAccessMode` matrix, since that matrix isn't
-  ported yet — see Migration above). Not safe as-is.
+- [x] ~~BoardAccessMode (OPEN/GUILD/INVITE) enforcement~~ — done.
+  `App\Services\BoardAccessService` (ported from the old
+  `AccessService`/`InvitesService`): `hasAccess()`/`canJoin()`/`joinBoard()`/
+  `useInvite()`, same rules as before — board authors always pass, OPEN
+  always passes, GUILD checks `UserGuild`, INVITE requires a token/code and
+  consumes it in a transaction that increments `BoardInvite.use_count`
+  (confirmed via DB check, not just a 200 response). `BoardController::show()`
+  now actually calls `hasAccess()` and renders `Boards/AccessGate.vue`
+  instead of the board for anyone who fails it; `PlayerBoardController`'s
+  roll/toggle actions check it too, not just `auth` middleware.
+  `BoardInviteController` (create/revoke, owner-or-admin gated) exists but
+  has no UI yet — invites can only be created via tinker/an API client, not
+  from the board settings modal. New routes: `POST /boards/{board}/join`,
+  `POST /boards/{board}/invites`, `DELETE /boards/{board}/invites/{invite}`.
+  **Found and fixed while testing this**: `BoardShow.vue`'s Roll/tile
+  buttons were gated on `playerBoard` already existing, but `playerBoard`
+  is only ever *created* by rolling/toggling — a genuine cold-start deadlock
+  where a brand-new player could never start playing at all. Every earlier
+  test of this page used the seeder's pre-created `PlayerBoard` row and
+  never exercised a first-time visit, so it went unnoticed until testing the
+  INVITE join flow with a fresh user in a real browser.
+- [ ] Build the invite-management UI (`BoardInviteController` has no
+  frontend yet — create/list/revoke invites from the board settings modal
+  or a dedicated tab).
 - [ ] Rate limiting / throttling on the Discord OAuth routes.
 - [ ] CSRF, session, and cookie config review once real deployment domains
   are known (currently defaults from a fresh `laravel/laravel` scaffold).
-- [ ] Revisit `BoardInvite` token/`useCount` handling for race conditions
-  once ported — the original Prisma schema notes this needs a transaction;
-  confirm the Eloquent port actually wraps it in one.
