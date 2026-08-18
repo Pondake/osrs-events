@@ -93,5 +93,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->command->info("Seeded board {$board->id} — visit /boards/{$board->id}");
+
+        $this->call(AdminUserSeeder::class);
     }
 }
