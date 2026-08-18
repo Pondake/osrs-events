@@ -12,6 +12,7 @@ use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TileController;
+use App\Http\Controllers\UserSearchController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -65,6 +66,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/boards/{board}/teams', [BoardController::class, 'addTeam'])->name('boards.teams.add');
     Route::delete('/boards/{board}/teams/{team}', [BoardController::class, 'removeTeam'])->name('boards.teams.remove');
     Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
+    Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
 
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

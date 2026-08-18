@@ -43,6 +43,41 @@
                         </u-form-field>
 
                         <u-switch v-model="form.is_listed" :label="$t('admin.board_listed')" />
+
+                        <u-form-field :label="$t('admin.editors')" :description="$t('admin.editors_desc')">
+                            <div class="space-y-2">
+                                <u-input
+                                    v-model="authorSearch"
+                                    icon="i-lucide-search"
+                                    :placeholder="$t('common.search')"
+                                    class="w-full"
+                                    @input="onAuthorSearch"
+                                />
+
+                                <div v-if="authorResults.length" class="rounded-md ring ring-default divide-y divide-default">
+                                    <button
+                                        v-for="candidate in authorResults"
+                                        :key="candidate.id"
+                                        type="button"
+                                        class="w-full flex items-center gap-3 px-3 py-2 hover:bg-elevated transition-colors text-left"
+                                        @click="addAuthor(candidate)"
+                                    >
+                                        <u-avatar :src="candidate.avatar_url ?? undefined" :alt="candidate.discord_username" size="xs" />
+                                        <span class="text-sm">{{ candidate.nickname ?? candidate.discord_username }}</span>
+                                    </button>
+                                </div>
+
+                                <div v-if="selectedAuthors.length" class="flex flex-wrap gap-2">
+                                    <u-badge v-for="author in selectedAuthors" :key="author.id" color="primary" variant="subtle" class="flex items-center gap-1">
+                                        {{ author.nickname ?? author.discord_username }}
+                                        <span v-if="author.id === currentUser?.id" class="opacity-70">({{ $t('admin.you_suffix') }})</span>
+                                        <button v-if="!author.is_owner" type="button" class="ml-1 hover:text-error" @click="removeAuthor(author.id)">
+                                            <u-icon name="i-lucide-x" class="size-3" />
+                                        </button>
+                                    </u-badge>
+                                </div>
+                            </div>
+                        </u-form-field>
                     </div>
                 </template>
 
@@ -132,7 +167,10 @@
 import { computed, ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import { useAuth } from '@/Composables/useAuth';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
+
+const { user: currentUser } = useAuth();
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -195,10 +233,18 @@ function blankForm() {
         is_listed: true,
         access_mode: 'OPEN',
         required_guild_id: '',
+        author_ids: [],
     };
 }
 
 const form = useForm(blankForm());
+
+// Mirrors form.author_ids, but carrying display data (username/avatar) the
+// form itself has no use for — kept in sync by addAuthor()/removeAuthor().
+const selectedAuthors = ref([]);
+const authorSearch = ref('');
+const authorResults = ref([]);
+let authorSearchTimeout = null;
 
 // Re-seed the form whenever a different board is opened for editing, or the
 // modal is reopened in create mode after a previous edit.
@@ -209,9 +255,49 @@ watch(
         form.reset();
         if (board && board.access_mode === 'INVITE') fetchInvites();
         if (board && board.mode === 'TEAM') fetchTeams();
+
+        // The backend always keeps the true owner(s) as an editor regardless
+        // of what's submitted here (see BoardController::store()/update()),
+        // so a brand-new board just starts empty — the creator becomes owner
+        // server-side without needing to appear in this list at all.
+        selectedAuthors.value = board
+            ? board.authors.map((a) => ({ ...a.user, is_owner: a.is_owner }))
+            : [];
+        form.author_ids = selectedAuthors.value.map((a) => a.id);
+        authorSearch.value = '';
+        authorResults.value = [];
     },
     { immediate: true },
 );
+
+function onAuthorSearch() {
+    if (authorSearchTimeout) clearTimeout(authorSearchTimeout);
+    if (authorSearch.value.length < 2) {
+        authorResults.value = [];
+        return;
+    }
+    authorSearchTimeout = setTimeout(async () => {
+        const response = await fetch(`/users/search?search=${encodeURIComponent(authorSearch.value)}`, {
+            headers: { Accept: 'application/json' },
+        });
+        const results = await response.json();
+        authorResults.value = results.filter((u) => !selectedAuthors.value.some((a) => a.id === u.id));
+    }, 300);
+}
+
+function addAuthor(candidate) {
+    if (!selectedAuthors.value.some((a) => a.id === candidate.id)) {
+        selectedAuthors.value = [...selectedAuthors.value, candidate];
+        form.author_ids = selectedAuthors.value.map((a) => a.id);
+    }
+    authorResults.value = [];
+    authorSearch.value = '';
+}
+
+function removeAuthor(userId) {
+    selectedAuthors.value = selectedAuthors.value.filter((a) => a.id !== userId);
+    form.author_ids = selectedAuthors.value.map((a) => a.id);
+}
 
 function submit() {
     if (isEdit.value) {
