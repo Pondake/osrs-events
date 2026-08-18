@@ -27,24 +27,18 @@
                         </template>
 
                         <ul class="space-y-1.5">
-                            <li v-for="member in team.members" :key="member.id" class="flex items-center justify-between gap-2 text-sm">
-                                <div class="flex items-center gap-2">
-                                    <u-avatar :src="member.user.avatar_url ?? undefined" size="3xs" />
-                                    <span>{{ member.user.nickname ?? member.user.discord_username }}</span>
-                                </div>
-                                <u-button
-                                    v-if="canManage"
-                                    icon="i-lucide-x"
-                                    size="xs"
-                                    color="neutral"
-                                    variant="ghost"
-                                    @click="removeMember(team, member.user)"
-                                />
+                            <li v-for="member in team.members" :key="member.id" class="flex items-center gap-2 text-sm">
+                                <u-avatar :src="member.user.avatar_url ?? undefined" size="3xs" />
+                                <span>{{ member.user.nickname ?? member.user.discord_username }}</span>
                             </li>
+                            <li v-if="!team.members.length" class="text-sm text-muted italic">No members yet.</li>
                         </ul>
 
                         <template v-if="canManage" #footer>
-                            <u-button size="xs" color="neutral" variant="outline" label="Delete team" icon="i-lucide-trash-2" @click="destroyTeam(team)" />
+                            <div class="flex gap-2">
+                                <u-button size="xs" color="neutral" variant="outline" label="Manage members" icon="i-lucide-users" @click="managingTeamId = team.id" />
+                                <u-button size="xs" color="error" variant="outline" label="Delete" icon="i-lucide-trash-2" @click="destroyTeam(team)" />
+                            </div>
                         </template>
                     </u-card>
                 </div>
@@ -53,6 +47,12 @@
 
         <client-only>
             <team-settings-modal v-model:open="showCreateModal" />
+            <team-members-modal
+                v-if="managingTeam"
+                :open="managingTeamId !== null"
+                :team="managingTeam"
+                @update:open="(v) => !v && (managingTeamId = null)"
+            />
         </client-only>
     </u-main>
 </template>
@@ -64,8 +64,9 @@ import { useAuth } from '@/Composables/useAuth';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
 const TeamSettingsModal = defineAsyncComponent(() => import('@/Components/TeamSettingsModal.vue'));
+const TeamMembersModal = defineAsyncComponent(() => import('@/Components/TeamMembersModal.vue'));
 
-defineProps({
+const props = defineProps({
     teams: { type: Array, required: true },
 });
 
@@ -79,10 +80,17 @@ const { isAdmin } = useAuth();
 const canManage = computed(() => isAdmin.value);
 
 const showCreateModal = ref(false);
-
-function removeMember(team, user) {
-    router.delete(`/teams/${team.id}/members/${user.id}`, { preserveScroll: true });
-}
+// Tracked by ID, not by holding the team object itself — router.post()
+// from inside TeamMembersModal (adding/removing a member) triggers an
+// Inertia reload that replaces `teams` with entirely new objects. A stored
+// object reference goes stale at that point (confirmed live: the modal kept
+// showing "No members yet" after a member was successfully added and the
+// page's own list updated correctly) since Vue's reactivity can't follow a
+// plain JS variable holding an old object across props being swapped out
+// wholesale. Deriving the current team via a computed lookup by ID instead
+// always reads the live prop.
+const managingTeamId = ref(null);
+const managingTeam = computed(() => props.teams.find((t) => t.id === managingTeamId.value) ?? null);
 
 function destroyTeam(team) {
     router.delete(`/teams/${team.id}`, { preserveScroll: true });

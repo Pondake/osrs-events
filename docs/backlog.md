@@ -70,9 +70,55 @@ branch's SSR evaluation. Concrete carry-over work:
   per-team branch) isn't ported — `PlayerBoardController` only handles SOLO.
   Create uses tabs instead of CLAUDE.md's stepper-with-per-step-validation
   convention, to avoid building that plumbing for one form in this pass.
-- [ ] Rewrite the GraphQL code-first API surface as Inertia controllers —
-  full rewrite, not a port; the resolver layer has no Laravel equivalent.
-  Boards is done (above); teams/tasks/admin/invites/access are not.
+- [x] ~~Rewrite the GraphQL code-first API surface as Inertia controllers~~ —
+  done, full rewrite as intended (not a mechanical port; the resolver layer
+  has no Laravel equivalent). Boards, teams, tasks, admin, invites, access,
+  tiles, leaderboard, profile all have Inertia controllers now.
+- [x] ~~Tile editing~~ — done. `TileController::upsert()` (ported from
+  `TilesService.upsert()` — a tile is identified by `(board_id, position)`,
+  not a pre-existing row; boards were never auto-populated with a full grid
+  on creation in the old app either, `GameBoard.vue` rendered
+  placeholder "empty-{position}" tiles for any unconfigured position, ported
+  the same way here). `TileEditModal.vue` — task search/select (against the
+  existing `Task` table, not a live OSRS Wiki call — despite some landing-page
+  copy claiming "search the wiki," no such integration exists anywhere in the
+  old codebase either, confirmed by grepping for it), tile type, target
+  position. `BoardShow.vue` now renders the full grid in boustrophedon
+  (snake) order matching real Snakes & Ladders numbering, not a plain
+  top-left reading order, and has an edit-mode toggle. Verified via DB:
+  assigned a real task to tile 1, confirmed the relation persisted.
+- [x] ~~Leaderboard page~~ — done. `LeaderboardController` (ported from
+  `PlayersService.getLeaderboard()` — rank, tiles remaining, whether a
+  ladder/snake lies on the path ahead), `Boards/Leaderboard.vue`. Found a
+  real bug while testing: `PlayerBoard` model had no `team()` relation
+  defined at all — a 500 (`Call to undefined relationship [team]`) the
+  moment the leaderboard tried to eager-load it. Fixed.
+- [x] ~~Profile page~~ — done. `ProfileController` (nickname editing, ported
+  from `UsersService.updateProfile()`), `Profile.vue` — role badges, joined
+  boards with a progress bar. Verified nickname save via DB.
+- [x] ~~Invite management UI~~ — done. An "Invites" tab in
+  `BoardSettingsModal.vue` (create/list/revoke), using plain `fetch()`
+  against `BoardInviteController` rather than Inertia's router, since the
+  modal isn't a page component and an Inertia visit would re-render the
+  whole underlying board page just to refresh one list. Uses the
+  `XSRF-TOKEN` cookie directly for CSRF (no `<meta name="csrf-token">`
+  exists in `app.blade.php` — Blade's `@csrf` is for `<form>` tags, not
+  fetch headers). Direct join-by-link route
+  (`GET /boards/{board}/join/{token}`, ported from the old
+  `join/[token].vue`) redirects unauthenticated visitors through Discord
+  login via `redirect()->guest()` + Laravel's own `intended()` mechanism,
+  replacing the old client-side `localStorage` post-auth-redirect hack.
+  Verified both the create-invite and the join-by-link flows via DB checks.
+- [x] ~~Team members modal~~ — done. `TeamMembersModal.vue` — search/add
+  (new `TeamController::searchUsers()` endpoint), remove. Verified add and
+  remove via DB. Found a real Vue bug while testing: the parent page stored
+  `managingTeam` as a direct object reference from the `teams` prop; after
+  adding a member triggers an Inertia reload, `teams` gets replaced with
+  entirely new objects, but the modal kept displaying the *stale* pre-reload
+  team (confirmed live — it showed "No members yet" right after a member had
+  actually been added and the underlying page's own list had updated
+  correctly). Fixed by storing only the team ID and deriving the current
+  team via a computed lookup into the live `teams` prop instead.
 - [x] ~~Port teams + admin pages~~ — done. `TeamController`
   (index/store/update/destroy/addMember/removeMember, guild-based visibility
   filter preserved from `TeamsService.findAll()`), `Admin\BoardController`,
@@ -203,6 +249,30 @@ branch's SSR evaluation. Concrete carry-over work:
      HTML only proves the *read* path works — mutations need their own
      end-to-end check, ideally by verifying the actual DB row changed, not
      just that the request returned 200.
+  11. Define every relation a controller will eager-load, even obvious ones.
+     `PlayerBoard` had `user()`/`board()`/`completedTiles()` but no `team()`
+     — invisible until `LeaderboardController` tried `->with(['user',
+     'team'])` and got `RelationNotFoundException`. Same lesson as #10: this
+     had nothing to do with SSR or Vue, a plain Eloquent gap that curling a
+     *different* page's SSR output would never have caught.
+  12. Not a bug — a testing-methodology trap worth recording anyway, since it
+     burned real time: Reka UI's `Tabs` (underneath `@nuxt/ui`'s `u-tabs`)
+     requires the tab trigger to actually hold DOM focus
+     (`document.activeElement`) before it registers a click. A synthetic
+     `el.click()` — even a full `pointerdown`/`mousedown`/`pointerup`/
+     `mouseup`/`click` event sequence — silently no-ops without `el.focus()`
+     first. Looked exactly like an app bug (tabs appearing to not switch at
+     all) until `el.focus(); el.click()` fixed it instantly. When a browser
+     tool test shows an interactive element doing nothing, try focusing it
+     explicitly before concluding the app itself is broken.
+  13. Don't make a list passed to `u-tabs`' `:items` a `computed()` if it can
+     be static. Chased gotcha #12 above down the wrong path first: reactive
+     `tabs` depending on other component state seemed like the natural
+     explanation for tabs "not switching," since a new array reference on
+     every render is a real Reka UI reset trigger in general — it just
+     wasn't the actual cause here. Left as a static array with content-level
+     `v-if` gating instead, which sidesteps the question rather than
+     resolving it either way.
 - [ ] `stale/` can be deleted once the migration is verified complete and the
   team is confident nothing needs porting from it anymore.
 
@@ -245,10 +315,8 @@ branch's SSR evaluation. Concrete carry-over work:
   where a brand-new player could never start playing at all. Every earlier
   test of this page used the seeder's pre-created `PlayerBoard` row and
   never exercised a first-time visit, so it went unnoticed until testing the
-  INVITE join flow with a fresh user in a real browser.
-- [ ] Build the invite-management UI (`BoardInviteController` has no
-  frontend yet — create/list/revoke invites from the board settings modal
-  or a dedicated tab).
+  INVITE join flow with a fresh user in a real browser. Invite-management UI
+  is now built too — see Migration above.
 - [ ] Rate limiting / throttling on the Discord OAuth routes.
 - [ ] CSRF, session, and cookie config review once real deployment domains
   are known (currently defaults from a fresh `laravel/laravel` scaffold).

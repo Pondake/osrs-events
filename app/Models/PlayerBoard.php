@@ -27,6 +27,11 @@ class PlayerBoard extends Model
         return $this->belongsTo(Board::class);
     }
 
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
     public function completedTiles(): HasMany
     {
         return $this->hasMany(CompletedTile::class);

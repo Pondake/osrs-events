@@ -61,6 +61,34 @@
                         </u-form-field>
                     </div>
                 </template>
+
+                <template #invites>
+                    <div class="py-2">
+                        <p v-if="!isEdit" class="text-sm text-muted py-8 text-center">Save the board first, then come back here to create invites.</p>
+                        <p v-else-if="form.access_mode !== 'INVITE'" class="text-sm text-muted py-8 text-center">
+                            Invites only apply to "Invite only" boards — set that on the Access tab first.
+                        </p>
+                        <div v-else class="space-y-4">
+                            <div class="flex justify-end">
+                                <u-button size="sm" color="primary" icon="i-lucide-plus" label="New invite" :loading="creatingInvite" @click="createInvite" />
+                            </div>
+
+                            <div class="divide-y divide-default rounded-md ring ring-default">
+                                <div v-for="invite in invites" :key="invite.id" class="flex items-center justify-between gap-3 px-3 py-2">
+                                    <div class="min-w-0">
+                                        <div class="font-mono text-sm">{{ invite.short_code }}</div>
+                                        <div class="text-xs text-muted">
+                                            {{ invite.use_count }}{{ invite.max_uses ? ` / ${invite.max_uses}` : '' }} uses
+                                            <span v-if="invite.expires_at"> · expires {{ new Date(invite.expires_at).toLocaleDateString() }}</span>
+                                        </div>
+                                    </div>
+                                    <u-button icon="i-lucide-trash-2" size="xs" color="error" variant="ghost" @click="revokeInvite(invite)" />
+                                </div>
+                                <p v-if="!invites.length" class="px-3 py-4 text-center text-sm text-muted">No invites yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </u-tabs>
         </template>
 
@@ -74,7 +102,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
 
@@ -92,9 +120,22 @@ const isOpen = computed({
 
 const isEdit = computed(() => props.board !== null);
 
+// Static. A computed() version was tried first, on the theory that a new
+// `items` array reference on every render was resetting u-tabs back to the
+// first tab — that theory turned out to be unverified and probably wrong:
+// clicking ANY tab (even the pre-existing Access one) appeared to silently
+// fail during testing, static array or not, until the test itself turned
+// out to be the problem — Reka UI's Tabs (underneath u-tabs) requires the
+// tab trigger to actually hold DOM focus (checks document.activeElement) to
+// register a click; a synthetic el.click() without el.focus() first is a
+// silent no-op regardless of how `items` is computed. Kept as a static
+// array anyway since content-gating inside the tabpanel (see the template's
+// v-if on the invites slot) is the more normal Vue pattern either way, not
+// because the reactive-array theory was confirmed.
 const tabs = [
     { label: 'Basics', slot: 'basics' },
     { label: 'Access', slot: 'access' },
+    { label: 'Invites', slot: 'invites' },
 ];
 
 const sizeOptions = ['SIZE_5X5', 'SIZE_7X7', 'SIZE_9X9'].map((size) => ({
@@ -137,6 +178,7 @@ watch(
     (board) => {
         form.defaults(board ? { ...blankForm(), ...board } : blankForm());
         form.reset();
+        if (board && board.access_mode === 'INVITE') fetchInvites();
     },
     { immediate: true },
 );
@@ -147,5 +189,48 @@ function submit() {
     } else {
         form.post('/boards', { onSuccess: () => (isOpen.value = false) });
     }
+}
+
+// Invites are fetched/created/revoked via plain fetch() rather than
+// Inertia's router — an Inertia visit would re-render the whole underlying
+// board page and, since this modal isn't itself a page component, has no
+// natural way to just refresh its own invites list without closing.
+//
+// No <meta name="csrf-token"> exists in app.blade.php (Blade's @csrf
+// directive is for <form> tags, not fetch headers, and Laravel's default
+// scaffold doesn't add one either) — read the XSRF-TOKEN cookie instead,
+// the same encrypted-cookie mechanism VerifyCsrfToken accepts as an
+// alternative to the session token, and what Inertia's own client uses
+// under the hood for its requests.
+const invites = ref([]);
+const creatingInvite = ref(false);
+
+function xsrfHeader() {
+    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+    return match ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) } : {};
+}
+
+async function fetchInvites() {
+    const response = await fetch(`/boards/${props.board.id}/invites`, { headers: { Accept: 'application/json' } });
+    invites.value = await response.json();
+}
+
+async function createInvite() {
+    creatingInvite.value = true;
+    await fetch(`/boards/${props.board.id}/invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...xsrfHeader() },
+        body: JSON.stringify({}),
+    });
+    await fetchInvites();
+    creatingInvite.value = false;
+}
+
+async function revokeInvite(invite) {
+    await fetch(`/boards/${props.board.id}/invites/${invite.id}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json', ...xsrfHeader() },
+    });
+    await fetchInvites();
 }
 </script>
