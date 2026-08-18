@@ -32,6 +32,23 @@ export default defineConfig({
             router: 'inertia',
             colorMode: true,
             ui: uiConfig,
+            // Nuxt UI auto-bundles its own default icon set (lucide) so those
+            // render offline with no runtime request. Any OTHER collection —
+            // simple-icons:discord for the login button here — falls back to a
+            // live fetch against api.iconify.design at runtime unless told to
+            // bundle it too. Confirmed live: the discord icon rendered as a
+            // permanently empty <svg> (0 <path> children, no network request
+            // ever fired for it) while every i-lucide-* icon on the same page
+            // rendered fine. `scan: true` bundles every icon actually
+            // referenced in the source automatically, matching @nuxt/icon's
+            // own scan behavior, so this doesn't need updating by hand every
+            // time a new non-lucide icon gets used — see the Icons docs
+            // (ui.nuxt.com/getting-started/icons/vue#collections).
+            icon: {
+                clientBundle: {
+                    scan: true,
+                },
+            },
             autoImport: {
                 vueTemplate: true,
                 imports: [
