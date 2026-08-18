@@ -79,7 +79,12 @@ class PlayerBoardController extends Controller
             }
         });
 
-        return back()->with('board-save', "Rolled a {$rolled}" . ($jump ? " and hit a {$jump}!" : '.'));
+        // Separate from the board-save flash text — DiceRoller.vue needs the
+        // raw number to pick which face to render, not a pre-formatted
+        // sentence to parse back apart.
+        return back()
+            ->with('board-save', "Rolled a {$rolled}" . ($jump ? " and hit a {$jump}!" : '.'))
+            ->with('last-roll', $rolled);
     }
 
     public function toggleTile(Board $board, Tile $tile, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse

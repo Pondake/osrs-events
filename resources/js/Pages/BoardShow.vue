@@ -60,30 +60,69 @@
 
                 <div v-else class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
                     <div class="flex-1 w-full min-w-0 overflow-x-auto">
-                        <div :class="[gridClass, minWidthClass]" class="grid gap-1.5">
-                            <!-- Not gated on playerBoard existing — reaching this
-                                 page at all already implies BoardAccess (see
-                                 BoardController::show()'s access-gate redirect),
-                                 and PlayerBoardController lazily creates the
-                                 PlayerBoard row on first roll/toggle, same as the
-                                 old getOrCreatePlayerBoard(). Gating the click on
-                                 playerBoard already existing was a genuine
-                                 dead-end bug: a brand-new player could never
-                                 start, since nothing before this point ever
-                                 creates that row. Caught by testing the actual
-                                 cold-start flow through a real browser, not just
-                                 curling a pre-seeded player's board. -->
-                            <button
-                                v-for="tile in orderedTiles"
-                                :key="tile.position"
-                                type="button"
-                                class="aspect-square rounded-md border flex items-center justify-center text-xs font-semibold transition-colors cursor-pointer hover:border-primary"
-                                :class="tileClasses(tile)"
-                                :title="tile.title_override ?? tile.task?.title"
-                                @click="handleTileClick(tile)"
+                        <div class="relative" :class="minWidthClass">
+                            <div :class="gridClass" class="grid gap-1.5">
+                                <!-- Not gated on playerBoard existing — reaching this
+                                     page at all already implies BoardAccess (see
+                                     BoardController::show()'s access-gate redirect),
+                                     and PlayerBoardController lazily creates the
+                                     PlayerBoard row on first roll/toggle, same as the
+                                     old getOrCreatePlayerBoard(). Gating the click on
+                                     playerBoard already existing was a genuine
+                                     dead-end bug: a brand-new player could never
+                                     start, since nothing before this point ever
+                                     creates that row. Caught by testing the actual
+                                     cold-start flow through a real browser, not just
+                                     curling a pre-seeded player's board. -->
+                                <button
+                                    v-for="tile in orderedTiles"
+                                    :key="tile.position"
+                                    type="button"
+                                    class="aspect-square rounded-md border flex items-center justify-center text-xs font-semibold transition-colors cursor-pointer hover:border-primary"
+                                    :class="tileClasses(tile)"
+                                    :title="tile.title_override ?? tile.task?.title"
+                                    @click="handleTileClick(tile)"
+                                >
+                                    {{ tile.position + 1 }}
+                                </button>
+                            </div>
+
+                            <!-- Percentage-based coordinates (viewBox 0 0 100 100),
+                                 not pixel measurements like the old app's version —
+                                 this grid is fluid-width (Tailwind grid-cols-N +
+                                 aspect-square, no fixed tile size to measure), so a
+                                 percentage overlay scales with it for free with no
+                                 ResizeObserver. Approximates gap-1.5 as included in
+                                 each cell's share rather than accounted separately;
+                                 close enough at this gap size to not be visually off. -->
+                            <svg
+                                v-if="snakeLadderConnections.length"
+                                class="board-svg-overlay"
+                                viewBox="0 0 100 100"
+                                preserveAspectRatio="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                aria-hidden="true"
                             >
-                                {{ tile.position + 1 }}
-                            </button>
+                                <defs>
+                                    <marker id="arrow-snake" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+                                        <path d="M0,0 L0,5 L5,2.5 z" fill="rgba(239,68,68,0.55)" />
+                                    </marker>
+                                    <marker id="arrow-ladder" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+                                        <path d="M0,0 L0,5 L5,2.5 z" fill="rgba(34,197,94,0.55)" />
+                                    </marker>
+                                </defs>
+                                <path
+                                    v-for="(conn, i) in snakeLadderConnections"
+                                    :key="i"
+                                    :d="connectionPath(conn)"
+                                    :stroke="conn.type === 'SNAKE' ? 'rgba(239,68,68,0.4)' : 'rgba(34,197,94,0.4)'"
+                                    stroke-width="0.5"
+                                    stroke-dasharray="2,1.2"
+                                    :marker-end="conn.type === 'SNAKE' ? 'url(#arrow-snake)' : 'url(#arrow-ladder)'"
+                                    fill="none"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
                         </div>
                     </div>
 
@@ -110,13 +149,12 @@
                                 {{ $t('board.get_started_desc') }}
                             </p>
                             <template #footer>
-                                <u-button
-                                    color="primary"
-                                    block
-                                    icon="i-lucide-dice-6"
-                                    :label="$t('board.roll_dice')"
-                                    :loading="rolling"
-                                    @click="roll"
+                                <dice-roller
+                                    :rolling="rolling"
+                                    :last-roll="lastRoll"
+                                    :rolls-today="playerBoard?.dice_rolls_today ?? 0"
+                                    :roll-limit="board.dice_roll_limit"
+                                    @roll="roll"
                                 />
                             </template>
                         </u-card>
@@ -140,9 +178,10 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, ref } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import DiceRoller from '@/Components/DiceRoller.vue';
 import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH } from '@/Support/board';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
@@ -160,6 +199,18 @@ const showSettingsModal = ref(false);
 const editingTile = ref(null);
 const editMode = ref(false);
 const rolling = ref(false);
+const lastRoll = ref(null);
+
+// Fed by PlayerBoardController::roll()'s 'last-roll' session flash (kept
+// separate from the already-formatted 'board-save' toast text — see
+// HandleInertiaRequests) — DiceRoller needs the raw number to pick a face.
+const inertiaPage = usePage();
+watch(
+    () => inertiaPage.props?.flash?.lastRoll,
+    (value) => {
+        if (value !== null && value !== undefined) lastRoll.value = value;
+    },
+);
 
 const GRID_CLASSES = { SIZE_5X5: 'grid-cols-5', SIZE_7X7: 'grid-cols-7', SIZE_9X9: 'grid-cols-9' };
 const gridClass = computed(() => GRID_CLASSES[props.board.size] ?? GRID_CLASSES.SIZE_7X7);
@@ -193,6 +244,38 @@ const orderedTiles = computed(() => {
 
     return result;
 });
+
+// Ported from the old Board/SnakeLadder.vue, converted from pixel to
+// percentage coordinates — see the template's comment on why.
+const snakeLadderConnections = computed(() =>
+    props.tiles
+        .filter((t) => (t.type === 'SNAKE' || t.type === 'LADDER') && t.target_position !== null)
+        .map((t) => ({ from: t.position, to: t.target_position, type: t.type })),
+);
+
+function tileCenterPercent(position) {
+    const n = cols.value;
+    const row = Math.floor(position / n);
+    const col = position % n;
+    const adjustedCol = row % 2 === 0 ? col : n - 1 - col;
+    const visualRow = n - 1 - row;
+    const cellSize = 100 / n;
+
+    return { x: adjustedCol * cellSize + cellSize / 2, y: visualRow * cellSize + cellSize / 2 };
+}
+
+// Gentle quadratic bezier — same 0.18 curvature the old app used to keep
+// lines subtle and clearly directed without cluttering the board.
+function connectionPath(conn) {
+    const start = tileCenterPercent(conn.from);
+    const end = tileCenterPercent(conn.to);
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const cx = (start.x + end.x) / 2 - dy * 0.18;
+    const cy = (start.y + end.y) / 2 + dx * 0.18;
+
+    return `M ${start.x} ${start.y} Q ${cx} ${cy} ${end.x} ${end.y}`;
+}
 
 function tileClasses(tile) {
     if (props.playerBoard?.completedTileIds.includes(tile.id)) {
