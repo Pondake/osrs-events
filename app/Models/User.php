@@ -63,4 +63,20 @@ class User extends Authenticatable
     {
         return $this->userRoles()->whereHas('role', fn ($q) => $q->where('name', $roleName))->exists();
     }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('ADMIN');
+    }
+
+    /** Mirrors the old usePermissions.ts: ADMIN bypasses every granular check. */
+    public function hasPermission(string $key): bool
+    {
+        return $this->isAdmin() || $this->userPermissions()->where('permission_key', $key)->exists();
+    }
+
+    public function canEditBoard(Board $board): bool
+    {
+        return $this->isAdmin() || $board->authors()->where('user_id', $this->id)->exists();
+    }
 }

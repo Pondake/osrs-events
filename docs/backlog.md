@@ -55,17 +55,35 @@ branch's SSR evaluation. Concrete carry-over work:
   `DISCORD_CLIENT_ID`/`DISCORD_CLIENT_SECRET` in `.env` before the callback
   can be tested end-to-end (redirect construction was verified via curl;
   the actual Discord round-trip wasn't, no credentials in this environment).
+- [x] ~~Port the boards feature (list, create/edit, show, dice roll, tile
+  toggle)~~ — done. `BoardController` (index/show/store/update/destroy),
+  `PlayerBoardController` (roll/toggleTile, ported from the old
+  `PlayersService.rollDice()`/`completeTile()` — SOLO mode only, see below),
+  `Pages/Boards/Index.vue`, `Pages/BoardShow.vue`,
+  `Components/BoardSettingsModal.vue`. Verified end-to-end in a real
+  browser against a fresh SSR build — dice roll and tile toggle both
+  confirmed via direct DB state checks (`current_position` and
+  `CompletedTile` count changing), not just "no error shown".
+  **Known simplifications, not oversights**: co-author management (old
+  `EditorsSection.vue`) isn't ported — needs a user-search endpoint that
+  doesn't exist yet. TEAM mode (`getOrCreatePlayerBoard`'s shared-PlayerBoard-
+  per-team branch) isn't ported — `PlayerBoardController` only handles SOLO.
+  Create uses tabs instead of CLAUDE.md's stepper-with-per-step-validation
+  convention, to avoid building that plumbing for one form in this pass.
 - [ ] Rewrite the GraphQL code-first API surface as Inertia controllers —
   full rewrite, not a port; the resolver layer has no Laravel equivalent.
-- [ ] Port ~20 Nuxt pages/components to Inertia + Vue pages.
+  Boards is done (above); teams/tasks/admin/invites/access are not.
+- [ ] Port teams + admin pages (`Team/*`, `admin/*`) — not started.
+- [ ] Port remaining static/marketing pages (about, donate, privacy, terms,
+  index, osrs-clan-events, osrs-event-ideas) — not started.
 - [ ] Pick an i18n solution for 598 keys currently in
   `stale/frontend/locales/en.json` — no drop-in replacement for
   `@nuxtjs/i18n`. Leading candidate: `laravel-vue-i18n` (documented SSR
-  support). Whatever's chosen needs the same SSR-safety scrutiny as the
-  `<Head>` bug below — an i18n composable that touches `localStorage`/cookies
-  on mount will fail the same silent way.
-- [ ] Watch for these five SSR gotchas found during the prototype — all fixed
-  once, but easy to reintroduce while porting 20 more pages:
+  support). Whatever's chosen needs the same SSR-safety scrutiny as the bugs
+  below — an i18n composable that touches `localStorage`/cookies on mount
+  will fail the same silent way.
+- [ ] Watch for these SSR gotchas found so far — all fixed once, but easy to
+  reintroduce while porting the rest:
   1. Nuxt UI icons render empty in server HTML (fill in after client
      hydration) — fine for Googlebot, invisible to non-JS crawlers/scrapers.
   2. JSON-LD through Inertia's documented `<Head><script v-html>` pattern
@@ -87,6 +105,57 @@ branch's SSR evaluation. Concrete carry-over work:
      the SSR Node process's own stderr. Nothing in the browser console,
      nothing in a production build. Always `import { Head } from
      '@inertiajs/vue3'` explicitly; don't rely on auto-import for it.
+  6. Any `@nuxt/ui` composable reached through `@nuxt/ui/composables`
+     (including its own barrel `index.js`, which does `export * from
+     './useComponentIcons.js'`) statically imports a virtual `#imports`
+     specifier that only resolves through the `ui()` Vite plugin's
+     bundler-time pipeline. Vite's SSR build externalizes node_modules deps
+     by default, bypassing that pipeline — so importing `useToast` (or
+     anything else from that directory) crashed the **entire SSR process at
+     startup**, for every page, not just ones that use it. Forcing
+     `@nuxt/ui` to bundle instead (`ssr.noExternal`) trades that crash for a
+     worse, silent one: every page's SSR output becomes an empty `<div
+     id="app">` with no error anywhere, because `@nuxt/ui`'s own BUILD-TIME
+     code gets bundled into the runtime and breaks Vue's component
+     resolution globally. The real fix: keep anything reaching
+     `useComponentIcons.js` (interactive form components —
+     u-select/u-switch/u-modal/u-tabs — and any `@nuxt/ui/composables`
+     import) out of the SSR module graph entirely, via a `<ClientOnly>`
+     wrapper (`resources/js/Components/ClientOnly.vue`) + `defineAsyncComponent`
+     for the modal, and a dynamic `import()` inside `onMounted()` for
+     `useToast`. Components with zero SEO value when closed/unopened (a
+     modal, a toast) cost nothing by skipping SSR — don't fight the bundler
+     over them.
+  7. Don't name a local variable `page` in a component that also declares a
+     `page` **prop**, in the same `<script setup>` scope. `AppRoot.vue`'s
+     props include `page` (the Vue component Inertia wants rendered, used in
+     the template as `:is="page"`) — adding `const page = usePage()`
+     (Inertia's reactive page-STATE object, an unrelated thing with an
+     obvious matching name) shadowed the prop. The template's `:is="page"`
+     then resolved to the state object instead of the component, and
+     silently rendered nothing — the empty-`<div id="app">` symptom above
+     had two independent causes, and this one had nothing to do with
+     `@nuxt/ui` at all.
+  8. Ziggy's `route()` needs its route-definition config explicitly shared
+     as an Inertia prop (`'ziggy' => fn () => (new Ziggy)->toArray()` in
+     `HandleInertiaRequests`) for SSR to work. The `@routes` Blade directive
+     only writes a `<script>` tag for the *browser's* `window.Ziggy` — the
+     Node SSR process never sees it, so calling `route()` from any
+     server-rendered page throws `Cannot read properties of undefined
+     (reading 'login')` deep inside `ziggy-js`, crashing that page's entire
+     render. (Note the correct import is `Tighten\Ziggy\Ziggy` —
+     `tightenco/ziggy`'s composer package name doesn't match its own PHP
+     namespace.)
+  9. Cast every `datetime`-shaped column on every model, even ones that look
+     obviously date-like. `PlayerBoard::$casts` didn't include
+     `last_roll_date`, so `Auth`-flow-verified, curl-verified SSR output
+     looked completely correct right up until the dice-roll button was
+     actually clicked in a real browser — `$playerBoard->last_roll_date
+     ?->isToday()` threw `Call to a member function isToday() on string`,
+     a 500 with zero SSR/Vue involvement at all. A reminder that curling SSR
+     HTML only proves the *read* path works — mutations need their own
+     end-to-end check, ideally by verifying the actual DB row changed, not
+     just that the request returned 200.
 - [ ] `stale/` can be deleted once the migration is verified complete and the
   team is confident nothing needs porting from it anymore.
 
