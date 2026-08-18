@@ -9,6 +9,21 @@
              <Head> block (see Pages/SnakesAndLadders.vue), collected during
              the server render and injected here by @inertiaHead — not
              appended client-side after hydration. --}}
+        {{-- Favicons — transparent, monochrome trophy. favicon.svg adapts to
+             light/dark tab chrome; the .ico/PNGs are the legacy fallback. --}}
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+        <link rel="manifest" href="/manifest.webmanifest">
+
+        {{-- Google Fonts — Cinzel and Cinzel Decorative for OSRS-style headings --}}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700&display=swap">
+
         @routes
         @inertiaHead
 
