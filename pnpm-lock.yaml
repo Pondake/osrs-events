@@ -14,6 +14,9 @@ importers:
       '@vue/server-renderer':
         specifier: ^3.5.41
         version: 3.5.41
+      laravel-vue-i18n:
+        specifier: ^2.8.0
+        version: 2.8.0(typescript@6.0.3)
       vue:
         specifier: ^3.4.0
         version: 3.5.41(typescript@6.0.3)
@@ -1398,6 +1401,9 @@ packages:
       fontaine:
         optional: true
 
+  laravel-vue-i18n@2.8.0:
+    resolution: {integrity: sha512-5D4GvITMZaLVwnirMU8NeQBCSfhEqDyRHiFshfP9ycdczB6e2oYZl5ow95M2sLOViPCuroYzMXqybfG9yFhoCw==}
+
   lib0@0.2.117:
     resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
     engines: {node: '>=16'}
@@ -1686,6 +1692,9 @@ packages:
 
   perfect-debounce@2.1.0:
     resolution: {integrity: sha512-LjgdTytVFXeUgtHZr9WYViYSM/g8MkcTPYDlPa3cDqMirHjKiSZPYd6DoL7pK8AJQr+uWkQvCjHNdiMqsrJs+g==}
+
+  php-parser@3.2.2:
+    resolution: {integrity: sha512-voj3rzCJmEbwHwH3QteON28wA6K+JbcaJEofyUZkUXmcViiXofjbSbcE5PtqtjX6nstnnAEYCFoRq0mkjP5/cg==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -3754,6 +3763,13 @@ snapshots:
     optionalDependencies:
       fontaine: 0.8.0
 
+  laravel-vue-i18n@2.8.0(typescript@6.0.3):
+    dependencies:
+      php-parser: 3.2.2
+      vue: 3.5.41(typescript@6.0.3)
+    transitivePeerDependencies:
+      - typescript
+
   lib0@0.2.117:
     dependencies:
       isomorphic.js: 0.2.5
@@ -3983,6 +3999,8 @@ snapshots:
   pathe@2.0.3: {}
 
   perfect-debounce@2.1.0: {}
+
+  php-parser@3.2.2: {}
 
   picocolors@1.1.1: {}
 
