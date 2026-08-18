@@ -45,6 +45,10 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'boardSave' => fn () => $request->session()->get('board-save'),
                 'boardSaveError' => fn () => $request->session()->get('board-save-error'),
+                // Raw roll value for DiceRoller.vue to pick a die face —
+                // kept separate from boardSave's already-formatted sentence
+                // rather than parsing a number back out of display text.
+                'lastRoll' => fn () => $request->session()->get('last-roll'),
             ],
             'auth' => [
                 'user' => $user ? [
