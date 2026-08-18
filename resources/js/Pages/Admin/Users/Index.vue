@@ -1,0 +1,88 @@
+<template>
+    <Head title="Manage users" />
+
+    <u-main>
+        <u-page>
+            <u-container class="py-12">
+                <h1 class="text-3xl font-bold text-highlighted mb-8">Users</h1>
+
+                <u-input v-model="search" placeholder="Search by Discord username…" icon="i-lucide-search" class="w-full max-w-sm mb-6" @update:model-value="doSearch" />
+
+                <div class="divide-y divide-default rounded-lg ring ring-default bg-default">
+                    <div v-for="user in users" :key="user.id" class="flex items-center justify-between gap-4 px-4 py-3 flex-wrap">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <u-avatar :src="user.avatar_url ?? undefined" size="sm" />
+                            <div class="min-w-0">
+                                <div class="font-medium truncate">{{ user.nickname ?? user.discord_username }}</div>
+                                <div class="text-xs text-muted truncate">@{{ user.discord_username }}</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <u-badge v-for="ur in user.user_roles" :key="ur.id" :label="ur.role.name" color="primary" variant="subtle" class="cursor-pointer" @click="removeRole(user, ur.role)" />
+                            <u-badge v-for="p in user.user_permissions" :key="p.id" :label="p.permission_key" color="neutral" variant="subtle" class="cursor-pointer" @click="revokePermission(user, p.permission_key)" />
+
+                            <u-select
+                                :model-value="null"
+                                :items="roleOptions"
+                                placeholder="+ role"
+                                size="xs"
+                                class="w-28"
+                                @update:model-value="(role) => assignRole(user, role)"
+                            />
+                            <u-select
+                                :model-value="null"
+                                :items="permissionKeys"
+                                placeholder="+ permission"
+                                size="xs"
+                                class="w-36"
+                                @update:model-value="(key) => grantPermission(user, key)"
+                            />
+                        </div>
+                    </div>
+                    <p v-if="!users.length" class="px-4 py-8 text-center text-muted text-sm">No users found.</p>
+                </div>
+            </u-container>
+        </u-page>
+    </u-main>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
+
+const props = defineProps({
+    users: { type: Array, required: true },
+    search: { type: String, default: '' },
+    permissionKeys: { type: Array, required: true },
+});
+
+// Not fetched from the server — ADMIN/EDITOR/TEAM_MANAGER were the roles
+// referenced across the old frontend's isAdmin/isEditor checks and
+// assertManagerOrAdmin(). Roles are otherwise freeform strings
+// (Role::firstOrCreate in AdminUserController::assignRole), so this list is
+// just the known set worth offering in this dropdown, not a hard constraint.
+const roleOptions = ['ADMIN', 'EDITOR', 'TEAM_MANAGER', 'PLAYER'];
+
+const search = ref(props.search);
+
+function doSearch(value) {
+    router.get('/admin/users', { search: value }, { preserveState: true, replace: true });
+}
+
+function assignRole(user, role) {
+    router.post(`/admin/users/${user.id}/roles`, { role }, { preserveScroll: true });
+}
+
+function removeRole(user, role) {
+    router.delete(`/admin/users/${user.id}/roles/${role.id}`, { preserveScroll: true });
+}
+
+function grantPermission(user, key) {
+    router.post(`/admin/users/${user.id}/permissions`, { permission_key: key }, { preserveScroll: true });
+}
+
+function revokePermission(user, key) {
+    router.delete(`/admin/users/${user.id}/permissions/${key}`, { preserveScroll: true });
+}
+</script>

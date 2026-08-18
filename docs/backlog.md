@@ -73,7 +73,19 @@ branch's SSR evaluation. Concrete carry-over work:
 - [ ] Rewrite the GraphQL code-first API surface as Inertia controllers —
   full rewrite, not a port; the resolver layer has no Laravel equivalent.
   Boards is done (above); teams/tasks/admin/invites/access are not.
-- [ ] Port teams + admin pages (`Team/*`, `admin/*`) — not started.
+- [x] ~~Port teams + admin pages~~ — done. `TeamController`
+  (index/store/update/destroy/addMember/removeMember, guild-based visibility
+  filter preserved from `TeamsService.findAll()`), `Admin\BoardController`,
+  `Admin\TaskController`, `Admin\UserController` (role assign/remove,
+  permission grant/revoke — only `canCreateBoards`/`canCreateTiles` exist as
+  keys, matching the old `PermissionKey` enum). Verified team creation via
+  DB state check in a real browser session, same as the boards mutations.
+  **Known simplification**: `TeamController::authorizeManage()` only checks
+  `isAdmin() || hasRole('TEAM_MANAGER')` server-side — correct and
+  authoritative — but `Teams/Index.vue`'s `canManage` UI flag only checks
+  `isAdmin`, since per-team membership role isn't in the shared auth prop.
+  A TEAM_MANAGER who isn't admin won't see the manage buttons even though
+  the server would allow the action; not a security gap, just a UI gap.
 - [ ] Port remaining static/marketing pages (about, donate, privacy, terms,
   index, osrs-clan-events, osrs-event-ideas) — not started.
 - [ ] Pick an i18n solution for 598 keys currently in
