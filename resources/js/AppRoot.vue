@@ -1,12 +1,16 @@
 <template>
     <u-app>
+        <app-header />
         <component :is="page" v-bind="pageProps" />
+        <app-footer />
     </u-app>
 </template>
 
 <script setup>
 import { onMounted, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
+import AppHeader from '@/Components/AppHeader.vue';
+import AppFooter from '@/Components/AppFooter.vue';
 
 // Prop is named `page` (the Vue component to render, per Inertia's
 // createInertiaApp setup() contract) — deliberately never captured into a

@@ -273,6 +273,36 @@ branch's SSR evaluation. Concrete carry-over work:
      wasn't the actual cause here. Left as a static array with content-level
      `v-if` gating instead, which sidesteps the question rather than
      resolving it either way.
+- [x] ~~Site navigation (header/footer/user menu)~~ — done, and it was a real
+  gap, not polish: every page existed in isolation with no way to navigate
+  between them except typing URLs directly, which is how this entire
+  migration had been tested up to this point. `AppHeader.vue` (role-gated
+  nav — Boards/Teams/Tasks/Users, matching the old `AppHeader.vue`'s
+  `isAdmin`/`isEditor`/`isTeamManager` logic, now sourced from a `roles`
+  array added to `HandleInertiaRequests`'s shared `auth.user`),
+  `UserMenu.vue` (avatar dropdown, profile link, logout), `AppFooter.vue`
+  (guide/legal links — the only site-wide crawl path to the marketing
+  pages). Wired into `AppRoot.vue` once, not per-page. Verified logout
+  end-to-end in a real browser: header correctly flips from the user menu
+  back to "Login with Discord" and redirects home.
+  **Found a process-crashing bug while building this** — not a per-request
+  500, an uncaught exception that killed the entire long-running SSR Node
+  process outright: any `@nuxt/ui` component going through its Inertia-mode
+  `Link` override (`u-navigation-menu`, any `href`/`to`-bound `u-button` —
+  including the login button) unconditionally reads `usePage().url` for
+  active-route highlighting. `AppHeader` renders as a sibling to, and
+  *before*, the actual Inertia page component in `AppRoot.vue`'s template,
+  so during SSR that read happens before Inertia's own page-state singleton
+  is populated — `page.url.startsWith(...)` throws on `undefined`. Also hit
+  a nested-`<a>` bug in the same component: `u-header` already wraps its
+  `#title` slot content in its own link to `to` (default `/`) — the old
+  Nuxt app's own `AppHeader.vue` had a comment warning about exactly this,
+  read while porting it, and still made the mistake once by putting a raw
+  `<a href="/">` inside the slot anyway. Fixed by keeping the title as plain
+  text (no nested link) and moving the nav menu + login button behind
+  `<client-only>` — they cost nothing server-rendered (behind
+  `v-if="isAuthenticated"` for an anonymous crawler anyway, and the footer
+  already carries the crawl-relevant marketing links as plain `<a>` tags).
 - [ ] `stale/` can be deleted once the migration is verified complete and the
   team is confident nothing needs porting from it anymore.
 
