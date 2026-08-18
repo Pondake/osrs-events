@@ -412,6 +412,17 @@ branch's SSR evaluation. Concrete carry-over work:
   never exercised a first-time visit, so it went unnoticed until testing the
   INVITE join flow with a fresh user in a real browser. Invite-management UI
   is now built too — see Migration above.
-- [ ] Rate limiting / throttling on the Discord OAuth routes.
-- [ ] CSRF, session, and cookie config review once real deployment domains
-  are known (currently defaults from a fresh `laravel/laravel` scaffold).
+- [x] ~~Rate limiting / throttling on the Discord OAuth routes~~ — done.
+  `throttle:20,1` on `/auth/discord/redirect`, `throttle:10,1` (tighter —
+  it's the one doing the actual token exchange + DB writes) on
+  `/auth/discord/callback`. Verified live: the 21st request within a minute
+  to `/auth/discord/redirect` returns 429, not another redirect.
+- [x] ~~CSRF, session, and cookie config review~~ — done, as much as it can
+  be without a real domain yet. `VerifyCsrfToken` has no exceptions
+  configured, so no gap there. `SESSION_DOMAIN`/`SESSION_SAME_SITE` are fine
+  as-is regardless of the eventual domain (same-origin OAuth redirect flow
+  works under the `lax` default). The one real gap: `SESSION_SECURE_COOKIE`
+  was never in `.env.example` and defaults to unset — harmless on the
+  plain-HTTP local dev server, but would silently ship session/XSRF cookies
+  over HTTP on a real deployment if nobody thought to set it explicitly.
+  Now documented in `.env.example` with a comment explaining why it matters.
