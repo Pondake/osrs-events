@@ -9,6 +9,7 @@
         "dev": "vite"
     },
     "devDependencies": {
+        "@iconify-json/simple-icons": "^1.2.93",
         "@inertiajs/vue3": "^2.0.0",
         "@tailwindcss/vite": "^4.0.0",
         "@vitejs/plugin-vue": "^6.0.0",
