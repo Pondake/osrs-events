@@ -86,8 +86,14 @@ branch's SSR evaluation. Concrete carry-over work:
   `isAdmin`, since per-team membership role isn't in the shared auth prop.
   A TEAM_MANAGER who isn't admin won't see the manage buttons even though
   the server would allow the action; not a security gap, just a UI gap.
-- [ ] Port remaining static/marketing pages (about, donate, privacy, terms,
-  index, osrs-clan-events, osrs-event-ideas) — not started.
+- [x] ~~Port remaining static/marketing pages~~ — done: `Home`, `About`,
+  `Donate`, `Privacy`, `Terms`, `OsrsClanEvents`, `OsrsEventIdeas`. Copy
+  transcribed from `stale/frontend/locales/en.json` (the real English
+  strings, not placeholders) — will need re-extracting into locale files
+  once i18n lands, but it's the actual site copy in the meantime, not filler.
+  `OsrsClanEvents`' login CTA hit a fifth Ziggy footgun (see #10 below):
+  calling `route()` from a `computed()` in `<script setup>` instead of
+  directly in the template.
 - [ ] Pick an i18n solution for 598 keys currently in
   `stale/frontend/locales/en.json` — no drop-in replacement for
   `@nuxtjs/i18n`. Leading candidate: `laravel-vue-i18n` (documented SSR
@@ -158,7 +164,19 @@ branch's SSR evaluation. Concrete carry-over work:
      render. (Note the correct import is `Tighten\Ziggy\Ziggy` —
      `tightenco/ziggy`'s composer package name doesn't match its own PHP
      namespace.)
-  9. Cast every `datetime`-shaped column on every model, even ones that look
+  9. `route()` (Ziggy) is only bound on Vue's `globalProperties` by the
+     `ZiggyVue` plugin — usable as a bare identifier directly in a
+     `<template>`, but not from plain `<script setup>` JS (a `computed()`
+     callback, a function body). `import { route } from 'ziggy-js'` looks
+     like the fix but isn't: that named export resolves its OWN Ziggy config
+     independently of the plugin instance `ssr.js` explicitly configured
+     with `page.props.ziggy`, falling back to a global `Ziggy` variable that
+     doesn't exist in Node — reintroducing the exact SSR crash bug #8 fixed,
+     just scoped to whichever page's script calls it. Keep every `route()`
+     call directly in the template; restructure the component (extra
+     `v-if`/`v-else` branches, whatever it takes) rather than hoisting the
+     call into script.
+  10. Cast every `datetime`-shaped column on every model, even ones that look
      obviously date-like. `PlayerBoard::$casts` didn't include
      `last_roll_date`, so `Auth`-flow-verified, curl-verified SSR output
      looked completely correct right up until the dice-roll button was
