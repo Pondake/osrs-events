@@ -25,7 +25,8 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $user = $request->user();
+        $user = $request->user()?->load('userRoles.role');
+        $roles = $user?->userRoles->pluck('role.name') ?? collect();
 
         return [
             ...parent::share($request),
@@ -54,6 +55,12 @@ class HandleInertiaRequests extends Middleware
                     'isAdmin' => $user->isAdmin(),
                     'canCreateBoards' => $user->hasPermission('canCreateBoards'),
                     'canCreateTiles' => $user->hasPermission('canCreateTiles'),
+                    // Raw role list — needed for AppHeader.vue's nav (isEditor/
+                    // isTeamManager gating, matching the old AppHeader.vue) and
+                    // Profile.vue's badges. Not collapsed into more isX flags
+                    // here since the roles a nav might care about can grow
+                    // without a matching HandleInertiaRequests change every time.
+                    'roles' => $roles,
                 ] : null,
             ],
         ];
