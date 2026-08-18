@@ -79,4 +79,10 @@ class User extends Authenticatable
     {
         return $this->isAdmin() || $board->authors()->where('user_id', $this->id)->exists();
     }
+
+    /** Ported from InvitesService::assertOwnerOrAdmin() — owner (not just any co-author) or admin. */
+    public function isBoardOwnerOrAdmin(Board $board): bool
+    {
+        return $this->isAdmin() || $board->authors()->where(['user_id' => $this->id, 'is_owner' => true])->exists();
+    }
 }

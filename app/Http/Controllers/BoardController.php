@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Board;
 use App\Models\BoardAuthor;
+use App\Services\BoardAccessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,16 +32,33 @@ class BoardController extends Controller
         return Inertia::render('Boards/Index', ['boards' => $boards]);
     }
 
-    public function show(Board $board): Response
+    /**
+     * Ported from AccessService::hasAccess() — the enforcement that was
+     * missing entirely from the first migration pass (BoardAccessMode
+     * existed as a column but nothing checked it; any logged-in user could
+     * view any board). GUILD/INVITE boards the user hasn't joined render
+     * Boards/AccessGate instead of the board itself.
+     */
+    public function show(Board $board, BoardAccessService $access): Response
     {
+        $user = Auth::user();
+
+        if (! $access->hasAccess($user, $board)) {
+            $canJoin = $access->canJoin($user, $board);
+
+            return Inertia::render('Boards/AccessGate', [
+                'board' => $board->only(['id', 'title', 'access_mode']),
+                'reason' => $canJoin['reason'] ?? null,
+                'canRequestInvite' => $board->access_mode === 'INVITE',
+            ]);
+        }
+
         $board->load([...self::BOARD_WITH, 'tiles.task']);
 
-        $playerBoard = Auth::check()
-            ? $board->playerBoards()
-                ->where('user_id', Auth::id())
-                ->with('completedTiles:id,player_board_id,tile_id')
-                ->first()
-            : null;
+        $playerBoard = $board->playerBoards()
+            ->where('user_id', $user->id)
+            ->with('completedTiles:id,player_board_id,tile_id')
+            ->first();
 
         return Inertia::render('BoardShow', [
             'board' => $board,
@@ -48,9 +67,22 @@ class BoardController extends Controller
                 ...$playerBoard->only(['id', 'current_position', 'dice_rolls_today']),
                 'completedTileIds' => $playerBoard->completedTiles->pluck('tile_id'),
             ],
-            'canEdit' => Auth::check() && $board->authors()->where('user_id', Auth::id())->exists()
-                || (Auth::user()?->isAdmin() ?? false),
+            'canEdit' => $user->canEditBoard($board),
         ]);
+    }
+
+    /** Ported from AccessService::joinBoard() / InvitesService::useInvite(). */
+    public function join(Request $request, Board $board, BoardAccessService $access): RedirectResponse
+    {
+        $data = $request->validate(['token_or_code' => ['nullable', 'string']]);
+
+        try {
+            $access->joinBoard($request->user(), $board, $data['token_or_code'] ?? null);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return redirect()->route('boards.show', $board)->with('board-save', 'Joined the board.');
     }
 
     /**

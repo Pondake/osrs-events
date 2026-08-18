@@ -6,6 +6,7 @@ use App\Models\Board;
 use App\Models\CompletedTile;
 use App\Models\PlayerBoard;
 use App\Models\Tile;
+use App\Services\BoardAccessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,8 +32,10 @@ class PlayerBoardController extends Controller
      * between the snake's head and its target — same as the old
      * rollDice()'s "slide back down" behavior.
      */
-    public function roll(Board $board): RedirectResponse
+    public function roll(Board $board, BoardAccessService $access): RedirectResponse
     {
+        abort_unless($access->hasAccess(Auth::user(), $board), 403);
+
         $tiles = $board->tiles()->orderBy('position')->get();
         $maxPosition = $tiles->count() - 1;
 
@@ -88,8 +91,10 @@ class PlayerBoardController extends Controller
         return back()->with('board-save', "Rolled a {$rolled}" . ($jump ? " and hit a {$jump}!" : '.'));
     }
 
-    public function toggleTile(Board $board, Tile $tile): RedirectResponse
+    public function toggleTile(Board $board, Tile $tile, BoardAccessService $access): RedirectResponse
     {
+        abort_unless($access->hasAccess(Auth::user(), $board), 403);
+
         $playerBoard = $this->playerBoardFor($board);
 
         $existing = CompletedTile::where('player_board_id', $playerBoard->id)

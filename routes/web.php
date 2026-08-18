@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\BoardController;
+use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\TeamController;
@@ -44,6 +45,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/boards/{board}/roll', [PlayerBoardController::class, 'roll'])->name('boards.roll');
     Route::post('/boards/{board}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('boards.tiles.toggle');
+    Route::post('/boards/{board}/join', [BoardController::class, 'join'])->name('boards.join');
+
+    Route::post('/boards/{board}/invites', [BoardInviteController::class, 'store'])->name('boards.invites.store');
+    Route::delete('/boards/{board}/invites/{invite}', [BoardInviteController::class, 'destroy'])->name('boards.invites.destroy');
 
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
