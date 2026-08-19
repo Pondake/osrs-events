@@ -9,7 +9,7 @@
              <Head> block (see Pages/SnakesAndLadders.vue), collected during
              the server render and injected here by @inertiaHead — not
              appended client-side after hydration. --}}
-        {{-- Favicons — transparent, monochrome trophy. favicon.svg adapts to
+        {{-- Favicons — transparent, monochrome toasting mugs. favicon.svg adapts to
              light/dark tab chrome; the .ico/PNGs are the legacy fallback. --}}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg">
         <link rel="icon" type="image/x-icon" href="/favicon.ico">
