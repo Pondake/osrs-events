@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserGuild;
 use App\Models\UserRole;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -36,7 +37,7 @@ class DiscordController extends Controller
             ->redirect();
     }
 
-    public function callback(): RedirectResponse
+    public function callback(Request $request): RedirectResponse
     {
         $discordUser = Socialite::driver('discord')->user();
 
@@ -73,6 +74,11 @@ class DiscordController extends Controller
         }
 
         Auth::login($user, remember: true);
+
+        // Session fixation prevention — this was never here before; a
+        // pre-login session ID stayed valid post-login. Retrofitted while
+        // adding the email/password path below, which needed the same fix.
+        $request->session()->regenerate();
 
         return redirect()->intended('/boards');
     }

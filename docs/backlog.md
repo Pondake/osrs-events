@@ -517,14 +517,29 @@ every new user sees.
   state (SVG/Canvas reacting to input) — the latter is probably more
   honest for "shows what you're actually building" rather than a canned
   animation, but worth comparing effort/fidelity before committing.
-- [ ] Onboarding steps should cover, in order:
-  1. **Auth** — Discord login (already exists), plus a path with **no
-     Discord account required** (email/password or similar). This is a
-     bigger decision than just an onboarding-flow step: today Discord OAuth
-     is the *only* login path (see the existing open question in **Admin &
-     users** above, "whether that stays the sole auth path"). Resolve that
-     decision first; the onboarding flow just needs to expose whichever
-     paths end up existing.
+- [x] ~~**Auth** — email/password path with no Discord account required~~ —
+  done. `RegisteredUserController`/`AuthenticatedSessionController`
+  (`/register`, `/login`), `Pages/Auth/{Register,Login}.vue`. Discord OAuth
+  stays the primary flow; this is an alternative, surfaced via a dropdown on
+  the header's login button (`UserMenu.vue`) instead of replacing it.
+  Migration: `users.discord_id`/`discord_username` both went nullable
+  (an email account has neither), `email` (unique) + `password` added.
+  `User::casts()` auto-hashes `password` on write. Security: `Password::min(8)
+  ->letters()->mixedCase()->numbers()`, route `throttle:5,1` (register) /
+  `throttle:10,1` (login) matching the existing Discord-route pattern,
+  `$request->session()->regenerate()` on login/register to prevent session
+  fixation — and retrofitted onto `DiscordController::callback()` too, which
+  never had it. **Not done, deliberately out of scope**: email verification
+  and password reset — no mail sending is configured in this environment,
+  and building either without it would just be dead UI. `email_verified_at`
+  wasn't added to the migration either; add it when mail is actually wired
+  up, not before.
+  Two real bugs found live-testing this: the users-table migration missed
+  that `discord_username` was ALSO `NOT NULL` (registration 500'd on its
+  first real attempt, fixed with a follow-up migration), and a handful of
+  admin/search views (`Admin/Users/Index.vue`, `BoardSettingsModal.vue`)
+  assumed `discord_username` always exists — fixed to fall back to
+  `nickname`/`email` instead of rendering a bare "@".
   2. **Roles & permissions explainer** — surface what role/permission the
      new user has and what it unlocks. Note: role/permission enforcement
      itself is **already implemented and working** (`Role`, `UserRole`,

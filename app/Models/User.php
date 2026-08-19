@@ -11,12 +11,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['discord_id', 'discord_username', 'nickname', 'avatar_url'])]
-#[Hidden(['remember_token'])]
+#[Fillable(['discord_id', 'discord_username', 'nickname', 'avatar_url', 'email', 'password'])]
+#[Hidden(['remember_token', 'password'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasUuids, Notifiable;
+
+    /**
+     * Laravel's auto-hashing cast — any ->create()/->update() with a raw
+     * 'password' value hashes it before it touches the database, and
+     * Auth::attempt()'s Hash::check() comparison stays correct either way.
+     * Removes any chance of accidentally persisting a plaintext password.
+     */
+    protected function casts(): array
+    {
+        return [
+            'password' => 'hashed',
+        ];
+    }
 
     /** Display name shown throughout the app — nickname if set, else the raw Discord username. */
     public function displayName(): string

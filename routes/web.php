@@ -3,7 +3,9 @@
 use App\Http\Controllers\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\DiscordController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\LandingController;
@@ -30,11 +32,34 @@ Route::get('/auth/discord/callback', [DiscordController::class, 'callback'])
     ->middleware('throttle:10,1')
     ->name('auth.discord.callback');
 
-Route::post('/logout', function () {
+Route::post('/logout', function (Request $request) {
     Auth::logout();
+
+    // Discard the authenticated session entirely on logout, not just the
+    // auth guard's own state — same session-hygiene reasoning as the
+    // regenerate() calls on login (DiscordController, Auth\*Controller).
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
 
     return redirect('/');
 })->middleware('auth')->name('logout');
+
+// Email/password path — see routes 26-31 above for the Discord OAuth path,
+// which stays the primary flow. `guest` keeps an already-authenticated user
+// from landing back on a signup/login form. Route names are `auth.*` rather
+// than Laravel's usual bare `register`/`login` because `login` is already
+// taken by the Discord redirect route above (route('login') is used
+// throughout the app for the Discord login button).
+Route::middleware('guest')->group(function () {
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('auth.register');
+    Route::post('/register', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('auth.register.store');
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('auth.login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('auth.login.store');
+});
 
 Route::get('/', [LandingController::class, 'home'])->name('home');
 Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadders'])

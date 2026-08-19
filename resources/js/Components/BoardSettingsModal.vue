@@ -62,7 +62,7 @@
                                         class="w-full flex items-center gap-3 px-3 py-2 hover:bg-elevated transition-colors text-left"
                                         @click="addAuthor(candidate)"
                                     >
-                                        <u-avatar :src="candidate.avatar_url ?? undefined" :alt="candidate.discord_username" size="xs" />
+                                        <u-avatar :src="candidate.avatar_url ?? undefined" :alt="candidate.nickname ?? candidate.discord_username" size="xs" />
                                         <span class="text-sm">{{ candidate.nickname ?? candidate.discord_username }}</span>
                                     </button>
                                 </div>
