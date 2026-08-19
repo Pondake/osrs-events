@@ -139,7 +139,7 @@ class DiscordController extends Controller
     {
         $claimedBy = User::where('discord_id', $discordId)->first();
         if ($claimedBy && $claimedBy->id !== $userId) {
-            return redirect('/profile')->with('board-save-error', trans('profile.discord_already_linked'));
+            return redirect('/settings/account')->with('board-save-error', trans('profile.discord_already_linked'));
         }
 
         $user = User::findOrFail($userId);
@@ -155,7 +155,7 @@ class DiscordController extends Controller
             Log::warning("Guild sync failed for user {$user->id}: {$e->getMessage()}");
         }
 
-        return redirect('/profile')->with('board-save', trans('profile.discord_connected'));
+        return redirect('/settings/account')->with('board-save', trans('profile.discord_connected'));
     }
 
     private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl, ?string $globalName): User
