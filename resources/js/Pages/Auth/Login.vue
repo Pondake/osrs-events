@@ -10,6 +10,8 @@
                         <p class="text-muted text-sm mt-1">{{ $t('auth.login_subtitle') }}</p>
                     </template>
 
+                    <u-alert v-if="status" color="success" variant="subtle" icon="i-lucide-circle-check" :description="status" class="mb-4" />
+
                     <form class="space-y-4" @submit.prevent="submit">
                         <u-form-field :label="$t('auth.field_email')" :error="form.errors.email" required>
                             <u-input v-model="form.email" type="email" autocomplete="username" class="w-full" />
@@ -18,6 +20,10 @@
                         <u-form-field :label="$t('auth.field_password')" :error="form.errors.password" required>
                             <u-input v-model="form.password" type="password" autocomplete="current-password" class="w-full" />
                         </u-form-field>
+
+                        <div class="text-right">
+                            <a :href="route('password.request')" class="text-xs text-muted hover:text-primary hover:underline">{{ $t('auth.forgot_password') }}</a>
+                        </div>
 
                         <u-button type="submit" color="primary" block :loading="form.processing" :label="$t('auth.cta_login')" />
                     </form>
@@ -42,6 +48,10 @@
 
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+
+defineProps({
+    status: { type: String, default: null },
+});
 
 const form = useForm({ email: '', password: '' });
 

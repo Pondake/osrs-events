@@ -529,11 +529,28 @@ every new user sees.
   `throttle:10,1` (login) matching the existing Discord-route pattern,
   `$request->session()->regenerate()` on login/register to prevent session
   fixation — and retrofitted onto `DiscordController::callback()` too, which
-  never had it. **Not done, deliberately out of scope**: email verification
-  and password reset — no mail sending is configured in this environment,
-  and building either without it would just be dead UI. `email_verified_at`
-  wasn't added to the migration either; add it when mail is actually wired
-  up, not before.
+  never had it.
+  **Password reset is now done too** — `PasswordResetLinkController` /
+  `NewPasswordController` (`/forgot-password`, `/reset-password/{token}`),
+  `Pages/Auth/{ForgotPassword,ResetPassword}.vue`, plus the
+  `password_reset_tokens` table the original users migration skipped.
+  `MAIL_MAILER=log` locally means the reset mail lands in
+  `storage/logs/laravel.log` — verified end to end by pulling the real link
+  out of that log and completing the reset. Note the `password.reset` route
+  name is load-bearing: Laravel's own `ResetPassword` notification builds
+  its link from it, so renaming it silently breaks the emailed URL.
+  Security notes: `/forgot-password` always reports success regardless of
+  whether the address exists, so it can't be used to probe for accounts;
+  the reset regenerates `remember_token` so pre-reset sessions die with it;
+  send is throttled hardest (`throttle:3,1`) since it's the one that puts
+  mail in someone else's inbox.
+  A Discord-only account has no email (OAuth scopes are identify+guilds by
+  design), so it can now add one under `/settings/account`, and setting a
+  password is **blocked** until it does — a password with no recovery route
+  is a lockout waiting to happen. Disconnecting Discord requires both.
+  **Still not done**: email verification (`email_verified_at`). An added
+  address is trusted as-is for now; worth revisiting when Brevo replaces
+  the log mailer on staging/prod.
   Two real bugs found live-testing this: the users-table migration missed
   that `discord_username` was ALSO `NOT NULL` (registration 500'd on its
   first real attempt, fixed with a follow-up migration), and a handful of
