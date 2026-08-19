@@ -96,7 +96,14 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
+            // 30, not Laravel's default 60. Guidance clusters at 15-60
+            // minutes (OWASP's Forgot Password cheat sheet argues for ~20 on
+            // the codes it covers), so 60 sits at the loose end of the range
+            // while 30 still leaves room for a mail that takes a few minutes
+            // to arrive and a user who doesn't read it instantly.
+            // Tokens are single-use regardless — the broker deletes the row
+            // on a successful reset, so expiry only bounds an UNUSED link.
+            'expire' => env('AUTH_PASSWORD_RESET_EXPIRE', 30),
             'throttle' => 60,
         ],
     ],

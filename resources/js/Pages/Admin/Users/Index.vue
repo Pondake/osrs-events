@@ -38,24 +38,56 @@
                                 class="w-36"
                                 @update:model-value="(key) => grantPermission(user, key)"
                             />
+
+                            <!-- Hidden rather than disabled for the two cases the
+                                 server also refuses (self, admins) — a button that
+                                 only ever errors isn't worth showing. -->
+                            <u-button
+                                v-if="canDelete(user)"
+                                icon="i-lucide-trash-2"
+                                color="error"
+                                variant="ghost"
+                                size="xs"
+                                :aria-label="$t('admin.delete_user')"
+                                :title="$t('admin.delete_user')"
+                                @click="confirmDelete(user)"
+                            />
                         </div>
                     </div>
                     <p v-if="!users.length" class="px-4 py-8 text-center text-muted text-sm">{{ $t('admin.no_users') }}</p>
                 </div>
             </u-container>
         </u-page>
+
+        <client-only>
+            <u-modal v-model:open="showDeleteModal" :title="$t('admin.delete_user')">
+                <template #body>
+                    <p class="text-muted">{{ $t('admin.delete_user_confirm', { name: deleteTarget ? displayName(deleteTarget) : '' }) }}</p>
+                </template>
+                <template #footer>
+                    <div class="flex gap-2 justify-end w-full">
+                        <u-button color="neutral" variant="ghost" :label="$t('common.cancel')" @click="showDeleteModal = false" />
+                        <u-button color="error" :label="$t('admin.delete_user')" @click="destroyUser" />
+                    </div>
+                </template>
+            </u-modal>
+        </client-only>
     </u-main>
 </template>
 
 <script setup>
 import { ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
+import { useAuth } from '@/Composables/useAuth';
+import ClientOnly from '@/Components/ClientOnly.vue';
 
 const props = defineProps({
     users: { type: Array, required: true },
     search: { type: String, default: '' },
     permissionKeys: { type: Array, required: true },
 });
+
+const { user: currentUser } = useAuth();
 
 // Not fetched from the server — ADMIN/EDITOR/TEAM_MANAGER were the roles
 // referenced across the old frontend's isAdmin/isEditor checks and
@@ -84,5 +116,28 @@ function grantPermission(user, key) {
 
 function revokePermission(user, key) {
     router.delete(`/admin/users/${user.id}/permissions/${key}`, { preserveScroll: true });
+}
+
+const displayName = (user) => user.nickname ?? user.discord_username ?? user.email;
+
+// Mirrors AdminUserController::destroy()'s own two refusals.
+const canDelete = (user) => user.id !== currentUser.value?.id && !user.user_roles.some((ur) => ur.role.name === 'ADMIN');
+
+const showDeleteModal = ref(false);
+const deleteTarget = ref(null);
+
+function confirmDelete(user) {
+    deleteTarget.value = user;
+    showDeleteModal.value = true;
+}
+
+function destroyUser() {
+    router.delete(`/admin/users/${deleteTarget.value.id}`, {
+        preserveScroll: true,
+        onFinish: () => {
+            showDeleteModal.value = false;
+            deleteTarget.value = null;
+        },
+    });
 }
 </script>

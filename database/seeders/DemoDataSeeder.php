@@ -63,10 +63,18 @@ class DemoDataSeeder extends Seeder
             return $existing;
         }
 
+        // Numbered off the highest EXISTING suffix, not off the row count —
+        // deleting any demo user (the admin UI can now do that) makes those
+        // two diverge, and counting would then re-generate a discord_id that
+        // still exists and blow up on the unique index.
+        $highest = $existing
+            ->map(fn (User $u) => (int) substr($u->discord_id, strlen('demo-')))
+            ->max() ?? 0;
+
         $needed = 90 - $existing->count();
         $fresh = User::factory()
             ->count($needed)
-            ->sequence(fn ($sequence) => ['discord_id' => 'demo-'.str_pad((string) ($existing->count() + $sequence->index + 1), 12, '0', STR_PAD_LEFT)])
+            ->sequence(fn ($sequence) => ['discord_id' => 'demo-'.str_pad((string) ($highest + $sequence->index + 1), 12, '0', STR_PAD_LEFT)])
             ->create();
 
         // ~1 in 3 demo users has a nickname override, to show
