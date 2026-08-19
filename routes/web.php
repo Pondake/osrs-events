@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\DiscordController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
@@ -60,6 +62,21 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('auth.login.store');
+
+    // Password reset by emailed link. The POST is throttled hardest of the
+    // lot: it's the one that actually sends mail, so it's the one worth
+    // abusing to spam a third party's inbox.
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:3,1')
+        ->name('password.email');
+    // Name MUST stay `password.reset` — Laravel's built-in ResetPassword
+    // notification builds its link with route('password.reset', ...), so
+    // renaming this silently breaks the emailed URL.
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('password.store');
 });
 
 Route::get('/', [LandingController::class, 'home'])->name('home');
@@ -112,6 +129,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/settings/profile', [SettingsProfileController::class, 'update'])->name('settings.profile.update');
 
     Route::get('/settings/account', [AccountController::class, 'show'])->name('settings.account');
+    Route::put('/settings/account/email', [AccountController::class, 'updateEmail'])
+        ->middleware('throttle:5,1')
+        ->name('settings.account.email');
     Route::put('/settings/account/password', [AccountController::class, 'updatePassword'])
         ->middleware('throttle:5,1')
         ->name('settings.account.password');

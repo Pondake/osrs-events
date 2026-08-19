@@ -13,9 +13,13 @@ use Inertia\Response;
 /** Email/password login — see RegisteredUserController for the matching signup flow. */
 class AuthenticatedSessionController extends Controller
 {
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('Auth/Login');
+        // Passed explicitly rather than added to HandleInertiaRequests'
+        // globally-shared flash bag — only the auth pages ever read it.
+        return Inertia::render('Auth/Login', [
+            'status' => $request->session()->get('status'),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse

@@ -57,9 +57,10 @@ class DiscordController extends Controller
         $user = $request->user();
 
         // A user must always have at least one way back in — refuse to
-        // strip Discord off an account with no password set, which would
-        // otherwise lock them out permanently with no login path at all.
-        abort_unless($user->password !== null, 400, 'Set a password before disconnecting Discord.');
+        // strip Discord off an account that can't log in without it. Both
+        // halves matter: the password is the credential, the email is the
+        // only way to recover it (see AccountController::updatePassword).
+        abort_unless($user->password !== null && $user->email !== null, 400, 'Set an email and password before disconnecting Discord.');
 
         // Freeze the Discord username into nickname first if nothing else
         // was ever set — otherwise a user who never customized their
