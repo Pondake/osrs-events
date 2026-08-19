@@ -20,7 +20,10 @@
          require), it just stops being a clickable link to "/". -->
     <u-header to="">
         <template #title>
-            <span class="text-lg font-bold text-highlighted">⚔️ OSRS Events</span>
+            <span class="flex items-center gap-2 text-lg font-bold text-highlighted">
+                <app-logo />
+                {{ $t('common.app_name') }}
+            </span>
         </template>
 
         <!-- u-navigation-menu and any href/to-bound u-button (UserMenu's
@@ -63,6 +66,7 @@
 import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
+import AppLogo from '@/Components/AppLogo.vue';
 import UserMenu from '@/Components/UserMenu.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 

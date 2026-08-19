@@ -67,7 +67,7 @@ h3 {
     outline: 2px solid var(--ui-color-success-500, #22c55e);
 }
 .board-tile--current {
-    outline: 2px solid var(--ui-color-primary-500, #a855f7);
+    outline: 2px solid var(--ui-color-primary-500, #d4a33e);
 }
 .board-tile--completed {
     opacity: 0.85;
