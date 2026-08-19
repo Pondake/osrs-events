@@ -11,23 +11,34 @@
                         <u-badge :label="board.mode" color="neutral" variant="subtle" />
                     </template>
                     <template #links>
-                        <div v-if="canEdit" class="flex gap-2">
+                        <div class="flex gap-2 flex-wrap">
                             <u-button
-                                :color="editMode ? 'primary' : 'neutral'"
-                                :variant="editMode ? 'solid' : 'outline'"
+                                v-if="otherPlayers.length > 0"
+                                :color="showOtherPlayers ? 'primary' : 'neutral'"
+                                :variant="showOtherPlayers ? 'subtle' : 'outline'"
                                 size="sm"
-                                :icon="editMode ? 'i-lucide-eye' : 'i-lucide-pencil'"
-                                :label="editMode ? $t('board.view_mode') : $t('board.edit_mode')"
-                                @click="editMode = !editMode"
+                                icon="i-lucide-users"
+                                :label="$t('board.show_players')"
+                                @click="showOtherPlayers = !showOtherPlayers"
                             />
-                            <u-button
-                                color="neutral"
-                                variant="outline"
-                                size="sm"
-                                icon="i-lucide-settings"
-                                :label="$t('board.edit_board')"
-                                @click="showSettingsModal = true"
-                            />
+                            <template v-if="canEdit">
+                                <u-button
+                                    :color="editMode ? 'primary' : 'neutral'"
+                                    :variant="editMode ? 'solid' : 'outline'"
+                                    size="sm"
+                                    :icon="editMode ? 'i-lucide-eye' : 'i-lucide-pencil'"
+                                    :label="editMode ? $t('board.view_mode') : $t('board.edit_mode')"
+                                    @click="editMode = !editMode"
+                                />
+                                <u-button
+                                    color="neutral"
+                                    variant="outline"
+                                    size="sm"
+                                    icon="i-lucide-settings"
+                                    :label="$t('board.edit_board')"
+                                    @click="showSettingsModal = true"
+                                />
+                            </template>
                             <u-button
                                 :href="`/boards/${board.id}/leaderboard`"
                                 color="neutral"
@@ -37,15 +48,6 @@
                                 :label="$t('leaderboard.title')"
                             />
                         </div>
-                        <u-button
-                            v-else
-                            :href="`/boards/${board.id}/leaderboard`"
-                            color="neutral"
-                            variant="outline"
-                            size="sm"
-                            icon="i-lucide-trophy"
-                            :label="$t('leaderboard.title')"
-                        />
                     </template>
                 </u-page-header>
 
@@ -60,8 +62,12 @@
 
                 <div v-else class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
                     <div class="flex-1 w-full min-w-0 overflow-x-auto">
-                        <div class="relative" :class="minWidthClass">
-                            <div :class="gridClass" class="grid gap-1.5">
+                        <!-- board-parchment/osrs-border ported as Tailwind utilities rather
+                             than the old app's custom CSS classes (main.css) — same look,
+                             but this codebase's convention is Tailwind-first custom CSS only
+                             when Tailwind can't express it, and this can. -->
+                        <div class="relative rounded-xl p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900" :class="minWidthClass">
+                            <div :class="gridClass" class="grid gap-1">
                                 <!-- Not gated on playerBoard existing — reaching this
                                      page at all already implies BoardAccess (see
                                      BoardController::show()'s access-gate redirect),
@@ -78,12 +84,55 @@
                                     v-for="tile in orderedTiles"
                                     :key="tile.position"
                                     type="button"
-                                    class="aspect-square rounded-md border flex items-center justify-center text-xs font-semibold transition-colors cursor-pointer hover:border-primary"
+                                    class="aspect-square rounded-md relative cursor-pointer overflow-hidden hover:scale-105 hover:z-10 transition-transform"
                                     :class="tileClasses(tile)"
-                                    :title="tile.title_override ?? tile.task?.title"
+                                    :title="tileTitle(tile) ?? trans('board.tile', { n: tile.position + 1 })"
                                     @click="handleTileClick(tile)"
                                 >
-                                    {{ tile.position + 1 }}
+                                    <span class="absolute top-1 left-1 text-xs font-bold text-muted leading-none z-10">{{ tile.position + 1 }}</span>
+
+                                    <span v-if="tile.type === 'SNAKE'" class="absolute top-1 right-1 z-10 text-error">
+                                        <u-icon name="i-lucide-move-down" class="size-3" />
+                                    </span>
+                                    <span v-else-if="tile.type === 'LADDER'" class="absolute top-1 right-1 z-10 text-success">
+                                        <u-icon name="i-lucide-move-up" class="size-3" />
+                                    </span>
+
+                                    <span v-if="isTileCompleted(tile)" class="absolute inset-0 flex items-center justify-center z-10 bg-success/20 rounded-md">
+                                        <u-icon name="i-lucide-check-circle-2" class="size-5 text-success" />
+                                    </span>
+
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center px-1 overflow-hidden">
+                                        <img
+                                            v-if="tile.task?.icon_url"
+                                            :src="tile.task.icon_url"
+                                            :alt="tileTitle(tile)"
+                                            class="max-h-[24%] max-w-[36%] object-contain shrink-0 mb-0.5"
+                                            loading="lazy"
+                                        />
+                                        <u-icon v-else-if="isTileEmpty(tile)" name="i-lucide-plus" class="size-5 text-muted/50 shrink-0" />
+
+                                        <p v-if="!isTileEmpty(tile)" class="w-full text-xs text-center leading-tight line-clamp-2 text-muted shrink-0">
+                                            {{ tileTitle(tile) }}
+                                        </p>
+                                    </div>
+
+                                    <div v-if="playersOnTile(tile.position).length" class="absolute bottom-0.5 right-0.5 flex flex-wrap-reverse justify-end gap-0.5 max-w-[calc(100%-4px)] z-10">
+                                        <u-avatar
+                                            v-for="p in playersOnTile(tile.position).slice(0, 3)"
+                                            :key="p.id"
+                                            :src="p.avatarUrl ?? undefined"
+                                            :alt="p.name"
+                                            size="3xs"
+                                            class="ring-1 ring-default"
+                                        />
+                                        <span
+                                            v-if="playersOnTile(tile.position).length > 3"
+                                            class="text-[8px] leading-none bg-elevated rounded-full size-3.5 flex items-center justify-center ring-1 ring-default"
+                                        >
+                                            +{{ playersOnTile(tile.position).length - 3 }}
+                                        </span>
+                                    </div>
                                 </button>
                             </div>
 
@@ -127,41 +176,209 @@
                     </div>
 
                     <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
+                        <!-- Ported from Sidebar.vue: the dice roller only appears once the
+                             CURRENT tile is marked complete — rolling isn't always available,
+                             it's the reward for finishing what you're standing on. This isn't
+                             enforced server-side either (old or new backend) — it's a UI pace,
+                             not a hard rule — but the UI gate itself was missing entirely here. -->
+                        <u-card v-if="playerBoard && currentTileCompleted">
+                            <template #header>
+                                <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
+                            </template>
+                            <dice-roller
+                                :rolling="rolling"
+                                :last-roll="lastRoll"
+                                :rolls-today="playerBoard?.dice_rolls_today ?? 0"
+                                :roll-limit="board.dice_roll_limit"
+                                @roll="roll"
+                            />
+                        </u-card>
+
+                        <u-card v-if="!playerBoard">
+                            <p class="text-sm text-muted">{{ $t('board.get_started_desc') }}</p>
+                            <div class="mt-3">
+                                <dice-roller :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="board.dice_roll_limit" @roll="roll" />
+                            </div>
+                        </u-card>
+
+                        <u-card v-if="currentTile">
+                            <template #header>
+                                <span class="font-semibold">{{ $t('board.your_task') }}</span>
+                            </template>
+                            <div class="flex items-start gap-3">
+                                <img
+                                    v-if="currentTile.task?.icon_url"
+                                    :src="currentTile.task.icon_url"
+                                    :alt="currentTileTitle"
+                                    class="size-10 object-contain shrink-0"
+                                />
+                                <u-icon v-else name="i-lucide-scroll-text" class="size-10 text-muted shrink-0" />
+
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-sm">{{ currentTileTitle }}</p>
+                                    <p class="text-xs text-muted mt-0.5">{{ $t('board.tile', { n: currentTile.position + 1 }) }}</p>
+                                    <p v-if="currentTile.task?.description" class="text-xs text-muted mt-1 leading-relaxed">
+                                        {{ currentTile.task.description }}
+                                    </p>
+                                    <u-badge v-if="currentTile.type !== 'NORMAL'" :color="currentTile.type === 'SNAKE' ? 'error' : 'success'" size="sm" class="mt-1">
+                                        {{ currentTile.type === 'SNAKE' ? '🐍' : '🪜' }} → {{ $t('board.tile', { n: (currentTile.target_position ?? 0) + 1 }) }}
+                                    </u-badge>
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <u-button
+                                    v-if="!currentTileCompleted"
+                                    color="success"
+                                    variant="solid"
+                                    size="sm"
+                                    icon="i-lucide-check"
+                                    block
+                                    :label="$t('board.complete_tile')"
+                                    @click="toggleTile(currentTile)"
+                                />
+                                <u-button
+                                    v-else
+                                    color="neutral"
+                                    variant="outline"
+                                    size="sm"
+                                    icon="i-lucide-x"
+                                    block
+                                    :label="$t('board.uncomplete_tile')"
+                                    @click="toggleTile(currentTile)"
+                                />
+                            </div>
+                        </u-card>
+
+                        <u-card v-if="clickedTile && clickedTile.position !== playerBoard?.current_position">
+                            <template #header>
+                                <div class="flex items-center justify-between">
+                                    <span class="font-semibold">{{ $t('board.tile_info') }}</span>
+                                    <u-button size="xs" variant="ghost" color="neutral" icon="i-lucide-x" :aria-label="$t('common.close')" @click="clickedTile = null" />
+                                </div>
+                            </template>
+                            <div class="flex items-start gap-3">
+                                <img
+                                    v-if="clickedTile.task?.icon_url"
+                                    :src="clickedTile.task.icon_url"
+                                    :alt="clickedTileTitle"
+                                    class="size-10 object-contain shrink-0"
+                                />
+                                <u-icon v-else name="i-lucide-scroll-text" class="size-10 text-muted shrink-0" />
+
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-sm">{{ clickedTileTitle }}</p>
+                                    <p class="text-xs text-muted mt-0.5">{{ $t('board.tile', { n: clickedTile.position + 1 }) }}</p>
+                                    <p v-if="clickedTile.task?.description" class="text-xs text-muted mt-1 leading-relaxed">
+                                        {{ clickedTile.task.description }}
+                                    </p>
+                                    <u-badge v-if="clickedTile.type !== 'NORMAL'" :color="clickedTile.type === 'SNAKE' ? 'error' : 'success'" size="sm" class="mt-1">
+                                        {{ clickedTile.type === 'SNAKE' ? '🐍' : '🪜' }} → {{ $t('board.tile', { n: (clickedTile.target_position ?? 0) + 1 }) }}
+                                    </u-badge>
+                                </div>
+                            </div>
+                        </u-card>
+
                         <u-card>
                             <template #header>
-                                <span class="font-semibold">{{ $t('board.your_progress') }}</span>
+                                <span class="font-semibold">{{ $t('admin.editors') }}</span>
                             </template>
-                            <dl v-if="playerBoard" class="text-sm space-y-2">
-                                <div class="flex justify-between">
-                                    <dt class="text-muted">{{ $t('board.current_tile') }}</dt>
-                                    <dd>{{ playerBoard.current_position + 1 }} / {{ tiles.length }}</dd>
+                            <div class="flex flex-wrap gap-2">
+                                <div v-for="author in board.authors" :key="author.id" class="flex items-center gap-1.5">
+                                    <u-avatar :src="author.user.avatar_url ?? undefined" :alt="author.user.nickname || author.user.discord_username" size="xs" />
+                                    <span class="text-xs">{{ author.user.nickname || author.user.discord_username }}</span>
                                 </div>
-                                <div class="flex justify-between">
-                                    <dt class="text-muted">{{ $t('board.tiles_completed') }}</dt>
-                                    <dd>{{ playerBoard.completedTileIds.length }}</dd>
+                            </div>
+                        </u-card>
+
+                        <u-card>
+                            <template #header>
+                                <span class="font-semibold">{{ $t('boards.meta') }}</span>
+                            </template>
+                            <div class="flex flex-wrap gap-2">
+                                <u-badge color="neutral" variant="subtle" icon="i-lucide-calendar">
+                                    {{ formatDate(board.start_date) }} – {{ formatDate(board.end_date) }}
+                                </u-badge>
+                                <u-badge color="neutral" variant="subtle" icon="i-lucide-grid-3x3">
+                                    {{ formatBoardSize(board.size) }}
+                                </u-badge>
+                                <u-badge v-if="board.dice_roll_limit" color="neutral" variant="subtle" icon="i-lucide-dice-6">
+                                    {{ $t('boards.roll_limit', { limit: board.dice_roll_limit }) }}
+                                </u-badge>
+                                <u-badge v-else color="neutral" variant="subtle" icon="i-lucide-dice-6">
+                                    {{ $t('dice.unlimited') }}
+                                </u-badge>
+                                <u-badge :color="board.mode === 'TEAM' ? 'warning' : 'neutral'" variant="subtle" icon="i-lucide-users-round">
+                                    {{ board.mode === 'TEAM' ? $t('board.mode_team') : $t('board.mode_solo') }}
+                                </u-badge>
+                            </div>
+                        </u-card>
+
+                        <u-card v-if="players.length">
+                            <template #header>
+                                <div class="flex items-center justify-between">
+                                    <span class="font-semibold">{{ $t('leaderboard.title') }}</span>
+                                    <u-button :href="`/boards/${board.id}/leaderboard`" variant="ghost" size="xs" color="neutral" trailing-icon="i-lucide-external-link" />
                                 </div>
-                                <div v-if="board.dice_roll_limit" class="flex justify-between">
-                                    <dt class="text-muted">{{ $t('board.rolls_today') }}</dt>
-                                    <dd>{{ playerBoard.dice_rolls_today }} / {{ board.dice_roll_limit }}</dd>
+                            </template>
+                            <div class="flex flex-col gap-1">
+                                <div
+                                    v-for="(p, i) in players.slice(0, 5)"
+                                    :key="p.id"
+                                    class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm"
+                                    :class="isMyPlayerRow(p) ? 'bg-primary/10 ring-1 ring-primary/30' : ''"
+                                >
+                                    <span class="w-4 text-center text-xs font-bold shrink-0" :class="i < 3 ? 'text-primary' : 'text-muted'">{{ i + 1 }}</span>
+                                    <img
+                                        v-if="p.team?.icon_url"
+                                        :src="p.team.icon_url"
+                                        :alt="p.team.name"
+                                        class="size-6 object-contain shrink-0"
+                                        style="image-rendering: pixelated"
+                                    />
+                                    <span
+                                        v-else-if="p.team"
+                                        class="size-6 rounded shrink-0 bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary"
+                                    >
+                                        {{ p.team.name.slice(0, 2).toUpperCase() }}
+                                    </span>
+                                    <u-avatar v-else :src="p.user?.avatar_url ?? undefined" :alt="p.user?.nickname ?? p.user?.discord_username" size="xs" class="shrink-0" />
+                                    <span class="flex-1 min-w-0 truncate font-medium">{{ p.team?.name ?? p.user?.nickname ?? p.user?.discord_username }}</span>
+                                    <span class="text-xs text-muted shrink-0">#{{ p.current_position + 1 }}</span>
+                                    <span
+                                        class="text-xs font-semibold w-10 text-right shrink-0"
+                                        :class="p.pathHasSnake ? 'text-error' : p.pathHasLadder ? 'text-success' : 'text-muted'"
+                                    >
+                                        {{ p.tilesRemaining }}🔲
+                                    </span>
                                 </div>
-                            </dl>
-                            <p v-else class="text-sm text-muted">
-                                {{ $t('board.get_started_desc') }}
-                            </p>
-                            <template #footer>
-                                <dice-roller
-                                    :rolling="rolling"
-                                    :last-roll="lastRoll"
-                                    :rolls-today="playerBoard?.dice_rolls_today ?? 0"
-                                    :roll-limit="board.dice_roll_limit"
-                                    @roll="roll"
+                            </div>
+                            <div v-if="players.length > 5" class="mt-1 text-center">
+                                <u-button
+                                    :href="`/boards/${board.id}/leaderboard`"
+                                    variant="ghost"
+                                    size="xs"
+                                    color="neutral"
+                                    :label="$t('leaderboard.show_all', { count: players.length })"
                                 />
-                            </template>
+                            </div>
                         </u-card>
                     </div>
                 </div>
             </u-container>
         </u-page>
+
+        <u-modal v-model:open="showBingo" :title="$t('board.bingo')">
+            <template #body>
+                <div class="text-center py-6">
+                    <p class="text-6xl mb-4">🎉</p>
+                    <p class="text-muted">{{ $t('board.bingo_desc') }}</p>
+                </div>
+            </template>
+            <template #footer>
+                <u-button block color="primary" :label="$t('common.close')" @click="showBingo = false" />
+            </template>
+        </u-modal>
 
         <client-only>
             <board-settings-modal v-model:open="showSettingsModal" :board="board" />
@@ -180,9 +397,10 @@
 <script setup>
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
-import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH } from '@/Support/board';
+import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate } from '@/Support/board';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 const TileEditModal = defineAsyncComponent(() => import('@/Components/TileEditModal.vue'));
@@ -191,6 +409,7 @@ const props = defineProps({
     board: { type: Object, required: true },
     tiles: { type: Array, required: true },
     playerBoard: { type: Object, default: null },
+    players: { type: Array, default: () => [] },
     hasTeam: { type: Boolean, default: true },
     canEdit: { type: Boolean, default: false },
 });
@@ -200,6 +419,15 @@ const editingTile = ref(null);
 const editMode = ref(false);
 const rolling = ref(false);
 const lastRoll = ref(null);
+const showBingo = ref(false);
+const showOtherPlayers = ref(false);
+// The tile the player last clicked (for inspection), separate from
+// currentTile (where they actually are). Ported from the old Sidebar.vue's
+// "Selected tile" panel — clicking a tile previews it, it does not toggle
+// completion; only the current-position tile's own button in the sidebar
+// can mark it complete, matching the old app (you complete tiles you've
+// actually reached, not any tile you click).
+const clickedTile = ref(null);
 
 // Fed by PlayerBoardController::roll()'s 'last-roll' session flash (kept
 // separate from the already-formatted 'board-save' toast text — see
@@ -218,6 +446,38 @@ const minWidthClass = computed(() => BOARD_MIN_WIDTH[props.board.size] ?? BOARD_
 
 const cols = computed(() => ({ SIZE_5X5: 5, SIZE_7X7: 7, SIZE_9X9: 9 }[props.board.size] ?? 7));
 const tileCount = computed(() => BOARD_TILE_COUNT[props.board.size] ?? 49);
+
+// Ported from the old Sidebar.vue's "your task" panel — shows the task
+// (icon/title/description) for whichever real tile the player is currently
+// standing on, plus the complete/uncomplete action. Distinct from clicking
+// a tile directly in the grid: this is the always-visible "what do I do
+// next" panel the old app had and this page was missing entirely.
+const currentTile = computed(() => {
+    if (!props.playerBoard) return null;
+    return props.tiles.find((t) => t.position === props.playerBoard.current_position) ?? null;
+});
+const currentTileTitle = computed(() => currentTile.value?.title_override ?? currentTile.value?.task?.title ?? trans('tile_editor.no_task'));
+const currentTileCompleted = computed(() => !!currentTile.value && (props.playerBoard?.completedTileIds.includes(currentTile.value.id) ?? false));
+
+const clickedTileTitle = computed(() => clickedTile.value?.title_override ?? clickedTile.value?.task?.title ?? trans('tile_editor.no_task'));
+
+// Ported from useBoardPage's otherPlayerStates/boardPlayerStates split — "me"
+// is whichever row matches my user (SOLO) or my team (TEAM); everyone else
+// only renders on the grid once the "show other players" toggle is on.
+const authUser = computed(() => inertiaPage.props.auth?.user ?? null);
+const isMyPlayerRow = (p) => (props.board.mode === 'TEAM' ? p.team_id === props.playerBoard?.team_id : p.user_id === authUser.value?.id);
+const otherPlayers = computed(() => props.players.filter((p) => !isMyPlayerRow(p)));
+const visiblePlayers = computed(() => props.players.filter((p) => isMyPlayerRow(p) || showOtherPlayers.value));
+
+function playersOnTile(position) {
+    return visiblePlayers.value
+        .filter((p) => p.current_position === position)
+        .map((p) => ({
+            id: p.team?.id ?? p.user_id,
+            name: p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? 'Player',
+            avatarUrl: p.team?.icon_url ?? p.user?.avatar_url ?? null,
+        }));
+}
 
 // Ported from the old GameBoard.vue's orderedTiles: a board doesn't get a
 // full grid of Tile rows created on creation — only positions someone has
@@ -277,23 +537,55 @@ function connectionPath(conn) {
     return `M ${start.x} ${start.y} Q ${cx} ${cy} ${end.x} ${end.y}`;
 }
 
-function tileClasses(tile) {
-    if (props.playerBoard?.completedTileIds.includes(tile.id)) {
-        return 'bg-primary/20 border-primary text-primary';
-    }
-    if (tile.type === 'SNAKE') return 'bg-error/10 border-error/30';
-    if (tile.type === 'LADDER') return 'bg-success/10 border-success/30';
-    if (tile.id === null) return 'bg-elevated/50 border-dashed border-default text-muted';
-    return 'bg-elevated border-default';
+// Ported 1:1 from the old BoardTile.vue's tileClass computed: an unconfigured
+// tile (no task, no title_override — includes the "not created yet"
+// placeholder from orderedTiles) is "empty"; everything else gets a light
+// primary tint. Outline-only (no background fill) for snake/ladder/current —
+// .board-tile--snake/--ladder/--current in resources/css/app.css — plus
+// --past for grayed-out already-passed tiles. This replaces an earlier
+// version that improvised its own bg-tint palette instead of using the CSS
+// classes that were already sitting there unused.
+function isTileEmpty(tile) {
+    return !tile.task && !tile.title_override;
 }
 
+function tileTitle(tile) {
+    return tile.title_override ?? tile.task?.title ?? null;
+}
+
+function isTileCompleted(tile) {
+    return props.playerBoard?.completedTileIds.includes(tile.id) ?? false;
+}
+
+function tileClasses(tile) {
+    const current = props.playerBoard?.current_position;
+    const classes = ['board-tile', isTileEmpty(tile) ? 'bg-muted/30' : 'bg-primary/5 dark:bg-primary/10'];
+
+    if (tile.type === 'SNAKE') classes.push('board-tile--snake');
+    if (tile.type === 'LADDER') classes.push('board-tile--ladder');
+
+    if (current !== undefined && current !== null && tile.id !== null) {
+        if (tile.position === current) classes.push('board-tile--current');
+        else if (tile.position < current) classes.push('board-tile--past');
+    }
+
+    if (isTileCompleted(tile)) classes.push('board-tile--completed');
+
+    return classes;
+}
+
+// Ported from useBoardPage's handleTileClick: in edit mode a click opens the
+// tile editor (including on an unconfigured tile — that's how you configure
+// one); otherwise it selects the tile for the sidebar's "Selected tile"
+// preview. It does NOT toggle completion — see the clickedTile declaration
+// above for why that's deliberate, not a missing feature.
 function handleTileClick(tile) {
     if (editMode.value) {
+        if (!props.canEdit) return;
         editingTile.value = tile;
         return;
     }
-    if (tile.id === null) return; // nothing to toggle on an unconfigured tile in play mode
-    toggleTile(tile);
+    clickedTile.value = tile;
 }
 
 function roll() {
@@ -301,7 +593,17 @@ function roll() {
     router.post(`/boards/${props.board.id}/roll`, {}, { preserveScroll: true, onFinish: () => (rolling.value = false) });
 }
 
+// Ported from the old useBoardPage's onCompleteTile: completing the tile at
+// the board's last position triggers the bingo modal.
 function toggleTile(tile) {
-    router.post(`/boards/${props.board.id}/tiles/${tile.id}/toggle`, {}, { preserveScroll: true });
+    const wasCompleted = props.playerBoard?.completedTileIds.includes(tile.id) ?? false;
+    const isBingo = !wasCompleted && tile.position === tileCount.value - 1;
+
+    router.post(`/boards/${props.board.id}/tiles/${tile.id}/toggle`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (isBingo) showBingo.value = true;
+        },
+    });
 }
 </script>
