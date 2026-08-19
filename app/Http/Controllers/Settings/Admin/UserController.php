@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Settings\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
@@ -37,7 +37,7 @@ class UserController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return Inertia::render('Admin/Users/Index', [
+        return Inertia::render('Settings/Admin/Users', [
             'users' => $users,
             'search' => $request->string('search')->toString(),
             'permissionKeys' => self::PERMISSION_KEYS,

@@ -2,7 +2,8 @@
 
 use App\Http\Controllers\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Admin\TaskController as AdminTaskController;
-use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Settings\Admin\ContentController;
+use App\Http\Controllers\Settings\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -161,12 +162,23 @@ Route::middleware('auth')->group(function () {
         Route::patch('/tasks/{task}', [AdminTaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
 
-        Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
+        // User management moved under /settings/admin — see below. Kept as a
+        // redirect because it was a top-level nav item until now.
+        Route::redirect('/users', '/settings/admin/users');
+    });
+
+    // Admin-only settings, rendered in the same SettingsLayout shell as the
+    // personal ones. Every action re-checks isAdmin() in the controller;
+    // the sidebar only hides the group, it isn't the authorization.
+    Route::prefix('settings/admin')->name('settings.admin.')->group(function () {
+        Route::get('/users', [AdminUserController::class, 'index'])->name('users');
         Route::post('/users/{user}/roles', [AdminUserController::class, 'assignRole'])->name('users.roles.assign');
         Route::delete('/users/{user}/roles/{role}', [AdminUserController::class, 'removeRole'])->name('users.roles.remove');
         Route::post('/users/{user}/permissions', [AdminUserController::class, 'grantPermission'])->name('users.permissions.grant');
         Route::delete('/users/{user}/permissions/{permissionKey}', [AdminUserController::class, 'revokePermission'])->name('users.permissions.revoke');
         Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+
+        Route::get('/content', [ContentController::class, 'index'])->name('content');
     });
 });
 
