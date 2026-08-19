@@ -19,11 +19,65 @@
                                 <u-button size="sm" color="neutral" variant="ghost" icon="i-lucide-x" @click="editing = false" />
                             </div>
 
-                            <p v-if="user.nickname" class="text-xs text-muted mt-0.5">{{ $t('profile.username') }}: {{ user.discordUsername }}</p>
+                            <p v-if="user.nickname && user.discordUsername" class="text-xs text-muted mt-0.5">{{ $t('profile.username') }}: {{ user.discordUsername }}</p>
 
                             <div class="flex flex-wrap gap-2 mt-3">
                                 <u-badge v-for="role in roles" :key="role" :color="roleColor(role)" variant="subtle" :icon="roleIcon(role)" :label="role" />
                             </div>
+                        </div>
+                    </div>
+                </u-card>
+
+                <u-card>
+                    <template #header>
+                        <span class="font-semibold">{{ $t('profile.account_settings') }}</span>
+                    </template>
+
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between gap-4 flex-wrap">
+                            <div>
+                                <p class="font-medium">{{ $t('profile.discord_account') }}</p>
+                                <p class="text-sm text-muted">
+                                    {{ hasDiscord ? $t('profile.discord_connected_as', { name: user.discordUsername }) : $t('profile.no_discord_desc') }}
+                                </p>
+                            </div>
+                            <u-button
+                                v-if="hasDiscord"
+                                :disabled="!hasPassword"
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                :label="$t('profile.disconnect_discord')"
+                                :title="!hasPassword ? $t('profile.discord_disconnect_needs_password') : undefined"
+                                @click="disconnectDiscord"
+                            />
+                            <u-button v-else :href="route('profile.discord.connect')" color="primary" variant="outline" size="sm" icon="i-simple-icons-discord" :label="$t('profile.connect_discord')" />
+                        </div>
+
+                        <u-separator />
+
+                        <div>
+                            <p class="font-medium mb-1">{{ hasPassword ? $t('profile.change_password') : $t('profile.set_password') }}</p>
+                            <p v-if="!hasPassword" class="text-sm text-muted mb-3">{{ $t('profile.no_password_desc') }}</p>
+
+                            <form class="space-y-3 max-w-sm" @submit.prevent="submitPassword">
+                                <u-form-field v-if="hasPassword" :label="$t('profile.current_password')" :error="passwordForm.errors.current_password" required>
+                                    <u-input v-model="passwordForm.current_password" type="password" autocomplete="current-password" class="w-full" />
+                                </u-form-field>
+                                <u-form-field :label="$t('profile.new_password')" :description="$t('auth.password_requirements')" :error="passwordForm.errors.password" required>
+                                    <u-input v-model="passwordForm.password" type="password" autocomplete="new-password" class="w-full" />
+                                </u-form-field>
+                                <u-form-field :label="$t('profile.confirm_new_password')" required>
+                                    <u-input v-model="passwordForm.password_confirmation" type="password" autocomplete="new-password" class="w-full" />
+                                </u-form-field>
+                                <u-button
+                                    type="submit"
+                                    color="primary"
+                                    size="sm"
+                                    :loading="passwordForm.processing"
+                                    :label="hasPassword ? $t('profile.change_password') : $t('profile.set_password')"
+                                />
+                            </form>
                         </div>
                     </div>
                 </u-card>
@@ -74,13 +128,15 @@
 
 <script setup>
 import { ref } from 'vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { useAuth } from '@/Composables/useAuth';
 import { formatBoardSize, BOARD_TILE_COUNT } from '@/Support/board';
 
 defineProps({
     roles: { type: Array, required: true },
     playerBoards: { type: Array, required: true },
+    hasPassword: { type: Boolean, required: true },
+    hasDiscord: { type: Boolean, required: true },
 });
 
 const { user } = useAuth();
@@ -88,6 +144,19 @@ const { user } = useAuth();
 const editing = ref(false);
 const nicknameInput = ref('');
 const form = useForm({ nickname: '' });
+
+const passwordForm = useForm({ current_password: '', password: '', password_confirmation: '' });
+
+function submitPassword() {
+    passwordForm.put('/profile/password', {
+        preserveScroll: true,
+        onSuccess: () => passwordForm.reset(),
+    });
+}
+
+function disconnectDiscord() {
+    router.delete('/profile/discord', { preserveScroll: true });
+}
 
 function startEditing() {
     nicknameInput.value = user.value.nickname ?? '';
