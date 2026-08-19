@@ -84,24 +84,15 @@
                                     v-for="tile in orderedTiles"
                                     :key="tile.position"
                                     type="button"
-                                    class="aspect-square rounded-md relative cursor-pointer overflow-hidden hover:scale-105 hover:z-10 transition-transform"
+                                    class="aspect-square rounded-md relative cursor-pointer overflow-hidden hover:scale-105 transition-transform"
                                     :class="tileClasses(tile)"
                                     :title="tileTitle(tile) ?? trans('board.tile', { n: tile.position + 1 })"
                                     @click="handleTileClick(tile)"
                                 >
-                                    <span class="absolute top-1 left-1 text-xs font-bold text-muted leading-none z-10">{{ tile.position + 1 }}</span>
-
-                                    <span v-if="tile.type === 'SNAKE'" class="absolute top-1 right-1 z-10 text-error">
-                                        <u-icon name="i-lucide-move-down" class="size-3" />
-                                    </span>
-                                    <span v-else-if="tile.type === 'LADDER'" class="absolute top-1 right-1 z-10 text-success">
-                                        <u-icon name="i-lucide-move-up" class="size-3" />
-                                    </span>
-
-                                    <span v-if="isTileCompleted(tile)" class="absolute inset-0 flex items-center justify-center z-10 bg-success/20 rounded-md">
-                                        <u-icon name="i-lucide-check-circle-2" class="size-5 text-success" />
-                                    </span>
-
+                                    <!-- No z-index anywhere in here on purpose — see tileClasses()'s
+                                         note. Paint order relies entirely on DOM order (later =
+                                         on top), so nothing here can leak into the root stacking
+                                         context and climb above a teleported modal. -->
                                     <div class="absolute inset-0 flex flex-col items-center justify-center px-1 overflow-hidden">
                                         <img
                                             v-if="tile.task?.icon_url"
@@ -117,7 +108,20 @@
                                         </p>
                                     </div>
 
-                                    <div v-if="playersOnTile(tile.position).length" class="absolute bottom-0.5 right-0.5 flex flex-wrap-reverse justify-end gap-0.5 max-w-[calc(100%-4px)] z-10">
+                                    <span class="absolute top-1 left-1 text-xs font-bold text-muted leading-none">{{ tile.position + 1 }}</span>
+
+                                    <span v-if="tile.type === 'SNAKE'" class="absolute top-1 right-1 text-error">
+                                        <u-icon name="i-lucide-move-down" class="size-3" />
+                                    </span>
+                                    <span v-else-if="tile.type === 'LADDER'" class="absolute top-1 right-1 text-success">
+                                        <u-icon name="i-lucide-move-up" class="size-3" />
+                                    </span>
+
+                                    <span v-if="isTileCompleted(tile)" class="absolute inset-0 flex items-center justify-center bg-success/20 rounded-md">
+                                        <u-icon name="i-lucide-check-circle-2" class="size-5 text-success" />
+                                    </span>
+
+                                    <div v-if="playersOnTile(tile.position).length" class="absolute bottom-0.5 right-0.5 flex flex-wrap-reverse justify-end gap-0.5 max-w-[calc(100%-4px)]">
                                         <u-avatar
                                             v-for="p in playersOnTile(tile.position).slice(0, 3)"
                                             :key="p.id"
