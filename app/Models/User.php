@@ -31,10 +31,16 @@ class User extends Authenticatable
         ];
     }
 
-    /** Display name shown throughout the app — nickname if set, else the raw Discord username. */
+    /**
+     * Display name shown throughout the app. Falls all the way through to
+     * email because an email/password account has no discord_username at
+     * all — the declared `string` return would have been a TypeError on any
+     * account where both were null, which became reachable the moment
+     * non-Discord signup shipped.
+     */
     public function displayName(): string
     {
-        return $this->nickname ?? $this->discord_username;
+        return $this->nickname ?? $this->discord_username ?? $this->email ?? '';
     }
 
     public function playerBoards(): HasMany

@@ -86,4 +86,29 @@ class UserController extends Controller
 
         return back()->with('board-save', 'Permission revoked.');
     }
+
+    /**
+     * Ported from UsersService::deleteUser() — the one mutation from the old
+     * backend that never made it across (its i18n strings did, which is how
+     * the gap surfaced). Same two rules: an admin can't be deleted until the
+     * ADMIN role is removed first, and — new here — you can't delete
+     * yourself, which the old GraphQL version never guarded against.
+     */
+    public function destroy(User $user): RedirectResponse
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        if ($user->id === Auth::id()) {
+            return back()->with('board-save-error', trans('admin.cannot_delete_self'));
+        }
+
+        if ($user->isAdmin()) {
+            return back()->with('board-save-error', trans('admin.cannot_delete_admin'));
+        }
+
+        $name = $user->displayName();
+        $user->delete();
+
+        return back()->with('board-save', trans('admin.user_deleted', ['name' => $name]));
+    }
 }
