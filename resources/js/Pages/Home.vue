@@ -17,6 +17,25 @@
                 </template>
             </u-page-hero>
 
+            <u-page-section :title="$t('home.preview_title')" :description="$t('home.preview_subtitle')">
+                <u-container class="max-w-4xl">
+                    <div class="relative">
+                        <div class="absolute inset-0 -z-10 bg-primary/20 blur-3xl rounded-full scale-90" aria-hidden="true" />
+                        <div class="rounded-xl border border-default shadow-2xl shadow-primary/10 overflow-hidden ring-1 ring-default">
+                            <img
+                                src="/images/demo/board-preview.png"
+                                :alt="$t('home.preview_alt')"
+                                width="1100"
+                                height="1030"
+                                loading="lazy"
+                                class="w-full h-auto block"
+                            />
+                        </div>
+                    </div>
+                    <p class="mt-4 text-center text-sm text-muted">{{ $t('home.preview_caption') }}</p>
+                </u-container>
+            </u-page-section>
+
             <u-page-section :title="$t('home.how_it_works')" :description="$t('home.how_subtitle')" :features="features" />
 
             <u-page-section :title="$t('home.guides_title')" :description="$t('home.guides_subtitle')" :links="guideLinks" />

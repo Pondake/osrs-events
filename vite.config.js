@@ -5,9 +5,12 @@ import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 import ui from '@nuxt/ui/vite';
 import i18n from 'laravel-vue-i18n/vite';
-import { uiConfig } from './ui.config';
+import { uiConfig } from './ui.config.ts';
 
 export default defineConfig({
+    server: {
+        host: '127.0.0.1',
+    },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],

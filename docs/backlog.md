@@ -13,6 +13,8 @@ Roadmap, in order:
 2. Migrate everything else to Laravel — see **Migration** below.
 3. Expand admin/user management — currently Discord-login-only, see **Admin & users** below.
 4. Secure the whole thing — all requests, all future auth routes — see **Security** below.
+5. Fix the first-run experience — landing pages and onboarding are currently
+   bare-bones — see **Onboarding & landing polish** below.
 
 ---
 
@@ -391,15 +393,82 @@ branch's SSR evaluation. Concrete carry-over work:
 
 ## Branding
 
-- [ ] **Header logo** — currently just the "⚔️" emoji + "OSRS Events" text
-  (`AppHeader.vue`), no image. Confirmed this was never actually
-  implemented even in the old Nuxt app either — its own `AppHeader.vue` had
-  the identical emoji+text title, and `osrs-events-10a.svg`/
-  `osrs-events-10a-trophy.svg` (present in `stale/frontend/public/`) are
-  never referenced by any component source, only by Nuxt's own build
-  cache — an orphaned asset, not a wired-up logo that regressed. User has
-  said they dislike that logo anyway and will replace it with something
-  new later — don't port the old SVG, wait for the replacement design.
+- [x] ~~**Header logo**~~ — done. **Logo 5a** (final): two clinking pixel-art
+  beer mugs on a 16×16 grid, with handles, a lit edge column, darker bases
+  and a three-pixel splash. Brand source lives in `resources/images/logo/`
+  (colour + three mono variants + the designer's `README.md` with the
+  palette and usage rules); `Components/AppLogo.vue` inlines the colour
+  variant's rects verbatim rather than `<img>`-ing it, so it renders
+  server-side with no extra request. Keep the two in sync by hand.
+  Palette: bg `#1c1919`, ember `#e0762f`, gold `#d4a33e`, highlight
+  `#ffcf5c`, parchment `#e6d9b8`.
+  **No tile and no light/dark swap** — 5a's darker handles and bases
+  (`#c15c1f`/`#9a721e`/`#b4501a`) give the silhouette its own edge, so it
+  holds on white, `#1c1919` and mid-grey alike (verified by rendering all
+  three at 32px). This is the thing the previous mark couldn't do: its cream
+  `#f0eadb` foam and splash *were* the silhouette, so on a white header they
+  vanished and left two floating orange rectangles. That earlier round burned
+  through six treatments — dark tile (read as a sticker patched onto a light
+  header, vetoed), flat ink silhouette (mugs merged into one blob at 32px),
+  1px ink outline (splash droplets clotted into it), tan foam everywhere
+  (dulled dark mode) — before settling on a light-mode-only cream swap.
+  5a makes all of that unnecessary. Don't reintroduce a header tile.
+  `size-8` on a 16-unit viewBox is exactly 2×; the mark's own spec forbids
+  non-integer scaling and rotation, so don't give it an arbitrary width.
+  The old `osrs-events-10a*.svg` files in `stale/frontend/public/` stay
+  orphaned — they were never wired up and are not the current design.
+- [x] ~~**Favicon / PWA icon set**~~ — done, regenerated from logo 5a.
+  Two deliberately different treatments: `favicon.*` is transparent and
+  monochrome (flattened to a single ink, `prefers-color-scheme`-adaptive in
+  `favicon.svg`) because a multi-color box turns to mush at 16px in tab
+  chrome; the app icons (`apple-touch-icon`, `android-chrome-*`,
+  `maskable-icon-*`) keep full brand color on an opaque `#1C1919` tile
+  because they sit on an arbitrary wallpaper and need their own edge.
+  `manifest.webmanifest` intentionally lists only the four app icons —
+  never the transparent `favicon-*.png`, which Android would otherwise pull
+  in and render wrong.
+  The dark tile is scoped to the app icons *only* — the header and favicon
+  are background-free. Worth restating because "no background" is the right
+  call for every surface except this one: iOS paints transparent pixels
+  black regardless, and Android's squircle mask bites into transparent gaps,
+  so a home-screen icon has to carry its own edge.
+  Note the designer's `README.md` suggests its own `<link>` block that wires
+  the *colour* SVG up as the favicon under different filenames. We don't
+  follow it — it conflicts with the transparent-monochrome favicon rule and
+  with the filenames already in `app.blade.php`. Treat that section as a
+  suggestion, not a spec.
+- [x] ~~**Primary button contrast**~~ — fixed. Nuxt UI's solid variant is
+  `text-inverted bg-{color}`, and `--ui-text-inverted` is white in light
+  mode, so a primary button was white on amber-500 `#fe9a00` = **2.15:1** —
+  under even the 3:1 large-text floor. Dark mode was never affected
+  (`text-inverted` resolves to dark ink there, 10.17:1), which is why this
+  only showed up on white. Fixed with a `color: primary, variant: solid`
+  compound variant in `ui.config.ts` pinning `text-[#1c1919]` in both modes:
+  8.14:1 light, 10.17:1 dark. Darkening the fill to amber-700 was the
+  alternative (5.05:1 with white text) but it turns the gold brown — the
+  brand colour is worth keeping, the white text isn't.
+- [ ] **`text-primary` on light backgrounds** — same root cause, different
+  surface, still open. Amber-500 as *text* on a light background is also
+  2.15:1, and `text-primary` is used in ~7 spots (`AppFooter` link hover,
+  `DiceRoller`'s roll number, `About`'s icon, leaderboard rank numbers in
+  `Leaderboard.vue` and `BoardShow.vue`), plus the 57 non-solid button
+  usages (`soft`/`ghost`/`link`/`subtle`) which all render `text-{color}`.
+  No clean fix without a trade-off, because `--ui-primary` drives both fill
+  and text: bumping light mode to amber-700 makes text pass at 5.05:1 but
+  browns every soft/outline button too. The real answer is splitting brand
+  *fill* from brand *text* into two tokens. Needs a design call — don't
+  silently change it.
+- [ ] **Wordmark font** — logo 5a's README specifies the in-game RuneScape
+  Bold 12 face for the wordmark, self-hosted from
+  [RuneStar/fonts](https://github.com/RuneStar/fonts) (CC0) rather than a
+  webfont CDN. Not done: the header still pairs the mark with plain Cinzel
+  text, and no wordmark SVG shipped in the export. Chat-style text per the
+  spec is `color: #ffff00; text-shadow: 2px 2px 0 #000`.
+- [x] ~~**Primary brand color**~~ — was `purple` (a leftover placeholder),
+  now `amber` in `ui.config.ts` to match the gold mug. Note the landing
+  page's "See a board in action" demo is a *pre-rendered PNG* under
+  `public/images/demo/`, so it still shows the old purple current-tile ring
+  and dice — it won't follow the theme until those screenshots are retaken.
 
 ## Admin & users (step 3)
 
@@ -417,6 +486,70 @@ branch's SSR evaluation. Concrete carry-over work:
   renderer either way. Worth prototyping as a **narrow standalone service**
   (its own small Filament app, same Postgres DB, consumed by the existing
   frontend) rather than pulled in as part of the full migration.
+
+## Onboarding & landing polish (step 5)
+
+Flagged 2026-08-19: landing pages currently read as placeholder-bare (plain
+text + basic layout, no real visual identity) and there's no first-run
+experience at all — a new user lands straight on the boards index with zero
+guidance. This is a real gap, not a nice-to-have — it's the first thing
+every new user sees.
+
+- [x] ~~**Landing pages need actual `@nuxt/ui` component work**~~ — partially
+  done. `Home.vue` and `SnakesAndLadders.vue` etc. already used real
+  `u-page-hero`/`u-page-section` primitives (feature grids, FAQ, HowTo
+  JSON-LD) — the actual gap was zero imagery anywhere, all text/icons. Added
+  a "See a board in action" section to `Home.vue` (right under the hero)
+  with a real demo screenshot (`public/images/demo/board-preview.png` — a
+  populated 9×9 board, captured live off the seeded demo data, framed with
+  a bordered/glowing card) — this is the placeholder imagery the item asked
+  for, swap for a real product shot later. **Still open**: the other
+  `landing.*` pages (`OsrsClanEvents.vue`, `OsrsEventIdeas.vue`) don't have
+  an equivalent visual yet — same treatment (a relevant demo screenshot per
+  page) would close this out fully.
+- [ ] **First-run onboarding modal** — a guided step-by-step flow for
+  setting up your first board, shown to new users (or reachable from a
+  persistent "help me get started" entry point). Two-column layout: a form
+  driving the current step on one side, a **live graphical preview** on the
+  other that updates as fields are filled in — e.g. a board mock-up that
+  visually assembles itself as size/mode/theme fields are set. Evaluate
+  Lottie for the animated piece vs. something driven directly off form
+  state (SVG/Canvas reacting to input) — the latter is probably more
+  honest for "shows what you're actually building" rather than a canned
+  animation, but worth comparing effort/fidelity before committing.
+- [ ] Onboarding steps should cover, in order:
+  1. **Auth** — Discord login (already exists), plus a path with **no
+     Discord account required** (email/password or similar). This is a
+     bigger decision than just an onboarding-flow step: today Discord OAuth
+     is the *only* login path (see the existing open question in **Admin &
+     users** above, "whether that stays the sole auth path"). Resolve that
+     decision first; the onboarding flow just needs to expose whichever
+     paths end up existing.
+  2. **Roles & permissions explainer** — surface what role/permission the
+     new user has and what it unlocks. Note: role/permission enforcement
+     itself is **already implemented and working** (`Role`, `UserRole`,
+     `UserPermission` models; `User::hasRole()`/`hasPermission()`/
+     `isAdmin()`; gates like `canCreateBoards`/`canCreateTiles` throughout
+     the admin controllers — see `app/Models/User.php`). It's a hand-rolled
+     system, though, **not** `spatie/laravel-permission` — the "moet via
+     spatie/roles" ask needs a decision: keep the current homegrown tables
+     (they work, they're simple, no new dependency) or migrate to
+     `spatie/laravel-permission` for its policy/gate integration and
+     Filament compatibility (relevant if the Filament CMS prototype above
+     ever ships — it already assumes spatie). Don't silently swap the
+     underlying system as a side effect of building the onboarding UI;
+     decide this explicitly first, it's a real migration either way.
+  3. **First board creation** — the actual point of the flow, feeding the
+     live preview described above.
+  4. **RuneLite plugin teaser** — a small screen with mock screenshots
+     showing how a user would install/connect the plugin. `docs/runelite-plugin.md`
+     has the feasibility research; **the plugin itself does not exist yet**
+     (that doc is proof-of-concept notes from a different integration, not
+     a shipped osrs-events plugin). Build the teaser screen anyway with
+     placeholder/mocked screenshots — it's marketing for a real, scoped,
+     "days not months" roadmap item per that doc's effort estimate, not
+     vaporware, but be explicit in the UI copy that it's "coming soon"
+     rather than implying it's installable today.
 
 ## Security (step 4)
 

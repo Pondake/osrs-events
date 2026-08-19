@@ -40,14 +40,28 @@ class DiscordController extends Controller
     {
         $discordUser = Socialite::driver('discord')->user();
 
-        $avatarUrl = $discordUser->avatar
-            ? "https://cdn.discordapp.com/avatars/{$discordUser->id}/{$discordUser->avatar}.png"
-            : null;
+        // socialiteproviders/discord's formatAvatar() already returns the
+        // full CDN URL (Provider.php) — re-wrapping it in another
+        // "https://cdn.discordapp.com/avatars/{id}/{avatar}.png" template,
+        // as this used to, produced a malformed doubled-up URL
+        // ("...avatars/ID/https://cdn.discordapp.com/avatars/ID/hash.jpg.png"),
+        // confirmed live in the database for a real logged-in user.
+        $avatarUrl = $discordUser->avatar ?: null;
+
+        // Discord's API also returns global_name (the display name shown
+        // everywhere in Discord's own UI, e.g. "Marthijn") separately from
+        // username (the @handle, e.g. "mbeetje") — but the Socialite
+        // provider's mapUserToObject() maps BOTH `name` and `nickname` to
+        // username only, never surfacing global_name. Pulled from the raw
+        // API payload instead so a new user's nickname defaults to what
+        // they'd actually recognize as their own name, not their handle.
+        $globalName = $discordUser->user['global_name'] ?? null;
 
         $user = $this->upsertFromDiscord(
             discordId: (string) $discordUser->id,
             discordUsername: $discordUser->nickname ?? $discordUser->name,
             avatarUrl: $avatarUrl,
+            globalName: $globalName,
         );
 
         // Non-fatal: guild sync failure should not block login — matches the
@@ -63,9 +77,9 @@ class DiscordController extends Controller
         return redirect()->intended('/boards');
     }
 
-    private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl): User
+    private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl, ?string $globalName): User
     {
-        return DB::transaction(function () use ($discordId, $discordUsername, $avatarUrl) {
+        return DB::transaction(function () use ($discordId, $discordUsername, $avatarUrl, $globalName) {
             $isNewUser = ! User::where('discord_id', $discordId)->exists();
 
             $user = User::updateOrCreate(
@@ -79,6 +93,13 @@ class DiscordController extends Controller
                     ['description' => 'Standaard spelerrol'],
                 );
                 UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $playerRole->id]);
+
+                // Only on first creation — a returning user may have already
+                // set their own custom nickname (Profile.vue), which a login
+                // must never silently overwrite.
+                if ($globalName && $globalName !== $discordUsername) {
+                    $user->update(['nickname' => $globalName]);
+                }
             }
 
             return $user;

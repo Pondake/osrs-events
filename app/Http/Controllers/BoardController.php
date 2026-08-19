@@ -60,10 +60,38 @@ class BoardController extends Controller
 
         $board->load([...self::BOARD_WITH, 'tiles.task']);
 
-        // Pure read — playerBoards->find() never creates a row; the first
-        // roll/toggle (PlayerBoardController) is what creates it, same as
-        // SOLO mode's existing cold-start behavior.
-        $playerBoard = $playerBoards->find($board, $user)?->load('completedTiles:id,player_board_id,tile_id');
+        // Ported from the old PlayersService.findPlayerBoard(): once access is
+        // confirmed (we're past the access-gate check above), the PlayerBoard
+        // is created here on page view, not lazily on the first roll/toggle.
+        // An earlier version of this method used a pure find() instead,
+        // reasoned as matching SOLO's cold-start behavior — it didn't: the old
+        // app always auto-creates on confirmed access, which is what makes a
+        // brand-new visitor immediately see "Your current task" (tile 1) and
+        // the completion-gated dice roller instead of an empty sidebar.
+        $playerBoard = $playerBoards->getOrCreate($board, $user)?->load('completedTiles:id,player_board_id,tile_id');
+
+        // Every player/team on the board with their current position — feeds
+        // BoardShow.vue's "show other players" avatar stacks on tiles and the
+        // sidebar's mini leaderboard preview. pathHasSnake/pathHasLadder mirror
+        // LeaderboardController's same computation (kept duplicated rather than
+        // extracted — it's a handful of lines with exactly two call sites).
+        $maxPosition = $board->tiles->count() - 1;
+        $players = $board->playerBoards()
+            ->with(['user:id,discord_username,nickname,avatar_url', 'team:id,name,icon_url'])
+            ->orderByDesc('current_position')
+            ->get(['id', 'user_id', 'team_id', 'current_position'])
+            ->map(function ($pb) use ($board, $maxPosition) {
+                $pathTiles = $board->tiles->filter(fn ($t) => $t->position > $pb->current_position && $t->position <= $maxPosition);
+
+                return [
+                    ...$pb->only(['id', 'user_id', 'team_id', 'current_position']),
+                    'user' => $pb->user,
+                    'team' => $pb->team,
+                    'tilesRemaining' => $maxPosition - $pb->current_position,
+                    'pathHasLadder' => $pathTiles->contains(fn ($t) => $t->type === 'LADDER' && $t->target_position !== null),
+                    'pathHasSnake' => $pathTiles->contains(fn ($t) => $t->type === 'SNAKE' && $t->target_position !== null),
+                ];
+            });
 
         return Inertia::render('BoardShow', [
             'board' => $board,
@@ -72,6 +100,7 @@ class BoardController extends Controller
                 ...$playerBoard->only(['id', 'current_position', 'dice_rolls_today']),
                 'completedTileIds' => $playerBoard->completedTiles->pluck('tile_id'),
             ],
+            'players' => $players,
             // TEAM boards where the user isn't on any assigned team can't
             // play at all — BoardShow.vue renders a dedicated "no team on
             // this board" empty state instead of the grid for this case.
