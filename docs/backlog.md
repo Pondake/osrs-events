@@ -472,20 +472,66 @@ branch's SSR evaluation. Concrete carry-over work:
 
 ## Admin & users (step 3)
 
-- [ ] Design what "admin functionality" beyond board CRUD actually needs to
-  cover — this wasn't scoped yet, needs a real requirements pass before
-  building.
-- [ ] User management beyond Discord OAuth: currently the *only* way into
-  the app is Discord login. Decide whether that stays the sole auth path or
-  whether an internal/admin account type is needed (e.g. for support access
-  without a Discord account).
-- [ ] Filament was evaluated as a CMS candidate for Phase 6 (marketing/landing
-  copy editing). Verdict from the prototype: it solves the authoring UI
-  (its `Builder` field + `spatie/laravel-permission`), not the rendering
-  half — the public Vue/Inertia site still needs a hand-built block
-  renderer either way. Worth prototyping as a **narrow standalone service**
-  (its own small Filament app, same Postgres DB, consumed by the existing
-  frontend) rather than pulled in as part of the full migration.
+- [x] ~~User management beyond Discord OAuth~~ — resolved: email/password is
+  now a first-class second auth path (see step 5's Auth entry), so no
+  separate "internal account type" is needed. Any account can hold any role.
+- [x] ~~Admin settings shell~~ — done. `/settings/admin/*` renders in the
+  same `SettingsLayout` as the personal settings, with the sidebar split
+  into "Your account" and "Administration" groups (the admin group is
+  hidden for non-admins; every controller still re-checks `isAdmin()`, the
+  sidebar is not the authorization). `/settings/admin/users` replaces the
+  old top-level `/admin/users` nav item (kept as a redirect) and swaps the
+  two always-visible selects per row for one `u-dropdown-menu` that only
+  offers what's actually applicable — roles not yet held, permissions not
+  yet granted, delete only when allowed.
+  **Permissions are grant-only in this UI on purpose** (per the ask):
+  `revokePermission` still exists on the controller and route, it's just
+  not offered as a menu entry. Wire it up here if that changes.
+- [ ] **More admin settings pages** — the shell now exists, these are the
+  candidates worth filling it with, roughly in order of usefulness:
+  1. **Boards & tasks** — `/admin/boards` and `/admin/tasks` are still
+     standalone top-level pages. Folding them into the same sidebar would
+     make Administration the single place admins go, instead of three.
+  2. **Site settings** — the things currently only changeable in `.env` or
+     code and plausibly wanted at runtime: default board size/roll limit
+     for new boards, whether registration is open, maintenance toggle.
+     Needs a settings table (or a cached key/value store) first — none
+     exists yet.
+  3. **Audit log** — who granted which role, who deleted whom. Nothing is
+     recorded today; user deletion in particular is irreversible and
+     currently leaves no trace.
+  4. **Invites overview** — `BoardInvite` rows are only visible per board
+     inside its settings modal. A global view (who invited whom, what's
+     unused/expired) is a natural admin page.
+- [ ] Design what "admin functionality" beyond the above needs to cover —
+  still worth a real requirements pass rather than guessing further.
+- [ ] **CMS / page layout editor** (roadmap Phase 6). The goal, as scoped
+  2026-08-20: edit every public page from the admin section through a
+  layout editor that composes pages out of Nuxt UI page elements
+  (`u-page-hero`, `u-page-section`, `u-page-feature`, …) rather than a
+  freeform rich-text blob — the components are already the vocabulary the
+  pages are written in, so the editor should speak the same language.
+  `/settings/admin/content` exists as the landing spot and currently does
+  one honest thing: inventories the 8 public pages and states that they're
+  still hardcoded Vue. It deliberately does not fake an editor.
+  The three real pieces of work, none started:
+  1. **Storage** — a `pages` table holding an ordered list of blocks per
+     page (type + props JSON). Nothing exists yet.
+  2. **Renderer** — a Vue component that maps a stored block list onto the
+     matching `u-page-*` components, with an allowlist of which props each
+     block type accepts. This is the half a third-party CMS does *not*
+     solve for us (see the Filament note below).
+  3. **Editor UI** — add/remove/reorder blocks and edit their props.
+     Start read-then-edit on one page (e.g. `/about`) rather than all 8.
+  Sequencing note: the renderer is the risky part and the one that makes
+  the other two useful — build a hardcoded block list through the renderer
+  first, before any editor UI or table design.
+  Filament was evaluated as a shortcut here. Verdict from the prototype: it
+  solves the authoring UI (its `Builder` field + `spatie/laravel-permission`),
+  not the rendering half — the public Vue/Inertia site still needs the
+  hand-built block renderer either way. If revisited, prototype it as a
+  **narrow standalone service** (its own small Filament app, same database,
+  consumed by the existing frontend), not pulled into this app.
 
 ## Onboarding & landing polish (step 5)
 

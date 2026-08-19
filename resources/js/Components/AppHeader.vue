@@ -103,9 +103,9 @@ const navigation = computed(() => {
         items.push({ label: trans('nav.tasks'), to: '/admin/tasks', icon: 'i-lucide-list-checks' });
     }
 
-    if (isAdmin.value) {
-        items.push({ label: trans('nav.admin_users'), to: '/admin/users', icon: 'i-lucide-user-cog' });
-    }
+    // No Users entry any more — user management lives under
+    // /settings/admin/users, reachable from the settings sidebar and the
+    // header's own user menu, rather than as a top-level nav item.
 
     return items;
 });
