@@ -13,8 +13,8 @@
                         <div class="flex items-center gap-3 min-w-0">
                             <u-avatar :src="user.avatar_url ?? undefined" size="sm" />
                             <div class="min-w-0">
-                                <div class="font-medium truncate">{{ user.nickname ?? user.discord_username }}</div>
-                                <div class="text-xs text-muted truncate">@{{ user.discord_username }}</div>
+                                <div class="font-medium truncate">{{ user.nickname ?? user.discord_username ?? user.email }}</div>
+                                <div class="text-xs text-muted truncate">{{ user.discord_username ? `@${user.discord_username}` : user.email }}</div>
                             </div>
                         </div>
 

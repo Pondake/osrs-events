@@ -8,10 +8,12 @@
         </u-button>
     </u-dropdown-menu>
 
-    <u-button v-else :href="loginHref" color="primary" variant="solid" icon="i-simple-icons-discord">
-        <span class="sm:hidden">{{ $t('common.login') }}</span>
-        <span class="hidden sm:inline">{{ $t('common.login_discord') }}</span>
-    </u-button>
+    <u-dropdown-menu v-else :items="guestItems">
+        <u-button color="primary" variant="solid" icon="i-simple-icons-discord" trailing-icon="i-lucide-chevron-down">
+            <span class="sm:hidden">{{ $t('common.login') }}</span>
+            <span class="hidden sm:inline">{{ $t('common.login_discord') }}</span>
+        </u-button>
+    </u-dropdown-menu>
 </template>
 
 <script setup>
@@ -26,6 +28,17 @@ const items = computed(() => [
     [{ label: user.value?.nickname ?? user.value?.discordUsername, disabled: true }],
     [{ label: trans('common.profile'), icon: 'i-lucide-user-circle', to: '/profile' }],
     [{ label: trans('common.logout'), icon: 'i-lucide-log-out', color: 'error', onSelect: logout }],
+]);
+
+// Discord stays the primary CTA (the button itself), this dropdown just
+// surfaces the email/password alternative — Ziggy's route() is
+// template-only (see CLAUDE.md), so plain paths here instead.
+const guestItems = computed(() => [
+    [{ label: trans('auth.continue_with_discord'), icon: 'i-simple-icons-discord', href: loginHref }],
+    [
+        { label: trans('auth.cta_login'), icon: 'i-lucide-log-in', to: '/login' },
+        { label: trans('auth.cta_register'), icon: 'i-lucide-user-plus', to: '/register' },
+    ],
 ]);
 
 // router.post(), not a raw <form> submit — Inertia's client handles CSRF
