@@ -26,7 +26,10 @@ const { user, isAuthenticated } = useAuth();
 
 const items = computed(() => [
     [{ label: user.value?.nickname ?? user.value?.discordUsername, disabled: true }],
-    [{ label: trans('common.profile'), icon: 'i-lucide-user-circle', to: '/profile' }],
+    [
+        { label: trans('settings.nav_profile'), icon: 'i-lucide-user-circle', to: '/settings/profile' },
+        { label: trans('settings.nav_account'), icon: 'i-lucide-shield', to: '/settings/account' },
+    ],
     [{ label: trans('common.logout'), icon: 'i-lucide-log-out', color: 'error', onSelect: logout }],
 ]);
 

@@ -11,7 +11,8 @@ use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\PlayerBoardController;
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Settings\AccountController;
+use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TileController;
 use App\Http\Controllers\UserSearchController;
@@ -103,20 +104,26 @@ Route::middleware('auth')->group(function () {
     Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
     Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
 
-    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])
+    // /profile predates the settings split and is still linked from older
+    // places (and any bookmark) — keep it working rather than 404ing.
+    Route::redirect('/profile', '/settings/profile');
+
+    Route::get('/settings/profile', [SettingsProfileController::class, 'show'])->name('settings.profile');
+    Route::patch('/settings/profile', [SettingsProfileController::class, 'update'])->name('settings.profile.update');
+
+    Route::get('/settings/account', [AccountController::class, 'show'])->name('settings.account');
+    Route::put('/settings/account/password', [AccountController::class, 'updatePassword'])
         ->middleware('throttle:5,1')
-        ->name('profile.password.update');
+        ->name('settings.account.password');
 
     // Linking flow reuses DiscordController's existing redirect()/callback() OAuth
     // plumbing rather than a parallel implementation — connect() just stashes
     // which account to attach to before handing off to Discord, and callback()
     // branches on that instead of its normal create-or-login path.
-    Route::get('/profile/discord/connect', [DiscordController::class, 'connect'])
+    Route::get('/settings/account/discord/connect', [DiscordController::class, 'connect'])
         ->middleware('throttle:10,1')
-        ->name('profile.discord.connect');
-    Route::delete('/profile/discord', [DiscordController::class, 'disconnect'])->name('profile.discord.disconnect');
+        ->name('settings.discord.connect');
+    Route::delete('/settings/account/discord', [DiscordController::class, 'disconnect'])->name('settings.discord.disconnect');
 
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
