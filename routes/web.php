@@ -105,6 +105,18 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])
+        ->middleware('throttle:5,1')
+        ->name('profile.password.update');
+
+    // Linking flow reuses DiscordController's existing redirect()/callback() OAuth
+    // plumbing rather than a parallel implementation — connect() just stashes
+    // which account to attach to before handing off to Discord, and callback()
+    // branches on that instead of its normal create-or-login path.
+    Route::get('/profile/discord/connect', [DiscordController::class, 'connect'])
+        ->middleware('throttle:10,1')
+        ->name('profile.discord.connect');
+    Route::delete('/profile/discord', [DiscordController::class, 'disconnect'])->name('profile.discord.disconnect');
 
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');

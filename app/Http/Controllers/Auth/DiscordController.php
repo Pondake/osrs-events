@@ -37,6 +37,44 @@ class DiscordController extends Controller
             ->redirect();
     }
 
+    /**
+     * Same OAuth kickoff as redirect(), but for an already-logged-in user
+     * (an email/password account) attaching Discord to their existing
+     * account rather than logging in. The only difference is this one
+     * session value — callback() checks it to decide which path to take.
+     */
+    public function connect(Request $request): RedirectResponse
+    {
+        $request->session()->put('discord_link_user_id', $request->user()->id);
+
+        return Socialite::driver('discord')
+            ->setScopes(['identify', 'guilds'])
+            ->redirect();
+    }
+
+    public function disconnect(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        // A user must always have at least one way back in — refuse to
+        // strip Discord off an account with no password set, which would
+        // otherwise lock them out permanently with no login path at all.
+        abort_unless($user->password !== null, 400, 'Set a password before disconnecting Discord.');
+
+        // Freeze the Discord username into nickname first if nothing else
+        // was ever set — otherwise a user who never customized their
+        // nickname loses BOTH fields at once and displayName() (nickname ??
+        // discord_username) returns null. Caught live: the header rendered
+        // completely nameless immediately after disconnecting.
+        if ($user->nickname === null) {
+            $user->nickname = $user->discord_username;
+        }
+
+        $user->update(['discord_id' => null, 'discord_username' => null, 'avatar_url' => null, 'nickname' => $user->nickname]);
+
+        return back()->with('board-save', trans('profile.discord_disconnected'));
+    }
+
     public function callback(Request $request): RedirectResponse
     {
         $discordUser = Socialite::driver('discord')->user();
@@ -57,10 +95,17 @@ class DiscordController extends Controller
         // API payload instead so a new user's nickname defaults to what
         // they'd actually recognize as their own name, not their handle.
         $globalName = $discordUser->user['global_name'] ?? null;
+        $discordId = (string) $discordUser->id;
+        $discordUsername = $discordUser->nickname ?? $discordUser->name;
+
+        $linkingUserId = $request->session()->pull('discord_link_user_id');
+        if ($linkingUserId) {
+            return $this->linkToExistingUser($linkingUserId, $discordId, $discordUsername, $avatarUrl, $discordUser->token);
+        }
 
         $user = $this->upsertFromDiscord(
-            discordId: (string) $discordUser->id,
-            discordUsername: $discordUser->nickname ?? $discordUser->name,
+            discordId: $discordId,
+            discordUsername: $discordUsername,
             avatarUrl: $avatarUrl,
             globalName: $globalName,
         );
@@ -81,6 +126,36 @@ class DiscordController extends Controller
         $request->session()->regenerate();
 
         return redirect()->intended('/boards');
+    }
+
+    /**
+     * Attach a Discord identity to an already-authenticated user's existing
+     * account, instead of the normal find-or-create-then-login flow. Guards
+     * against claiming a Discord account that's already linked to a
+     * *different* user — that would otherwise silently merge two identities
+     * onto one row via upsertFromDiscord()'s discord_id-keyed update.
+     */
+    private function linkToExistingUser(string $userId, string $discordId, string $discordUsername, ?string $avatarUrl, string $accessToken): RedirectResponse
+    {
+        $claimedBy = User::where('discord_id', $discordId)->first();
+        if ($claimedBy && $claimedBy->id !== $userId) {
+            return redirect('/profile')->with('board-save-error', trans('profile.discord_already_linked'));
+        }
+
+        $user = User::findOrFail($userId);
+        $user->update([
+            'discord_id' => $discordId,
+            'discord_username' => $discordUsername,
+            'avatar_url' => $avatarUrl ?? $user->avatar_url,
+        ]);
+
+        try {
+            $this->syncGuilds($user, $accessToken);
+        } catch (\Throwable $e) {
+            Log::warning("Guild sync failed for user {$user->id}: {$e->getMessage()}");
+        }
+
+        return redirect('/profile')->with('board-save', trans('profile.discord_connected'));
     }
 
     private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl, ?string $globalName): User
