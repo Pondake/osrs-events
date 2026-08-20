@@ -57,10 +57,14 @@ const seo = {
 
 const features = [
     { icon: 'i-simple-icons-discord', title: trans('home.feature_discord_title'), description: trans('home.feature_discord_desc') },
-    { icon: 'i-lucide-layout-grid', title: trans('home.feature_boards_title'), description: trans('home.feature_boards_desc') },
-    { icon: 'i-lucide-dice-6', title: trans('home.feature_dice_title'), description: trans('home.feature_dice_desc') },
+    // Reordered so the first thing said about the product is that it runs
+    // more than one kind of event. The old list opened with boards and then
+    // spent two more entries on dice and snakes, which read as a Snakes &
+    // Ladders site with some extras — true once, not any more.
+    { icon: 'i-lucide-layers', title: trans('home.feature_types_title'), description: trans('home.feature_types_desc') },
+    { icon: 'i-lucide-dice-6', title: trans('home.feature_snakes_title'), description: trans('home.feature_snakes_desc') },
+    { icon: 'i-lucide-trophy', title: trans('home.feature_race_title'), description: trans('home.feature_race_desc') },
     { icon: 'i-lucide-list-checks', title: trans('home.feature_tasks_title'), description: trans('home.feature_tasks_desc') },
-    { icon: 'i-lucide-arrow-up-from-line', title: trans('home.feature_snakes_title'), description: trans('home.feature_snakes_desc') },
     { icon: 'i-lucide-user-round', title: trans('home.feature_profile_title'), description: trans('home.feature_profile_desc') },
 ];
 
