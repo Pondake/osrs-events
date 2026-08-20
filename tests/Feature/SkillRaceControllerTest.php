@@ -1,0 +1,191 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Event;
+use App\Models\EventStanding;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
+
+/**
+ * Entering, leaving, and the live channel.
+ *
+ * Entering is deliberately its own action rather than something derived from
+ * access: an OPEN event grants access *without storing a row*, so a
+ * leaderboard built from access records would be empty for the commonest
+ * mode — and where it did work, it would enrol anyone who merely looked at a
+ * public leaderboard.
+ */
+class SkillRaceControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function race(array $attributes = []): Event
+    {
+        return Event::create([
+            'title' => 'Skill of the Month — Mining',
+            'type' => 'SKILL_RACE',
+            'metric' => 'mining',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+            'start_date' => Carbon::now()->subWeek(),
+            'end_date' => Carbon::now()->addWeek(),
+            ...$attributes,
+        ]);
+    }
+
+    private function player(string $name = 'Pondake'): User
+    {
+        return User::factory()->create(['osrs_username' => $name]);
+    }
+
+    #[Test]
+    public function entering_adds_the_user_to_the_standings(): void
+    {
+        $event = $this->race();
+        $user = $this->player();
+
+        $this->actingAs($user)->post("/events/{$event->id}/enter")->assertRedirect();
+
+        $this->assertSame('Pondake', EventStanding::firstOrFail()->username);
+    }
+
+    /** Looking at a public leaderboard must not enrol anyone. */
+    #[Test]
+    public function merely_viewing_an_open_race_does_not_enter_it(): void
+    {
+        $event = $this->race();
+
+        $this->actingAs($this->player())->get("/events/{$event->id}")->assertOk();
+
+        $this->assertSame(0, EventStanding::count());
+    }
+
+    #[Test]
+    public function leaving_removes_the_standing(): void
+    {
+        $event = $this->race();
+        $user = $this->player();
+        $this->actingAs($user)->post("/events/{$event->id}/enter");
+
+        $this->actingAs($user)->delete("/events/{$event->id}/enter")->assertRedirect();
+
+        $this->assertSame(0, EventStanding::count());
+    }
+
+    #[Test]
+    public function entering_without_an_osrs_name_is_refused_with_a_message(): void
+    {
+        $event = $this->race();
+        // Past the gate middleware via a name, then cleared — the state an
+        // admin wipe or a future migration could produce.
+        $user = $this->player();
+        $user->forceFill(['osrs_username' => null])->save();
+
+        $this->actingAs($user)->post("/events/{$event->id}/enter")->assertRedirect('/welcome/osrs-username');
+
+        $this->assertSame(0, EventStanding::count());
+    }
+
+    #[Test]
+    public function a_second_account_cannot_enter_under_a_name_already_racing(): void
+    {
+        $event = $this->race();
+        $this->actingAs($this->player('Pondake'))->post("/events/{$event->id}/enter");
+
+        $this->actingAs($this->player('Pondake'))
+            ->post("/events/{$event->id}/enter")
+            ->assertSessionHas('board-save-error');
+
+        $this->assertSame(1, EventStanding::count());
+    }
+
+    #[Test]
+    public function entering_a_snakes_and_ladders_event_is_not_a_thing(): void
+    {
+        $board = Event::create([
+            'title' => 'Winter Clan Grind',
+            'type' => 'SNAKES_LADDERS',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+        ]);
+
+        $this->actingAs($this->player())->post("/events/{$board->id}/enter")->assertNotFound();
+    }
+
+    // ------------------------------------------------------------- stream
+
+    #[Test]
+    public function the_stream_is_refused_for_a_non_metric_event(): void
+    {
+        $board = Event::create([
+            'title' => 'Winter Clan Grind',
+            'type' => 'SNAKES_LADDERS',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+        ]);
+
+        $this->actingAs($this->player())
+            ->get("/events/{$board->id}/standings/stream")
+            ->assertNotFound();
+    }
+
+    #[Test]
+    public function the_stream_is_refused_to_someone_without_access(): void
+    {
+        $event = $this->race(['access_mode' => 'INVITE']);
+
+        $this->actingAs($this->player())
+            ->get("/events/{$event->id}/standings/stream")
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function the_stream_requires_a_login(): void
+    {
+        $event = $this->race();
+
+        $this->get("/events/{$event->id}/standings/stream")->assertRedirect();
+    }
+
+    // --------------------------------------------------------------- page
+
+    #[Test]
+    public function the_race_page_renders_its_own_component_not_the_board_one(): void
+    {
+        Http::fake();
+        $event = $this->race();
+
+        $this->actingAs($this->player())
+            ->get("/events/{$event->id}")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Events/SkillRace')
+                ->where('event.metric', 'mining')
+                ->has('standings'));
+    }
+
+    #[Test]
+    public function the_race_page_reports_whether_the_viewer_is_in_it(): void
+    {
+        $event = $this->race();
+        $user = $this->player();
+
+        $this->actingAs($user)
+            ->get("/events/{$event->id}")
+            ->assertInertia(fn ($page) => $page->where('isParticipant', false));
+
+        $this->actingAs($user)->post("/events/{$event->id}/enter");
+
+        $this->actingAs($user)
+            ->get("/events/{$event->id}")
+            ->assertInertia(fn ($page) => $page->where('isParticipant', true));
+    }
+}
