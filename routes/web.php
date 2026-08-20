@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
     Route::post('/onboarding/reset', [OnboardingController::class, 'reset'])->name('onboarding.reset');
+    Route::get('/onboarding/joinable-boards', [OnboardingController::class, 'joinableBoards'])->name('onboarding.joinable');
 
     // /profile predates the settings split and is still linked from older
     // places (and any bookmark) — keep it working rather than 404ing.

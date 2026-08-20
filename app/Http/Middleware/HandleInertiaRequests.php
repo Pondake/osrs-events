@@ -69,6 +69,11 @@ class HandleInertiaRequests extends Middleware
                     // shared globally because the modal lives in the layout,
                     // not on any one page that could pass it as a prop.
                     'needsOnboarding' => $user->onboarding_completed_at === null,
+                    // Boolean, not the address itself: the modal only needs
+                    // to know whether account recovery is possible, and the
+                    // email is already exposed where it's actually shown
+                    // (Settings\AccountController).
+                    'hasEmail' => $user->email !== null,
                 ] : null,
             ],
         ];
