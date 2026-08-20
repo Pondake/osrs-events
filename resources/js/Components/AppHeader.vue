@@ -44,7 +44,59 @@
              unauthenticated request, so both are deferred to client-only
              here rather than risking it. -->
         <client-only>
-            <u-navigation-menu v-if="navigation.length" :items="navigation" />
+            <!-- Flat links plus a u-dropdown-menu for the one grouped entry,
+                 rather than u-navigation-menu's own children support: that
+                 sizes its dropdown panel to the trigger's width, so every
+                 child label wrapped to one word per line ("My b…" /
+                 "Brows…") regardless of min-w overrides. u-dropdown-menu is
+                 the same component the user menu already uses and sizes to
+                 its content. -->
+            <nav v-if="navigation.length" class="hidden lg:flex items-center gap-1">
+                <template v-for="item in navigation" :key="item.label">
+                    <u-button
+                        v-if="item.to"
+                        :to="item.to"
+                        :icon="item.icon"
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        :label="item.label"
+                    />
+                    <u-dropdown-menu v-else :items="[item.children]">
+                        <u-button
+                            :icon="item.icon"
+                            trailing-icon="i-lucide-chevron-down"
+                            color="neutral"
+                            variant="ghost"
+                            size="sm"
+                            :label="item.label"
+                        />
+                    </u-dropdown-menu>
+                </template>
+            </nav>
+
+            <!-- SSR fallback: the same links as plain <a> markup, so they're
+                 in the served HTML for crawlers. Removing the client-only
+                 wrapper above and letting u-navigation-menu render on the
+                 server was tried and re-confirmed to kill the SSR process
+                 outright on the first unauthenticated request (stack ends in
+                 Nuxt UI's Button/Link chain, same cause the comment above
+                 describes) — so the fallback exists to get the SEO value
+                 without that. Flattened one level deep: a crawler only needs
+                 the URLs present, not the dropdown behaviour. -->
+            <template #fallback>
+                <nav class="hidden lg:flex items-center gap-4">
+                    <template v-for="item in navigation" :key="item.label">
+                        <a v-if="item.to" :href="item.to" class="text-sm text-muted hover:text-primary transition-colors">{{ item.label }}</a>
+                        <a
+                            v-for="child in item.children ?? []"
+                            :key="child.to"
+                            :href="child.to"
+                            class="text-sm text-muted hover:text-primary transition-colors"
+                        >{{ child.label }}</a>
+                    </template>
+                </nav>
+            </template>
         </client-only>
 
         <template #right>
@@ -72,24 +124,59 @@ import ClientOnly from '@/Components/ClientOnly.vue';
 
 const { isAuthenticated, isAdmin, isTeamManager } = useAuth();
 
-// Ported from the old AppHeader.vue's `navigation` computed — same
-// role-based structure (Boards gets an admin sub-menu for editors/admins,
-// Teams only shows for admin/team-manager, a top-level Admin menu for
-// admins only).
-const navigation = computed(() => {
-    if (!isAuthenticated.value) return [];
+// The guide pages are the site's SEO surface. They used to be reachable
+// only from the footer, which is the weakest internal-linking position on a
+// page — a header entry is what actually signals they matter, so they're
+// here for logged-out visitors (the ones a crawler renders as) and stay
+// visible logged in, since they're genuinely useful to players too.
+// No `description` on any of these on purpose: u-navigation-menu lays a
+// dropdown's children out side by side and sizes the panel to its trigger,
+// so descriptions turn every label into a one-word-per-line column. These
+// labels say enough on their own.
+const guideChildren = () => [
+    { label: trans('nav.snakes'), to: '/osrs-snakes-and-ladders', icon: 'i-lucide-arrow-up-from-line' },
+    { label: trans('nav.clan_events'), to: '/osrs-clan-events', icon: 'i-lucide-users' },
+    { label: trans('nav.event_ideas'), to: '/osrs-event-ideas', icon: 'i-lucide-lightbulb' },
+];
 
-    // Admin entries (manage boards, tasks, users) are deliberately absent:
-    // they all live under /settings/admin now, reachable from the settings
-    // sidebar and the header's user menu. This nav is what everyone uses to
-    // PLAY, so it stays short instead of growing an admin half.
+/**
+ * Two shapes, because the two audiences want different things:
+ *
+ * - Logged out (and what a crawler sees): the public board index and the
+ *   guides — everything indexable, nothing that needs a session.
+ * - Logged in: "My boards" first, since the boards you're actually playing
+ *   are the thing you come back for. That page didn't exist before; your
+ *   own boards were buried in profile settings.
+ *
+ * Admin entries stay out of both — they live under /settings/admin,
+ * reachable from the settings sidebar and the user menu. This nav is for
+ * playing, not administering.
+ */
+const navigation = computed(() => {
+    if (!isAuthenticated.value) {
+        return [
+            { label: trans('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid' },
+            { label: trans('nav.guides'), icon: 'i-lucide-book-open', children: guideChildren() },
+            { label: trans('nav.about'), to: '/about', icon: 'i-lucide-info' },
+        ];
+    }
+
     const items = [
-        { label: trans('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid' },
+        {
+            label: trans('nav.boards'),
+            icon: 'i-lucide-layout-grid',
+            children: [
+                { label: trans('nav.my_boards'), to: '/my-boards', icon: 'i-lucide-gamepad-2' },
+                { label: trans('nav.browse_boards'), to: '/boards', icon: 'i-lucide-compass' },
+            ],
+        },
     ];
 
     if (isAdmin.value || isTeamManager.value) {
         items.push({ label: trans('nav.teams'), to: '/teams', icon: 'i-lucide-users' });
     }
+
+    items.push({ label: trans('nav.guides'), icon: 'i-lucide-book-open', children: guideChildren() });
 
     return items;
 });
