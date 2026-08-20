@@ -51,6 +51,40 @@ class PermissionsTest extends TestCase
         $this->assertTrue(Str::isUuid($permission->id));
     }
 
+    /**
+     * `HasUuids` overrides getKeyType()/getIncrementing(), so Eloquent
+     * behaves — but the underlying properties stay 'int' and true unless
+     * declared, and anything reading those directly gets the wrong answer.
+     * spatie's UUID guide asks for both; this is what would catch their
+     * absence.
+     */
+    #[Test]
+    public function role_and_permission_keys_declare_themselves_as_non_incrementing_strings(): void
+    {
+        foreach ([new Role, new Permission] as $model) {
+            $this->assertSame('string', $model->getKeyType(), $model::class);
+            $this->assertFalse($model->getIncrementing(), $model::class);
+
+            // The raw properties, not just the accessors.
+            $this->assertSame('string', (new \ReflectionProperty($model, 'keyType'))->getValue($model), $model::class);
+            $this->assertFalse((new \ReflectionProperty($model, 'incrementing'))->getValue($model), $model::class);
+        }
+    }
+
+    /** An id must never come in from mass assignment — spatie guards it. */
+    #[Test]
+    public function an_id_cannot_be_mass_assigned_over_the_generated_one(): void
+    {
+        $role = Role::create([
+            'name' => 'EDITOR',
+            'guard_name' => 'web',
+            'id' => 'not-a-uuid-at-all',
+        ]);
+
+        $this->assertNotSame('not-a-uuid-at-all', $role->id);
+        $this->assertTrue(Str::isUuid($role->id));
+    }
+
     /** Carried over from the homegrown table; the admin UI displays it. */
     #[Test]
     public function a_role_keeps_its_description(): void
