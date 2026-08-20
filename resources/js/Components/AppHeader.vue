@@ -18,15 +18,26 @@
          title still renders the same span content, still renders
          server-side (unlike ClientOnly-wrapping the whole header would
          require), it just stops being a clickable link to "/". -->
+    <!-- #left, not #title: the #title slot renders INSIDE u-header's own
+         ULink (see the block above for why that link has to stay defused),
+         which left the wordmark unclickable. #left replaces that wrapper
+         entirely, so a plain <a href="/"> restores the usual "logo goes
+         home" without going near the Link override that crashes.
+         `to=""` stays as a guard — if anyone drops this slot, the default
+         ULink comes back and needs it.
+         It also fixes a real a11y bug: ULink derived its aria-label from
+         the slot's text content, and swept an HTML comment that lived in
+         there into it, so screen readers announced a paragraph about
+         Tailwind sizing as the header's label. Hence the explicit
+         aria-label here, and the note about osrs-game-font — which pins its
+         own 24px size in app.css, so a Tailwind text-* class on the wordmark
+         would fight it and land the pixel face on a fractional size. -->
     <u-header to="">
-        <template #title>
-            <span class="flex items-center gap-2 text-highlighted">
+        <template #left>
+            <a href="/" class="flex items-center gap-2 text-highlighted" :aria-label="$t('common.app_name')">
                 <app-logo />
-                <!-- osrs-game-font pins its own 24px size (see app.css) —
-                     a Tailwind text-* class here would fight it and land the
-                     pixel face on a fractional size. -->
                 <span class="osrs-game-font">{{ $t('common.app_name') }}</span>
-            </span>
+            </a>
         </template>
 
         <!-- u-navigation-menu and any href/to-bound u-button (UserMenu's
