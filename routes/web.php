@@ -95,37 +95,41 @@ Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name(
 Route::get('/privacy', fn () => Inertia::render('Privacy'))->name('privacy');
 Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
 
-Route::get('/boards', [BoardController::class, 'index'])->name('boards.index');
-Route::get('/my-boards', [BoardController::class, 'mine'])
+// Snakes & Ladders was the whole product, so the app said "boards"
+// everywhere. It is becoming one event type among several (ROADMAP phase 5),
+// so the public vocabulary is events now. The model is still Board — see the
+// backlog for why that rename is sequenced separately.
+Route::get('/events', [BoardController::class, 'index'])->name('events.index');
+Route::get('/my-events', [BoardController::class, 'mine'])
     ->middleware('auth')
-    ->name('boards.mine');
-Route::get('/boards/{board}', [BoardController::class, 'show'])
+    ->name('events.mine');
+Route::get('/events/{board}', [BoardController::class, 'show'])
     ->middleware('auth')
-    ->name('boards.show');
-Route::get('/boards/{board}/leaderboard', [LeaderboardController::class, 'show'])
+    ->name('events.show');
+Route::get('/events/{board}/leaderboard', [LeaderboardController::class, 'show'])
     ->middleware('auth')
-    ->name('boards.leaderboard');
-Route::get('/boards/{board}/join/{token}', [BoardController::class, 'joinByLink'])->name('boards.join-link');
+    ->name('events.leaderboard');
+Route::get('/events/{board}/join/{token}', [BoardController::class, 'joinByLink'])->name('events.join-link');
 
 Route::middleware('auth')->group(function () {
-    Route::post('/boards', [BoardController::class, 'store'])->name('boards.store');
-    Route::patch('/boards/{board}', [BoardController::class, 'update'])->name('boards.update');
-    Route::delete('/boards/{board}', [BoardController::class, 'destroy'])->name('boards.destroy');
+    Route::post('/events', [BoardController::class, 'store'])->name('events.store');
+    Route::patch('/events/{board}', [BoardController::class, 'update'])->name('events.update');
+    Route::delete('/events/{board}', [BoardController::class, 'destroy'])->name('events.destroy');
 
-    Route::post('/boards/{board}/roll', [PlayerBoardController::class, 'roll'])->name('boards.roll');
-    Route::post('/boards/{board}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('boards.tiles.toggle');
-    Route::post('/boards/{board}/join', [BoardController::class, 'join'])->name('boards.join');
+    Route::post('/events/{board}/roll', [PlayerBoardController::class, 'roll'])->name('events.roll');
+    Route::post('/events/{board}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('events.tiles.toggle');
+    Route::post('/events/{board}/join', [BoardController::class, 'join'])->name('events.join');
 
-    Route::get('/boards/{board}/invites', [BoardInviteController::class, 'index'])->name('boards.invites.index');
-    Route::post('/boards/{board}/invites', [BoardInviteController::class, 'store'])->name('boards.invites.store');
-    Route::delete('/boards/{board}/invites/{invite}', [BoardInviteController::class, 'destroy'])->name('boards.invites.destroy');
+    Route::get('/events/{board}/invites', [BoardInviteController::class, 'index'])->name('events.invites.index');
+    Route::post('/events/{board}/invites', [BoardInviteController::class, 'store'])->name('events.invites.store');
+    Route::delete('/events/{board}/invites/{invite}', [BoardInviteController::class, 'destroy'])->name('events.invites.destroy');
 
-    Route::post('/boards/{board}/tiles', [TileController::class, 'upsert'])->name('boards.tiles.upsert');
-    Route::delete('/boards/{board}/tiles/{tile}', [TileController::class, 'destroy'])->name('boards.tiles.destroy');
+    Route::post('/events/{board}/tiles', [TileController::class, 'upsert'])->name('events.tiles.upsert');
+    Route::delete('/events/{board}/tiles/{tile}', [TileController::class, 'destroy'])->name('events.tiles.destroy');
 
-    Route::get('/boards/{board}/teams', [BoardController::class, 'teamsIndex'])->name('boards.teams.index');
-    Route::post('/boards/{board}/teams', [BoardController::class, 'addTeam'])->name('boards.teams.add');
-    Route::delete('/boards/{board}/teams/{team}', [BoardController::class, 'removeTeam'])->name('boards.teams.remove');
+    Route::get('/events/{board}/teams', [BoardController::class, 'teamsIndex'])->name('events.teams.index');
+    Route::post('/events/{board}/teams', [BoardController::class, 'addTeam'])->name('events.teams.add');
+    Route::delete('/events/{board}/teams/{team}', [BoardController::class, 'removeTeam'])->name('events.teams.remove');
     Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
     Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
 
@@ -178,7 +182,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/users/{user}/permissions/{permissionKey}', [AdminUserController::class, 'revokePermission'])->name('users.permissions.revoke');
         Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
 
-        Route::get('/boards', [AdminBoardController::class, 'index'])->name('boards');
+        Route::get('/events', [AdminBoardController::class, 'index'])->name('events');
+        Route::redirect('/boards', '/admin/events');
 
         // Tasks is gated on canCreateTiles, not isAdmin (see
         // Admin\TaskController) — an EDITOR reaches this without being an
@@ -250,4 +255,11 @@ if (app()->environment('local')) {
 // routes in declaration order, so every fixed path above wins and a page slug
 // can never shadow a real route. An unknown slug 404s, which is what an
 // unmatched single-segment URL should do anyway.
+
+// Everything lived under /boards until 2026-08-20. Declared before the CMS
+// catch-all so a stale link redirects rather than 404ing as an unknown page.
+Route::redirect('/boards', '/events');
+Route::redirect('/my-boards', '/my-events');
+Route::redirect('/boards/{path}', '/events/{path}')->where('path', '.*');
+
 Route::get('/{page}', [PageController::class, 'show'])->name('pages.show');

@@ -16,7 +16,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
-                    <u-button :href="`/boards/${board.id}`" icon="i-lucide-eye" size="xs" color="neutral" variant="ghost" :aria-label="$t('board.view_mode')" />
+                    <u-button :href="`/events/${board.id}`" icon="i-lucide-eye" size="xs" color="neutral" variant="ghost" :aria-label="$t('board.view_mode')" />
                     <u-button icon="i-lucide-pencil" size="xs" color="neutral" variant="ghost" :aria-label="$t('common.edit')" @click="editingBoard = board" />
                     <u-button icon="i-lucide-trash-2" size="xs" color="error" variant="ghost" :aria-label="$t('common.delete')" @click="destroyBoard(board)" />
                 </div>
@@ -45,6 +45,6 @@ defineProps({
 const editingBoard = ref(null);
 
 function destroyBoard(board) {
-    router.delete(`/boards/${board.id}`, { preserveScroll: true });
+    router.delete(`/events/${board.id}`, { preserveScroll: true });
 }
 </script>

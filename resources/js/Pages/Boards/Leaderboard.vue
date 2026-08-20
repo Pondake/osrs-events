@@ -9,7 +9,7 @@
                         <h1 class="text-3xl font-bold text-highlighted">{{ board.title }}</h1>
                         <p class="text-muted">{{ $t('leaderboard.title') }}</p>
                     </div>
-                    <u-button :href="`/boards/${board.id}`" color="neutral" variant="outline" icon="i-lucide-arrow-left" :label="$t('leaderboard.back_to_board')" />
+                    <u-button :href="`/events/${board.id}`" color="neutral" variant="outline" icon="i-lucide-arrow-left" :label="$t('leaderboard.back_to_board')" />
                 </div>
 
                 <div v-if="!entries.length" class="text-center py-16 text-muted">{{ $t('leaderboard.no_players') }}</div>

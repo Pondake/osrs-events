@@ -96,7 +96,7 @@
                             <a
                                 v-for="board in joinableBoards"
                                 :key="board.id"
-                                :href="`/boards/${board.id}`"
+                                :href="`/events/${board.id}`"
                                 class="flex items-center justify-between gap-3 rounded-lg border border-default p-3 hover:border-primary transition-colors"
                             >
                                 <div class="min-w-0">
@@ -336,7 +336,7 @@ function next() {
     // title just moves on — this whole flow is skippable, so requiring one
     // would turn a tour into a wall.
     if (step.value === 'board' && form.title.trim()) {
-        form.post('/boards', {
+        form.post('/events', {
             preserveScroll: true,
             onSuccess: () => stepIndex.value++,
         });

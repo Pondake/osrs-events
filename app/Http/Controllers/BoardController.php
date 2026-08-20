@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -161,7 +162,7 @@ class BoardController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        return redirect()->route('boards.show', $board)->with('board-save', 'Joined the board.');
+        return redirect()->route('events.show', $board)->with('board-save', 'Joined the board.');
     }
 
     /**
@@ -180,10 +181,10 @@ class BoardController extends Controller
         try {
             $access->joinBoard($request->user(), $board, $token);
         } catch (ValidationException $e) {
-            return redirect()->route('boards.show', $board)->with('board-save-error', $e->errors()['access'][0] ?? 'Could not join this board.');
+            return redirect()->route('events.show', $board)->with('board-save-error', $e->errors()['access'][0] ?? 'Could not join this board.');
         }
 
-        return redirect()->route('boards.show', $board)->with('board-save', 'Joined the board.');
+        return redirect()->route('events.show', $board)->with('board-save', 'Joined the board.');
     }
 
     /**
@@ -199,6 +200,9 @@ class BoardController extends Controller
             'description' => ['nullable', 'string'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
+            // Only creatable types — a planned one is advertised in the UI
+            // as coming soon, which is not the same as being selectable.
+            'type' => ['nullable', Rule::in(Board::availableEventTypes())],
             'size' => ['required', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'mode' => ['nullable', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
@@ -232,7 +236,7 @@ class BoardController extends Controller
             return $board;
         });
 
-        return redirect()->route('boards.show', $board)->with('board-save', 'Board created.');
+        return redirect()->route('events.show', $board)->with('board-save', 'Board created.');
     }
 
     /**
@@ -250,6 +254,7 @@ class BoardController extends Controller
             'description' => ['nullable', 'string'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
+            'type' => ['sometimes', Rule::in(Board::availableEventTypes())],
             'size' => ['sometimes', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
@@ -286,7 +291,7 @@ class BoardController extends Controller
 
         $board->delete();
 
-        return redirect()->route('boards.index')->with('board-save', 'Board deleted.');
+        return redirect()->route('events.index')->with('board-save', 'Board deleted.');
     }
 
     /**

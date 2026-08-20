@@ -5,7 +5,7 @@
         <u-page>
             <u-page-hero :title="$t('home.title')" :description="$t('home.description')">
                 <template #links>
-                    <u-button v-if="isAuthenticated" href="/boards" trailing-icon="i-lucide-arrow-right" size="xl" color="primary" :label="$t('home.cta_boards')" />
+                    <u-button v-if="isAuthenticated" href="/events" trailing-icon="i-lucide-arrow-right" size="xl" color="primary" :label="$t('home.cta_boards')" />
                     <u-button v-else :href="route('login')" size="xl" icon="i-simple-icons-discord" color="primary" :label="$t('home.cta_login')" />
                 </template>
             </u-page-hero>
@@ -71,7 +71,7 @@ const guideLinks = [
 ];
 
 const adminLinks = [
-    { label: trans('nav.admin_boards'), to: '/admin/boards', icon: 'i-lucide-settings', color: 'primary', variant: 'outline' },
+    { label: trans('nav.admin_boards'), to: '/admin/events', icon: 'i-lucide-settings', color: 'primary', variant: 'outline' },
     { label: trans('home.admin_manage_tasks'), to: '/admin/tasks', icon: 'i-lucide-list-checks', color: 'neutral', variant: 'outline' },
 ];
 </script>

@@ -62,6 +62,12 @@ class HandleInertiaRequests extends Middleware
                 // of their own, and this way footer and page content cannot
                 // drift to different URLs.
                 'kofiUrl' => Setting::get('kofi_url'),
+                // Shared rather than passed per page: the create-event modal
+                // opens from the events index, the admin list and onboarding.
+                'eventTypes' => collect(\App\Models\Board::EVENT_TYPES)
+                    ->map(fn ($meta, $key) => ['value' => $key, ...$meta])
+                    ->values()
+                    ->all(),
                 'announcement' => Setting::get('announcement'),
                 'announcementType' => Setting::get('announcement_type'),
                 'defaultBoardSize' => Setting::get('default_board_size'),

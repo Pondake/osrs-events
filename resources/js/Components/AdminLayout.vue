@@ -132,7 +132,7 @@ const navItems = computed(() => {
         ],
         [
             { label: trans('settings.nav_admin_users'), icon: 'i-lucide-user-cog', to: '/admin/users', active: props.current === 'users', show: isAdmin.value },
-            { label: trans('settings.nav_admin_boards'), icon: 'i-lucide-layout-grid', to: '/admin/boards', active: props.current === 'boards', show: isAdmin.value },
+            { label: trans('settings.nav_admin_boards'), icon: 'i-lucide-layout-grid', to: '/admin/events', active: props.current === 'boards', show: isAdmin.value },
             { label: trans('settings.nav_admin_tasks'), icon: 'i-lucide-list-checks', to: '/admin/tasks', active: props.current === 'tasks', show: isAdmin.value || canCreateTiles.value },
             { label: trans('settings.nav_admin_invites'), icon: 'i-lucide-ticket', to: '/admin/invites', active: props.current === 'invites', show: isAdmin.value },
         ],

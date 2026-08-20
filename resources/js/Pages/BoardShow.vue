@@ -40,7 +40,7 @@
                                 />
                             </template>
                             <u-button
-                                :href="`/boards/${board.id}/leaderboard`"
+                                :href="`/events/${board.id}/leaderboard`"
                                 color="neutral"
                                 variant="outline"
                                 size="sm"
@@ -322,7 +322,7 @@
                             <template #header>
                                 <div class="flex items-center justify-between">
                                     <span class="font-semibold">{{ $t('leaderboard.title') }}</span>
-                                    <u-button :href="`/boards/${board.id}/leaderboard`" variant="ghost" size="xs" color="neutral" trailing-icon="i-lucide-external-link" />
+                                    <u-button :href="`/events/${board.id}/leaderboard`" variant="ghost" size="xs" color="neutral" trailing-icon="i-lucide-external-link" />
                                 </div>
                             </template>
                             <div class="flex flex-col gap-1">
@@ -359,7 +359,7 @@
                             </div>
                             <div v-if="players.length > 5" class="mt-1 text-center">
                                 <u-button
-                                    :href="`/boards/${board.id}/leaderboard`"
+                                    :href="`/events/${board.id}/leaderboard`"
                                     variant="ghost"
                                     size="xs"
                                     color="neutral"
@@ -372,15 +372,15 @@
             </u-container>
         </u-page>
 
-        <u-modal v-model:open="showBingo" :title="$t('board.bingo')">
+        <u-modal v-model:open="showCompleted" :title="$t('board.completed')">
             <template #body>
                 <div class="text-center py-6">
                     <p class="text-6xl mb-4">🎉</p>
-                    <p class="text-muted">{{ $t('board.bingo_desc') }}</p>
+                    <p class="text-muted">{{ $t('board.completed_desc') }}</p>
                 </div>
             </template>
             <template #footer>
-                <u-button block color="primary" :label="$t('common.close')" @click="showBingo = false" />
+                <u-button block color="primary" :label="$t('common.close')" @click="showCompleted = false" />
             </template>
         </u-modal>
 
@@ -423,7 +423,7 @@ const editingTile = ref(null);
 const editMode = ref(false);
 const rolling = ref(false);
 const lastRoll = ref(null);
-const showBingo = ref(false);
+const showCompleted = ref(false);
 const showOtherPlayers = ref(false);
 // The tile the player last clicked (for inspection), separate from
 // currentTile (where they actually are). Ported from the old Sidebar.vue's
@@ -594,19 +594,23 @@ function handleTileClick(tile) {
 
 function roll() {
     rolling.value = true;
-    router.post(`/boards/${props.board.id}/roll`, {}, { preserveScroll: true, onFinish: () => (rolling.value = false) });
+    router.post(`/events/${props.board.id}/roll`, {}, { preserveScroll: true, onFinish: () => (rolling.value = false) });
 }
 
 // Ported from the old useBoardPage's onCompleteTile: completing the tile at
-// the board's last position triggers the bingo modal.
+// the board's last position ends the run.
+//
+// Called "bingo" until 2026-08-20, which was a misnomer waiting to collide:
+// this fires on finishing a Snakes & Ladders board, and BINGO is becoming
+// a separate event type with its own line/full-board rules (ROADMAP phase 5).
 function toggleTile(tile) {
     const wasCompleted = props.playerBoard?.completedTileIds.includes(tile.id) ?? false;
-    const isBingo = !wasCompleted && tile.position === tileCount.value - 1;
+    const finishesBoard = !wasCompleted && tile.position === tileCount.value - 1;
 
-    router.post(`/boards/${props.board.id}/tiles/${tile.id}/toggle`, {}, {
+    router.post(`/events/${props.board.id}/tiles/${tile.id}/toggle`, {}, {
         preserveScroll: true,
         onSuccess: () => {
-            if (isBingo) showBingo.value = true;
+            if (finishesBoard) showCompleted.value = true;
         },
     });
 }

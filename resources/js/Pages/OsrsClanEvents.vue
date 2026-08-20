@@ -5,7 +5,7 @@
         <u-page>
             <u-page-hero :title="$t('landing.clan_events.title')" :description="$t('landing.clan_events.lead')">
                 <template #links>
-                    <u-button v-if="isAuthenticated" href="/boards" size="xl" color="primary" icon="i-simple-icons-discord" :label="$t('landing.cta_create')" />
+                    <u-button v-if="isAuthenticated" href="/events" size="xl" color="primary" icon="i-simple-icons-discord" :label="$t('landing.cta_create')" />
                     <!-- route() called directly in the template, not from script —
                          it's only bound on Vue's globalProperties (template-only
                          access) by the ZiggyVue plugin. A raw `import { route }

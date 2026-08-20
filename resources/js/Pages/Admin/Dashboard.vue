@@ -97,7 +97,7 @@ function actionClass(action) {
 // with nowhere to go is just decoration.
 const tiles = computed(() => [
     { key: 'users', label: trans('settings.nav_admin_users'), value: props.stats.users, icon: 'i-lucide-users', iconClass: 'text-primary', to: '/admin/users' },
-    { key: 'boards', label: trans('settings.nav_admin_boards'), value: props.stats.boards, icon: 'i-lucide-layout-grid', iconClass: 'text-primary', to: '/admin/boards' },
+    { key: 'boards', label: trans('settings.nav_admin_boards'), value: props.stats.boards, icon: 'i-lucide-layout-grid', iconClass: 'text-primary', to: '/admin/events' },
     { key: 'teams', label: trans('admin.dashboard_teams'), value: props.stats.teams, icon: 'i-lucide-users-round', iconClass: 'text-primary', to: '/teams' },
     { key: 'tasks', label: trans('settings.nav_admin_tasks'), value: props.stats.tasks, icon: 'i-lucide-list-checks', iconClass: 'text-primary', to: '/admin/tasks' },
     { key: 'invites', label: trans('admin.dashboard_live_invites'), value: props.stats.liveInvites, icon: 'i-lucide-ticket', iconClass: 'text-success', to: '/admin/invites' },

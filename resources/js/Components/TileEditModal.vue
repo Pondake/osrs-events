@@ -123,11 +123,11 @@ function selectTask(task) {
 
 function submit() {
     form.transform((data) => ({ ...data, position: props.position, task_id: selectedTask.value?.id ?? null }))
-        .post(`/boards/${props.boardId}/tiles`, { onSuccess: () => (isOpen.value = false) });
+        .post(`/events/${props.boardId}/tiles`, { onSuccess: () => (isOpen.value = false) });
 }
 
 function clearTile() {
-    router.delete(`/boards/${props.boardId}/tiles/${props.tile.id}`, {
+    router.delete(`/events/${props.boardId}/tiles/${props.tile.id}`, {
         preserveScroll: true,
         onSuccess: () => (isOpen.value = false),
     });

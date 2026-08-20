@@ -219,7 +219,7 @@ const guideChildren = () => [
 const navigation = computed(() => {
     if (!isAuthenticated.value) {
         return [
-            { label: trans('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid' },
+            { label: trans('nav.boards'), to: '/events', icon: 'i-lucide-layout-grid' },
             { label: trans('nav.guides'), icon: 'i-lucide-book-open', children: guideChildren() },
             { label: trans('nav.about'), to: '/about', icon: 'i-lucide-info' },
         ];
@@ -230,8 +230,8 @@ const navigation = computed(() => {
             label: trans('nav.boards'),
             icon: 'i-lucide-layout-grid',
             children: [
-                { label: trans('nav.my_boards'), to: '/my-boards', icon: 'i-lucide-gamepad-2' },
-                { label: trans('nav.browse_boards'), to: '/boards', icon: 'i-lucide-compass' },
+                { label: trans('nav.my_boards'), to: '/my-events', icon: 'i-lucide-gamepad-2' },
+                { label: trans('nav.browse_boards'), to: '/events', icon: 'i-lucide-compass' },
                 soon({ label: trans('nav.calendar'), icon: 'i-lucide-calendar-days' }),
             ],
         },

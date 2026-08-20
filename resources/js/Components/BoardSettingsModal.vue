@@ -19,6 +19,27 @@
                             <u-textarea v-model="form.description" class="w-full" :rows="3" />
                         </u-form-field>
 
+                        <!-- Type first: it is the thing being created, and
+                             the fields under it (size, dice limit) only make
+                             sense once you know which kind of event it is. -->
+                        <u-form-field :label="$t('events.type_label')" :description="$t('events.type_desc')" required>
+                            <u-select v-model="form.type" :items="typeOptions" class="w-full">
+                                <template #item-leading="{ item }">
+                                    <u-icon :name="item.icon" class="size-4" />
+                                </template>
+                                <template #item-trailing="{ item }">
+                                    <u-badge
+                                        v-if="item.disabled"
+                                        :label="$t('events.type_unavailable')"
+                                        color="neutral"
+                                        variant="subtle"
+                                        size="sm"
+                                        class="ml-auto"
+                                    />
+                                </template>
+                            </u-select>
+                        </u-form-field>
+
                         <div class="grid grid-cols-2 gap-4">
                             <u-form-field :label="$t('admin.board_size')" required>
                                 <u-select v-model="form.size" :items="sizeOptions" class="w-full" />
@@ -230,6 +251,7 @@ function blankForm() {
 
     return {
         title: '',
+        type: 'SNAKES_LADDERS',
         description: '',
         size: site.defaultBoardSize ?? 'SIZE_7X7',
         mode: 'SOLO',
@@ -242,6 +264,20 @@ function blankForm() {
         author_ids: [],
     };
 }
+
+/**
+ * Planned types are listed but disabled rather than hidden — an empty gap
+ * where Bingo will be tells nobody anything, and the server rejects them
+ * anyway (Board::availableEventTypes()).
+ */
+const typeOptions = computed(() =>
+    (usePage().props?.site?.eventTypes ?? []).map((type) => ({
+        value: type.value,
+        label: trans(`events.type_${type.value.toLowerCase()}`),
+        icon: type.icon,
+        disabled: !type.available,
+    })),
+);
 
 const form = useForm(blankForm());
 
@@ -309,9 +345,9 @@ function removeAuthor(userId) {
 
 function submit() {
     if (isEdit.value) {
-        form.patch(`/boards/${props.board.id}`, { onSuccess: () => (isOpen.value = false) });
+        form.patch(`/events/${props.board.id}`, { onSuccess: () => (isOpen.value = false) });
     } else {
-        form.post('/boards', { onSuccess: () => (isOpen.value = false) });
+        form.post('/events', { onSuccess: () => (isOpen.value = false) });
     }
 }
 
@@ -335,13 +371,13 @@ function xsrfHeader() {
 }
 
 async function fetchInvites() {
-    const response = await fetch(`/boards/${props.board.id}/invites`, { headers: { Accept: 'application/json' } });
+    const response = await fetch(`/events/${props.board.id}/invites`, { headers: { Accept: 'application/json' } });
     invites.value = await response.json();
 }
 
 async function createInvite() {
     creatingInvite.value = true;
-    await fetch(`/boards/${props.board.id}/invites`, {
+    await fetch(`/events/${props.board.id}/invites`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...xsrfHeader() },
         body: JSON.stringify({}),
@@ -351,7 +387,7 @@ async function createInvite() {
 }
 
 async function revokeInvite(invite) {
-    await fetch(`/boards/${props.board.id}/invites/${invite.id}`, {
+    await fetch(`/events/${props.board.id}/invites/${invite.id}`, {
         method: 'DELETE',
         headers: { Accept: 'application/json', ...xsrfHeader() },
     });
@@ -365,7 +401,7 @@ const teamToAdd = ref(null);
 const addingTeam = ref(false);
 
 async function fetchTeams() {
-    const response = await fetch(`/boards/${props.board.id}/teams`, { headers: { Accept: 'application/json' } });
+    const response = await fetch(`/events/${props.board.id}/teams`, { headers: { Accept: 'application/json' } });
     const data = await response.json();
     assignedTeams.value = data.assigned;
     availableTeams.value = data.available;
@@ -385,7 +421,7 @@ watch(
 async function addTeam() {
     if (!teamToAdd.value) return;
     addingTeam.value = true;
-    await fetch(`/boards/${props.board.id}/teams`, {
+    await fetch(`/events/${props.board.id}/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...xsrfHeader() },
         body: JSON.stringify({ team_id: teamToAdd.value }),
@@ -396,7 +432,7 @@ async function addTeam() {
 }
 
 async function removeTeam(team) {
-    await fetch(`/boards/${props.board.id}/teams/${team.id}`, {
+    await fetch(`/events/${props.board.id}/teams/${team.id}`, {
         method: 'DELETE',
         headers: { Accept: 'application/json', ...xsrfHeader() },
     });
