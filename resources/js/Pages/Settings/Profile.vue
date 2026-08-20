@@ -49,7 +49,7 @@
                     <div class="flex items-center justify-between gap-4 flex-wrap">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-3 mb-1 flex-wrap">
-                                <a :href="`/boards/${pb.board.id}`" class="text-lg font-semibold hover:text-primary transition-colors truncate">
+                                <a :href="`/events/${pb.board.id}`" class="text-lg font-semibold hover:text-primary transition-colors truncate">
                                     {{ pb.board.title }}
                                 </a>
                                 <u-badge color="primary" variant="subtle" :label="formatBoardSize(pb.board.size)" />
@@ -70,7 +70,7 @@
                             </div>
                         </div>
 
-                        <u-button :href="`/boards/${pb.board.id}`" icon="i-lucide-play" color="primary" variant="outline" size="sm" :label="$t('boards.play')" />
+                        <u-button :href="`/events/${pb.board.id}`" icon="i-lucide-play" color="primary" variant="outline" size="sm" :label="$t('boards.play')" />
                     </div>
                 </u-card>
             </div>

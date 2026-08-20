@@ -1,5 +1,5 @@
 <template>
-    <Link :href="`/boards/${board.id}`">
+    <Link :href="`/events/${board.id}`">
         <u-page-card class="h-full hover:border-primary transition-colors cursor-pointer" :ui="{ body: 'w-full' }">
             <template #title>
                 <div class="flex items-center justify-between gap-3 w-full">

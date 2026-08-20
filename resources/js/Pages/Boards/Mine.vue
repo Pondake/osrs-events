@@ -25,7 +25,7 @@
                     <u-icon name="i-lucide-layout-grid" class="size-12 text-muted mx-auto mb-4" />
                     <p class="text-lg font-medium">{{ $t('boards.mine_empty') }}</p>
                     <p class="text-sm text-muted mt-1 mb-6">{{ $t('boards.mine_empty_desc') }}</p>
-                    <u-button href="/boards" color="primary" icon="i-lucide-compass" :label="$t('boards.browse_all')" />
+                    <u-button href="/events" color="primary" icon="i-lucide-compass" :label="$t('boards.browse_all')" />
                 </div>
 
                 <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

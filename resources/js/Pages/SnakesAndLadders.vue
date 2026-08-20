@@ -51,7 +51,7 @@
                          kept in stale/ for reference). -->
                     <u-button size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" :href="route('login')" />
                     <u-button
-                        to="/boards"
+                        to="/events"
                         size="xl"
                         color="neutral"
                         variant="outline"

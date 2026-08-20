@@ -108,7 +108,7 @@
                     </div>
 
                     <div class="flex items-center gap-2 flex-wrap mt-0.5 text-xs text-muted">
-                        <a v-if="invite.board" :href="`/boards/${invite.board.id}`" class="inline-flex items-center gap-1 hover:text-highlighted transition-colors">
+                        <a v-if="invite.board" :href="`/events/${invite.board.id}`" class="inline-flex items-center gap-1 hover:text-highlighted transition-colors">
                             <u-icon name="i-lucide-layout-grid" class="size-3 shrink-0" />
                             {{ invite.board.title }}
                         </a>
