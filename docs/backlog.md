@@ -765,6 +765,35 @@ sub-pages which aren't discoverable from it.
   could not, and doing both at once would have made a large diff impossible
   to verify page by page. Do it as its own change.
 
+  **Follow-up, done the same day: the event was split out of the board.**
+  `events` now holds what a competition IS (title, type, dates, mode, access,
+  listing); `boards` holds only the Snakes & Ladders payload (size, dice
+  limit) plus `event_id`. Ownership, entry and team assignment moved to the
+  event too — a Bingo event with no board must still be joinable. Tiles and
+  player progress stayed on the board, since Bingo brings its own.
+  Two things in that migration worth not undoing:
+  * **Each event reuses its board's uuid.** Every satellite's `board_id`
+    value was therefore already a valid `event_id`, so the columns were
+    copied straight across instead of remapped row by row, and every live
+    `/events/{uuid}` link kept resolving. Remapping is where this migration
+    would have lost data.
+  * SQLite refuses to drop a column that an **index or a foreign key** still
+    names, and cannot drop a constraint in place. Each satellite therefore
+    goes add-copy-drop, dropping its unique index and FK first and recreating
+    the unique on `event_id` — losing it would have allowed duplicate
+    authors. Production is Postgres, where this is simpler, but dev is
+    SQLite and the migration has to survive both.
+  Verified against real rows rather than a fresh database: `migrate:fresh`
+  would have run the data-move against zero rows and proved nothing.
+  10 events, zero orphans, 25 routes returning 200, and a tile completion
+  still writing through the chain afterwards.
+
+  **Still saying "board" and worth a separate mechanical pass:** the models
+  `BoardAuthor`/`BoardTeam`/`BoardInvite`/`BoardAccess` and their tables now
+  carry `event_id` while still being named for boards, and the Vue pages
+  (`Boards/Index`, `BoardCard`, `BoardShow`) likewise. Confusing, but
+  renaming them touches nothing behavioural.
+
 ## Onboarding & landing polish (step 5)
 
 Flagged 2026-08-19: landing pages currently read as placeholder-bare (plain
