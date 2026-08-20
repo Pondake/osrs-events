@@ -151,3 +151,19 @@ h3 {
 .dice-rolling {
     animation: dice-shake 1.4s ease-in-out;
 }
+
+/* Brand fill and brand TEXT split apart.
+   `--ui-primary` drives both, and amber-500 as text measures 2.13:1 on white
+   and 1.96:1 on a light panel — under the 4.5:1 WCAG AA floor for normal
+   text. Dark mode already measures 10.15:1, so only light mode is wrong.
+   ui.config.ts fixed the mirror image of this on solid buttons by pinning
+   the INK rather than darkening the fill, precisely so the gold stayed
+   vivid; the same reasoning applies here, just in the other direction — the
+   fill keeps amber-500, brand text drops to amber-700 (5.03:1 on white,
+   4.61:1 on panels).
+   This deliberately also catches soft/ghost/link/subtle buttons, which all
+   render `text-{color}`: their labels have to be readable too. Solid buttons
+   are untouched — they set their own ink. */
+html:not(.dark) .text-primary {
+    color: var(--color-amber-700);
+}
