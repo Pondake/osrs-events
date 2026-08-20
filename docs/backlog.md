@@ -881,6 +881,32 @@ sub-pages which aren't discoverable from it.
   often the server closes a stream by design. A disconnect only counts after
   a reconnect fails to land within ~6s.
 
+  **A fifth bug, and the worst of them: a rename could freeze every
+  leaderboard.** `enter()` refuses an RSN someone else already races under,
+  but nothing stopped a user changing their name in settings *afterwards* to
+  one that is taken. `syncUsernames()` then wrote it anyway, violated the
+  unique index, and — because it runs inside the scheduled command — took the
+  whole run down with it. Every participant after that row, in that event and
+  every event after it, silently stopped updating. The only symptom is a
+  leaderboard that quietly stops moving; nobody gets an error.
+  Two fixes, both needed:
+  * A clash now marks the standing `duplicate_username` and keeps the name
+    its numbers came from, which the page shows as "Name clash". Two accounts
+    claiming one RSN is a thing only a person can settle.
+  * **The command wraps each row and each event.** Unattended work must never
+    let one participant stop the run. Row-level errors are counted, printed
+    and `report()`ed, and the loop continues.
+  Sync errors are keyed by their stored value (`events.error_<value>` /
+  `_hint`) rather than hardcoded in the template, so a new failure mode needs
+  a key pair and nothing else.
+
+  **Worth knowing locally:** nothing runs Laravel's scheduler in dev, so
+  standings sit at "Waiting for first sync" until `php artisan
+  events:sync-standings` is run by hand. That is what it looked like when the
+  bug above was reported — the row was fine, it had simply never been looked
+  up. A "last updated" line on the page would make the difference between
+  *stale* and *never synced* visible without reading the database.
+
   **Follow-up, same day: an OSRS username is now mandatory for every account.**
   Flagged by the owner — a tracked event is pointless if half the accounts
   can't be looked up. Three entry points, because there are three ways an

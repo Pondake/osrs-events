@@ -104,10 +104,10 @@
                                     <span
                                         v-if="entry.error"
                                         class="text-sm text-muted inline-flex items-center gap-1 shrink-0"
-                                        :title="$t('events.not_tracked_hint')"
+                                        :title="$t(`events.error_${entry.error}_hint`)"
                                     >
                                         <u-icon name="i-lucide-circle-help" class="size-4" />
-                                        {{ $t('events.not_tracked') }}
+                                        {{ $t(`events.error_${entry.error}`) }}
                                     </span>
                                     <span v-else-if="entry.syncedAt" class="text-sm font-medium text-highlighted tabular-nums">
                                         +{{ formatXp(entry.gained) }}
