@@ -1,12 +1,5 @@
 <template>
-    <Head :title="resolved.title">
-        <meta name="description" :content="resolved.description" />
-        <link rel="canonical" :href="canonical" />
-        <meta property="og:title" :content="resolved.title" />
-        <meta property="og:description" :content="resolved.description" />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" :content="canonical" />
-    </Head>
+    <seo-head :options="seo" />
 
     <u-main>
         <u-page>
@@ -52,15 +45,15 @@
 
 <script setup>
 import { trans } from 'laravel-vue-i18n';
-import { useSeoData } from '@/Composables/useSeo';
+import SeoHead from '@/Components/SeoHead.vue';
 import { useAuth } from '@/Composables/useAuth';
 
 const { isAuthenticated, isAdmin } = useAuth();
 
-const { resolved, canonical, Head } = useSeoData({
+const seo = {
     title: trans('seo.home_title'),
     description: trans('seo.home_desc'),
-});
+};
 
 const features = [
     { icon: 'i-simple-icons-discord', title: trans('home.feature_discord_title'), description: trans('home.feature_discord_desc') },

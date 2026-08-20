@@ -1,8 +1,5 @@
 <template>
-    <Head :title="resolved.title">
-        <meta name="description" :content="resolved.description" />
-        <link rel="canonical" :href="canonical" />
-    </Head>
+    <seo-head :options="seo" />
 
     <u-main>
         <u-page>
@@ -56,12 +53,12 @@
 
 <script setup>
 import { trans } from 'laravel-vue-i18n';
-import { useSeoData } from '@/Composables/useSeo';
+import SeoHead from '@/Components/SeoHead.vue';
 
-const { resolved, canonical, Head } = useSeoData({
+const seo = {
     title: trans('landing.event_ideas.meta_title'),
     description: trans('landing.event_ideas.meta_desc'),
-});
+};
 
 const ideas = [
     { title: trans('landing.event_ideas.idea1_title'), meta: trans('landing.event_ideas.idea1_meta'), desc: trans('landing.event_ideas.idea1_desc') },

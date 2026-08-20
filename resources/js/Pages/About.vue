@@ -1,8 +1,5 @@
 <template>
-    <Head :title="resolved.title">
-        <meta name="description" :content="resolved.description" />
-        <link rel="canonical" :href="canonical" />
-    </Head>
+    <seo-head :options="seo" />
 
     <u-main>
         <u-page>
@@ -86,12 +83,12 @@
 
 <script setup>
 import { trans } from 'laravel-vue-i18n';
-import { useSeoData } from '@/Composables/useSeo';
+import SeoHead from '@/Components/SeoHead.vue';
 
-const { resolved, canonical, Head } = useSeoData({
+const seo = {
     title: trans('seo.about_title'),
     description: trans('seo.about_desc'),
-});
+};
 
 const features = [
     { icon: 'i-lucide-grid-3x3', title: trans('about.feature_boards_title'), desc: trans('about.feature_boards_desc') },

@@ -9,15 +9,23 @@
                          an Inertia page (unlike AppHeader's), so it has no SSR
                          ordering problem to work around — see AppHeader.vue's own
                          comment for why that one needs ClientOnly and this doesn't. -->
-                    <nav class="w-full md:w-52 shrink-0 space-y-6">
+                    <!-- Vertical rail on desktop, horizontally scrollable
+                         rows on mobile. The row needs overflow-x-auto with
+                         shrink-0 + whitespace-nowrap children: without them
+                         the items squeeze to fit, wrapping "Users & roles"
+                         onto three lines and pushing the last entry off
+                         screen entirely with no way to reach it.
+                         -mx-4 px-4 lets the scrolled row bleed to the screen
+                         edges so it reads as scrollable instead of clipped. -->
+                    <nav class="w-full md:w-52 shrink-0 space-y-4 md:space-y-6">
                         <div v-for="group in groups" :key="group.key">
                             <p class="px-3 mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{{ group.label }}</p>
-                            <div class="flex md:flex-col gap-1">
+                            <div class="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible -mx-4 px-4 md:mx-0 md:px-0 pb-1 md:pb-0">
                                 <a
                                     v-for="item in group.items"
                                     :key="item.to"
                                     :href="item.to"
-                                    class="flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors"
+                                    class="flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors shrink-0 whitespace-nowrap"
                                     :class="current === item.key ? 'bg-elevated text-highlighted font-medium' : 'text-muted hover:bg-elevated/50'"
                                 >
                                     <u-icon :name="item.icon" class="size-4 shrink-0" />

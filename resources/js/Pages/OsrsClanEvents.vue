@@ -1,8 +1,5 @@
 <template>
-    <Head :title="resolved.title">
-        <meta name="description" :content="resolved.description" />
-        <link rel="canonical" :href="canonical" />
-    </Head>
+    <seo-head :options="seo" />
 
     <u-main>
         <u-page>
@@ -60,7 +57,7 @@
 
 <script setup>
 import { trans } from 'laravel-vue-i18n';
-import { useSeoData } from '@/Composables/useSeo';
+import SeoHead from '@/Components/SeoHead.vue';
 import { useAuth } from '@/Composables/useAuth';
 
 defineProps({
@@ -69,10 +66,10 @@ defineProps({
 
 const { isAuthenticated } = useAuth();
 
-const { resolved, canonical, Head } = useSeoData({
+const seo = {
     title: trans('landing.clan_events.meta_title'),
     description: trans('landing.clan_events.meta_desc'),
-});
+};
 
 const features = [
     { icon: 'i-lucide-layout-grid', title: trans('landing.clan_events.feature_boards_title'), description: trans('landing.clan_events.feature_boards_desc') },
