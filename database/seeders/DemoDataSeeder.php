@@ -47,6 +47,8 @@ class DemoDataSeeder extends Seeder
 
     public function run(): void
     {
+        $this->renameLegacyTitles();
+
         $this->users = $this->seedUsers();
         $this->tasks = $this->seedTasks();
         $this->teams = $this->seedTeams();
@@ -282,6 +284,50 @@ class DemoDataSeeder extends Seeder
                 'players' => 20, 'start_date' => null, 'end_date' => null, 'dice_roll_limit' => null,
             ],
         ];
+    }
+
+    /**
+     * Carry old demo rows over to their current titles.
+     *
+     * Everything below is idempotent **by title**, which makes renaming one a
+     * trap: changing the title in boardSpecs() creates a second row and
+     * silently leaves the first behind, under the name that was being retired.
+     * That is exactly what happened — a database ended up with both "Autumn
+     * Sprint" and the "Skill of the Month" board it replaced, the latter still
+     * showing a 7x7 grid next to the real skill race of nearly the same name.
+     *
+     * So a rename has to be migrated, not just declared. Add a pair here
+     * whenever a demo title changes.
+     */
+    private function renameLegacyTitles(): void
+    {
+        // Old title => current title. "Skill of the Month" became the name of
+        // an actual event type (SKILL_RACE), so the Snakes & Ladders board
+        // wearing it had to give the name up.
+        $renames = ['Skill of the Month' => 'Autumn Sprint'];
+
+        foreach ($renames as $old => $current) {
+            $legacy = Event::where('title', $old)->where('type', 'SNAKES_LADDERS')->first();
+
+            if ($legacy === null) {
+                continue;
+            }
+
+            // If the new title is already taken, an earlier run created it
+            // fresh and this row is the duplicate — the rename can't happen
+            // twice. Dropping the older one keeps the demo set the size it
+            // claims to be; its board, tiles and player rows go with it via
+            // the cascading foreign keys.
+            if (Event::where('title', $current)->exists()) {
+                $this->command->warn("Removing duplicate demo event \"{$old}\" (superseded by \"{$current}\").");
+                $legacy->delete();
+
+                continue;
+            }
+
+            $legacy->update(['title' => $current]);
+            $this->command->info("Renamed demo event \"{$old}\" to \"{$current}\".");
+        }
     }
 
     /**
