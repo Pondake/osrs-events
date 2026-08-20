@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\CarbonInterface;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -36,10 +37,56 @@ class WiseOldManService
     /** Their published anonymous limit; the sync paces itself against this. */
     public const RATE_LIMIT_PER_MINUTE = 20;
 
-    private function client(): PendingRequest
+    /**
+     * Does Wise Old Man know this account?
+     *
+     * Three answers, not two, and the difference matters: **true** found,
+     * **false** genuinely unknown to them (a real 404 —
+     * `{"code":"PLAYER_NOT_FOUND"}`, verified against their API, not an empty
+     * body), and **null** meaning we could not find out. A timeout, a 500 or
+     * a rate-limit rejection must never be reported to a user as "that
+     * account doesn't exist"; being wrong in that direction tells someone
+     * their own RSN is a typo when it isn't.
+     *
+     * `displayName` comes back canonically cased ("Pondake", not the
+     * lowercase key), which is worth storing over whatever the user typed.
+     *
+     * Short timeout on purpose: this runs inline on signup, and a slow
+     * third-party lookup must not become a slow registration. Failing to a
+     * null answer is cheap; making someone wait is not.
+     *
+     * @return array{found: bool|null, displayName: string|null}
+     */
+    public function findPlayer(string $username): array
+    {
+        try {
+            $response = $this->client(timeout: 6)->get('/players/'.rawurlencode($username));
+        } catch (ConnectionException $e) {
+            Log::warning('Wise Old Man lookup unreachable', ['username' => $username, 'error' => $e->getMessage()]);
+
+            return ['found' => null, 'displayName' => null];
+        }
+
+        if ($response->status() === 404) {
+            return ['found' => false, 'displayName' => null];
+        }
+
+        if (! $response->successful()) {
+            Log::warning('Wise Old Man lookup failed', ['username' => $username, 'status' => $response->status()]);
+
+            return ['found' => null, 'displayName' => null];
+        }
+
+        return [
+            'found' => true,
+            'displayName' => $response->json('displayName') ?: null,
+        ];
+    }
+
+    private function client(int $timeout = 15): PendingRequest
     {
         $request = Http::baseUrl(self::BASE_URL)
-            ->timeout(15)
+            ->timeout($timeout)
             ->connectTimeout(8)
             ->withHeaders([
                 'User-Agent' => config('services.wom.user_agent'),

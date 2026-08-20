@@ -26,6 +26,41 @@
             </div>
         </div>
 
+        <!-- Recurring on purpose. An account Wise Old Man can't find is one
+             that will silently score nothing in every race it enters, and the
+             only person who can fix that is the owner of the name — so this
+             comes back rather than being dismissed once and forgotten. It is
+             a notice, never a block: their API only knows accounts somebody
+             has already looked up there, so a real newcomer legitimately
+             isn't found. -->
+        <div v-if="showOsrsNotice" class="border-b border-default bg-warning/10">
+            <div class="w-full max-w-(--ui-container) mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                <div class="flex items-center justify-center gap-x-3 gap-y-1 flex-wrap text-sm text-center">
+                    <span class="text-highlighted">
+                        <u-icon name="i-lucide-triangle-alert" class="size-4 inline-block align-[-3px] me-1.5 text-warning" />
+                        {{ $t('auth.osrs_unverified_banner', { name: osrsUsername }) }}
+                    </span>
+                    <span class="inline-flex items-center gap-2">
+                        <u-button
+                            size="xs"
+                            color="warning"
+                            variant="soft"
+                            :loading="rechecking"
+                            :label="$t('auth.osrs_recheck')"
+                            @click="recheckOsrs"
+                        />
+                        <u-button
+                            size="xs"
+                            color="neutral"
+                            variant="ghost"
+                            href="/settings/profile"
+                            :label="$t('auth.osrs_fix_name')"
+                        />
+                    </span>
+                </div>
+            </div>
+        </div>
+
         <component :is="page" v-bind="pageProps" />
         <app-footer v-if="showSiteChrome" />
 
@@ -42,7 +77,7 @@
 
 <script setup>
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import AppHeader from '@/Components/AppHeader.vue';
 import AppFooter from '@/Components/AppFooter.vue';
 import RichText from '@/Components/RichText.vue';
@@ -116,6 +151,15 @@ watch(
 // rendering — it has no access to the page component's own options.
 const showSiteChrome = computed(() => !String(inertiaPage.component ?? '').startsWith('Admin/'));
 
+// Pages that are themselves asking the user for something — the OSRS username
+// gate above all. A brand-new Discord account needs onboarding AND has no
+// username, so both flows want the screen at once; the tour used to win and
+// opened on top of the gate, while its own endpoints sit behind that same gate
+// (so "Skip for now" and the join-a-board step bounced off it). The gate wins,
+// and the unverified-name notice stays quiet here too — it would be nagging
+// about the very field on screen.
+const onAuthPage = computed(() => String(inertiaPage.component ?? '').startsWith('Auth/'));
+
 const announcement = computed(() => inertiaPage.props?.site?.announcement ?? null);
 const bannerStyle = computed(() => styleFor(inertiaPage.props?.site?.announcementType));
 
@@ -141,14 +185,46 @@ const bannerIconClass = computed(() => BANNER_ICON[bannerStyle.value.color]);
 // the modal writes to this on close, and the server prop only flips after
 // /onboarding/complete round-trips. Without the local copy the modal would
 // stay open until that response landed.
+// Shown whenever the signed-in account has a name we have never managed to
+// confirm. Not dismissible: the consequence of ignoring it is scoring nothing
+// in every race, and a one-click dismiss makes that permanent and silent.
+// Hidden on the gate page itself, where the user is already being asked.
+const osrsUsername = computed(() => inertiaPage.props?.auth?.user?.osrsUsername ?? null);
+const showOsrsNotice = computed(
+    () => showSiteChrome.value
+        && ! onAuthPage.value
+        && !! osrsUsername.value
+        && inertiaPage.props?.auth?.user?.osrsVerified === false,
+);
+
+const rechecking = ref(false);
+
+function recheckOsrs() {
+    rechecking.value = true;
+    router.post('/settings/profile/osrs/verify', {}, {
+        preserveScroll: true,
+        onFinish: () => (rechecking.value = false),
+        onError: (errors) => console.error(errors),
+    });
+}
+
 const showOnboarding = ref(false);
-const needsOnboarding = computed(() => inertiaPage.props?.auth?.user?.needsOnboarding ?? false);
+
+const needsOnboarding = computed(
+    () => (inertiaPage.props?.auth?.user?.needsOnboarding ?? false) && ! onAuthPage.value,
+);
 
 onMounted(() => {
     showOnboarding.value = needsOnboarding.value;
 });
 
 watch(needsOnboarding, (needs) => {
-    if (needs) showOnboarding.value = true;
+    if (needs) {
+        showOnboarding.value = true;
+    } else if (onAuthPage.value) {
+        // Close only when a blocking page is the reason. Onboarding finishing
+        // also flips this false, and that case is the modal's own to handle.
+        showOnboarding.value = false;
+    }
 });
 </script>

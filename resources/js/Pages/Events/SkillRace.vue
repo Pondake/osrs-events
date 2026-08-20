@@ -112,7 +112,15 @@
                                     <span v-else-if="entry.syncedAt" class="text-sm font-medium text-highlighted tabular-nums">
                                         +{{ formatXp(entry.gained) }}
                                     </span>
-                                    <span v-else class="text-sm text-muted">{{ $t('events.pending_sync') }}</span>
+                                    <!-- An unstarted race has nothing to
+                                         measure yet, which is a different
+                                         thing from a sync that hasn't
+                                         happened — and showing both as
+                                         "waiting" makes a working event look
+                                         stuck. -->
+                                    <span v-else class="text-sm text-muted">
+                                        {{ status === 'upcoming' ? $t('events.not_started') : $t('events.pending_sync') }}
+                                    </span>
                                 </li>
                             </ul>
 

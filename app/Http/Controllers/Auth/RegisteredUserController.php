@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Rules\OsrsUsername;
+use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +31,7 @@ class RegisteredUserController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, OsrsIdentityService $identity): RedirectResponse
     {
         // Enforced here, not only by hiding the form: the endpoint is
         // reachable directly, so the UI state is a courtesy and this is the
@@ -59,6 +60,9 @@ class RegisteredUserController extends Controller
         $user = DB::transaction(function () use ($data) {
             $user = User::create([
                 'nickname' => $data['nickname'],
+                // Checked against Wise Old Man just below, outside this
+                // transaction — a third-party HTTP call has no business
+                // holding a database transaction open.
                 'osrs_username' => trim($data['osrs_username']),
                 'email' => $data['email'],
                 'password' => $data['password'],
@@ -73,6 +77,10 @@ class RegisteredUserController extends Controller
             return $user;
         });
 
+        // After the transaction commits, so a slow or failing third-party
+        // lookup can never roll back a completed signup.
+        $found = $identity->apply($user, $data['osrs_username']);
+
         Auth::login($user, remember: true);
 
         // Session fixation prevention — issue a fresh session ID post-login,
@@ -80,6 +88,13 @@ class RegisteredUserController extends Controller
         // onto DiscordController::callback() too.
         $request->session()->regenerate();
 
-        return redirect()->intended('/boards');
+        $redirect = redirect()->intended('/events');
+
+        // Never a reason to fail the registration — Wise Old Man only knows
+        // accounts somebody has looked up there before, so a real newcomer
+        // legitimately 404s.
+        return $found === false
+            ? $redirect->with('board-save-error', trans('auth.osrs_not_found'))
+            : $redirect;
     }
 }

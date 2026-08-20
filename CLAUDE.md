@@ -144,6 +144,13 @@ and Services under `app/Services/` for anything with real business logic (e.g.
 - Define every relation a controller will eager-load, even obvious ones — a missing
   `PlayerBoard::team()` caused a real `RelationNotFoundException`.
 - Migrations: `php artisan make:migration <name>`, then `php artisan migrate`.
+- **SQLite does not reject an unknown column in a SELECT list** — it reads the
+  bare identifier as a *string literal* and returns it as data, so
+  `->get(['id', 'size'])` against a table with no `size` silently yields the
+  word "size". PostgreSQL (production) raises `column does not exist`. Any
+  explicit column list is therefore untested by dev usage alone; check names
+  against `Schema::getColumnListing()` when a column moves between tables.
+  This shipped a production-only 500 in `OnboardingController` once already.
 
 ### Auth
 - Discord OAuth via `laravel/socialite` + `socialiteproviders/discord` — not a first-party

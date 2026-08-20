@@ -167,6 +167,12 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::get('/settings/profile', [SettingsProfileController::class, 'show'])->name('settings.profile');
     Route::patch('/settings/profile', [SettingsProfileController::class, 'update'])->name('settings.profile.update');
     Route::put('/settings/profile/osrs', [SettingsProfileController::class, 'updateOsrsUsername'])->name('settings.profile.osrs');
+    // Re-checks the stored name against Wise Old Man. Throttled because it is
+    // a button anyone can hold down, and it spends a request against a shared
+    // public API with a 20/minute ceiling.
+    Route::post('/settings/profile/osrs/verify', [SettingsProfileController::class, 'verifyOsrsUsername'])
+        ->middleware('throttle:6,1')
+        ->name('settings.profile.osrs.verify');
 
     Route::get('/settings/account', [AccountController::class, 'show'])->name('settings.account');
     Route::put('/settings/account/email', [AccountController::class, 'updateEmail'])
