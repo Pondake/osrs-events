@@ -34,9 +34,28 @@
                     :items="actionOptions"
                     :placeholder="$t('admin.audit_all_actions')"
                     class="w-full"
+                    :ui="{ value: 'pe-6' }"
                 >
                     <template #item-leading="{ item }">
                         <u-icon :name="item.icon" class="size-4" />
+                    </template>
+                    <!-- Beside the chevron rather than replacing it (which is
+                         what the built-in `clear` prop does), so the control
+                         still reads as a dropdown while it holds a value.
+                         A u-icon, not a u-button: this slot renders inside the
+                         component's own trigger button, and a nested <button>
+                         is invalid markup. @click.stop keeps clearing from
+                         also toggling the menu open. -->
+                    <template #trailing>
+                        <u-icon
+                            v-if="action"
+                            name="i-lucide-x"
+                            class="size-4 ms-1.5 shrink-0 text-dimmed hover:text-highlighted cursor-pointer transition-colors"
+                            role="button"
+                            :aria-label="$t('admin.audit_clear_filter')"
+                            @click.stop="action = null"
+                        />
+                        <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-dimmed" />
                     </template>
                 </u-select>
 
@@ -52,7 +71,20 @@
                     :placeholder="$t('admin.audit_filter_user')"
                     icon="i-lucide-user"
                     class="w-full"
-                />
+                    :ui="{ base: 'pe-14' }"
+                >
+                    <template #trailing>
+                        <u-icon
+                            v-if="user"
+                            name="i-lucide-x"
+                            class="size-4 ms-1.5 shrink-0 text-dimmed hover:text-highlighted cursor-pointer transition-colors"
+                            role="button"
+                            :aria-label="$t('admin.audit_clear_filter')"
+                            @click.stop="user = null"
+                        />
+                        <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-dimmed" />
+                    </template>
+                </u-input-menu>
 
                 <u-input-menu
                     v-model="scope"
@@ -62,11 +94,23 @@
                     :placeholder="$t('admin.audit_filter_scope')"
                     icon="i-lucide-users"
                     class="w-full"
+                    :ui="{ base: 'pe-14' }"
                 >
                     <!-- A team and the clan it belongs to can share a name, so
                          the icon is what tells the two apart. -->
                     <template #item-leading="{ item }">
                         <u-icon :name="item.icon" class="size-4" />
+                    </template>
+                    <template #trailing>
+                        <u-icon
+                            v-if="scope"
+                            name="i-lucide-x"
+                            class="size-4 ms-1.5 shrink-0 text-dimmed hover:text-highlighted cursor-pointer transition-colors"
+                            role="button"
+                            :aria-label="$t('admin.audit_clear_filter')"
+                            @click.stop="scope = null"
+                        />
+                        <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-dimmed" />
                     </template>
                 </u-input-menu>
             </div>

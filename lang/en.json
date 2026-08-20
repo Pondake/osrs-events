@@ -35,6 +35,7 @@
     "admin.audit_filter_user": "Search users…",
     "admin.audit_by": "by :actor",
     "admin.audit_clear": "Clear",
+    "admin.audit_clear_filter": "Clear this filter",
     "admin.audit_empty": "Nothing has been recorded yet.",
     "admin.audit_empty_filtered": "No entries match these filters.",
     "admin.audit_page_of": "Page :current of :last · :total entries",
