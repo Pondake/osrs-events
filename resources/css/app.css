@@ -4,11 +4,39 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/* The in-game UI face, self-hosted rather than pulled from a CDN — see
+   public/fonts/README.md for the source and the licensing caveat.
+   font-display: block, not swap: this is only used for the wordmark, and a
+   flash of Cinzel swapping to a pixel face is a jarring shape change rather
+   than the subtle reflow swap is meant for. The file is 14KB, so the block
+   period is imperceptible. */
+@font-face {
+    font-family: 'RuneScape Bold 12';
+    src: url('/fonts/RuneScape-Bold-12.otf') format('opentype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: block;
+}
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --font-osrs: 'Cinzel', Georgia, serif;
     --font-osrs-decorative: 'Cinzel Decorative', Georgia, serif;
+    --font-osrs-game: 'RuneScape Bold 12', var(--font-osrs);
+}
+
+/* A pixel face drawn at 12px. Smoothing it, or scaling to a non-integer
+   multiple, turns crisp pixels into grey mush — the logo brief sets the same
+   rule for the mark. Hence the fixed 24px (2x) here rather than a Tailwind
+   text-* class that might land on 17.5px. */
+.osrs-game-font {
+    font-family: var(--font-osrs-game);
+    font-size: 24px;
+    line-height: 1;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
+    font-smooth: never;
 }
 
 h1,
