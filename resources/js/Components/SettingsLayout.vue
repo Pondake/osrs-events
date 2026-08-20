@@ -83,6 +83,7 @@ const groups = computed(() => {
         { key: 'admin-tasks', to: '/settings/admin/tasks', icon: 'i-lucide-list-checks', label: trans('settings.nav_admin_tasks'), show: isAdmin.value || canCreateTiles.value },
         { key: 'admin-content', to: '/settings/admin/content', icon: 'i-lucide-layout-template', label: trans('settings.nav_admin_content'), show: isAdmin.value },
         { key: 'admin-site', to: '/settings/admin/site', icon: 'i-lucide-sliders-horizontal', label: trans('settings.nav_admin_site'), show: isAdmin.value },
+        { key: 'admin-invites', to: '/settings/admin/invites', icon: 'i-lucide-ticket', label: trans('settings.nav_admin_invites'), show: isAdmin.value },
         { key: 'admin-audit', to: '/settings/admin/audit', icon: 'i-lucide-scroll-text', label: trans('settings.nav_admin_audit'), show: isAdmin.value },
     ].filter((item) => item.show);
 

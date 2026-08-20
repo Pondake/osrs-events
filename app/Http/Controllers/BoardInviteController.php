@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Board;
 use App\Models\BoardInvite;
 use App\Services\BoardAccessService;
@@ -30,13 +31,22 @@ class BoardInviteController extends Controller
             'max_uses' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        BoardInvite::create([
+        $invite = BoardInvite::create([
             'id' => (string) str()->uuid(),
             'board_id' => $board->id,
             'token' => (string) str()->uuid(),
             'short_code' => $access->generateUniqueShortCode($board),
             'created_by' => Auth::id(),
             ...$data,
+        ]);
+
+        // Logged here as well as in the admin overview, so the trail doesn't
+        // depend on which of the two surfaces the action was taken from.
+        // The token is deliberately never logged — it IS the credential.
+        AuditLog::record('invite.created', $invite, [
+            'board' => $board->title,
+            'short_code' => $invite->short_code,
+            'max_uses' => $invite->max_uses,
         ]);
 
         return back()->with('board-save', 'Invite created.');
@@ -46,6 +56,12 @@ class BoardInviteController extends Controller
     {
         abort_unless(Auth::user()->isBoardOwnerOrAdmin($board), 403);
         abort_unless($invite->board_id === $board->id, 404);
+
+        AuditLog::record('invite.revoked', $invite, [
+            'board' => $board->title,
+            'short_code' => $invite->short_code,
+            'use_count' => $invite->use_count,
+        ]);
 
         $invite->delete();
 

@@ -15,11 +15,26 @@ class BoardInvite extends Model
 
     protected $fillable = ['board_id', 'token', 'short_code', 'label', 'created_by', 'expires_at', 'max_uses', 'use_count'];
 
-    protected $casts = ['expires_at' => 'datetime'];
+    /**
+     * created_at is cast even though $timestamps is false — the column has a
+     * useCurrent() default so the database fills it, and without the cast it
+     * comes back as a raw string that blows up on any date method (the same
+     * class of bug as PlayerBoard.last_roll_date; see CLAUDE.md).
+     */
+    protected $casts = [
+        'expires_at' => 'datetime',
+        'created_at' => 'datetime',
+    ];
 
     public function board(): BelongsTo
     {
         return $this->belongsTo(Board::class);
+    }
+
+    /** Declared because the admin invites overview eager-loads it. */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function accesses(): HasMany

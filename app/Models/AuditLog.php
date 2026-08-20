@@ -73,6 +73,8 @@ class AuditLog extends Model
         'team.member_removed',
         'board.team_added',
         'board.team_removed',
+        'invite.created',
+        'invite.revoked',
         'task.deleted',
         'settings.updated',
     ];
@@ -127,6 +129,12 @@ class AuditLog extends Model
     {
         if ($target instanceof User) {
             return $target->displayName();
+        }
+
+        // An invite's label is optional, and its short_code is what anyone
+        // actually recognises it by — the uuid fallback would be useless here.
+        if ($target instanceof BoardInvite) {
+            return $target->label ?: $target->short_code;
         }
 
         return $target->title ?? $target->name ?? (string) $target->getKey();

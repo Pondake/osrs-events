@@ -39,23 +39,8 @@
                     <template #item-leading="{ item }">
                         <u-icon :name="item.icon" class="size-4" />
                     </template>
-                    <!-- Beside the chevron rather than replacing it (which is
-                         what the built-in `clear` prop does), so the control
-                         still reads as a dropdown while it holds a value.
-                         A u-icon, not a u-button: this slot renders inside the
-                         component's own trigger button, and a nested <button>
-                         is invalid markup. @click.stop keeps clearing from
-                         also toggling the menu open. -->
                     <template #trailing>
-                        <u-icon
-                            v-if="action"
-                            name="i-lucide-x"
-                            class="size-4 ms-1.5 shrink-0 text-dimmed hover:text-highlighted cursor-pointer transition-colors"
-                            role="button"
-                            :aria-label="$t('admin.audit_clear_filter')"
-                            @click.stop="action = null"
-                        />
-                        <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-dimmed" />
+                        <filter-clear :show="!!action" @clear="action = null" />
                     </template>
                 </u-select>
 
@@ -74,15 +59,7 @@
                     :ui="{ base: 'pe-14' }"
                 >
                     <template #trailing>
-                        <u-icon
-                            v-if="user"
-                            name="i-lucide-x"
-                            class="size-4 ms-1.5 shrink-0 text-dimmed hover:text-highlighted cursor-pointer transition-colors"
-                            role="button"
-                            :aria-label="$t('admin.audit_clear_filter')"
-                            @click.stop="user = null"
-                        />
-                        <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-dimmed" />
+                        <filter-clear :show="!!user" @clear="user = null" />
                     </template>
                 </u-input-menu>
 
@@ -102,15 +79,7 @@
                         <u-icon :name="item.icon" class="size-4" />
                     </template>
                     <template #trailing>
-                        <u-icon
-                            v-if="scope"
-                            name="i-lucide-x"
-                            class="size-4 ms-1.5 shrink-0 text-dimmed hover:text-highlighted cursor-pointer transition-colors"
-                            role="button"
-                            :aria-label="$t('admin.audit_clear_filter')"
-                            @click.stop="scope = null"
-                        />
-                        <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-dimmed" />
+                        <filter-clear :show="!!scope" @clear="scope = null" />
                     </template>
                 </u-input-menu>
             </div>
@@ -200,6 +169,7 @@ import { computed, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
 import AuditMetadata from '@/Components/AuditMetadata.vue';
+import FilterClear from '@/Components/FilterClear.vue';
 import { auditActionOptions, auditLabel, auditStyleFor, formatTimestamp } from '@/Support/audit';
 
 const props = defineProps({
