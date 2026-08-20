@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\User;
-use App\Models\UserRole;
 use Illuminate\Database\Seeder;
 
 /**
@@ -33,7 +32,7 @@ class GrantOwnerAdminSeeder extends Seeder
             ['description' => 'Full access — manage boards, tiles, tasks and users'],
         );
 
-        UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $adminRole->id]);
+        $user->assignRole($adminRole);
 
         // Same person as AdminUserSeeder's synthetic account, so the same
         // OSRS name. Only filled if it's still empty — a rename made in the

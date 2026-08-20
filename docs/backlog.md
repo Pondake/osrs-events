@@ -395,8 +395,12 @@ branch's SSR evaluation. Concrete carry-over work:
   the existing `/dev-login` route (real gameplay, not just reading the
   code): correct die face, toast, and the connector lines redrawing around
   the new position after a snake hit.
-- [ ] `stale/` can be deleted once the migration is verified complete and the
-  team is confident nothing needs porting from it anymore.
+- [x] ~~`stale/` can be deleted once the migration is verified complete~~ —
+  **deleted 2026-08-20** on the owner's say-so: 79,054 files, 853 MB. It was
+  gitignored, so this is not recoverable from the repo. Comments across the
+  codebase still cite paths inside it ("Ported from stale/frontend/...");
+  those are provenance notes about where a behaviour came from, not files
+  anyone can open, and were left as-is.
 
 ## Branding
 
@@ -615,20 +619,34 @@ branch's SSR evaluation. Concrete carry-over work:
      cast, both of which the overview needed and neither of which existed.
 - [ ] Design what "admin functionality" beyond the above needs to cover —
   still worth a real requirements pass rather than guessing further.
-- [ ] **Decide: keep the homegrown roles/permissions, or move to
-  `spatie/laravel-permission`?** Still open — it was raised alongside the
-  onboarding work ("moet via spatie/roles") but is a standalone call, so
-  it's tracked here rather than buried under a finished onboarding step.
-  Current state: hand-rolled and working — `Role`/`UserRole`/
-  `UserPermission` models, `User::hasRole()`/`hasPermission()`/`isAdmin()`,
-  and `canCreateBoards`/`canCreateTiles` gates across the controllers.
-  For spatie: real Gate/Policy integration (`@can`, `authorize()`) instead
-  of hand-written `abort_unless` everywhere, caching, and Filament assumes
-  it if that CMS prototype ever happens.
-  Against: it's a working system with no current pain, the migration
-  touches every authorization call site, and the tables would need
-  converting (spatie keys on a `model_has_roles` morph, not our
-  `user_roles`). Not a side-effect refactor — decide it deliberately.
+- [x] ~~**Decide: keep the homegrown roles/permissions, or move to
+  `spatie/laravel-permission`?**~~ — decided 2026-08-20: **moved to spatie.**
+  Behaviour is unchanged — the point was the plumbing, not who can do what.
+  * `App\Models\Role` / `Permission` extend spatie's and add **`HasUuids`**.
+    The package assumes auto-incrementing ids; this schema is uuid-keyed
+    throughout (CLAUDE.md), and without the trait a created role saves with no
+    id. `roles.description` was carried over because the admin UI shows it.
+  * `model_morph_key` is **`model_uuid`**, not the stub's `model_id` — that
+    column is an `unsignedBigInteger`, and against uuid users nothing would
+    ever have matched.
+  * Three migrations, in order: rename the old `roles` out of the way (spatie
+    wants that exact name and the table had live rows, so its migration would
+    have failed outright), create spatie's tables, then copy and drop. The
+    copy is written against the **query builder, not the models** — a data
+    migration that depends on Eloquent depends on what those classes look like
+    today, and these were about to be rewritten.
+  * **Permissions had no catalogue before.** `user_permissions` stored a bare
+    string per user, so the migration derives the set from keys actually
+    granted *plus* the two the code checks by name — without that second half
+    a permission nobody currently holds would have vanished silently.
+  * `User::hasPermission()` stays as the app's entry point: it keeps the ADMIN
+    bypass (spatie would answer "no" for an admin never explicitly granted a
+    key) and returns false for an unknown key, where spatie's
+    `hasPermissionTo()` throws.
+  Verified against the real database, not a fresh one: 3 roles with their
+  descriptions, 5 assignments and 2 permissions carried across, old tables
+  gone, then grant and revoke driven through the admin UI. 15 tests cover it.
+
 - [ ] **CMS / page layout editor** (roadmap Phase 6). The goal, as scoped
   2026-08-20: edit every public page from the admin section through a
   layout editor that composes pages out of Nuxt UI page elements

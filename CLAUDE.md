@@ -1,9 +1,11 @@
 # OSRS Events — Claude Rules
 
 This repo migrated from NestJS+Nuxt to Laravel+Inertia on the
-`experiment/laravel-stack` branch. The old stack lives on disk at `stale/`
-(gitignored, kept for reference only — never edit it, never treat it as
-the current app). Everything below describes the **current** app.
+`experiment/laravel-stack` branch. The old stack used to sit on disk at
+`stale/` for reference; it was **deleted 2026-08-20** once the migration was
+verified complete. Comments across the codebase still cite paths inside it
+("Ported from stale/frontend/...") — those are provenance notes about where a
+behaviour came from, not files you can open.
 
 ## Model selection
 - **Haiku** — mechanical tasks: adding i18n keys, renaming, small field additions, fixing typos, one-liner refactors
@@ -42,8 +44,7 @@ osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.
 ├── routes/web.php
 ├── ui.config.ts          Nuxt UI theme (colors, component overrides) — wired into vite.config.js
 ├── lang/en.json           flat dotted-key translations (see i18n below)
-├── docs/backlog.md         living priority list — SSR gotchas, what's done, what's not
-└── stale/                 old NestJS/Nuxt app — gitignored, reference only
+└── docs/backlog.md         living priority list — SSR gotchas, what's done, what's not
 ```
 
 Stack: Laravel 13 · Inertia.js v2 · Vue 3 · `@nuxt/ui` v4 · Tailwind v4 ·
@@ -152,6 +153,25 @@ and Services under `app/Services/` for anything with real business logic (e.g.
   against `Schema::getColumnListing()` when a column moves between tables.
   This shipped a production-only 500 in `OnboardingController` once already.
 
+### Roles & permissions — `spatie/laravel-permission`
+- Roles and permissions are spatie's, not hand-rolled (migrated 2026-08-20).
+  `App\Models\Role` / `App\Models\Permission` extend spatie's and add
+  **`HasUuids`** — the package assumes auto-incrementing ids and this schema is
+  uuid-keyed throughout, so without the trait a created role gets no id at all.
+  `Role` also keeps a `description` column the admin UI shows.
+- `config/permission.php` sets `model_morph_key` to **`model_uuid`**. The
+  stub's `model_id` is an `unsignedBigInteger`; against uuid users nothing
+  would ever match.
+- **Use `User::hasPermission($key)`, not spatie's `hasPermissionTo()`.** Two
+  app rules live in that wrapper: ADMIN bypasses every granular check, and an
+  unknown key returns `false` instead of throwing `PermissionDoesNotExist`
+  (spatie throws; every caller here wants a plain no).
+- `$user->can($key)` works too — `HasRoles` registers permissions with
+  Laravel's Gate — but it has neither of the two behaviours above.
+- Creating a role or permission by name: `Role::findOrCreate($name, 'web')`.
+  A bare `firstOrCreate(['name' => …])` skips `guard_name`, and a row without
+  one is invisible to every check.
+
 ### Auth
 - Discord OAuth via `laravel/socialite` + `socialiteproviders/discord` — not a first-party
   Socialite driver. Use `->setScopes([...])`, never `->scopes([...])` (the latter merges
@@ -185,7 +205,6 @@ and Services under `app/Services/` for anything with real business logic (e.g.
 - Do not write custom CSS unless Tailwind cannot express it
 - Do not create a separate `/create` page for entities that have a modal flow
 - Do not skip `console.error()` in catch blocks
-- Do not edit anything under `stale/` — it's read-only reference material for the migration
 - Do not call `route()` or `$t()` from `<script setup>` JS — both are template-only globals;
   use `trans()` (i18n) directly, and restructure around `route()`'s template-only requirement
 - Do not add `ssr.noExternal` for `@nuxt/ui` in `vite.config.js` — it silently breaks Vue's

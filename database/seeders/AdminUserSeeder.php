@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\User;
-use App\Models\UserRole;
 use Illuminate\Database\Seeder;
 
 /**
@@ -56,7 +55,7 @@ class AdminUserSeeder extends Seeder
             ],
         );
 
-        UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $adminRole->id]);
+        $user->assignRole($adminRole);
 
         $this->command->info("Seeded admin test account: {$username} (login via /dev-login?as=admin&pass=...)");
     }

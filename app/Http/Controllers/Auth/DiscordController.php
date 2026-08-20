@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\UserGuild;
-use App\Models\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -174,7 +173,7 @@ class DiscordController extends Controller
                     ['name' => 'PLAYER'],
                     ['description' => 'Standaard spelerrol'],
                 );
-                UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $playerRole->id]);
+                $user->assignRole($playerRole);
 
                 // Only on first creation — a returning user may have already
                 // set their own custom nickname (Profile.vue), which a login

@@ -41,7 +41,7 @@ class AuditLogSeeder extends Seeder
         // Linked to a real user where one exists, so the "actor still exists"
         // case is represented too — the deleted-actor case is covered by the
         // rows whose actor_id stays null.
-        $admin = User::query()->whereHas('userRoles.role', fn ($q) => $q->where('name', 'ADMIN'))->first();
+        $admin = User::role('ADMIN')->first();
         $adminLabel = $admin?->displayName() ?: 'mbeetje';
 
         $entries = [
