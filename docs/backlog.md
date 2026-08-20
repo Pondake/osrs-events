@@ -628,10 +628,14 @@ branch's SSR evaluation. Concrete carry-over work:
   one honest thing: inventories the 8 public pages and states that they're
   still hardcoded Vue. It deliberately does not fake an editor.
   The three real pieces of work, none started:
-  1. **Storage** — a `pages` table holding an ordered list of blocks per
-     page (type + props JSON). Nothing exists yet. Design it around the
-     block shape the renderer already accepts (see below), not the other way
-     round — that shape is now known to render rather than guessed at.
+  1. ~~**Storage**~~ — done 2026-08-20. `pages` table, one JSON `blocks`
+     document per page plus title/subtitle/SEO/is_published. One column, not
+     a `page_blocks` table: a block list is only ever read and written whole,
+     so rows would buy ordering queries nothing needs while making a reorder
+     an UPDATE across every row. `/about` renders from it; `PageSeeder` uses
+     firstOrCreate so a re-run never overwrites edited content. Slugs resolve
+     through a `/{page}` catch-all declared LAST in routes/web.php, so every
+     fixed path wins and a slug can't shadow a real route.
   2. ~~**Renderer**~~ — done 2026-08-20.
      `resources/js/Components/Cms/PageRenderer.vue` walks a block list;
      `Cms/blocks.js` is the vocabulary AND the security boundary. Blocks
@@ -663,8 +667,22 @@ branch's SSR evaluation. Concrete carry-over work:
      checks lied before this was spotted.
      Still missing from the vocabulary: images, video/embeds, and a
      multi-column layout block. Add them when a page needs one.
-  3. **Editor UI** — add/remove/reorder blocks and edit their props.
-     Start read-then-edit on one page (e.g. `/about`) rather than all 8.
+  3. ~~**Editor UI**~~ — done 2026-08-20. `/admin/content` lists editable
+     pages (and, honestly, the ones still hardcoded); `/admin/content/{slug}`
+     edits one, with a live preview running the SAME PageRenderer the public
+     page uses — the payoff for building the renderer first.
+     The editor is **generated from the vocabulary**: each BLOCK_TYPES entry
+     carries `label`, `icon` and `fields`, so adding a block type is one edit
+     rather than three (renderer + add menu + form). Repeaters recurse
+     through the same field component, and containers nest the same editor.
+     **A bug worth not reintroducing:** `$request->validate()` returns only
+     the keys it has rules for. With `blocks.*.type` and `blocks.*.props`
+     named but not `blocks.*.blocks`, every nested child was stripped from
+     the validated array and saving a page silently emptied its sections.
+     The controller now validates the request but persists
+     `$request->input('blocks')` — the rules decide whether to accept, not
+     what to write. Caught by opening /about after a save and finding its
+     buttons gone.
      For the prose inside a block, `@nuxt/ui` v4 already ships `u-editor`
      (TipTap 3 — `@tiptap/core`, `@tiptap/markdown`, drag handle, bubble
      menu, mention/emoji menus are all already declared dependencies of
