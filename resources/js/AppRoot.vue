@@ -3,14 +3,26 @@
         <app-header />
         <component :is="page" v-bind="pageProps" />
         <app-footer />
+
+        <!-- Lives here rather than on any one page because it has to be able
+             to appear wherever a new user first lands. ClientOnly for the
+             same reason the header's interactive bits are — u-modal pulls in
+             the '#imports' virtual specifier that breaks the SSR build (see
+             the useToast note below). -->
+        <client-only>
+            <onboarding-modal v-if="showOnboarding" v-model:open="showOnboarding" />
+        </client-only>
     </u-app>
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import AppHeader from '@/Components/AppHeader.vue';
 import AppFooter from '@/Components/AppFooter.vue';
+import ClientOnly from '@/Components/ClientOnly.vue';
+
+const OnboardingModal = defineAsyncComponent(() => import('@/Components/OnboardingModal.vue'));
 
 // Prop is named `page` (the Vue component to render, per Inertia's
 // createInertiaApp setup() contract) — deliberately never captured into a
@@ -69,4 +81,19 @@ watch(
         if (message) toast?.add({ id: 'board-save-error', title: message, color: 'error' });
     },
 );
+
+// Local ref seeded from the shared prop rather than bound straight to it:
+// the modal writes to this on close, and the server prop only flips after
+// /onboarding/complete round-trips. Without the local copy the modal would
+// stay open until that response landed.
+const showOnboarding = ref(false);
+const needsOnboarding = computed(() => inertiaPage.props?.auth?.user?.needsOnboarding ?? false);
+
+onMounted(() => {
+    showOnboarding.value = needsOnboarding.value;
+});
+
+watch(needsOnboarding, (needs) => {
+    if (needs) showOnboarding.value = true;
+});
 </script>

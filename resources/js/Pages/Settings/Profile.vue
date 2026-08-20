@@ -26,6 +26,16 @@
             </div>
         </u-card>
 
+        <u-card>
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                    <p class="font-medium">{{ $t('onboarding.title') }}</p>
+                    <p class="text-sm text-muted">{{ $t('onboarding.welcome_body') }}</p>
+                </div>
+                <u-button color="neutral" variant="outline" size="sm" icon="i-lucide-rotate-ccw" :label="$t('onboarding.restart')" @click="replayOnboarding" />
+            </div>
+        </u-card>
+
         <div>
             <h3 class="text-lg font-semibold text-highlighted mb-4">{{ $t('profile.your_boards') }}</h3>
 
@@ -70,7 +80,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { useAuth } from '@/Composables/useAuth';
 import { formatBoardSize, BOARD_TILE_COUNT } from '@/Support/board';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
@@ -94,6 +104,12 @@ function startEditing() {
 function save() {
     form.nickname = nicknameInput.value.trim() || null;
     form.patch('/settings/profile', { onSuccess: () => (editing.value = false), preserveScroll: true });
+}
+
+// Clears onboarding_completed_at; AppRoot watches the shared prop and
+// re-opens the modal once the response lands.
+function replayOnboarding() {
+    router.post('/onboarding/reset', {}, { preserveScroll: true });
 }
 
 const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', TEAM_MANAGER: 'info', PLAYER: 'primary' };

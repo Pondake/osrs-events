@@ -65,6 +65,10 @@ class HandleInertiaRequests extends Middleware
                     // here since the roles a nav might care about can grow
                     // without a matching HandleInertiaRequests change every time.
                     'roles' => $roles,
+                    // Drives OnboardingModal.vue's auto-open in AppRoot —
+                    // shared globally because the modal lives in the layout,
+                    // not on any one page that could pass it as a prop.
+                    'needsOnboarding' => $user->onboarding_completed_at === null,
                 ] : null,
             ],
         ];

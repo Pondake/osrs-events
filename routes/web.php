@@ -13,6 +13,7 @@ use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LeaderboardController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\Settings\AccountController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
@@ -121,6 +122,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/boards/{board}/teams/{team}', [BoardController::class, 'removeTeam'])->name('boards.teams.remove');
     Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
     Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
+
+    Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+    Route::post('/onboarding/reset', [OnboardingController::class, 'reset'])->name('onboarding.reset');
 
     // /profile predates the settings split and is still linked from older
     // places (and any bookmark) — keep it working rather than 404ing.
