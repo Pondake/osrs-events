@@ -592,11 +592,28 @@ every new user sees.
   (verified: switching 7×7 → 9×9 re-renders the grid live).
   Skippable at every step ("Skip for now"), and replayable afterwards from
   `/settings/profile` (`POST /onboarding/reset`).
-  Step 2 posts to the existing `POST /boards` — a shortcut into the real
-  create flow, not a parallel implementation, so the controller's rules
-  apply unchanged. Without `canCreateBoards` it shows an explanation
-  instead of a form that would only 403 on submit (verified with a
-  PLAYER-only account).
+  **Steps are assembled per account, not fixed** — a review pass against
+  each user type showed the original fixed three only made sense for one of
+  them:
+  - *Discord player without `canCreateBoards`* (the common case) hit a dead
+    end: a "create your first board" step that told them they weren't
+    allowed. They now get a **Find a board** step instead, listing boards
+    they can actually join (`GET /onboarding/joinable-boards` — OPEN plus
+    GUILD boards for guilds they're in; INVITE excluded, since without a
+    code those are just unclickable).
+  - *Email/password account* had a real invisible gap: `UserGuild` rows come
+    **only** from Discord's guild sync, so such an account can never join a
+    GUILD board or see a guild team, and nothing said so. An **Account**
+    step now surfaces that, with a connect button.
+  - *Admin/creator* was the one the original flow already fitted — it still
+    gets Welcome → create a board → plugin, and skips the Account step
+    entirely since nothing's missing.
+  The Account step only appears when something IS missing (no Discord, or
+  no email), so a fully set-up account still sees three steps, not four.
+  The board step posts to the existing `POST /boards` — a shortcut into the
+  real create flow, not a parallel implementation, so the controller's rules
+  apply unchanged.
+  All three types verified end-to-end in a browser with real accounts.
   **Not done**: the "theme fields" the original item mentioned — boards have
   no theme/colour concept at all, so there was nothing to preview. Worth
   revisiting only if board theming ever becomes a feature.
