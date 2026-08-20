@@ -8,7 +8,7 @@
         <div v-if="announcement" class="border-b border-default" :class="bannerClass">
             <div class="max-w-7xl mx-auto px-4 py-2 flex items-start gap-2 text-sm">
                 <u-icon :name="bannerStyle.icon" class="size-4 shrink-0 mt-0.5" :class="bannerIconClass" />
-                <p class="text-highlighted">{{ announcement }}</p>
+                <p class="text-highlighted"><announcement-text :text="announcement" /></p>
             </div>
         </div>
 
@@ -31,6 +31,7 @@ import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import AppHeader from '@/Components/AppHeader.vue';
 import AppFooter from '@/Components/AppFooter.vue';
+import AnnouncementText from '@/Components/AnnouncementText.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import { styleFor } from '@/Support/announcement';
 
