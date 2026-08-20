@@ -32,7 +32,10 @@ class ContentController extends Controller
         return Inertia::render('Admin/Content', [
             'pages' => Page::query()
                 ->orderBy('slug')
-                ->get(['id', 'slug', 'title', 'subtitle', 'is_published', 'updated_at'])
+                // `blocks` is selected because blockCount below reads it.
+                // Without it every page reported "0 blocks" — the column was
+                // never loaded, so the count was counting null.
+                ->get(['id', 'slug', 'title', 'subtitle', 'is_published', 'updated_at', 'blocks'])
                 ->map(fn (Page $page) => [
                     'id' => $page->id,
                     'slug' => $page->slug,
@@ -50,8 +53,6 @@ class ContentController extends Controller
                 ['path' => '/osrs-snakes-and-ladders', 'label' => 'Snakes & Ladders'],
                 ['path' => '/osrs-clan-events', 'label' => 'Clan Events'],
                 ['path' => '/osrs-event-ideas', 'label' => 'Event Ideas'],
-                ['path' => '/privacy', 'label' => 'Privacy Policy'],
-                ['path' => '/terms', 'label' => 'Terms of Service'],
             ],
         ]);
     }

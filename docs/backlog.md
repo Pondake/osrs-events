@@ -720,7 +720,32 @@ branch's SSR evaluation. Concrete carry-over work:
      every interactive `@nuxt/ui` component needs. `@tiptap/markdown` means
      it can round-trip markdown rather than storing HTML, which is what
      keeps stored content renderable without `v-html`.
-  4. **Editor UI needs a visual pass** — flagged by the owner 2026-08-20:
+  4. **Two more pages moved into the CMS** — done 2026-08-21. `/privacy` and
+     `/terms` were hardcoded Vue; they are now `pages` rows rendered by
+     PageRenderer, editable at `/admin/content`, and their fixed routes were
+     **removed** so the `/{page}` catch-all resolves them — a fixed route left
+     in place would shadow the database row and quietly keep serving the old
+     copy. `Privacy.vue` and `Terms.vue` are deleted. Four hardcoded pages
+     remain: `/`, and the three `landing.*` SEO pages.
+     * **A `list` block was needed first.** The prose block renders exactly
+       one paragraph, and a policy page is mostly lists; writing them as
+       dashed prose would look like a list without being one, which is worse
+       for anything read aloud. Items go through the same inline parser as
+       prose, so a list entry can carry a link without its own escape hatch.
+     * **The privacy copy was rewritten, not transcribed.** It claimed the app
+       collects no email address and no passwords — untrue since email
+       registration — and predated the OSRS username and the audit log.
+       Carrying a knowingly-false privacy statement into the database would
+       have been worse than leaving it in Vue. Written from what the schema
+       actually stores; **still wants the owner's read before launch**, since
+       accurate is the floor rather than the whole bar for a legal document.
+     * Two bugs found by looking at the rendered result: seeding `seo_title`
+       as `"Privacy Policy — OSRS Events"` double-applied the site-name suffix
+       (SSR gotcha #4, reintroduced), and `/admin/content` reported **"0
+       blocks"** for every page because `blocks` was missing from the column
+       list the count reads.
+
+  5. **Editor UI needs a visual pass** — flagged by the owner 2026-08-20:
      it works and is functionally fine, but reads as "a bad Divi", which is
      fair — it is a vertical stack of accordion boxes, and you edit in a list
      that sits beside the thing it changes rather than on it.

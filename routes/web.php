@@ -94,8 +94,10 @@ Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadd
 Route::get('/osrs-clan-events', [LandingController::class, 'clanEvents'])->name('landing.clan-events');
 Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name('landing.event-ideas');
 
-Route::get('/privacy', fn () => Inertia::render('Privacy'))->name('privacy');
-Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
+// /privacy and /terms are CMS pages now, resolved by the /{page} catch-all at
+// the bottom of this file — the same path /about already took. Keeping fixed
+// routes here would shadow the database rows and quietly serve the old
+// hardcoded copy instead.
 
 // Snakes & Ladders was the whole product, so the app said "boards"
 // everywhere. It is becoming one event type among several (ROADMAP phase 5),
