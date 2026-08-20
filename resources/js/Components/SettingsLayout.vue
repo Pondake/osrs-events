@@ -82,6 +82,7 @@ const groups = computed(() => {
         { key: 'admin-boards', to: '/settings/admin/boards', icon: 'i-lucide-layout-grid', label: trans('settings.nav_admin_boards'), show: isAdmin.value },
         { key: 'admin-tasks', to: '/settings/admin/tasks', icon: 'i-lucide-list-checks', label: trans('settings.nav_admin_tasks'), show: isAdmin.value || canCreateTiles.value },
         { key: 'admin-content', to: '/settings/admin/content', icon: 'i-lucide-layout-template', label: trans('settings.nav_admin_content'), show: isAdmin.value },
+        { key: 'admin-site', to: '/settings/admin/site', icon: 'i-lucide-sliders-horizontal', label: trans('settings.nav_admin_site'), show: isAdmin.value },
     ].filter((item) => item.show);
 
     if (adminItems.length) {

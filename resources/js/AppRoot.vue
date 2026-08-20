@@ -1,6 +1,17 @@
 <template>
     <u-app>
         <app-header />
+
+        <!-- Site-wide announcement, set in admin site settings. Rendered
+             above the page rather than inside it so it shows everywhere,
+             and server-side (no client-only) so it's in the served HTML. -->
+        <div v-if="announcement" class="border-b border-default" :class="bannerClass">
+            <div class="max-w-7xl mx-auto px-4 py-2 flex items-start gap-2 text-sm">
+                <u-icon :name="bannerStyle.icon" class="size-4 shrink-0 mt-0.5" :class="bannerIconClass" />
+                <p class="text-highlighted">{{ announcement }}</p>
+            </div>
+        </div>
+
         <component :is="page" v-bind="pageProps" />
         <app-footer />
 
@@ -21,6 +32,7 @@ import { usePage } from '@inertiajs/vue3';
 import AppHeader from '@/Components/AppHeader.vue';
 import AppFooter from '@/Components/AppFooter.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import { styleFor } from '@/Support/announcement';
 
 const OnboardingModal = defineAsyncComponent(() => import('@/Components/OnboardingModal.vue'));
 
@@ -86,6 +98,27 @@ watch(
 // the modal writes to this on close, and the server prop only flips after
 // /onboarding/complete round-trips. Without the local copy the modal would
 // stay open until that response landed.
+const announcement = computed(() => inertiaPage.props?.site?.announcement ?? null);
+const bannerStyle = computed(() => styleFor(inertiaPage.props?.site?.announcementType));
+
+// Written out per colour rather than built as `bg-${color}/10`: Tailwind
+// scans source text for class names, so an interpolated one is never
+// generated and the banner would render with no background at all.
+const BANNER_BG = {
+    primary: 'bg-primary/10',
+    success: 'bg-success/10',
+    warning: 'bg-warning/10',
+    error: 'bg-error/10',
+};
+const BANNER_ICON = {
+    primary: 'text-primary',
+    success: 'text-success',
+    warning: 'text-warning',
+    error: 'text-error',
+};
+const bannerClass = computed(() => BANNER_BG[bannerStyle.value.color]);
+const bannerIconClass = computed(() => BANNER_ICON[bannerStyle.value.color]);
+
 const showOnboarding = ref(false);
 const needsOnboarding = computed(() => inertiaPage.props?.auth?.user?.needsOnboarding ?? false);
 
