@@ -465,7 +465,13 @@ branch's SSR evaluation. Concrete carry-over work:
   browns every soft/outline button too. The real answer is splitting brand
   *fill* from brand *text* into two tokens. Needs a design call — don't
   silently change it.
-- [ ] **Wordmark font** — logo 5a's README specifies the in-game RuneScape
+- [x] ~~**Wordmark font**~~ — done 2026-08-20, self-hosted from RuneStar as
+  specified (`public/fonts/`, `--font-osrs-game`, `.osrs-game-font` pinning
+  24px with smoothing off since the face is drawn at 12px). **Not applied:**
+  the chat-style `#ffff00` + black shadow from the spec — the wordmark uses
+  `text-highlighted`, and yellow-on-dark next to the amber mark read as two
+  competing yellows. Worth a look when the logo is finalised.
+  Original note: logo 5a's README specifies the in-game RuneScape
   Bold 12 face for the wordmark, self-hosted from
   [RuneStar/fonts](https://github.com/RuneStar/fonts) (CC0) rather than a
   webfont CDN. Not done: the header still pairs the mark with plain Cinzel
@@ -516,8 +522,9 @@ branch's SSR evaluation. Concrete carry-over work:
   **Permissions are grant-only in this UI on purpose** (per the ask):
   `revokePermission` still exists on the controller and route, it's just
   not offered as a menu entry. Wire it up here if that changes.
-- [ ] **More admin settings pages** — the shell now exists, these are the
-  candidates worth filling it with, roughly in order of usefulness:
+- [x] ~~**More admin settings pages**~~ — all four candidates below are
+  built. The shell moved to `/admin` on its own dashboard while this was
+  happening; see the admin-area item above.
   1. ~~**Boards & tasks**~~ — **done**. Both now live at
      `/admin/{boards,tasks}` in the same sidebar; old paths
      redirect. Their controllers moved to `Settings\Admin\` to match.
@@ -723,7 +730,9 @@ branch's SSR evaluation. Concrete carry-over work:
 Flagged by the owner 2026-08-20, after noticing that `/boards` has
 sub-pages which aren't discoverable from it.
 
-- [ ] **Rebuild `/boards` as a hub, not a list.** It should show a slice of
+- [x] ~~**Rebuild `/boards` as a hub, not a list.**~~ — done 2026-08-20 at
+  `/events`: a slice of your events, a slice of what is open to join, and the
+  calendar marked Soon. `/events/all` holds the full list. It should show a slice of
   each thing rather than being one flat listing:
   * a slice of **My boards** (what you're actually playing),
   * a slice of **Public boards** (what you could join),
@@ -732,7 +741,12 @@ sub-pages which aren't discoverable from it.
   Each slice links through to its own full page. Today `/my-boards` exists
   but nothing on `/boards` points at it, which is the actual complaint.
 
-- [ ] **Give My boards its own view.** Not the same card grid as public
+- [x] ~~**Give My boards its own view.**~~ — done 2026-08-20. One row per
+  event with a read-only `BoardPreview` beside it drawing the real board:
+  actual snake and ladder positions, where you stand, which tiles are behind
+  you. The component gained a second mode rather than a twin — real tiles
+  when given, an illustrative board when not, which is what the create form
+  needs. Not the same card grid as public
   boards: one board per row, full width, with a real **non-interactive board
   preview** on the right so you can see the shape of the board — tile
   layout, snakes and ladders, where you are — without opening it. The board
