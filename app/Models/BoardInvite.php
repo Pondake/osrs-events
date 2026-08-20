@@ -13,7 +13,7 @@ class BoardInvite extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['board_id', 'token', 'short_code', 'label', 'created_by', 'expires_at', 'max_uses', 'use_count'];
+    protected $fillable = ['event_id', 'token', 'short_code', 'label', 'created_by', 'expires_at', 'max_uses', 'use_count'];
 
     /**
      * created_at is cast even though $timestamps is false — the column has a
@@ -26,9 +26,9 @@ class BoardInvite extends Model
         'created_at' => 'datetime',
     ];
 
-    public function board(): BelongsTo
+    public function event(): BelongsTo
     {
-        return $this->belongsTo(Board::class);
+        return $this->belongsTo(Event::class);
     }
 
     /** Declared because the admin invites overview eager-loads it. */

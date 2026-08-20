@@ -64,7 +64,7 @@ class HandleInertiaRequests extends Middleware
                 'kofiUrl' => Setting::get('kofi_url'),
                 // Shared rather than passed per page: the create-event modal
                 // opens from the events index, the admin list and onboarding.
-                'eventTypes' => collect(\App\Models\Board::EVENT_TYPES)
+                'eventTypes' => collect(\App\Models\Event::EVENT_TYPES)
                     ->map(fn ($meta, $key) => ['value' => $key, ...$meta])
                     ->values()
                     ->all(),

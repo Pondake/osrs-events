@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Board;
+use App\Models\Event;
 use App\Models\UserGuild;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -48,7 +48,7 @@ class OnboardingController extends Controller
     {
         $guildIds = UserGuild::where('user_id', $request->user()->id)->pluck('guild_id');
 
-        $boards = Board::query()
+        $boards = Event::query()
             ->where('is_listed', true)
             ->where(fn ($q) => $q
                 ->where('access_mode', 'OPEN')

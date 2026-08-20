@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Board;
+use App\Models\Event;
 use App\Models\BoardAuthor;
 use App\Models\BoardTeam;
 use App\Models\Team;
@@ -22,7 +23,31 @@ use Inertia\Response;
 
 class BoardController extends Controller
 {
-    private const BOARD_WITH = ['authors.user', 'boardTeams.team'];
+    /** Which half of the create/edit form each field belongs to. */
+    private const EVENT_FIELDS = ['title', 'type', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date'];
+
+    private const BOARD_FIELDS = ['size', 'dice_roll_limit'];
+
+    private const EVENT_WITH = ['authors.user', 'eventTeams.team', 'board'];
+
+    /**
+     * Flattens an event and its board into the shape the cards render.
+     *
+     * A view model rather than the raw models: the split put size and the
+     * dice limit on the board and everything else on the event, and pushing
+     * that seam into every template would mean the UI has to know which half
+     * a field lives in just to display it. `id` is deliberately the EVENT's —
+     * that is what the URLs address.
+     */
+    private function cardData(Event $event): array
+    {
+        return [
+            ...$event->only(['id', 'title', 'type', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date']),
+            'size' => $event->board?->size,
+            'dice_roll_limit' => $event->board?->dice_roll_limit,
+            'authors' => $event->authors,
+        ];
+    }
 
     /**
      * Public board list — only listed boards, matching the old
@@ -32,12 +57,13 @@ class BoardController extends Controller
      */
     public function index(): Response
     {
-        $boards = Board::where('is_listed', true)
-            ->with(self::BOARD_WITH)
+        $events = Event::where('is_listed', true)
+            ->with(self::EVENT_WITH)
             ->orderByDesc('start_date')
-            ->get();
+            ->get()
+            ->map(fn (Event $event) => $this->cardData($event));
 
-        return Inertia::render('Boards/Index', ['boards' => $boards]);
+        return Inertia::render('Boards/Index', ['boards' => $events]);
     }
 
     /**
@@ -54,17 +80,17 @@ class BoardController extends Controller
         $tileCounts = ['SIZE_5X5' => 25, 'SIZE_7X7' => 49, 'SIZE_9X9' => 81];
 
         $boards = Auth::user()->playerBoards()
-            ->with(['board.authors.user', 'board.boardTeams.team'])
+            ->with(['board.event.authors.user', 'board.event.eventTeams.team'])
             ->get()
-            ->filter(fn ($pb) => $pb->board !== null)
-            ->sortByDesc(fn ($pb) => $pb->board->start_date)
+            ->filter(fn ($pb) => $pb->board?->event !== null)
+            ->sortByDesc(fn ($pb) => $pb->board->event->start_date)
             ->values()
             ->map(function ($pb) use ($tileCounts) {
                 $total = $tileCounts[$pb->board->size] ?? 49;
                 $position = max(0, $pb->current_position);
 
                 return [
-                    'board' => $pb->board,
+                    'board' => $this->cardData($pb->board->event),
                     'progress' => [
                         'current' => $position + 1,
                         'total' => $total,
@@ -86,21 +112,21 @@ class BoardController extends Controller
      * view any board). GUILD/INVITE boards the user hasn't joined render
      * Boards/AccessGate instead of the board itself.
      */
-    public function show(Board $board, BoardAccessService $access, PlayerBoardService $playerBoards): Response
+    public function show(Event $event, BoardAccessService $access, PlayerBoardService $playerBoards): Response
     {
         $user = Auth::user();
 
-        if (! $access->hasAccess($user, $board)) {
-            $canJoin = $access->canJoin($user, $board);
+        if (! $access->hasAccess($user, $event)) {
+            $canJoin = $access->canJoin($user, $event);
 
             return Inertia::render('Boards/AccessGate', [
-                'board' => $board->only(['id', 'title', 'access_mode']),
+                'board' => $event->only(['id', 'title', 'access_mode']),
                 'reason' => $canJoin['reason'] ?? null,
-                'canRequestInvite' => $board->access_mode === 'INVITE',
+                'canRequestInvite' => $event->access_mode === 'INVITE',
             ]);
         }
 
-        $board->load([...self::BOARD_WITH, 'tiles.task']);
+        $event->load([...self::EVENT_WITH, 'board.tiles.task']);
 
         // Ported from the old PlayersService.findPlayerBoard(): once access is
         // confirmed (we're past the access-gate check above), the PlayerBoard
@@ -110,20 +136,23 @@ class BoardController extends Controller
         // app always auto-creates on confirmed access, which is what makes a
         // brand-new visitor immediately see "Your current task" (tile 1) and
         // the completion-gated dice roller instead of an empty sidebar.
-        $playerBoard = $playerBoards->getOrCreate($board, $user)?->load('completedTiles:id,player_board_id,tile_id');
+        $playerBoard = $playerBoards->getOrCreate($event, $user)?->load('completedTiles:id,player_board_id,tile_id');
 
         // Every player/team on the board with their current position — feeds
         // BoardShow.vue's "show other players" avatar stacks on tiles and the
         // sidebar's mini leaderboard preview. pathHasSnake/pathHasLadder mirror
         // LeaderboardController's same computation (kept duplicated rather than
         // extracted — it's a handful of lines with exactly two call sites).
-        $maxPosition = $board->tiles->count() - 1;
-        $players = $board->playerBoards()
+        $tiles = $event->board?->tiles ?? collect();
+        $maxPosition = $tiles->count() - 1;
+        $players = $event->playerBoards()
             ->with(['user:id,discord_username,nickname,avatar_url', 'team:id,name,icon_url'])
-            ->orderByDesc('current_position')
-            ->get(['id', 'user_id', 'team_id', 'current_position'])
-            ->map(function ($pb) use ($board, $maxPosition) {
-                $pathTiles = $board->tiles->filter(fn ($t) => $t->position > $pb->current_position && $t->position <= $maxPosition);
+            ->orderByDesc('player_boards.current_position')
+            // Qualified: playerBoards() is a hasManyThrough, so the join
+            // brings boards' own id into scope and bare names are ambiguous.
+            ->get(['player_boards.id', 'player_boards.user_id', 'player_boards.team_id', 'player_boards.current_position'])
+            ->map(function ($pb) use ($tiles, $maxPosition) {
+                $pathTiles = $tiles->filter(fn ($t) => $t->position > $pb->current_position && $t->position <= $maxPosition);
 
                 return [
                     ...$pb->only(['id', 'user_id', 'team_id', 'current_position']),
@@ -136,8 +165,9 @@ class BoardController extends Controller
             });
 
         return Inertia::render('BoardShow', [
-            'board' => $board,
-            'tiles' => $board->tiles,
+            // Flattened for the same reason the cards are — see cardData().
+            'board' => $this->cardData($event),
+            'tiles' => $tiles,
             'playerBoard' => $playerBoard === null ? null : [
                 ...$playerBoard->only(['id', 'current_position', 'dice_rolls_today']),
                 'completedTileIds' => $playerBoard->completedTiles->pluck('tile_id'),
@@ -146,23 +176,23 @@ class BoardController extends Controller
             // TEAM boards where the user isn't on any assigned team can't
             // play at all — BoardShow.vue renders a dedicated "no team on
             // this board" empty state instead of the grid for this case.
-            'hasTeam' => $playerBoards->hasTeam($board, $user),
-            'canEdit' => $user->canEditBoard($board),
+            'hasTeam' => $playerBoards->hasTeam($event, $user),
+            'canEdit' => $user->canEditEvent($event),
         ]);
     }
 
     /** Ported from AccessService::joinBoard() / InvitesService::useInvite(). */
-    public function join(Request $request, Board $board, BoardAccessService $access): RedirectResponse
+    public function join(Request $request, Event $event, BoardAccessService $access): RedirectResponse
     {
         $data = $request->validate(['token_or_code' => ['nullable', 'string']]);
 
         try {
-            $access->joinBoard($request->user(), $board, $data['token_or_code'] ?? null);
+            $access->joinBoard($request->user(), $event, $data['token_or_code'] ?? null);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }
 
-        return redirect()->route('events.show', $board)->with('board-save', 'Joined the board.');
+        return redirect()->route('events.show', $event)->with('board-save', 'Joined the board.');
     }
 
     /**
@@ -172,19 +202,19 @@ class BoardController extends Controller
      * not a hand-rolled localStorage flag like the old client-side version
      * needed) brings them right back here afterward.
      */
-    public function joinByLink(Request $request, Board $board, string $token, BoardAccessService $access): RedirectResponse
+    public function joinByLink(Request $request, Event $event, string $token, BoardAccessService $access): RedirectResponse
     {
         if (! $request->user()) {
             return redirect()->guest(route('login'));
         }
 
         try {
-            $access->joinBoard($request->user(), $board, $token);
+            $access->joinBoard($request->user(), $event, $token);
         } catch (ValidationException $e) {
-            return redirect()->route('events.show', $board)->with('board-save-error', $e->errors()['access'][0] ?? 'Could not join this board.');
+            return redirect()->route('events.show', $event)->with('board-save-error', $e->errors()['access'][0] ?? 'Could not join this board.');
         }
 
-        return redirect()->route('events.show', $board)->with('board-save', 'Joined the board.');
+        return redirect()->route('events.show', $event)->with('board-save', 'Joined the board.');
     }
 
     /**
@@ -202,7 +232,7 @@ class BoardController extends Controller
             'end_date' => ['nullable', 'date'],
             // Only creatable types — a planned one is advertised in the UI
             // as coming soon, which is not the same as being selectable.
-            'type' => ['nullable', Rule::in(Board::availableEventTypes())],
+            'type' => ['nullable', Rule::in(Event::availableTypes())],
             'size' => ['required', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'mode' => ['nullable', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
@@ -213,13 +243,22 @@ class BoardController extends Controller
             'author_ids.*' => ['uuid', 'exists:users,id'],
         ]);
 
-        $board = DB::transaction(function () use ($data, $request) {
-            $board = Board::create([
+        // One submission, two rows: the competition and its Snakes &
+        // Ladders payload. EVENT_FIELDS / BOARD_FIELDS decide which half each
+        // key belongs to, so the form stays one form.
+        $event = DB::transaction(function () use ($data, $request) {
+            $event = Event::create([
                 'id' => (string) str()->uuid(),
-                ...collect($data)->except('author_ids')->toArray(),
+                ...collect($data)->only(self::EVENT_FIELDS)->toArray(),
+                'type' => $data['type'] ?? 'SNAKES_LADDERS',
                 'mode' => $data['mode'] ?? 'SOLO',
                 'is_listed' => $data['is_listed'] ?? true,
                 'access_mode' => $data['access_mode'] ?? 'OPEN',
+            ]);
+
+            $event->board()->create([
+                'id' => (string) str()->uuid(),
+                ...collect($data)->only(self::BOARD_FIELDS)->toArray(),
             ]);
 
             $extraAuthorIds = collect($data['author_ids'] ?? [])
@@ -227,16 +266,16 @@ class BoardController extends Controller
                 ->unique();
 
             BoardAuthor::insert([
-                ['id' => (string) str()->uuid(), 'board_id' => $board->id, 'user_id' => $request->user()->id, 'is_owner' => true],
+                ['id' => (string) str()->uuid(), 'event_id' => $event->id, 'user_id' => $request->user()->id, 'is_owner' => true],
                 ...$extraAuthorIds->map(fn ($id) => [
-                    'id' => (string) str()->uuid(), 'board_id' => $board->id, 'user_id' => $id, 'is_owner' => false,
+                    'id' => (string) str()->uuid(), 'event_id' => $event->id, 'user_id' => $id, 'is_owner' => false,
                 ])->all(),
             ]);
 
             return $board;
         });
 
-        return redirect()->route('events.show', $board)->with('board-save', 'Board created.');
+        return redirect()->route('events.show', $event)->with('board-save', 'Board created.');
     }
 
     /**
@@ -245,16 +284,16 @@ class BoardController extends Controller
      * original transaction: delete all non-owner authors, recreate the
      * submitted set minus anyone who's already an owner.
      */
-    public function update(Request $request, Board $board): RedirectResponse
+    public function update(Request $request, Event $event): RedirectResponse
     {
-        abort_unless($request->user()->canEditBoard($board), 403);
+        abort_unless($request->user()->canEditEvent($event), 403);
 
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
-            'type' => ['sometimes', Rule::in(Board::availableEventTypes())],
+            'type' => ['sometimes', Rule::in(Event::availableTypes())],
             'size' => ['sometimes', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
@@ -265,31 +304,36 @@ class BoardController extends Controller
             'author_ids.*' => ['uuid', 'exists:users,id'],
         ]);
 
-        DB::transaction(function () use ($data, $board) {
+        DB::transaction(function () use ($data, $event) {
             if (array_key_exists('author_ids', $data)) {
-                $ownerIds = $board->authors()->where('is_owner', true)->pluck('user_id');
+                $ownerIds = $event->authors()->where('is_owner', true)->pluck('user_id');
 
-                $board->authors()->where('is_owner', false)->delete();
+                $event->authors()->where('is_owner', false)->delete();
 
                 $newNonOwnerIds = collect($data['author_ids'])->diff($ownerIds);
                 if ($newNonOwnerIds->isNotEmpty()) {
                     BoardAuthor::insertOrIgnore($newNonOwnerIds->map(fn ($id) => [
-                        'id' => (string) str()->uuid(), 'board_id' => $board->id, 'user_id' => $id, 'is_owner' => false,
+                        'id' => (string) str()->uuid(), 'event_id' => $event->id, 'user_id' => $id, 'is_owner' => false,
                     ])->all());
                 }
             }
 
-            $board->update(collect($data)->except('author_ids')->toArray());
+            $event->update(collect($data)->only(self::EVENT_FIELDS)->toArray());
+
+            $boardChanges = collect($data)->only(self::BOARD_FIELDS)->toArray();
+            if ($boardChanges !== [] && $event->board) {
+                $event->board->update($boardChanges);
+            }
         });
 
         return back()->with('board-save', 'Board updated.');
     }
 
-    public function destroy(Board $board): RedirectResponse
+    public function destroy(Event $event): RedirectResponse
     {
-        abort_unless(Auth::user()->isAdmin() || $board->authors()->where(['user_id' => Auth::id(), 'is_owner' => true])->exists(), 403);
+        abort_unless(Auth::user()->isAdmin() || $event->authors()->where(['user_id' => Auth::id(), 'is_owner' => true])->exists(), 403);
 
-        $board->delete();
+        $event->delete();
 
         return redirect()->route('events.index')->with('board-save', 'Board deleted.');
     }
@@ -301,11 +345,11 @@ class BoardController extends Controller
      * current user could add, using the same guild-based visibility rule as
      * TeamController::index().
      */
-    public function teamsIndex(Request $request, Board $board): JsonResponse
+    public function teamsIndex(Request $request, Event $event): JsonResponse
     {
-        abort_unless($request->user()->canEditBoard($board), 403);
+        abort_unless($request->user()->canEditEvent($event), 403);
 
-        $assignedTeamIds = $board->boardTeams()->pluck('team_id');
+        $assignedTeamIds = $event->boardTeams()->pluck('team_id');
 
         $availableQuery = Team::query()->orderBy('name');
         if (! $request->user()->isAdmin()) {
@@ -314,38 +358,38 @@ class BoardController extends Controller
         }
 
         return response()->json([
-            'assigned' => $board->boardTeams()->with('team')->get()->pluck('team'),
+            'assigned' => $event->boardTeams()->with('team')->get()->pluck('team'),
             'available' => $availableQuery->whereNotIn('id', $assignedTeamIds)->get(['id', 'name']),
         ]);
     }
 
     /** Ported from BoardsService::addTeamToBoard() — idempotent (upsert). */
-    public function addTeam(Request $request, Board $board): RedirectResponse
+    public function addTeam(Request $request, Event $event): RedirectResponse
     {
-        abort_unless($request->user()->canEditBoard($board), 403);
+        abort_unless($request->user()->canEditEvent($event), 403);
 
         $data = $request->validate(['team_id' => ['required', 'uuid', 'exists:teams,id']]);
 
         BoardTeam::firstOrCreate(
-            ['board_id' => $board->id, 'team_id' => $data['team_id']],
+            ['event_id' => $event->id, 'team_id' => $data['team_id']],
             ['id' => (string) str()->uuid()],
         );
 
         // Target is the board, scope is the team — so this shows up both
         // under the board and when filtering the team's own clan.
-        AuditLog::record('board.team_added', $board, [], Team::find($data['team_id']));
+        AuditLog::record('board.team_added', $event, [], Team::find($data['team_id']));
 
         return back()->with('board-save', 'Team added to board.');
     }
 
     /** Ported from BoardsService::removeTeamFromBoard(). */
-    public function removeTeam(Board $board, Team $team): RedirectResponse
+    public function removeTeam(Event $event, Team $team): RedirectResponse
     {
-        abort_unless(Auth::user()->canEditBoard($board), 403);
+        abort_unless(Auth::user()->canEditEvent($event), 403);
 
-        BoardTeam::where('board_id', $board->id)->where('team_id', $team->id)->delete();
+        BoardTeam::where('board_id', $event->id)->where('team_id', $team->id)->delete();
 
-        AuditLog::record('board.team_removed', $board, [], $team);
+        AuditLog::record('board.team_removed', $event, [], $team);
 
         return back()->with('board-save', 'Team removed from board.');
     }

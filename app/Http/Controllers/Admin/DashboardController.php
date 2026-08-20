@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
-use App\Models\Board;
+use App\Models\Event;
 use App\Models\BoardInvite;
 use App\Models\Task;
 use App\Models\Team;
@@ -29,7 +29,7 @@ class DashboardController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'users' => User::count(),
-                'boards' => Board::count(),
+                'boards' => Event::count(),
                 'teams' => Team::count(),
                 'tasks' => Task::count(),
                 // Only the invites that still work — the total would count

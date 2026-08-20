@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Board;
+use App\Models\Event;
 use App\Models\CompletedTile;
 use App\Models\Tile;
 use App\Services\BoardAccessService;
@@ -20,24 +21,24 @@ class PlayerBoardController extends Controller
      * between the snake's head and its target — same as the old
      * rollDice()'s "slide back down" behavior.
      */
-    public function roll(Board $board, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
+    public function roll(Event $event, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
     {
-        abort_unless($access->hasAccess(Auth::user(), $board), 403);
+        abort_unless($access->hasAccess(Auth::user(), $event), 403);
 
-        $tiles = $board->tiles()->orderBy('position')->get();
+        $tiles = $event->tiles()->orderBy('position')->get();
         $maxPosition = $tiles->count() - 1;
 
-        $playerBoard = $playerBoards->getOrCreate($board, Auth::user());
+        $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
         if ($playerBoard === null) {
             return back()->with('board-save-error', "You don't have a team on this board yet.");
         }
 
-        if ($board->dice_roll_limit !== null) {
+        if ($event->dice_roll_limit !== null) {
             $isToday = $playerBoard->last_roll_date?->isToday() ?? false;
             $rollsToday = $isToday ? $playerBoard->dice_rolls_today : 0;
 
-            if ($rollsToday >= $board->dice_roll_limit) {
-                return back()->with('board-save-error', "You've reached today's roll limit ({$board->dice_roll_limit}/day).");
+            if ($rollsToday >= $event->dice_roll_limit) {
+                return back()->with('board-save-error', "You've reached today's roll limit ({$event->dice_roll_limit}/day).");
             }
         }
 
@@ -87,11 +88,11 @@ class PlayerBoardController extends Controller
             ->with('last-roll', $rolled);
     }
 
-    public function toggleTile(Board $board, Tile $tile, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
+    public function toggleTile(Event $event, Tile $tile, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
     {
-        abort_unless($access->hasAccess(Auth::user(), $board), 403);
+        abort_unless($access->hasAccess(Auth::user(), $event), 403);
 
-        $playerBoard = $playerBoards->getOrCreate($board, Auth::user());
+        $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
         if ($playerBoard === null) {
             return back()->with('board-save-error', "You don't have a team on this board yet.");
         }

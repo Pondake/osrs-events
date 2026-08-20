@@ -24,7 +24,7 @@ class ProfileController extends Controller
             ->with(['board', 'completedTiles'])
             ->orderByDesc('created_at')
             ->get()
-            ->filter(fn ($pb) => $pb->board !== null)
+            ->filter(fn ($pb) => $pb->board?->event !== null)
             ->values();
 
         return Inertia::render('Settings/Profile', [

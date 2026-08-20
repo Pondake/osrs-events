@@ -12,11 +12,11 @@ class BoardTeam extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['board_id', 'team_id'];
+    protected $fillable = ['event_id', 'team_id'];
 
-    public function board(): BelongsTo
+    public function event(): BelongsTo
     {
-        return $this->belongsTo(Board::class);
+        return $this->belongsTo(Event::class);
     }
 
     public function team(): BelongsTo

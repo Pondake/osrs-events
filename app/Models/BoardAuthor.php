@@ -12,13 +12,13 @@ class BoardAuthor extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['board_id', 'user_id', 'is_owner'];
+    protected $fillable = ['event_id', 'user_id', 'is_owner'];
 
     protected $casts = ['is_owner' => 'boolean'];
 
-    public function board(): BelongsTo
+    public function event(): BelongsTo
     {
-        return $this->belongsTo(Board::class);
+        return $this->belongsTo(Event::class);
     }
 
     public function user(): BelongsTo

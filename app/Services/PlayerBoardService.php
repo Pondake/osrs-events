@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Board;
+use App\Models\Event;
 use App\Models\PlayerBoard;
 use App\Models\User;
 
@@ -19,18 +19,18 @@ use App\Models\User;
 class PlayerBoardService
 {
     /** Read-only lookup — never creates a row. */
-    public function find(Board $board, User $user): ?PlayerBoard
+    public function find(Event $event, User $user): ?PlayerBoard
     {
-        if ($board->mode === 'TEAM') {
-            $teamId = $this->teamIdFor($board, $user);
+        if ($event->mode === 'TEAM') {
+            $teamId = $this->teamIdFor($event, $user);
             if ($teamId === null) {
                 return null;
             }
 
-            return PlayerBoard::where('board_id', $board->id)->where('team_id', $teamId)->first();
+            return PlayerBoard::where('board_id', $event->board?->id)->where('team_id', $teamId)->first();
         }
 
-        return PlayerBoard::where('board_id', $board->id)->where('user_id', $user->id)->first();
+        return PlayerBoard::where('board_id', $event->board?->id)->where('user_id', $user->id)->first();
     }
 
     /**
@@ -38,36 +38,36 @@ class PlayerBoardService
      * fresh player's first action is what creates the row — never called
      * from a pure read.
      */
-    public function getOrCreate(Board $board, User $user): ?PlayerBoard
+    public function getOrCreate(Event $event, User $user): ?PlayerBoard
     {
-        if ($board->mode === 'TEAM') {
-            $teamId = $this->teamIdFor($board, $user);
+        if ($event->mode === 'TEAM') {
+            $teamId = $this->teamIdFor($event, $user);
             if ($teamId === null) {
                 return null;
             }
 
             return PlayerBoard::firstOrCreate(
-                ['board_id' => $board->id, 'team_id' => $teamId],
+                ['board_id' => $event->board?->id, 'team_id' => $teamId],
                 ['id' => (string) str()->uuid(), 'user_id' => $user->id, 'current_position' => 0],
             );
         }
 
         return PlayerBoard::firstOrCreate(
-            ['user_id' => $user->id, 'board_id' => $board->id],
+            ['user_id' => $user->id, 'board_id' => $event->board?->id],
             ['id' => (string) str()->uuid(), 'current_position' => 0],
         );
     }
 
     /** Whether the user is eligible to have a PlayerBoard on this board at all. */
-    public function hasTeam(Board $board, User $user): bool
+    public function hasTeam(Event $event, User $user): bool
     {
-        return $board->mode !== 'TEAM' || $this->teamIdFor($board, $user) !== null;
+        return $event->mode !== 'TEAM' || $this->teamIdFor($event, $user) !== null;
     }
 
     /** Which of the board's assigned teams (if any) the user belongs to. */
-    private function teamIdFor(Board $board, User $user): ?string
+    private function teamIdFor(Event $event, User $user): ?string
     {
-        $boardTeam = $board->boardTeams()
+        $boardTeam = $event->eventTeams()
             ->with('team.members')
             ->get()
             ->first(fn ($bt) => $bt->team->members->contains('user_id', $user->id));

@@ -12,11 +12,11 @@ class BoardAccess extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['board_id', 'user_id', 'invite_id', 'access_mode'];
+    protected $fillable = ['event_id', 'user_id', 'invite_id', 'access_mode'];
 
-    public function board(): BelongsTo
+    public function event(): BelongsTo
     {
-        return $this->belongsTo(Board::class);
+        return $this->belongsTo(Event::class);
     }
 
     public function user(): BelongsTo
