@@ -740,14 +740,30 @@ sub-pages which aren't discoverable from it.
   same layout in a read-only, scaled-down form rather than a second
   implementation of it.
 
-- [ ] **Name it for where it's going: these become events, not just boards.**
-  A snakes-and-ladders board is one *kind* of event; the roadmap has others.
-  Worth deciding BEFORE building the hub above, because it decides whether
-  the hub is "/boards showing board types" or "/events showing event types
-  of which board is one" — and that is a routing and vocabulary choice that
-  gets expensive to reverse once the pages, links and SEO copy exist.
-  Not a rename-in-place job either: `Board` is the model, the table, the
-  renderer's vocabulary and half the i18n namespace.
+- [x] ~~**Name it for where it's going: these become events.**~~ — decided
+  and carried out 2026-08-20. The intent was already written in
+  docs/ROADMAP.md phase 5 ("when creating a board/event, choose the event
+  type") and phase 7; this made it real:
+  * `boards.type` — a string with an app-level allowlist
+    (`Board::EVENT_TYPES`), not a database enum, because the set is expected
+    to grow and an enum means a column rewrite each time. Defaulted rather
+    than nullable: every existing row genuinely IS a snakes and ladders
+    event, and a nullable column invites "no type" as a state to handle
+    forever.
+  * Planned types are **listed and disabled** in the create form rather than
+    hidden — a gap where Bingo will be tells nobody anything. The server
+    rejects them independently (`availableEventTypes()`).
+  * Public paths are `/events` and `/my-events`, with redirects for every
+    old path — including `/boards/{id}/join/{token}`, which is live in
+    already-sent invite links.
+  * The **"BINGO!" modal was a misnomer** and is now "Board complete!". It
+    fires on finishing a Snakes & Ladders board; real Bingo is a separate
+    type with line and full-board rules. Left alone it would have collided.
+  **Deliberately NOT done: the model is still `Board`.** The table, model,
+  controllers and half the i18n namespace still say board. That rename is
+  purely mechanical and can happen any time; the product decisions above
+  could not, and doing both at once would have made a large diff impossible
+  to verify page by page. Do it as its own change.
 
 ## Onboarding & landing polish (step 5)
 
