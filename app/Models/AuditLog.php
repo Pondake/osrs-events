@@ -73,6 +73,7 @@ class AuditLog extends Model
         'team.member_removed',
         'board.team_added',
         'board.team_removed',
+        'page.updated',
         'invite.created',
         'invite.revoked',
         'task.deleted',

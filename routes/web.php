@@ -92,7 +92,6 @@ Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadd
 Route::get('/osrs-clan-events', [LandingController::class, 'clanEvents'])->name('landing.clan-events');
 Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name('landing.event-ideas');
 
-Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/privacy', fn () => Inertia::render('Privacy'))->name('privacy');
 Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
 
@@ -194,6 +193,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/site', [SiteSettingsController::class, 'update'])->name('site.update');
 
         Route::get('/content', [ContentController::class, 'index'])->name('content');
+        Route::get('/content/{page}', [ContentController::class, 'edit'])->name('content.edit');
+        Route::put('/content/{page}', [ContentController::class, 'update'])->name('content.update');
 
         Route::get('/invites', [InviteController::class, 'index'])->name('invites');
         Route::delete('/invites/{invite}', [InviteController::class, 'destroy'])->name('invites.destroy');
@@ -244,3 +245,9 @@ if (app()->environment('local')) {
         return redirect('/boards');
     });
 }
+
+// CMS pages, resolved by slug. LAST in the file on purpose: Laravel matches
+// routes in declaration order, so every fixed path above wins and a page slug
+// can never shadow a real route. An unknown slug 404s, which is what an
+// unmatched single-segment URL should do anyway.
+Route::get('/{page}', [PageController::class, 'show'])->name('pages.show');
