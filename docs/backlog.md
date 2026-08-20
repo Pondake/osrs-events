@@ -555,12 +555,31 @@ branch's SSR evaluation. Concrete carry-over work:
      prefix; picking a clan spans every team in it, because `guild_id` is
      stored on team-scoped rows too. Verified against the DB across nine
      filter combinations including deleted users and a team with no clan.
-     Team, member and board-team mutations are logged as of that work.
-     Still not logged, a deliberate gap: board create/delete and invite
-     create/revoke. `AuditLog::record()` is a one-liner per call site.
-  4. **Invites overview** — `BoardInvite` rows are only visible per board
-     inside its settings modal. A global view (who invited whom, what's
-     unused/expired) is a natural admin page.
+     Team, member and board-team mutations are logged as of that work, and
+     invite create/revoke as of the invites overview below.
+     Still not logged, a deliberate gap: board create/delete.
+     `AuditLog::record()` is a one-liner per call site.
+  4. ~~**Invites overview**~~ — done 2026-08-20. `/settings/admin/invites`:
+     every `BoardInvite` across every board, with the board, who created it,
+     usage, how many people actually joined through it, and expiry.
+     Status (active/unused/exhausted/expired) is **derived, not stored** —
+     expiry is a moment passing, not an event anything writes a row for. It
+     exists twice by necessity (PHP for the badge, SQL for the filter), so
+     `statusOf()` and `applyStatus()` sit next to each other in
+     `InviteController` and must be changed together. The four states are
+     mutually exclusive and ordered: expiry beats exhaustion, and "unused"
+     only describes a link that is otherwise still usable.
+     Summary counts are for the whole table, not the filtered page — they're
+     a reference point, and recomputing them per filter would make them move
+     as you narrow.
+     Revoking deletes the invite but deliberately leaves the `BoardAccess`
+     rows it granted; the confirm text says so, since the natural fear is
+     that it ejects everyone who already joined. It's audit-logged from both
+     surfaces (here and the per-board modal) so the trail doesn't depend on
+     which button was used. The token is never logged — it IS the credential.
+     Also added while building this: `FilterClear.vue`, shared by this page
+     and the audit log, and `BoardInvite::creator()` plus a `created_at`
+     cast, both of which the overview needed and neither of which existed.
 - [ ] Design what "admin functionality" beyond the above needs to cover —
   still worth a real requirements pass rather than guessing further.
 - [ ] **Decide: keep the homegrown roles/permissions, or move to
