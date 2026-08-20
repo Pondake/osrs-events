@@ -21,6 +21,12 @@ class PlayerBoardService
     /** Read-only lookup — never creates a row. */
     public function find(Event $event, User $user): ?PlayerBoard
     {
+        // No board, no progress row. A skill race ranks on XP gained and
+        // never has one.
+        if ($event->board === null) {
+            return null;
+        }
+
         if ($event->mode === 'TEAM') {
             $teamId = $this->teamIdFor($event, $user);
             if ($teamId === null) {
@@ -40,6 +46,10 @@ class PlayerBoardService
      */
     public function getOrCreate(Event $event, User $user): ?PlayerBoard
     {
+        if ($event->board === null) {
+            return null;
+        }
+
         if ($event->mode === 'TEAM') {
             $teamId = $this->teamIdFor($event, $user);
             if ($teamId === null) {
@@ -61,6 +71,7 @@ class PlayerBoardService
     /** Whether the user is eligible to have a PlayerBoard on this board at all. */
     public function hasTeam(Event $event, User $user): bool
     {
+
         return $event->mode !== 'TEAM' || $this->teamIdFor($event, $user) !== null;
     }
 

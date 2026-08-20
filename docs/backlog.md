@@ -820,6 +820,80 @@ sub-pages which aren't discoverable from it.
   (`Boards/Index`, `BoardCard`, `BoardShow`) likewise. Confusing, but
   renaming them touches nothing behavioural.
 
+- [x] ~~**Skill of the Month as a real second event type.**~~ — built
+  2026-08-20, and the first thing to prove the event/board split was worth
+  doing: a `SKILL_RACE` event has no board at all.
+
+  **Credited to [Wise Old Man](https://wiseoldman.net) deliberately and
+  explicitly** (README, `WiseOldManService`, `Event::SKILL_METRICS`, and a
+  card on the page itself). Their metric names, their `start`/`end`/`gained`
+  delta shape and their ranking rules are used unchanged — translating
+  between two vocabularies at the boundary is how they drift apart, and this
+  app does not track hiscores itself.
+
+  **SSE, not Reverb.** Chosen with the owner: the data only flows one way,
+  the browser sends nothing, so a WebSocket buys a return path with no use
+  and a second service to run. `EventSource` is a built-in, reconnects on its
+  own and rides the session cookie, so the stream's access check is the same
+  one the page render uses.
+
+  Decisions worth not undoing:
+  * **Entering is explicit, not derived from access.** An OPEN event grants
+    access *without storing a row* (`BoardAccessService::hasAccess`), so a
+    leaderboard built from access rows would be permanently empty for the
+    commonest mode — and where it did work, it would enrol anyone who merely
+    looked at a public leaderboard. `POST /events/{event}/enter`.
+  * **Standings are stored, not fetched per request.** The page render and
+    the stream both read `event_standings`; only `events:sync-standings`
+    talks to Wise Old Man. Outbound request volume therefore tracks the
+    schedule, not how many people are watching.
+  * **Three display states, not two**: a real gain, a genuine zero, and "no
+    measurement" — the last sorts last and gets **no rank at all**. Its
+    `gained` is 0, so without that it ties with everyone who really gained
+    nothing and takes a placing off people who are actually competing.
+  * `--track` (the POST that asks Wise Old Man to re-import a player) is off
+    by default and absent from the schedule: it is a write against someone
+    else's service, so an operator turns it on knowingly.
+
+  Four real bugs this shook out, all found by driving it rather than reading
+  it:
+  1. `BoardController::join` and `joinByLink` both called
+     `$access->joinBoard(...)`, which **has not existed since the split** —
+     the method is `joinEvent`. Every join was a fatal error. A leftover from
+     that sweep, in the same family as the five already listed above.
+  2. `tap($standing)->fill([...])->save()` returns `true`, not the model —
+     `HigherOrderTapProxy` returns its target from `__call`, so the chain
+     continued onto `$standing` and ended at `save()`'s boolean. The row was
+     written and *then* the method blew up on its return type.
+  3. **`max_execution_time` kills a stream before its own deadline.** It is
+     30s by default under php-fpm *and* the CLI server, so a 45s stream died
+     mid-flight — and the fatal couldn't even be reported, because the
+     headers had gone out 30 seconds earlier. `set_time_limit()` at the top
+     of the stream callback.
+  4. Two accounts entered the same RSN and the leaderboard listed it twice
+     with identical gains. `users.osrs_username` stays non-unique on purpose
+     (a global unique index lets the first claimant lock a name they may not
+     own), but **within one event it is now unique** — the same account
+     cannot compete against itself.
+
+  Also fixed by watching it rather than testing it: the live indicator
+  flipped to "Reconnecting…" every 45 seconds, because that is exactly how
+  often the server closes a stream by design. A disconnect only counts after
+  a reconnect fails to land within ~6s.
+
+  **Not done / known gaps:**
+  * A skill race has no team mode. `events.mode` still offers SOLO/TEAM and a
+    TEAM skill race would currently rank individuals — either aggregate by
+    team or hide the option for this type.
+  * Nothing links to a skill race's `/leaderboard` route; the standings *are*
+    the page. `LeaderboardController` still assumes a board.
+  * One RSN per account, so no alts.
+  * `artisan serve` cannot serve the stream and anything else at once (PHP's
+    built-in server is single-threaded; `PHP_CLI_SERVER_WORKERS` forks, so it
+    does nothing on Windows). Documented in the README — use Herd/fpm when
+    working on that page. Worth remembering when sizing fpm in production
+    too: this feature holds a worker per viewer.
+
 ## Onboarding & landing polish (step 5)
 
 Flagged 2026-08-19: landing pages currently read as placeholder-bare (plain

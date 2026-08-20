@@ -27,6 +27,7 @@ class Event extends Model
     protected $fillable = [
         'title',
         'type',
+        'metric',
         'description',
         'mode',
         'access_mode',
@@ -52,11 +53,37 @@ class Event extends Model
      * planned types just means nobody knows they're coming.
      */
     public const EVENT_TYPES = [
-        'SNAKES_LADDERS' => ['icon' => 'i-lucide-dice-6', 'available' => true],
-        'BINGO' => ['icon' => 'i-lucide-grid-3x3', 'available' => false],
-        'DROP_RACE' => ['icon' => 'i-lucide-swords', 'available' => false],
-        'SKILL_RACE' => ['icon' => 'i-lucide-trophy', 'available' => false],
+        'SNAKES_LADDERS' => ['icon' => 'i-lucide-dice-6', 'available' => true, 'needsMetric' => false],
+        'SKILL_RACE' => ['icon' => 'i-lucide-trophy', 'available' => true, 'needsMetric' => true],
+        'BINGO' => ['icon' => 'i-lucide-grid-3x3', 'available' => false, 'needsMetric' => false],
+        'DROP_RACE' => ['icon' => 'i-lucide-swords', 'available' => false, 'needsMetric' => false],
     ];
+
+    /**
+     * The metric a skill event can race on.
+     *
+     * These are **Wise Old Man's own metric names**, not ours. Their API is
+     * the intended source of the XP gains this ranks on, and their
+     * competition model is what this whole event type is modelled after —
+     * see the credit in the README. Keeping their vocabulary means a metric
+     * goes straight into an API call with no translation table to drift.
+     *
+     * Skills only for now. Wise Old Man also supports boss killcounts and
+     * activity metrics, which is where DROP_RACE would eventually point.
+     */
+    public const SKILL_METRICS = [
+        'overall', 'attack', 'defence', 'strength', 'hitpoints', 'ranged',
+        'prayer', 'magic', 'cooking', 'woodcutting', 'fletching', 'fishing',
+        'firemaking', 'crafting', 'smithing', 'mining', 'herblore', 'agility',
+        'thieving', 'slayer', 'farming', 'runecrafting', 'hunter',
+        'construction',
+    ];
+
+    /** Whether this event's type races on a metric at all. */
+    public function needsMetric(): bool
+    {
+        return self::EVENT_TYPES[$this->type]['needsMetric'] ?? false;
+    }
 
     /** @return array<int, string> */
     public static function availableTypes(): array
@@ -91,6 +118,15 @@ class Event extends Model
     public function accesses(): HasMany
     {
         return $this->hasMany(BoardAccess::class);
+    }
+
+    /**
+     * Leaderboard rows for metric events. Empty for types that don't race on
+     * one — a Snakes & Ladders event never gets a standing.
+     */
+    public function standings(): HasMany
+    {
+        return $this->hasMany(EventStanding::class);
     }
 
     /**

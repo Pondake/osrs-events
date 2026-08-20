@@ -40,7 +40,13 @@
                             </u-select>
                         </u-form-field>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <!-- Only for types that race on a metric. Snakes &
+                             Ladders has none, and the server rejects one. -->
+                        <u-form-field v-if="needsMetric" :label="$t('events.metric_label')" :description="$t('events.metric_desc')" required>
+                            <u-select v-model="form.metric" :items="metricOptions" class="w-full" />
+                        </u-form-field>
+
+                        <div v-if="hasBoard" class="grid grid-cols-2 gap-4">
                             <u-form-field :label="$t('admin.board_size')" required>
                                 <u-select v-model="form.size" :items="sizeOptions" class="w-full" />
                             </u-form-field>
@@ -252,6 +258,7 @@ function blankForm() {
     return {
         title: '',
         type: 'SNAKES_LADDERS',
+        metric: null,
         description: '',
         size: site.defaultBoardSize ?? 'SIZE_7X7',
         mode: 'SOLO',
@@ -276,6 +283,23 @@ const typeOptions = computed(() =>
         label: trans(`events.type_${type.value.toLowerCase()}`),
         icon: type.icon,
         disabled: !type.available,
+    })),
+);
+
+const selectedType = computed(() =>
+    (usePage().props?.site?.eventTypes ?? []).find((t) => t.value === form.type),
+);
+
+const needsMetric = computed(() => Boolean(selectedType.value?.needsMetric));
+
+// Snakes & Ladders is the only type with a grid, so size and dice limit are
+// hidden for anything else rather than sitting there doing nothing.
+const hasBoard = computed(() => form.type === 'SNAKES_LADDERS');
+
+const metricOptions = computed(() =>
+    (usePage().props?.site?.skillMetrics ?? []).map((m) => ({
+        value: m,
+        label: trans(`skills.${m}`),
     })),
 );
 

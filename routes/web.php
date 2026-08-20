@@ -22,6 +22,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\Settings\AccountController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
+use App\Http\Controllers\SkillRaceController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TileController;
 use App\Http\Controllers\UserSearchController;
@@ -110,6 +111,13 @@ Route::get('/events/{event}', [BoardController::class, 'show'])
 Route::get('/events/{event}/leaderboard', [LeaderboardController::class, 'show'])
     ->middleware('auth')
     ->name('events.leaderboard');
+
+// Server-sent events, not a normal endpoint: it holds a PHP worker open for
+// ~45 seconds per connected viewer. See SkillRaceController for why SSE over
+// WebSockets and what that costs to run.
+Route::get('/events/{event}/standings/stream', [SkillRaceController::class, 'stream'])
+    ->middleware('auth')
+    ->name('events.standings.stream');
 Route::get('/events/{event}/join/{token}', [BoardController::class, 'joinByLink'])->name('events.join-link');
 
 Route::middleware('auth')->group(function () {
@@ -120,6 +128,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/events/{event}/roll', [PlayerBoardController::class, 'roll'])->name('events.roll');
     Route::post('/events/{event}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('events.tiles.toggle');
     Route::post('/events/{event}/join', [BoardController::class, 'join'])->name('events.join');
+
+    // Entering a race is a separate decision from being allowed to look at
+    // one — see SkillRaceController::enter.
+    Route::post('/events/{event}/enter', [SkillRaceController::class, 'enter'])->name('events.enter');
+    Route::delete('/events/{event}/enter', [SkillRaceController::class, 'leave'])->name('events.leave');
 
     Route::get('/events/{event}/invites', [BoardInviteController::class, 'index'])->name('events.invites.index');
     Route::post('/events/{event}/invites', [BoardInviteController::class, 'store'])->name('events.invites.store');
@@ -144,6 +157,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/settings/profile', [SettingsProfileController::class, 'show'])->name('settings.profile');
     Route::patch('/settings/profile', [SettingsProfileController::class, 'update'])->name('settings.profile.update');
+    Route::put('/settings/profile/osrs', [SettingsProfileController::class, 'updateOsrsUsername'])->name('settings.profile.osrs');
 
     Route::get('/settings/account', [AccountController::class, 'show'])->name('settings.account');
     Route::put('/settings/account/email', [AccountController::class, 'updateEmail'])

@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "laravel",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["artisan", "serve", "--port", "8010", "--no-reload"],
+      "cwd": ".",
+      "port": 8010
+    },
+    {
       "name": "laravel-vite",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],

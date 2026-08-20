@@ -10,6 +10,7 @@ use App\Models\BoardTeam;
 use App\Models\Team;
 use App\Models\UserGuild;
 use App\Services\BoardAccessService;
+use App\Services\EventStandingsService;
 use App\Services\PlayerBoardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -27,7 +28,7 @@ class BoardController extends Controller
     /** How many of each kind the hub shows before "view all". */
     private const HUB_SLICE = 3;
 
-    private const EVENT_FIELDS = ['title', 'type', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date'];
+    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date'];
 
     private const BOARD_FIELDS = ['size', 'dice_roll_limit'];
 
@@ -45,7 +46,7 @@ class BoardController extends Controller
     private function cardData(Event $event): array
     {
         return [
-            ...$event->only(['id', 'title', 'type', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date']),
+            ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date']),
             'size' => $event->board?->size,
             'dice_roll_limit' => $event->board?->dice_roll_limit,
             'authors' => $event->authors,
@@ -187,6 +188,13 @@ class BoardController extends Controller
 
         $event->load([...self::EVENT_WITH, 'board.tiles.task']);
 
+        // Each event type renders its own thing. A skill race has no grid, so
+        // sending it to BoardShow would draw an empty board — the split exists
+        // precisely so the page can differ with the type.
+        if ($event->type === 'SKILL_RACE') {
+            return $this->showSkillRace($event, app(EventStandingsService::class));
+        }
+
         // Ported from the old PlayersService.findPlayerBoard(): once access is
         // confirmed (we're past the access-gate check above), the PlayerBoard
         // is created here on page view, not lazily on the first roll/toggle.
@@ -240,13 +248,47 @@ class BoardController extends Controller
         ]);
     }
 
+    /**
+     * The skill race screen: a standings table over XP gained in one skill.
+     *
+     * Modelled on Wise Old Man's competition view, which is the reference
+     * implementation for this in the OSRS community — see the credit in the
+     * README. Standings come from our own snapshot store rather than being
+     * fetched per request, so the page is cheap and the live channel has one
+     * source to push from.
+     */
+    private function showSkillRace(Event $event, EventStandingsService $standings): Response
+    {
+        $user = Auth::user();
+
+        return Inertia::render('Events/SkillRace', [
+            'event' => [
+                ...$this->cardData($event),
+                'metric' => $event->metric,
+            ],
+            // The initial paint. From here the SSE stream owns the table, so
+            // this is a snapshot rather than the only delivery — and it means
+            // the page is complete before any JavaScript runs, which matters
+            // for SSR and for anyone the stream never reaches.
+            'standings' => $standings->forEvent($event),
+            // Nothing to rank without an RSN — the hiscores are keyed by it.
+            // The page prompts for one instead of silently leaving someone off
+            // a leaderboard they think they entered.
+            'osrsUsername' => $user?->osrs_username,
+            'isParticipant' => $event->standings()->where('user_id', $user?->id)->exists(),
+            'canEdit' => $user?->canEditEvent($event) ?? false,
+        ]);
+    }
+
     /** Ported from AccessService::joinBoard() / InvitesService::useInvite(). */
+    // (The service method is joinEvent() since the Board→Event split; calling
+    // the old name here was a fatal error on every join.)
     public function join(Request $request, Event $event, BoardAccessService $access): RedirectResponse
     {
         $data = $request->validate(['token_or_code' => ['nullable', 'string']]);
 
         try {
-            $access->joinBoard($request->user(), $event, $data['token_or_code'] ?? null);
+            $access->joinEvent($request->user(), $event, $data['token_or_code'] ?? null);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }
@@ -268,7 +310,7 @@ class BoardController extends Controller
         }
 
         try {
-            $access->joinBoard($request->user(), $event, $token);
+            $access->joinEvent($request->user(), $event, $token);
         } catch (ValidationException $e) {
             return redirect()->route('events.show', $event)->with('board-save-error', $e->errors()['access'][0] ?? 'Could not join this board.');
         }
@@ -292,7 +334,11 @@ class BoardController extends Controller
             // Only creatable types — a planned one is advertised in the UI
             // as coming soon, which is not the same as being selectable.
             'type' => ['nullable', Rule::in(Event::availableTypes())],
-            'size' => ['required', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
+            // Required only for the types that race on one, and rejected
+            // for the ones that don't — a Snakes & Ladders event carrying a
+            // metric would be a value nothing ever reads.
+            'metric' => ['nullable', 'required_if:type,SKILL_RACE', Rule::in(Event::SKILL_METRICS)],
+            'size' => ['required_if:type,SNAKES_LADDERS', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'mode' => ['nullable', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['nullable', 'boolean'],
@@ -315,10 +361,14 @@ class BoardController extends Controller
                 'access_mode' => $data['access_mode'] ?? 'OPEN',
             ]);
 
-            $event->board()->create([
-                'id' => (string) str()->uuid(),
-                ...collect($data)->only(self::BOARD_FIELDS)->toArray(),
-            ]);
+            // Only the Snakes & Ladders type carries a board; a skill race
+            // has no grid, which is the whole reason the two were split.
+            if ($event->type === 'SNAKES_LADDERS') {
+                $event->board()->create([
+                    'id' => (string) str()->uuid(),
+                    ...collect($data)->only(self::BOARD_FIELDS)->toArray(),
+                ]);
+            }
 
             $extraAuthorIds = collect($data['author_ids'] ?? [])
                 ->reject(fn ($id) => $id === $request->user()->id)
@@ -331,7 +381,7 @@ class BoardController extends Controller
                 ])->all(),
             ]);
 
-            return $board;
+            return $event;
         });
 
         return redirect()->route('events.show', $event)->with('board-save', trans('admin.board_created'));
@@ -353,6 +403,7 @@ class BoardController extends Controller
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
             'type' => ['sometimes', Rule::in(Event::availableTypes())],
+            'metric' => ['nullable', Rule::in(Event::SKILL_METRICS)],
             'size' => ['sometimes', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
