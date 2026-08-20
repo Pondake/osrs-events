@@ -44,6 +44,14 @@ class SiteSettingsController extends Controller
             'default_dice_roll_limit' => ['nullable', 'integer', 'min:1', 'max:99'],
             'announcement' => ['nullable', 'string', 'max:280'],
             'announcement_type' => ['required', Rule::in(Setting::ANNOUNCEMENT_TYPES)],
+            // http/https only, matching what the page renderer's safeHref()
+            // will accept anyway — better to reject it at the form than to
+            // store a value that silently renders as no button at all.
+            'kofi_url' => ['required', 'url:http,https', 'max:255'],
+        ], [], [
+            // Without this the message reads "The kofi url field ...", from
+            // Laravel's snake_case-to-words fallback.
+            'kofi_url' => __('admin.site_kofi_url'),
         ]);
 
         // Only the validated keys are written, so the request can't

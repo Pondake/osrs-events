@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Setting;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -94,9 +95,9 @@ class PageController extends Controller
                         'type' => 'links',
                         'props' => [
                             'links' => [
-                                // Straight to Ko-fi — see config/services.php
-                                // for why there's no page in between.
-                                ['label' => __('about.donate_cta'), 'to' => config('services.kofi.url'), 'icon' => 'i-lucide-coffee', 'color' => 'warning', 'variant' => 'outline'],
+                                // Straight to Ko-fi, no page in between; the
+                                // profile is admin-editable in site settings.
+                                ['label' => __('about.donate_cta'), 'to' => Setting::get('kofi_url'), 'icon' => 'i-lucide-coffee', 'color' => 'warning', 'variant' => 'outline'],
                             ],
                         ],
                     ],
