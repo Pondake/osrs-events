@@ -20,9 +20,12 @@
          require), it just stops being a clickable link to "/". -->
     <u-header to="">
         <template #title>
-            <span class="flex items-center gap-2 text-lg font-bold text-highlighted">
+            <span class="flex items-center gap-2 text-highlighted">
                 <app-logo />
-                {{ $t('common.app_name') }}
+                <!-- osrs-game-font pins its own 24px size (see app.css) —
+                     a Tailwind text-* class here would fight it and land the
+                     pixel face on a fractional size. -->
+                <span class="osrs-game-font">{{ $t('common.app_name') }}</span>
             </span>
         </template>
 
