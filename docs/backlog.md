@@ -531,9 +531,26 @@ branch's SSR evaluation. Concrete carry-over work:
      degrade to plain text (verified). Deliberately markdown rather than an
      ad-hoc syntax: if this later swaps to `u-editor` in markdown mode (see
      the CMS item), the stored format doesn't have to change.
-  3. **Audit log** — who granted which role, who deleted whom. Nothing is
-     recorded today; user deletion in particular is irreversible and
-     currently leaves no trace.
+  3. ~~**Audit log**~~ — done 2026-08-20. `App\Models\AuditLog` +
+     `/settings/admin/audit`. Records role grant/revoke, permission
+     grant/revoke, user deletion, task deletion and site settings changes
+     (diffed, so a save that changed nothing logs nothing).
+     The design point worth not undoing: actor and target are each stored
+     **twice** — a nullable id, and a plain-text label captured at write
+     time. Deletion is the action most worth logging and the one where a
+     foreign key is worthless, since it points at a row that no longer
+     exists. `target_id` carries no FK at all (targets are polymorphic), so
+     it deliberately dangles; `target_label` is what keeps the entry
+     readable. Verified by deleting a user, then finding that user's own
+     deletion record by searching their name — a join-based search would
+     have returned nothing.
+     Read-only on purpose: no store/update/destroy action and no route for
+     one. If retention is ever needed it belongs in a scheduled prune with
+     an explicit window, not a "clear log" button.
+     Not logged yet, and a deliberate gap rather than an oversight: board
+     create/delete, invite create/revoke, and team membership changes.
+     `AuditLog::record()` is a one-liner at each call site, so adding them
+     is cheap once it's clear which are worth the noise.
   4. **Invites overview** — `BoardInvite` rows are only visible per board
      inside its settings modal. A global view (who invited whom, what's
      unused/expired) is a natural admin page.
