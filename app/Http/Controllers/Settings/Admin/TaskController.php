@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Settings\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Task;
@@ -22,7 +22,7 @@ class TaskController extends Controller
             fn ($q) => $q->where('title', 'like', '%'.$request->string('search').'%'),
         )->orderBy('title')->get();
 
-        return Inertia::render('Admin/Tasks/Index', ['tasks' => $tasks, 'search' => $request->string('search')->toString()]);
+        return Inertia::render('Settings/Admin/Tasks', ['tasks' => $tasks, 'search' => $request->string('search')->toString()]);
     }
 
     public function store(Request $request): RedirectResponse

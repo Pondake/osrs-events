@@ -496,9 +496,17 @@ branch's SSR evaluation. Concrete carry-over work:
   not offered as a menu entry. Wire it up here if that changes.
 - [ ] **More admin settings pages** — the shell now exists, these are the
   candidates worth filling it with, roughly in order of usefulness:
-  1. **Boards & tasks** — `/admin/boards` and `/admin/tasks` are still
-     standalone top-level pages. Folding them into the same sidebar would
-     make Administration the single place admins go, instead of three.
+  1. ~~**Boards & tasks**~~ — **done**. Both now live at
+     `/settings/admin/{boards,tasks}` in the same sidebar; old paths
+     redirect. Their controllers moved to `Settings\Admin\` to match.
+     The header nav lost its admin entries entirely (it's what everyone
+     uses to *play*, so it stays short) — Administration is now the single
+     place admins go.
+     One thing worth keeping in mind for future items here: the sidebar
+     filters **per item**, not by one `isAdmin` check on the group. Tasks is
+     gated on `canCreateTiles`, so an EDITOR sees Tasks and nothing else in
+     that group — verified live, and matched against the server, which
+     returns 200 for tasks and 403 for boards/users/content on that account.
   2. **Site settings** — the things currently only changeable in `.env` or
      code and plausibly wanted at runtime: default board size/roll limit
      for new boards, whether registration is open, maintenance toggle.

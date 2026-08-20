@@ -70,7 +70,7 @@ import AppLogo from '@/Components/AppLogo.vue';
 import UserMenu from '@/Components/UserMenu.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
-const { isAuthenticated, isAdmin, isEditor, isTeamManager } = useAuth();
+const { isAuthenticated, isAdmin, isTeamManager } = useAuth();
 
 // Ported from the old AppHeader.vue's `navigation` computed — same
 // role-based structure (Boards gets an admin sub-menu for editors/admins,
@@ -79,33 +79,17 @@ const { isAuthenticated, isAdmin, isEditor, isTeamManager } = useAuth();
 const navigation = computed(() => {
     if (!isAuthenticated.value) return [];
 
-    const items = [];
-    const canManageBoards = isAdmin.value || isEditor.value;
-
-    items.push(
-        canManageBoards
-            ? {
-                  label: trans('nav.boards'),
-                  icon: 'i-lucide-layout-grid',
-                  children: [
-                      { label: trans('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid', description: trans('nav.boards_desc') },
-                      { label: trans('nav.admin_boards'), to: '/admin/boards', icon: 'i-lucide-settings', description: trans('nav.admin_boards_desc') },
-                  ],
-              }
-            : { label: trans('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid' },
-    );
+    // Admin entries (manage boards, tasks, users) are deliberately absent:
+    // they all live under /settings/admin now, reachable from the settings
+    // sidebar and the header's user menu. This nav is what everyone uses to
+    // PLAY, so it stays short instead of growing an admin half.
+    const items = [
+        { label: trans('nav.boards'), to: '/boards', icon: 'i-lucide-layout-grid' },
+    ];
 
     if (isAdmin.value || isTeamManager.value) {
         items.push({ label: trans('nav.teams'), to: '/teams', icon: 'i-lucide-users' });
     }
-
-    if (isAdmin.value || isEditor.value) {
-        items.push({ label: trans('nav.tasks'), to: '/admin/tasks', icon: 'i-lucide-list-checks' });
-    }
-
-    // No Users entry any more — user management lives under
-    // /settings/admin/users, reachable from the settings sidebar and the
-    // header's own user menu, rather than as a top-level nav item.
 
     return items;
 });
