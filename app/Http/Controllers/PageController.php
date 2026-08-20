@@ -94,7 +94,9 @@ class PageController extends Controller
                         'type' => 'links',
                         'props' => [
                             'links' => [
-                                ['label' => __('about.donate_cta'), 'to' => '/donate', 'icon' => 'i-lucide-coffee', 'color' => 'warning', 'variant' => 'outline'],
+                                // Straight to Ko-fi — see config/services.php
+                                // for why there's no page in between.
+                                ['label' => __('about.donate_cta'), 'to' => config('services.kofi.url'), 'icon' => 'i-lucide-coffee', 'color' => 'warning', 'variant' => 'outline'],
                             ],
                         ],
                     ],
