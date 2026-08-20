@@ -97,5 +97,8 @@ class DatabaseSeeder extends Seeder
         $this->call(AdminUserSeeder::class);
         $this->call(GrantOwnerAdminSeeder::class);
         $this->call(DemoDataSeeder::class);
+        // After the admin seeders — it links its entries to whichever user
+        // holds the ADMIN role.
+        $this->call(AuditLogSeeder::class);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\Admin\AuditLogController;
 use App\Http\Controllers\Settings\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Settings\Admin\ContentController;
 use App\Http\Controllers\Settings\Admin\SiteSettingsController;
@@ -198,6 +199,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/site', [SiteSettingsController::class, 'update'])->name('site.update');
 
         Route::get('/content', [ContentController::class, 'index'])->name('content');
+
+        // Read-only by design — see AuditLogController.
+        Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
     });
 });
 
