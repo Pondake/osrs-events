@@ -43,5 +43,16 @@ return [
         'redirect' => env('DISCORD_REDIRECT_URI'),
     ],
 
+    // Wise Old Man — the OSRS progress tracker skill-race standings are read
+    // from. See app/Services/WiseOldManService.php. No key is required; one
+    // raises the rate limit from 20 to 100 requests a minute.
+    //
+    // They ask API consumers to identify themselves with a contact address in
+    // the User-Agent. The default below is a fallback, not a good one — set
+    // WOM_USER_AGENT for any real deployment.
+    'wom' => [
+        'api_key' => env('WOM_API_KEY'),
+        'user_agent' => env('WOM_USER_AGENT', 'osrs-events'),
+    ],
 
 ];

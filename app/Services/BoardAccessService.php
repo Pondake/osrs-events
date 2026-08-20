@@ -94,6 +94,10 @@ class BoardAccessService
             }
         }
 
+        // Note for metric events: access is not participation. Entering a
+        // skill race is its own explicit action (SkillRaceController::enter),
+        // because an OPEN event stores no access row at all — see hasAccess()
+        // above — so a leaderboard derived from these would always be empty.
         return BoardAccess::create([
             'id' => (string) str()->uuid(),
             'event_id' => $event->id,

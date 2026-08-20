@@ -5,9 +5,25 @@ OSRS tasks, players roll a daily d6 and work their way across it, and snakes
 and ladders make the standings move. Discord login, or an email account if you
 prefer.
 
-Snakes & Ladders is the first **event type** — Bingo and race formats are on
-the roadmap, which is why the model separates an *event* from the board it is
-played on.
+Snakes & Ladders is the first **event type**. Skill races ("Skill of the
+Month" — one skill, one month, most XP gained wins) are the second, with a
+leaderboard that updates itself. Bingo and drop races are on the roadmap,
+which is why the model separates an *event* from the board it is played on.
+
+---
+
+## Credit: Wise Old Man
+
+Skill races are built on [**Wise Old Man**](https://wiseoldman.net) — the
+open-source OSRS progress tracker ([GitHub](https://github.com/wise-old-man/wise-old-man)).
+This app does not track hiscores itself. It reads XP gains from their API, and
+the whole event type is modelled on their competition view: their metric
+names, their `start`/`end`/`gained` delta shape, and their ranking rules, kept
+deliberately unchanged so the two pages never disagree about a number.
+
+If you run this, be a good API citizen: set `WOM_USER_AGENT` to something with
+a contact address in it, keep to their rate limit (20 requests a minute, 100
+with a key), and consider supporting them.
 
 ---
 
@@ -50,6 +66,7 @@ documented there, but the ones that matter first:
 | `DISCORD_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI` | Discord login. Without them the button 400s. |
 | `ADMIN_USER` / `ADMIN_PASS` | Local-only admin account, reachable at `/dev-login?as=admin&pass=…`. Only exists when `APP_ENV=local`. |
 | `SESSION_SECURE_COOKIE` | Leave unset locally; **set it to `true` on any HTTPS deployment**, or session cookies go out over plain HTTP. |
+| `WOM_USER_AGENT` | Identifies this app to Wise Old Man. Put a contact address in it. |
 
 ---
 
@@ -58,6 +75,13 @@ documented there, but the ones that matter first:
 ```bash
 php artisan serve --port=8000
 ```
+
+> **Working on the skill-race leaderboard?** Don't use `artisan serve`. That
+> page holds an SSE connection open for ~45 seconds at a time, and PHP's
+> built-in server handles one request at a time — so a single open tab blocks
+> the entire dev server. (`PHP_CLI_SERVER_WORKERS` helps on Linux/macOS with
+> `--no-reload`; it forks, so on Windows it does nothing.) Serve through
+> Herd, Valet, or nginx + php-fpm instead.
 
 ```bash
 pnpm dev
@@ -111,10 +135,24 @@ resources/
 ├── css/app.css              Tailwind, fonts, OSRS board styling
 └── views/app.blade.php      root shell
 routes/web.php
+routes/console.php           scheduled work (standings sync)
 ui.config.ts                 Nuxt UI theme, wired into vite.config.js
 lang/en.json                 flat dotted-key translations
 docs/backlog.md              what is done, what is not, and why
 ```
+
+### Scheduled work
+
+Skill-race standings are refreshed by a command, not on page view — the page
+and the live stream both just read what it wrote:
+
+```bash
+php artisan events:sync-standings
+```
+
+`routes/console.php` runs it every ten minutes, so a deployment needs
+Laravel's scheduler running (`php artisan schedule:work`, or the usual
+one-line cron entry). Without it, standings never move.
 
 ---
 

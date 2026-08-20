@@ -68,6 +68,7 @@ class HandleInertiaRequests extends Middleware
                     ->map(fn ($meta, $key) => ['value' => $key, ...$meta])
                     ->values()
                     ->all(),
+                'skillMetrics' => \App\Models\Event::SKILL_METRICS,
                 'announcement' => Setting::get('announcement'),
                 'announcementType' => Setting::get('announcement_type'),
                 'defaultBoardSize' => Setting::get('default_board_size'),
