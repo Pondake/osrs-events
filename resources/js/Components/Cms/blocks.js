@@ -45,7 +45,9 @@ const icon = (value) => (typeof value === 'string' && /^i-[a-z0-9]+-[a-z0-9-]+$/
 /** Reuses the announcement banner's URL rule — http(s) or site-relative. */
 const url = (value) => safeHref(value);
 
-const COLORS = ['primary', 'secondary', 'success', 'info', 'warning', 'error', 'neutral'];
+export const BLOCK_COLORS = ['primary', 'secondary', 'success', 'info', 'warning', 'error', 'neutral'];
+
+const COLORS = BLOCK_COLORS;
 
 const color = oneOf(COLORS, 'primary');
 
@@ -57,6 +59,32 @@ const color = oneOf(COLORS, 'primary');
 const listOf = (schema, max) => (value) => (Array.isArray(value)
     ? value.slice(0, max).map((item) => sanitize(schema, item))
     : []);
+
+/**
+ * Field descriptors for the editor.
+ *
+ * The editor renders its forms from these rather than having a hand-written
+ * form per block type, so adding a block means adding one entry to
+ * BLOCK_TYPES — vocabulary, renderer and editor stay one definition instead
+ * of three that drift.
+ *
+ * `type` here is an INPUT kind, not a data type; the schema above still
+ * decides what actually survives into a component.
+ */
+const LINK_FIELDS = [
+    { key: 'label', type: 'text', label: 'cms.field_label' },
+    { key: 'to', type: 'text', label: 'cms.field_url' },
+    { key: 'icon', type: 'icon', label: 'cms.field_icon' },
+    { key: 'color', type: 'color', label: 'cms.field_color' },
+    { key: 'variant', type: 'select', label: 'cms.field_variant', options: ['solid', 'outline', 'subtle', 'ghost', 'link'] },
+];
+
+const CARD_FIELDS = [
+    { key: 'icon', type: 'icon', label: 'cms.field_icon' },
+    { key: 'title', type: 'text', label: 'cms.field_title' },
+    { key: 'description', type: 'textarea', label: 'cms.field_description' },
+    { key: 'to', type: 'text', label: 'cms.field_url' },
+];
 
 const LINK_SCHEMA = {
     label: text,
@@ -77,10 +105,16 @@ const CARD_SCHEMA = {
 
 export const BLOCK_TYPES = {
     hero: {
+        label: 'cms.block_hero',
+        icon: 'i-lucide-panel-top',
+        fields: [{ key: 'title', type: 'text', label: 'cms.field_title' }, { key: 'description', type: 'textarea', label: 'cms.field_description' }, { key: 'links', type: 'repeater', label: 'cms.field_links', fields: LINK_FIELDS, max: 3 }],
         component: HeroBlock,
         schema: { title: text, description: text, links: listOf(LINK_SCHEMA, 3) },
     },
     section: {
+        label: 'cms.block_section',
+        icon: 'i-lucide-rows-3',
+        fields: [{ key: 'title', type: 'text', label: 'cms.field_title' }, { key: 'description', type: 'textarea', label: 'cms.field_description' }, { key: 'align', type: 'select', label: 'cms.field_align', options: ['left', 'center'] }, { key: 'spacing', type: 'select', label: 'cms.field_spacing', options: ['compact', 'normal'] }],
         // The one container type: holds child blocks, which PageRenderer
         // renders into its default slot.
         component: SectionBlock,
@@ -96,30 +130,48 @@ export const BLOCK_TYPES = {
         container: true,
     },
     features: {
+        label: 'cms.block_features',
+        icon: 'i-lucide-layout-grid',
+        fields: [{ key: 'columns', type: 'number-select', label: 'cms.field_columns', options: [2, 3, 4] }, { key: 'items', type: 'repeater', label: 'cms.field_cards', fields: CARD_FIELDS, max: 24 }],
         component: FeaturesBlock,
         schema: { columns: oneOf([2, 3, 4], 3), items: listOf(CARD_SCHEMA, 24) },
     },
     prose: {
+        label: 'cms.block_prose',
+        icon: 'i-lucide-text',
+        fields: [{ key: 'text', type: 'textarea', label: 'cms.field_text', hint: 'cms.hint_inline_markdown', rows: 4 }],
         // Body copy. Goes through the inline markdown parser, never v-html —
         // see Support/richtext.js.
         component: ProseBlock,
         schema: { text },
     },
     callout: {
+        label: 'cms.block_callout',
+        icon: 'i-lucide-message-square-warning',
+        fields: [{ key: 'title', type: 'text', label: 'cms.field_title' }, { key: 'description', type: 'textarea', label: 'cms.field_description' }, { key: 'icon', type: 'icon', label: 'cms.field_icon' }, { key: 'color', type: 'color', label: 'cms.field_color' }],
         component: CalloutBlock,
         schema: { title: text, description: text, icon, color },
     },
     links: {
+        label: 'cms.block_links',
+        icon: 'i-lucide-mouse-pointer-click',
+        fields: [{ key: 'links', type: 'repeater', label: 'cms.field_links', fields: LINK_FIELDS, max: 4 }],
         // A row of buttons under a paragraph. Separate from `cta`, which
         // draws a whole panel — see LinksBlock for why.
         component: LinksBlock,
         schema: { links: listOf(LINK_SCHEMA, 4) },
     },
     cta: {
+        label: 'cms.block_cta',
+        icon: 'i-lucide-megaphone',
+        fields: [{ key: 'title', type: 'text', label: 'cms.field_title' }, { key: 'description', type: 'textarea', label: 'cms.field_description' }, { key: 'links', type: 'repeater', label: 'cms.field_links', fields: LINK_FIELDS, max: 2 }],
         component: CtaBlock,
         schema: { title: text, description: text, links: listOf(LINK_SCHEMA, 2) },
     },
     separator: {
+        label: 'cms.block_separator',
+        icon: 'i-lucide-minus',
+        fields: [],
         component: SeparatorBlock,
         schema: {},
     },
@@ -152,4 +204,33 @@ export function resolveBlock(block) {
         props: sanitize(entry.schema, block.props),
         children: entry.container && Array.isArray(block.blocks) ? block.blocks : [],
     };
+}
+
+/** Options for the editor's "add block" menu, in vocabulary order. */
+export function blockTypeOptions() {
+    return Object.entries(BLOCK_TYPES).map(([value, entry]) => ({
+        value,
+        label: entry.label,
+        icon: entry.icon,
+    }));
+}
+
+/** Field descriptors for one type; empty for an unknown one. */
+export function fieldsFor(type) {
+    return BLOCK_TYPES[type]?.fields ?? [];
+}
+
+export function isContainer(type) {
+    return Boolean(BLOCK_TYPES[type]?.container);
+}
+
+/** A new block of the given type, with every field present and empty. */
+export function blankBlock(type) {
+    const props = {};
+
+    for (const field of fieldsFor(type)) {
+        props[field.key] = field.type === 'repeater' ? [] : null;
+    }
+
+    return isContainer(type) ? { type, props, blocks: [] } : { type, props };
 }
