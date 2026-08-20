@@ -607,11 +607,40 @@ branch's SSR evaluation. Concrete carry-over work:
   still hardcoded Vue. It deliberately does not fake an editor.
   The three real pieces of work, none started:
   1. **Storage** — a `pages` table holding an ordered list of blocks per
-     page (type + props JSON). Nothing exists yet.
-  2. **Renderer** — a Vue component that maps a stored block list onto the
-     matching `u-page-*` components, with an allowlist of which props each
-     block type accepts. This is the half a third-party CMS does *not*
-     solve for us (see the Filament note below).
+     page (type + props JSON). Nothing exists yet. Design it around the
+     block shape the renderer already accepts (see below), not the other way
+     round — that shape is now known to render rather than guessed at.
+  2. ~~**Renderer**~~ — done 2026-08-20.
+     `resources/js/Components/Cms/PageRenderer.vue` walks a block list;
+     `Cms/blocks.js` is the vocabulary AND the security boundary. Blocks
+     land: `hero`, `section` (the one container), `features`, `prose`,
+     `links`, `cta`, `callout`, `separator`.
+     Two rules that must not be softened later, because block props will be
+     untrusted database content rendered into a public page: the component
+     is resolved from the map in `blocks.js` only, never by looking a stored
+     type string up against globally registered components; and `sanitize()`
+     builds a **new** props object from the schema rather than spreading raw
+     input, so an unlisted key cannot reach a component. That is what keeps
+     `ui`, `class` and event handlers out. Options like section alignment
+     are bounded enums mapped to fixed class strings, never pass-through
+     classes.
+     Proved against `/about`, which now renders entirely from a block list.
+     The list is hardcoded in `PageController` **on purpose** — in the
+     controller rather than the Vue page, so the blocks already arrive as
+     plain JSON over an Inertia prop exactly as they will from the database.
+     Swapping the source is a change to that one method.
+     Verified by feeding the real renderer hostile blocks: unknown type
+     dropped, `javascript:`/`data:`/protocol-relative and query-carrying
+     `mailto:` URLs all rejected, `ui`/`class`/`onClick`/`innerHTML` never
+     reached the component, no `v-html` anywhere, and a five-deep section
+     chain cut off by the depth guard. Confirmed in the browser and again
+     through SSR.
+     Note when measuring SSR output: Inertia's rendered body carries the
+     whole props payload in `data-page`, so grepping it for a hostile string
+     finds the input, not the output. Strip that attribute first — two
+     checks lied before this was spotted.
+     Still missing from the vocabulary: images, video/embeds, and a
+     multi-column layout block. Add them when a page needs one.
   3. **Editor UI** — add/remove/reorder blocks and edit their props.
      Start read-then-edit on one page (e.g. `/about`) rather than all 8.
      For the prose inside a block, `@nuxt/ui` v4 already ships `u-editor`
@@ -785,3 +814,19 @@ every new user sees.
   plain-HTTP local dev server, but would silently ship session/XSRF cookies
   over HTTP on a real deployment if nobody thought to set it explicitly.
   Now documented in `.env.example` with a comment explaining why it matters.
+
+## Content review before launch (step 8)
+
+Flagged 2026-08-20 by the owner: do this **after the build work is done**,
+not alongside it — the copy depends on what the app actually ends up doing.
+
+- [ ] **Privacy policy needs an update.** `/privacy` was written for the
+  Discord-only version of the app and no longer describes what is collected.
+  Since then: email/password accounts (email address, hashed password,
+  password-reset tokens), an audit log recording admin actions against named
+  users and retaining their names after deletion, site settings, and invite
+  records naming who created and who accepted them. The audit log is the one
+  most worth being explicit about — it deliberately keeps a deleted user's
+  display name, which is exactly the kind of retention a privacy policy has
+  to state rather than imply.
+  Check `/terms` at the same time; it has had no review at all on this stack.

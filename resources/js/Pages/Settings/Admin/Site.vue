@@ -111,7 +111,7 @@
                     <p class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">{{ $t('admin.site_announcement_preview') }}</p>
                     <u-alert :color="selectedStyle.color" variant="subtle" :icon="selectedStyle.icon">
                         <template #description>
-                            <announcement-text :text="form.announcement" />
+                            <rich-text :text="form.announcement" />
                         </template>
                     </u-alert>
                 </div>
@@ -132,7 +132,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
-import AnnouncementText from '@/Components/AnnouncementText.vue';
+import RichText from '@/Components/RichText.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
 import { announcementTypeOptions, styleFor } from '@/Support/announcement';
 
