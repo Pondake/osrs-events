@@ -482,6 +482,28 @@ branch's SSR evaluation. Concrete carry-over work:
 - [x] ~~User management beyond Discord OAuth~~ — resolved: email/password is
   now a first-class second auth path (see step 5's Auth entry), so no
   separate "internal account type" is needed. Any account can hold any role.
+- [x] ~~Admin area moved out of settings~~ — done 2026-08-20. Administration
+  was a group in the settings sidebar, which put site-wide management inside
+  a page about your own account. It now lives at `/admin` on its own shell
+  (`Components/AdminLayout.vue`) built from Nuxt UI dashboard components —
+  collapsible resizable sidebar, navbar with a per-page `#actions` slot, and
+  a dashboard landing page with live counts plus recent audit activity.
+  Three things worth not undoing:
+  * The shell is **client-only**. `UDashboardGroup`/`Sidebar`/`Panel` each
+    import the `#imports` virtual specifier and the sidebar calls Nuxt's
+    `useRoute()`, neither of which resolves outside Nuxt. A `#fallback`
+    renders the same frame so SSR still serves a layout. Safe here only
+    because admin is auth-gated with no SEO stake — do not copy the pattern
+    to a public page.
+  * `AppRoot` hides the site header, footer and announcement banner for any
+    page whose Inertia component name starts with `Admin/`. Without it the
+    site chrome renders on top of the dashboard rather than around it.
+  * The group is guarded by one middleware (`EnsureCanAccessAdmin`) AND by
+    the existing per-controller checks. Not redundant: route middleware is
+    easy to forget on a newly added route.
+  Old `/settings/admin/*` paths redirect. `/settings` keeps Profile and
+  Account only.
+
 - [x] ~~Admin settings shell~~ — done. `/admin/*` renders in the
   same `SettingsLayout` as the personal settings, with the sidebar split
   into "Your account" and "Administration" groups (the admin group is
