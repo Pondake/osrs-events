@@ -547,10 +547,17 @@ branch's SSR evaluation. Concrete carry-over work:
      Read-only on purpose: no store/update/destroy action and no route for
      one. If retention is ever needed it belongs in a scheduled prune with
      an explicit window, not a "clear log" button.
-     Not logged yet, and a deliberate gap rather than an oversight: board
-     create/delete, invite create/revoke, and team membership changes.
-     `AuditLog::record()` is a one-liner at each call site, so adding them
-     is cheap once it's clear which are worth the noise.
+     Filters (added the same day): action, user, and team/clan, plus free
+     text. The user filter matches actor **and** target — "everything about
+     this person" means both — and its options come from the log's own
+     labels rather than the users table, so deleted accounts stay
+     selectable. Team and clan share one control with a `team:`/`guild:`
+     prefix; picking a clan spans every team in it, because `guild_id` is
+     stored on team-scoped rows too. Verified against the DB across nine
+     filter combinations including deleted users and a team with no clan.
+     Team, member and board-team mutations are logged as of that work.
+     Still not logged, a deliberate gap: board create/delete and invite
+     create/revoke. `AuditLog::record()` is a one-liner per call site.
   4. **Invites overview** — `BoardInvite` rows are only visible per board
      inside its settings modal. A global view (who invited whom, what's
      unused/expired) is a natural admin page.
