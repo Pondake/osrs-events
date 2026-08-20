@@ -25,7 +25,9 @@ class PlayerBoardController extends Controller
     {
         abort_unless($access->hasAccess(Auth::user(), $event), 403);
 
-        $tiles = $event->tiles()->orderBy('position')->get();
+        // Tiles hang off the board, not the event — an event type without a
+        // board has none.
+        $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();
         $maxPosition = $tiles->count() - 1;
 
         $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
@@ -33,12 +35,15 @@ class PlayerBoardController extends Controller
             return back()->with('board-save-error', "You don't have a team on this board yet.");
         }
 
-        if ($event->dice_roll_limit !== null) {
+        // Roll limit is board mechanics, so it moved with the board.
+        $rollLimit = $event->board?->dice_roll_limit;
+
+        if ($rollLimit !== null) {
             $isToday = $playerBoard->last_roll_date?->isToday() ?? false;
             $rollsToday = $isToday ? $playerBoard->dice_rolls_today : 0;
 
-            if ($rollsToday >= $event->dice_roll_limit) {
-                return back()->with('board-save-error', "You've reached today's roll limit ({$event->dice_roll_limit}/day).");
+            if ($rollsToday >= $rollLimit) {
+                return back()->with('board-save-error', "You've reached today's roll limit ({$rollLimit}/day).");
             }
         }
 
