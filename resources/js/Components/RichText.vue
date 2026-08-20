@@ -1,7 +1,7 @@
 <template>
-    <!-- Renders parseAnnouncement()'s tokens as real elements. Kept as a
-         component rather than a helper returning a string because the whole
-         point is that nothing here is ever v-html'd — see Support/announcement.js. -->
+    <!-- Renders parseInline()'s tokens as real elements. A component rather
+         than a helper returning a string because the whole point is that
+         nothing here is ever v-html'd — see Support/richtext.js. -->
     <span>
         <template v-for="(token, index) in tokens" :key="index">
             <a
@@ -19,17 +19,11 @@
 
 <script setup>
 import { computed } from 'vue';
-import { parseAnnouncement } from '@/Support/announcement';
+import { isExternal, parseInline } from '@/Support/richtext';
 
 const props = defineProps({
     text: { type: String, default: '' },
 });
 
-const tokens = computed(() => parseAnnouncement(props.text));
-
-// Site-relative links stay in the tab; anything off-site opens a new one so
-// a banner pointing at Discord doesn't navigate the user out of the app.
-function isExternal(href) {
-    return !href.startsWith('/');
-}
+const tokens = computed(() => parseInline(props.text));
 </script>

@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\PageController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlayerBoardController;
@@ -90,7 +91,7 @@ Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadd
 Route::get('/osrs-clan-events', [LandingController::class, 'clanEvents'])->name('landing.clan-events');
 Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name('landing.event-ideas');
 
-Route::get('/about', fn () => Inertia::render('About'))->name('about');
+Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/donate', fn () => Inertia::render('Donate'))->name('donate');
 Route::get('/privacy', fn () => Inertia::render('Privacy'))->name('privacy');
 Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
