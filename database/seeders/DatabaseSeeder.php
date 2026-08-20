@@ -10,7 +10,6 @@ use App\Models\PlayerBoard;
 use App\Models\Role;
 use App\Models\Tile;
 use App\Models\User;
-use App\Models\UserRole;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -34,7 +33,7 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $playerRole->id]);
+        $user->assignRole($playerRole);
 
         // Since the Board→Event split this is two rows, not one: the event
         // holds what the competition IS, the board holds only the Snakes &

@@ -26,8 +26,8 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $user = $request->user()?->load('userRoles.role');
-        $roles = $user?->userRoles->pluck('role.name') ?? collect();
+        $user = $request->user()?->load('roles:id,name');
+        $roles = $user?->roles->pluck('name') ?? collect();
 
         return [
             ...parent::share($request),

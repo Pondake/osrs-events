@@ -24,16 +24,16 @@
 
                 <div class="flex items-center gap-1.5 flex-wrap justify-end">
                     <u-badge
-                        v-for="ur in u.user_roles"
-                        :key="ur.id"
-                        :label="ur.role.name"
-                        :color="roleColor(ur.role.name)"
+                        v-for="role in u.roles"
+                        :key="role.id"
+                        :label="role.name"
+                        :color="roleColor(role.name)"
                         variant="subtle"
                     />
                     <u-badge
-                        v-for="p in u.user_permissions"
-                        :key="p.id"
-                        :label="p.permission_key"
+                        v-for="permission in u.permissions"
+                        :key="permission.id"
+                        :label="permission.name"
                         color="neutral"
                         variant="outline"
                         icon="i-lucide-key"
@@ -104,8 +104,8 @@ function doSearch(value) {
  * Mirrors AdminUserController::destroy()'s refusals for the delete entry.
  */
 function menuFor(u) {
-    const held = u.user_roles.map((ur) => ur.role.name);
-    const heldPerms = u.user_permissions.map((p) => p.permission_key);
+    const held = u.roles.map((role) => role.name);
+    const heldPerms = u.permissions.map((permission) => permission.name);
     const isSelf = u.id === currentUser.value?.id;
 
     const groups = [];
@@ -119,12 +119,12 @@ function menuFor(u) {
         })));
     }
 
-    const revocableRoles = u.user_roles.filter((ur) => !(isSelf && ur.role.name === 'ADMIN'));
+    const revocableRoles = u.roles.filter((role) => !(isSelf && role.name === 'ADMIN'));
     if (revocableRoles.length) {
-        groups.push(revocableRoles.map((ur) => ({
-            label: trans('admin.remove_role', { role: ur.role.name }),
+        groups.push(revocableRoles.map((role) => ({
+            label: trans('admin.remove_role', { role: role.name }),
             icon: 'i-lucide-minus',
-            onSelect: () => router.delete(`/admin/users/${u.id}/roles/${ur.role.id}`, { preserveScroll: true }),
+            onSelect: () => router.delete(`/admin/users/${u.id}/roles/${role.id}`, { preserveScroll: true }),
         })));
     }
 

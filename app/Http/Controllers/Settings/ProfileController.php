@@ -20,7 +20,7 @@ class ProfileController extends Controller
 {
     public function show(): Response
     {
-        $user = Auth::user()->load('userRoles.role');
+        $user = Auth::user()->load('roles:id,name');
 
         $playerBoards = $user->playerBoards()
             ->with(['board', 'completedTiles'])
@@ -30,7 +30,7 @@ class ProfileController extends Controller
             ->values();
 
         return Inertia::render('Settings/Profile', [
-            'roles' => $user->userRoles->pluck('role.name'),
+            'roles' => $user->roles->pluck('name'),
             'playerBoards' => $playerBoards,
             // Not shared globally via HandleInertiaRequests: this is the only
             // page that edits it, and the skill-race page gets its own copy.

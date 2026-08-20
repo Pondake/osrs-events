@@ -15,13 +15,6 @@
       "cwd": ".",
       "port": 5173,
       "url": "http://osrs-events.test"
-    },
-    {
-      "name": "stale-frontend-preview",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev", "--port", "4317"],
-      "cwd": "stale/frontend",
-      "port": 4317
     }
   ]
 }

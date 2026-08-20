@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
-use App\Models\UserRole;
 use App\Rules\OsrsUsername;
 use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
@@ -72,7 +71,7 @@ class RegisteredUserController extends Controller
                 ['name' => 'PLAYER'],
                 ['description' => 'Standaard spelerrol'],
             );
-            UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $playerRole->id]);
+            $user->assignRole($playerRole);
 
             return $user;
         });

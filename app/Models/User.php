@@ -10,13 +10,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['discord_id', 'discord_username', 'nickname', 'osrs_username', 'osrs_verified_at', 'avatar_url', 'email', 'password', 'onboarding_completed_at'])]
 #[Hidden(['remember_token', 'password'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasUuids, Notifiable;
+    // HasRoles brings roles()/permissions() relations, hasRole(), and
+    // registers everything with Laravel's Gate — so `$user->can('key')` works
+    // alongside the explicit checks below.
+    use HasFactory, HasRoles, HasUuids, Notifiable;
 
     /**
      * Laravel's auto-hashing cast — any ->create()/->update() with a raw
@@ -70,30 +74,26 @@ class User extends Authenticatable
         return $this->hasMany(BoardAccess::class);
     }
 
-    public function userRoles(): HasMany
-    {
-        return $this->hasMany(UserRole::class);
-    }
-
-    public function userPermissions(): HasMany
-    {
-        return $this->hasMany(UserPermission::class);
-    }
-
-    public function hasRole(string $roleName): bool
-    {
-        return $this->userRoles()->whereHas('role', fn ($q) => $q->where('name', $roleName))->exists();
-    }
-
     public function isAdmin(): bool
     {
         return $this->hasRole('ADMIN');
     }
 
-    /** Mirrors the old usePermissions.ts: ADMIN bypasses every granular check. */
+    /**
+     * Mirrors the old usePermissions.ts: ADMIN bypasses every granular check.
+     *
+     * Kept as a named method rather than letting call sites use spatie's
+     * `hasPermissionTo()` directly, for two reasons. The admin bypass is a
+     * rule of this app, not of the package — spatie would answer "no" for an
+     * admin who was never explicitly granted the key. And
+     * `hasPermissionTo('nope')` *throws* PermissionDoesNotExist for a key with
+     * no row, where every caller here wants a plain false; a permission that
+     * has not been seeded is not an exception, it is simply not granted —
+     * hence checkPermissionTo(), which is spatie's non-throwing variant.
+     */
     public function hasPermission(string $key): bool
     {
-        return $this->isAdmin() || $this->userPermissions()->where('permission_key', $key)->exists();
+        return $this->isAdmin() || $this->checkPermissionTo($key);
     }
 
     public function canEditEvent(Event $event): bool
