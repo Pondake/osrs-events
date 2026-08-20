@@ -39,6 +39,11 @@ class Setting extends Model
         'default_dice_roll_limit' => 1,
         'announcement' => null,
         'announcement_type' => 'info',
+        // Every "support" button on the site points straight here. A default
+        // rather than a nullable: an empty value would render buttons that go
+        // nowhere, and the profile is not something that changes often enough
+        // to be worth that failure mode.
+        'kofi_url' => 'https://ko-fi.com/pondake',
     ];
 
     /** Banner styles. Keys are stored; the UI maps them to colour and icon. */

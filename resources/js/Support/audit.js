@@ -105,6 +105,7 @@ const FIELDS = {
             ? text(trans('admin.dice_roll_unlimited'))
             : text(trans('audit.value_rolls_per_day', { count: value }))),
     },
+    kofi_url: { label: 'audit.field_kofi_url', format: (value) => (value ? text(value) : empty()) },
     announcement: {
         label: 'audit.field_announcement',
         format: (value) => (value ? text(truncate(value)) : empty()),

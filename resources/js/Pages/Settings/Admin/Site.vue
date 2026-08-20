@@ -72,6 +72,21 @@
                 </div>
             </u-card>
 
+            <u-card v-show="active === 'support'">
+                <template #header>
+                    <span class="font-semibold">{{ $t('admin.site_support_title') }}</span>
+                </template>
+
+                <u-form-field
+                    :label="$t('admin.site_kofi_url')"
+                    :description="$t('admin.site_kofi_url_desc')"
+                    :error="form.errors.kofi_url"
+                    class="max-w-lg"
+                >
+                    <u-input v-model="form.kofi_url" type="url" class="w-full" placeholder="https://ko-fi.com/yourname" />
+                </u-form-field>
+            </u-card>
+
             <u-card v-show="active === 'announcement'">
                 <template #header>
                     <span class="font-semibold">{{ $t('admin.site_announcement_title') }}</span>
@@ -144,6 +159,7 @@ const form = useForm({
     registration_open: props.settings.registration_open,
     default_board_size: props.settings.default_board_size,
     default_dice_roll_limit: props.settings.default_dice_roll_limit,
+    kofi_url: props.settings.kofi_url ?? '',
     announcement: props.settings.announcement ?? '',
     announcement_type: props.settings.announcement_type ?? 'info',
 });
@@ -151,6 +167,7 @@ const form = useForm({
 const sections = computed(() => [
     { key: 'access', icon: 'i-lucide-door-open', label: trans('admin.site_section_access') },
     { key: 'boards', icon: 'i-lucide-layout-grid', label: trans('admin.site_section_boards') },
+    { key: 'support', icon: 'i-lucide-coffee', label: trans('admin.site_section_support') },
     { key: 'announcement', icon: 'i-lucide-megaphone', label: trans('admin.site_section_announcement') },
 ]);
 
