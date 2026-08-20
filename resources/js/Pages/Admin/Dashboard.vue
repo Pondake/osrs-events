@@ -31,9 +31,12 @@
                     <div v-for="entry in recentActivity" :key="entry.id" class="flex items-start gap-3 py-2.5">
                         <u-icon :name="auditStyleFor(entry.action).icon" class="size-4 shrink-0 mt-0.5" :class="actionClass(entry.action)" />
                         <div class="min-w-0 flex-1">
-                            <div class="text-sm">
+                            <!-- Flex gap, not a space inside the span: Vue's
+                                 whitespace condensing drops a leading space in a
+                                 text node, so the two ran together. -->
+                            <div class="flex items-baseline gap-1.5 flex-wrap text-sm">
                                 <span class="font-medium">{{ auditLabel(entry.action) }}</span>
-                                <span class="text-muted"> {{ $t('admin.audit_by', { actor: entry.actor_label }) }}</span>
+                                <span class="text-muted">{{ $t('admin.audit_by', { actor: entry.actor_label }) }}</span>
                             </div>
                             <p v-if="entry.target_label" class="text-xs text-muted truncate">{{ entry.target_label }}</p>
                         </div>

@@ -7,6 +7,8 @@ import ui from '@nuxt/ui/vite';
 import i18n from 'laravel-vue-i18n/vite';
 import { uiConfig } from './ui.config.ts';
 
+import { ICON_NAMES } from './resources/js/Support/iconCatalog.js';
+
 export default defineConfig({
     server: {
         host: '127.0.0.1',
@@ -50,6 +52,12 @@ export default defineConfig({
             icon: {
                 clientBundle: {
                     scan: true,
+                    // scan: true only finds icons written literally in source.
+                    // The CMS icon picker offers icons by NAME from a catalog,
+                    // which the scanner cannot see — so the same catalog is fed
+                    // in here explicitly. Without this, an admin could pick an
+                    // icon that renders as a permanently empty <svg>.
+                    icons: ICON_NAMES,
                 },
             },
             autoImport: {

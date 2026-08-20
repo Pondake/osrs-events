@@ -33,7 +33,15 @@ class UserController extends Controller
         $users = User::with(['userRoles.role', 'userPermissions'])
             ->when(
                 $request->string('search')->isNotEmpty(),
-                fn ($q) => $q->where('discord_username', 'like', '%'.$request->string('search').'%'),
+                // All three, not just discord_username: email registration
+                // means an account can have no Discord name at all, and those
+                // users were unfindable here.
+                fn ($q) => $q->where(function ($sub) use ($request) {
+                    $term = '%'.$request->string('search').'%';
+                    $sub->where('discord_username', 'like', $term)
+                        ->orWhere('nickname', 'like', $term)
+                        ->orWhere('email', 'like', $term);
+                }),
             )
             ->orderByDesc('created_at')
             ->get();

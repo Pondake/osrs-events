@@ -144,7 +144,13 @@ class TeamController extends Controller
         $search = $request->string('search')->toString();
         $existingMemberIds = $team->members()->pluck('user_id');
 
-        $users = User::when($search, fn ($q) => $q->where('discord_username', 'like', "%{$search}%"))
+        // Searches nickname and email too — an email-registered account has
+        // no discord_username and would otherwise never appear here.
+        $users = User::when($search, fn ($q) => $q->where(function ($sub) use ($search) {
+            $sub->where('discord_username', 'like', "%{$search}%")
+                ->orWhere('nickname', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
+        }))
             ->whereNotIn('id', $existingMemberIds)
             ->orderBy('discord_username')
             ->limit(20)
