@@ -14,6 +14,12 @@
 -->
 <template>
     <slot v-if="mounted" />
+    <!-- Rendered during SSR and until hydration. Use it when the content
+         matters to a crawler (AppHeader's nav) — a plain-markup stand-in
+         gets the links into the HTML without dragging the interactive
+         component into the SSR graph. Omit it and this stays render-nothing,
+         which is right for a closed modal. -->
+    <slot v-else name="fallback" />
 </template>
 
 <script setup>

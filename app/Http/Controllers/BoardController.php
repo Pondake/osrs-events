@@ -24,8 +24,9 @@ class BoardController extends Controller
 
     /**
      * Public board list — only listed boards, matching the old
-     * BoardsService::findAll(). Admin sees every board via a separate route
-     * (see Admin\BoardController, not yet ported — docs/backlog.md).
+     * BoardsService::findAll(). Deliberately reachable without auth: it's
+     * the page search engines index, so it can't sit behind a login.
+     * Admins see unlisted ones too via Settings\Admin\BoardController.
      */
     public function index(): Response
     {
@@ -35,6 +36,45 @@ class BoardController extends Controller
             ->get();
 
         return Inertia::render('Boards/Index', ['boards' => $boards]);
+    }
+
+    /**
+     * The boards this user is actually playing — everything they hold a
+     * PlayerBoard for, including unlisted and invite-only ones they've been
+     * let into, which the public index above deliberately never shows.
+     *
+     * Progress is computed here rather than client-side because the tile
+     * count comes from the board's size enum, and duplicating that mapping
+     * into JS is how it drifts.
+     */
+    public function mine(): Response
+    {
+        $tileCounts = ['SIZE_5X5' => 25, 'SIZE_7X7' => 49, 'SIZE_9X9' => 81];
+
+        $boards = Auth::user()->playerBoards()
+            ->with(['board.authors.user', 'board.boardTeams.team'])
+            ->get()
+            ->filter(fn ($pb) => $pb->board !== null)
+            ->sortByDesc(fn ($pb) => $pb->board->start_date)
+            ->values()
+            ->map(function ($pb) use ($tileCounts) {
+                $total = $tileCounts[$pb->board->size] ?? 49;
+                $position = max(0, $pb->current_position);
+
+                return [
+                    'board' => $pb->board,
+                    'progress' => [
+                        'current' => $position + 1,
+                        'total' => $total,
+                        // Capped at 99 until the final tile is actually
+                        // completed — same rule the profile page uses, so a
+                        // board in progress never reads as finished.
+                        'pct' => $total <= 1 ? 0 : min(99, (int) floor(($position / ($total - 1)) * 100)),
+                    ],
+                ];
+            });
+
+        return Inertia::render('Boards/Mine', ['boards' => $boards]);
     }
 
     /**

@@ -93,6 +93,9 @@ Route::get('/privacy', fn () => Inertia::render('Privacy'))->name('privacy');
 Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
 
 Route::get('/boards', [BoardController::class, 'index'])->name('boards.index');
+Route::get('/my-boards', [BoardController::class, 'mine'])
+    ->middleware('auth')
+    ->name('boards.mine');
 Route::get('/boards/{board}', [BoardController::class, 'show'])
     ->middleware('auth')
     ->name('boards.show');
