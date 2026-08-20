@@ -45,12 +45,18 @@ defineProps({
     current: { type: String, required: true },
 });
 
-const { isAdmin } = useAuth();
+const { isAdmin, canCreateTiles } = useAuth();
 
-// Grouped so the admin half reads as a separate concern rather than more
-// personal settings. The admin group is filtered out entirely for
-// non-admins — every page behind it re-checks server-side anyway, this
-// just avoids advertising links that would only 403.
+/**
+ * Grouped so the admin half reads as a separate concern rather than more
+ * personal settings.
+ *
+ * Admin items are filtered **per item**, not by one isAdmin check on the
+ * whole group: Tasks is gated on canCreateTiles (see Admin\TaskController),
+ * not on being an admin, so an EDITOR must still see it while seeing none
+ * of the rest. Every page behind these re-checks server-side regardless —
+ * this only avoids advertising links that would 403.
+ */
 const groups = computed(() => {
     const result = [
         {
@@ -63,15 +69,15 @@ const groups = computed(() => {
         },
     ];
 
-    if (isAdmin.value) {
-        result.push({
-            key: 'admin',
-            label: trans('settings.group_admin'),
-            items: [
-                { key: 'admin-users', to: '/settings/admin/users', icon: 'i-lucide-user-cog', label: trans('settings.nav_admin_users') },
-                { key: 'admin-content', to: '/settings/admin/content', icon: 'i-lucide-layout-template', label: trans('settings.nav_admin_content') },
-            ],
-        });
+    const adminItems = [
+        { key: 'admin-users', to: '/settings/admin/users', icon: 'i-lucide-user-cog', label: trans('settings.nav_admin_users'), show: isAdmin.value },
+        { key: 'admin-boards', to: '/settings/admin/boards', icon: 'i-lucide-layout-grid', label: trans('settings.nav_admin_boards'), show: isAdmin.value },
+        { key: 'admin-tasks', to: '/settings/admin/tasks', icon: 'i-lucide-list-checks', label: trans('settings.nav_admin_tasks'), show: isAdmin.value || canCreateTiles.value },
+        { key: 'admin-content', to: '/settings/admin/content', icon: 'i-lucide-layout-template', label: trans('settings.nav_admin_content'), show: isAdmin.value },
+    ].filter((item) => item.show);
+
+    if (adminItems.length) {
+        result.push({ key: 'admin', label: trans('settings.group_admin'), items: adminItems });
     }
 
     return result;

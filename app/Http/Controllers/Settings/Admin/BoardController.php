@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Settings\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Board;
@@ -19,6 +19,6 @@ class BoardController extends Controller
             ->orderByDesc('start_date')
             ->get();
 
-        return Inertia::render('Admin/Boards/Index', ['boards' => $boards]);
+        return Inertia::render('Settings/Admin/Boards', ['boards' => $boards]);
     }
 }

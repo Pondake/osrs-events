@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\Admin\BoardController as AdminBoardController;
-use App\Http\Controllers\Admin\TaskController as AdminTaskController;
+use App\Http\Controllers\Settings\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Settings\Admin\ContentController;
+use App\Http\Controllers\Settings\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Settings\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\DiscordController;
@@ -159,17 +159,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember'])->name('teams.members.remove');
     Route::get('/teams/{team}/users/search', [TeamController::class, 'searchUsers'])->name('teams.users.search');
 
-    Route::prefix('admin')->name('admin.')->group(function () {
-        Route::get('/boards', [AdminBoardController::class, 'index'])->name('boards.index');
-
-        Route::get('/tasks', [AdminTaskController::class, 'index'])->name('tasks.index');
-        Route::post('/tasks', [AdminTaskController::class, 'store'])->name('tasks.store');
-        Route::patch('/tasks/{task}', [AdminTaskController::class, 'update'])->name('tasks.update');
-        Route::delete('/tasks/{task}', [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
-
-        // User management moved under /settings/admin — see below. Kept as a
-        // redirect because it was a top-level nav item until now.
+    // Everything admin now lives under /settings/admin (see below); these
+    // three were top-level nav items until then, so they redirect rather
+    // than 404 for anyone with an old link or bookmark.
+    Route::prefix('admin')->group(function () {
         Route::redirect('/users', '/settings/admin/users');
+        Route::redirect('/boards', '/settings/admin/boards');
+        Route::redirect('/tasks', '/settings/admin/tasks');
     });
 
     // Admin-only settings, rendered in the same SettingsLayout shell as the
@@ -182,6 +178,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{user}/permissions', [AdminUserController::class, 'grantPermission'])->name('users.permissions.grant');
         Route::delete('/users/{user}/permissions/{permissionKey}', [AdminUserController::class, 'revokePermission'])->name('users.permissions.revoke');
         Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+
+        Route::get('/boards', [AdminBoardController::class, 'index'])->name('boards');
+
+        // Tasks is gated on canCreateTiles, not isAdmin (see
+        // Admin\TaskController) — an EDITOR reaches this without being an
+        // admin, which is why SettingsLayout filters its sidebar per item
+        // rather than hiding the whole Administration group behind isAdmin.
+        Route::get('/tasks', [AdminTaskController::class, 'index'])->name('tasks');
+        Route::post('/tasks', [AdminTaskController::class, 'store'])->name('tasks.store');
+        Route::patch('/tasks/{task}', [AdminTaskController::class, 'update'])->name('tasks.update');
+        Route::delete('/tasks/{task}', [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
 
         Route::get('/content', [ContentController::class, 'index'])->name('content');
     });
