@@ -900,6 +900,33 @@ sub-pages which aren't discoverable from it.
   `_hint`) rather than hardcoded in the template, so a new failure mode needs
   a key pair and nothing else.
 
+  **The RSN is now checked against Wise Old Man — as a warning, not a gate.**
+  Asked for by the owner 2026-08-20, and it resolves the objection that kept
+  this out originally: their API only knows accounts somebody has looked up
+  there at least once, so a real newcomer 404s and *refusing* the name would
+  lock out exactly the people this is for. Warning instead of blocking gets
+  the signal without the false negative.
+  * `WiseOldManService::findPlayer()` returns **three** answers, and the third
+    is the point: found, genuinely not found (a real 404 —
+    `{"code":"PLAYER_NOT_FOUND"}`, confirmed against their API, not an empty
+    body), and **null meaning we could not tell**. A timeout or a 500 must
+    never reach a user as "that account doesn't exist"; being wrong in that
+    direction tells someone their own RSN is a typo when it isn't.
+  * `OsrsIdentityService` owns setting a name so all three entry points
+    behave identically, and stores Wise Old Man's canonical casing over
+    whatever was typed ("pondake" is saved as "Pondake").
+  * `users.osrs_verified_at` is a timestamp, not a boolean — "verified" is a
+    claim with an age, and accounts get renamed and archived. Cleared on any
+    name change; also set by a successful standings sync, since reading gains
+    proves the account exists.
+  * The notice recurs and is deliberately **not dismissible**: ignoring it
+    means scoring nothing in every race entered, and a one-click dismiss makes
+    that permanent and silent. Hidden on the gate page itself, which is
+    already asking.
+  * Short (6s) timeout, because this runs inline on signup, and the check is
+    outside the registration transaction — a third-party HTTP call has no
+    business holding one open.
+
   **Worth knowing locally:** nothing runs Laravel's scheduler in dev, so
   standings sit at "Waiting for first sync" until `php artisan
   events:sync-standings` is run by hand. That is what it looked like when the
@@ -957,6 +984,32 @@ sub-pages which aren't discoverable from it.
   stale one still showing a 7x7 grid beside the real skill race of nearly the
   same name — which is how it was spotted. `renameLegacyTitles()` now carries
   old titles forward; add a pair to it whenever a demo title changes.
+
+- [x] ~~**Edge-case sweep, 2026-08-20.**~~ — asked for after the run of bugs
+  above. What it turned up, in rough order of severity:
+  1. **`/onboarding/joinable-boards` selected `size` off `events`**, a column
+     the split moved to `boards`. It does **not** fail on SQLite: an unknown
+     identifier in a SELECT list is read as a *string literal* and returned as
+     data (the endpoint handed back the word "size"). PostgreSQL raises
+     `column does not exist`. So this was a dev-invisible, production-only
+     500. Every other explicit column list in the app was then checked against
+     the real schema programmatically rather than by eye — all clean.
+  2. **A new Discord account got the onboarding modal on top of the RSN gate**,
+     with the modal's own endpoints sitting behind that gate — so "Skip for
+     now" and the join-a-board step would have bounced off it. Two blocking
+     flows competing for the same screen. The gate wins now; the tour runs
+     once the user is through.
+  3. **`$board->access_mode` in the demo seeder** (null since the split) meant
+     no fresh seed ever produced a single invite or guild membership — the
+     admin invites overview and the "VIP Beta Test" spec that exists purely to
+     cover its four invite states both had nothing to show. Confirmed by
+     counting on a freshly-seeded database: zero of each.
+  4. **A metric event with no metric threw a TypeError** on every sync. The
+     column is nullable while validation requires one, so only a seeder or a
+     console command can produce it — but unguarded it is a fatal, which is a
+     far worse way to find out than a message on the row (`no_metric`).
+  5. **An unstarted race read as "Waiting for first sync"** — the same state a
+     broken one shows, making a perfectly healthy upcoming event look stuck.
 
 - [x] ~~**A boardless event crashed the events hub.**~~ — fixed 2026-08-20,
   found by the seeder putting a skill race in the listing. `BoardCard`

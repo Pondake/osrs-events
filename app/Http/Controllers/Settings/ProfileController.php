@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Rules\OsrsUsername;
+use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,7 +56,7 @@ class ProfileController extends Controller
      * save that also listed osrs_username would blank it whenever the
      * nickname form didn't send one.
      */
-    public function updateOsrsUsername(Request $request): RedirectResponse
+    public function updateOsrsUsername(Request $request, OsrsIdentityService $identity): RedirectResponse
     {
         $data = $request->validate([
             // Required rather than nullable: every account has one by the
@@ -65,8 +66,28 @@ class ProfileController extends Controller
             'osrs_username' => ['required', 'string', new OsrsUsername],
         ]);
 
-        $request->user()->update(['osrs_username' => trim($data['osrs_username'])]);
+        $found = $identity->apply($request->user(), $data['osrs_username']);
 
-        return back()->with('board-save', trans('profile.osrs_username_saved'));
+        // Saved regardless; an unconfirmed name is a warning, not a rejection.
+        return $found === false
+            ? back()->with('board-save-error', trans('auth.osrs_not_found'))
+            : back()->with('board-save', trans('profile.osrs_username_saved'));
+    }
+
+    /**
+     * Re-run the Wise Old Man check on the name already stored — the action
+     * behind the recurring "we can't find this account" notice.
+     */
+    public function verifyOsrsUsername(Request $request, OsrsIdentityService $identity): RedirectResponse
+    {
+        $found = $identity->recheck($request->user());
+
+        return match ($found) {
+            true => back()->with('board-save', trans('auth.osrs_found')),
+            false => back()->with('board-save-error', trans('auth.osrs_not_found')),
+            // Their API was unreachable. Saying "not found" here would tell
+            // someone their own RSN is wrong because a third party was down.
+            default => back()->with('board-save-error', trans('auth.osrs_check_failed')),
+        };
     }
 }

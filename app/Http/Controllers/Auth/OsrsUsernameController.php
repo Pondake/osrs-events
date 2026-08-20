@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Rules\OsrsUsername;
+use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -32,16 +33,21 @@ class OsrsUsernameController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, OsrsIdentityService $identity): RedirectResponse
     {
         $data = $request->validate([
             'osrs_username' => ['required', 'string', new OsrsUsername],
         ]);
 
-        $request->user()->update(['osrs_username' => trim($data['osrs_username'])]);
+        // Saved either way — Wise Old Man only knows accounts somebody has
+        // looked up there before, so a real newcomer 404s and refusing the
+        // name would lock out exactly the people this is for.
+        $found = $identity->apply($request->user(), $data['osrs_username']);
 
-        // Back to wherever they were headed when the gate caught them, which
-        // for a fresh signup is the events hub.
-        return redirect()->intended('/events');
+        $redirect = redirect()->intended('/events');
+
+        return $found === false
+            ? $redirect->with('board-save-error', trans('auth.osrs_not_found'))
+            : $redirect;
     }
 }

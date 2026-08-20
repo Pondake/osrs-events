@@ -222,8 +222,24 @@ class EventStandingsService
         $end = $event->end_date ? Carbon::parse($event->end_date)->endOfDay() : Carbon::now();
 
         // A future event has nothing to measure yet, and asking for a window
-        // that has not begun returns noise.
+        // that has not begun returns noise. Left untouched rather than marked:
+        // "not started" is a fact about the event, which the page already
+        // knows from its dates, not a per-participant failure.
         if ($start->isFuture()) {
+            return;
+        }
+
+        // Guarded because the column is nullable while a metric race is
+        // meaningless without one. Validation stops the form creating such an
+        // event, but nothing stops a seeder, a console command or a future
+        // event type — and unguarded this is a TypeError on every sync, which
+        // is a far worse way to find out than a message on the row.
+        if (blank($event->metric)) {
+            $standing->forceFill([
+                'sync_error' => 'no_metric',
+                'synced_at' => Carbon::now(),
+            ])->save();
+
             return;
         }
 
@@ -253,5 +269,16 @@ class EventStandingsService
             'sync_error' => null,
             'synced_at' => Carbon::now(),
         ])->save();
+
+        // A successful gains read is proof the account exists, so clear the
+        // "we can't find you" notice without spending a second lookup on it.
+        // Guarded on the names still matching: the standing keeps the name its
+        // numbers came from, which after a blocked rename is no longer the
+        // one on the account.
+        if ($standing->user !== null
+            && $standing->user->osrs_username === $standing->username
+            && $standing->user->osrs_verified_at === null) {
+            $standing->user->forceFill(['osrs_verified_at' => Carbon::now()])->save();
+        }
     }
 }

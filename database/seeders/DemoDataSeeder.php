@@ -446,7 +446,11 @@ class DemoDataSeeder extends Seeder
                 ]);
             }
 
-            if ($board->access_mode === 'GUILD') {
+            // access_mode moved to the event in the split. Read off the board
+            // it is silently null, so this never fired and no fresh seed ever
+            // produced a single guild membership — leaving GUILD events
+            // joinable by nobody.
+            if ($event->access_mode === 'GUILD') {
                 $this->seedGuildMembership($event);
             }
         }
@@ -457,7 +461,11 @@ class DemoDataSeeder extends Seeder
         // on board creation meant the only way to add one was to delete the
         // board it belonged to. seedInvites() keys on the label to stay
         // idempotent.
-        if ($board->access_mode === 'INVITE') {
+        // Same null-off-the-board slip as the GUILD check above: no fresh seed
+        // ever created an invite, so the admin invites overview — and the
+        // "VIP Beta Test" spec that exists purely to cover its four states —
+        // had nothing at all to show.
+        if ($event->access_mode === 'INVITE') {
             $this->seedInvites($event, $owner, $spec['invites'] ?? []);
         }
 

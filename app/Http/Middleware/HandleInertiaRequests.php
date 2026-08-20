@@ -93,6 +93,14 @@ class HandleInertiaRequests extends Middleware
                     // shared globally because the modal lives in the layout,
                     // not on any one page that could pass it as a prop.
                     'needsOnboarding' => $user->onboarding_completed_at === null,
+                    'osrsUsername' => $user->osrs_username,
+                    // Drives the recurring "we can't find this account"
+                    // notice, which lives in the layout for the same reason
+                    // the onboarding modal does — it has to follow the user
+                    // rather than belong to one page. Null covers both never
+                    // checked and checked-and-missing; neither is confirmed,
+                    // and the app treats them identically.
+                    'osrsVerified' => $user->osrs_verified_at !== null,
                     // Boolean, not the address itself: the modal only needs
                     // to know whether account recovery is possible, and the
                     // email is already exposed where it's actually shown

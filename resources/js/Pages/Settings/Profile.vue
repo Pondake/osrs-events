@@ -110,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { useAuth } from '@/Composables/useAuth';
 import { formatBoardSize, BOARD_TILE_COUNT } from '@/Support/board';
@@ -143,6 +143,12 @@ function save() {
 // didn't carry.
 const osrsInput = ref(props.osrsUsername ?? '');
 const osrsForm = useForm({ osrs_username: '' });
+
+// Resynced after a save because the server may normalise what was typed —
+// Wise Old Man returns the account's canonical casing, so "pondake" is stored
+// as "Pondake". Seeded once, the field would keep showing the typed version
+// and quietly disagree with what is actually saved.
+watch(() => props.osrsUsername, (name) => (osrsInput.value = name ?? ''));
 
 function saveOsrsUsername() {
     osrsForm.osrs_username = osrsInput.value.trim();

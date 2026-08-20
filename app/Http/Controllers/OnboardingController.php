@@ -57,7 +57,19 @@ class OnboardingController extends Controller
                     ->whereIn('required_guild_id', $guildIds)))
             ->orderByDesc('start_date')
             ->limit(4)
-            ->get(['id', 'title', 'description', 'size', 'mode', 'access_mode']);
+            // `size` lives on the board since the split, and selecting it here
+            // does NOT fail loudly: SQLite reads the unknown identifier as a
+            // string literal and hands back the word "size" under a quoted
+            // key, so dev looks fine. PostgreSQL — production — raises
+            // "column does not exist" and 500s the whole endpoint.
+            ->with('board:id,event_id,size')
+            ->get(['id', 'title', 'description', 'mode', 'access_mode'])
+            ->map(fn (Event $event) => [
+                ...$event->only(['id', 'title', 'description', 'mode', 'access_mode']),
+                // Null for event types that have no board; the modal shows
+                // the size only when there is one.
+                'size' => $event->board?->size,
+            ]);
 
         return response()->json(['boards' => $boards]);
     }
