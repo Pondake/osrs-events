@@ -402,7 +402,20 @@ class BoardController extends Controller
             'description' => ['nullable', 'string'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
-            'type' => ['sometimes', Rule::in(Event::availableTypes())],
+            // Immutable after creation. The type decides which payload table
+            // holds the event, and neither direction survives a swap: turning
+            // a board event into a race orphans its board, its tiles and
+            // everyone's progress, and turning a race into a board event
+            // leaves it with no board at all — an empty grid nobody can play.
+            // Rebuilding the payload silently is worse than refusing, because
+            // one of those directions destroys data.
+            'type' => [
+                'sometimes',
+                Rule::in(Event::availableTypes()),
+                fn ($attribute, $value, $fail) => $value === $event->type
+                    ? null
+                    : $fail(trans('validation.event_type_immutable')),
+            ],
             'metric' => ['nullable', Rule::in(Event::SKILL_METRICS)],
             'size' => ['sometimes', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],

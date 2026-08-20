@@ -1028,6 +1028,15 @@ sub-pages which aren't discoverable from it.
      far worse way to find out than a message on the row (`no_metric`).
   5. **An unstarted race read as "Waiting for first sync"** — the same state a
      broken one shows, making a perfectly healthy upcoming event look stuck.
+  6. **An event's type was editable after creation**, and neither direction
+     survives it: turning a board event into a race orphans its board, its
+     tiles and everyone's progress, while turning a race into a board event
+     leaves it with no board — an empty grid nobody can play. The selector was
+     live in the edit modal, and the server accepted it. The type is now fixed
+     at creation (refused server-side, disabled in the UI with the reason).
+     Rebuilding the payload on the fly was considered and rejected: one of
+     those directions destroys data, and refusing is honest where a silent
+     rebuild is not.
 
 - [x] ~~**A boardless event crashed the events hub.**~~ — fixed 2026-08-20,
   found by the seeder putting a skill race in the listing. `BoardCard`
