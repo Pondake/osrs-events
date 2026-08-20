@@ -542,6 +542,7 @@
     "events.no_standings": "No standings yet",
     "events.no_standings_desc": "Nobody has entered yet. Standings appear here once someone enters and the first sync runs.",
     "events.not_started": "Not started yet",
+    "events.of_participants": "of :count",
     "events.participants": ":count participants",
     "events.pending_sync": "Waiting for first sync",
     "events.ranked_by": "Ranked by :skill XP gained",

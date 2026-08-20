@@ -1049,11 +1049,13 @@ sub-pages which aren't discoverable from it.
   an error in the UI.**
 
   **Not done / known gaps:**
-  * **A skill race you entered does not appear in `/my-events`.** That list is
-    built from `PlayerBoard` rows, and a skill race has no board, so your own
-    races are missing from your own list. Needs a design call first: the row
-    there assumes a progress bar and a board preview, neither of which a
-    metric event has.
+  * ~~A skill race you entered does not appear in `/my-events`~~ — **fixed
+    2026-08-21.** Entries now carry a `kind` discriminator rather than the page
+    guessing from which fields are null: a board row keeps its progress bar and
+    preview, a race row shows your placing (`#1 of 5`) and XP gained and has no
+    preview, because there is no board to preview. Both sort into one list by
+    start date, so the two types interleave by when they run rather than being
+    segregated by an implementation detail.
   * A skill race has no team mode. `events.mode` still offers SOLO/TEAM and a
     TEAM skill race would currently rank individuals — either aggregate by
     team or hide the option for this type.

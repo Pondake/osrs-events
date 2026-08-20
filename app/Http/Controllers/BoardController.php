@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Board;
 use App\Models\Event;
+use App\Models\EventStanding;
 use App\Models\BoardAuthor;
 use App\Models\BoardTeam;
 use App\Models\Team;
@@ -120,11 +121,12 @@ class BoardController extends Controller
      * count comes from the board's size enum, and duplicating that mapping
      * into JS is how it drifts.
      */
-    public function mine(): Response
+    public function mine(EventStandingsService $standings): Response
     {
         $tileCounts = ['SIZE_5X5' => 25, 'SIZE_7X7' => 49, 'SIZE_9X9' => 81];
+        $user = Auth::user();
 
-        $boards = Auth::user()->playerBoards()
+        $boards = $user->playerBoards()
             ->with(['board.event.authors.user', 'board.event.eventTeams.team', 'completedTiles', 'board.tiles:id,board_id,position,type'])
             ->get()
             ->filter(fn ($pb) => $pb->board?->event !== null)
@@ -135,6 +137,11 @@ class BoardController extends Controller
                 $position = max(0, $pb->current_position);
 
                 return [
+                    // Which kind of row this is. The two event types have
+                    // nothing in common to render — one has a grid and a
+                    // position, the other a rank — so the page branches on
+                    // this rather than guessing from which fields are null.
+                    'kind' => 'board',
                     'board' => $this->cardData($pb->board->event),
                     // Enough to draw the board's shape without shipping every
                     // tile's task and description: only the tiles that aren't
@@ -162,7 +169,41 @@ class BoardController extends Controller
                 ];
             });
 
-        return Inertia::render('Boards/Mine', ['boards' => $boards]);
+        // Races were missing from this page entirely. It was built from
+        // PlayerBoard rows, and a skill race has no board — so entering one
+        // and then not finding it under "my events" was the result.
+        $races = EventStanding::query()
+            ->where('user_id', $user->id)
+            ->with(['event' => fn ($q) => $q->with(self::EVENT_WITH)])
+            ->get()
+            ->filter(fn ($standing) => $standing->event !== null)
+            ->map(function (EventStanding $standing) use ($standings) {
+                // Rank has to come from the whole field, not the row — it is
+                // a position among others. Bounded by how many races one
+                // person has entered, which is a handful.
+                $field = $standings->forEvent($standing->event);
+                $mine = $field->firstWhere('id', $standing->id);
+
+                return [
+                    'kind' => 'race',
+                    'board' => $this->cardData($standing->event),
+                    'standing' => [
+                        'rank' => $mine['rank'] ?? null,
+                        'gained' => $standing->gained,
+                        'syncedAt' => $standing->synced_at?->toIso8601String(),
+                        'error' => $standing->sync_error,
+                        'participants' => $field->count(),
+                    ],
+                ];
+            });
+
+        $entries = $boards->concat($races)
+            // One list, newest first, so the two types interleave by when they
+            // run rather than being segregated by an implementation detail.
+            ->sortByDesc(fn ($entry) => $entry['board']['start_date'])
+            ->values();
+
+        return Inertia::render('Boards/Mine', ['boards' => $entries]);
     }
 
     /**
