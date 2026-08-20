@@ -718,6 +718,37 @@ branch's SSR evaluation. Concrete carry-over work:
   **narrow standalone service** (its own small Filament app, same database,
   consumed by the existing frontend), not pulled into this app.
 
+## Boards → events (step 6)
+
+Flagged by the owner 2026-08-20, after noticing that `/boards` has
+sub-pages which aren't discoverable from it.
+
+- [ ] **Rebuild `/boards` as a hub, not a list.** It should show a slice of
+  each thing rather than being one flat listing:
+  * a slice of **My boards** (what you're actually playing),
+  * a slice of **Public boards** (what you could join),
+  * a slice of the **Event calendar** (marked Soon — the nav already
+    advertises it, see AppHeader's `soon()` entries).
+  Each slice links through to its own full page. Today `/my-boards` exists
+  but nothing on `/boards` points at it, which is the actual complaint.
+
+- [ ] **Give My boards its own view.** Not the same card grid as public
+  boards: one board per row, full width, with a real **non-interactive board
+  preview** on the right so you can see the shape of the board — tile
+  layout, snakes and ladders, where you are — without opening it. The board
+  grid already renders from data in `BoardShow.vue`; the preview wants that
+  same layout in a read-only, scaled-down form rather than a second
+  implementation of it.
+
+- [ ] **Name it for where it's going: these become events, not just boards.**
+  A snakes-and-ladders board is one *kind* of event; the roadmap has others.
+  Worth deciding BEFORE building the hub above, because it decides whether
+  the hub is "/boards showing board types" or "/events showing event types
+  of which board is one" — and that is a routing and vocabulary choice that
+  gets expensive to reverse once the pages, links and SEO copy exist.
+  Not a rename-in-place job either: `Board` is the model, the table, the
+  renderer's vocabulary and half the i18n namespace.
+
 ## Onboarding & landing polish (step 5)
 
 Flagged 2026-08-19: landing pages currently read as placeholder-bare (plain

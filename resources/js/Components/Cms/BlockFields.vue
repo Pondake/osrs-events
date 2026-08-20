@@ -58,6 +58,11 @@
                     class="w-full"
                     @update:model-value="set(field.key, $event)"
                 />
+                <u-switch
+                    v-else-if="field.type === 'toggle'"
+                    :model-value="model[field.key] !== false"
+                    @update:model-value="model[field.key] = $event"
+                />
                 <icon-picker
                     v-else-if="field.type === 'icon'"
                     :model-value="model[field.key]"

@@ -3,6 +3,7 @@ import CalloutBlock from './Blocks/CalloutBlock.vue';
 import CtaBlock from './Blocks/CtaBlock.vue';
 import FeaturesBlock from './Blocks/FeaturesBlock.vue';
 import HeroBlock from './Blocks/HeroBlock.vue';
+import ImageBlock from './Blocks/ImageBlock.vue';
 import LinksBlock from './Blocks/LinksBlock.vue';
 import ProseBlock from './Blocks/ProseBlock.vue';
 import SectionBlock from './Blocks/SectionBlock.vue';
@@ -33,6 +34,10 @@ import SeparatorBlock from './Blocks/SeparatorBlock.vue';
 // stored content being malformed should cost that one field, not the page.
 
 const text = (value) => (typeof value === 'string' ? value : null);
+
+// Explicitly `!== false` rather than Boolean(): an absent value should
+// take the block's own default, and for `rounded` that default is on.
+const bool = (fallback) => (value) => (typeof value === 'boolean' ? value : fallback);
 
 const oneOf = (allowed, fallback = null) => (value) => (allowed.includes(value) ? value : fallback);
 
@@ -135,6 +140,21 @@ export const BLOCK_TYPES = {
         fields: [{ key: 'columns', type: 'number-select', label: 'cms.field_columns', options: [2, 3, 4] }, { key: 'items', type: 'repeater', label: 'cms.field_cards', fields: CARD_FIELDS, max: 24 }],
         component: FeaturesBlock,
         schema: { columns: oneOf([2, 3, 4], 3), items: listOf(CARD_SCHEMA, 24) },
+    },
+    image: {
+        label: 'cms.block_image',
+        icon: 'i-lucide-image',
+        // src goes through the same URL rule as every link: an unvalidated
+        // src is a request to any host the stored content names.
+        component: ImageBlock,
+        schema: { src: url, alt: text, caption: text, width: oneOf(['full', 'wide', 'narrow'], 'full'), rounded: bool(true) },
+        fields: [
+            { key: 'src', type: 'text', label: 'cms.field_image_url', hint: 'cms.hint_image_url' },
+            { key: 'alt', type: 'text', label: 'cms.field_alt', hint: 'cms.hint_alt' },
+            { key: 'caption', type: 'text', label: 'cms.field_caption' },
+            { key: 'width', type: 'select', label: 'cms.field_width', options: ['full', 'wide', 'narrow'] },
+            { key: 'rounded', type: 'toggle', label: 'cms.field_rounded' },
+        ],
     },
     prose: {
         label: 'cms.block_prose',
