@@ -923,6 +923,15 @@ sub-pages which aren't discoverable from it.
   also applied to the real Discord account by `GrantOwnerAdminSeeder`, but
   only when empty — a rename made in the app is theirs to keep).
 
+  **Renaming a demo event needs a migration step, not just a new title.**
+  `DemoDataSeeder` is idempotent *by title*, so changing one in `boardSpecs()`
+  creates a second row and leaves the first behind under the name being
+  retired. Renaming the old Snakes & Ladders "Skill of the Month" board did
+  exactly that: the database ended up with both it and its replacement, the
+  stale one still showing a 7x7 grid beside the real skill race of nearly the
+  same name — which is how it was spotted. `renameLegacyTitles()` now carries
+  old titles forward; add a pair to it whenever a demo title changes.
+
 - [x] ~~**A boardless event crashed the events hub.**~~ — fixed 2026-08-20,
   found by the seeder putting a skill race in the listing. `BoardCard`
   rendered the grid size unconditionally; for a SKILL_RACE that is null, and
