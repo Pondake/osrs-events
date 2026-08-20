@@ -1,14 +1,10 @@
 <template>
     <Head :title="$t('admin.tasks_title')" />
 
-    <settings-layout current="admin-tasks">
-        <div class="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-                <h2 class="text-xl font-semibold text-highlighted">{{ $t('admin.tasks_title') }}</h2>
-                <p class="text-sm text-muted mt-0.5">{{ $t('admin.tasks_subtitle') }}</p>
-            </div>
+    <admin-layout current="tasks" :title="$t('settings.nav_admin_tasks')" :description="$t('admin.tasks_subtitle')">
+        <template #actions>
             <u-button color="primary" icon="i-lucide-plus" size="sm" :label="$t('admin.create_task')" @click="openCreate" />
-        </div>
+        </template>
 
         <u-input v-model="search" :placeholder="$t('admin.search_tasks_placeholder')" icon="i-lucide-search" class="w-full sm:max-w-sm" @update:model-value="doSearch" />
 
@@ -32,14 +28,14 @@
         <client-only>
             <task-settings-modal v-model:open="showModal" :task="editingTask" />
         </client-only>
-    </settings-layout>
+    </admin-layout>
 </template>
 
 <script setup>
 import { defineAsyncComponent, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
-import SettingsLayout from '@/Components/SettingsLayout.vue';
+import AdminLayout from '@/Components/AdminLayout.vue';
 
 const TaskSettingsModal = defineAsyncComponent(() => import('@/Components/TaskSettingsModal.vue'));
 
@@ -53,7 +49,7 @@ const showModal = ref(false);
 const editingTask = ref(null);
 
 function doSearch(value) {
-    router.get('/settings/admin/tasks', { search: value }, { preserveState: true, replace: true });
+    router.get('/admin/tasks', { search: value }, { preserveState: true, replace: true });
 }
 
 function openCreate() {
@@ -67,6 +63,6 @@ function openEdit(task) {
 }
 
 function destroyTask(task) {
-    router.delete(`/settings/admin/tasks/${task.id}`, { preserveScroll: true });
+    router.delete(`/admin/tasks/${task.id}`, { preserveScroll: true });
 }
 </script>

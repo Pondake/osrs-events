@@ -1,11 +1,7 @@
 <template>
     <Head :title="$t('admin.boards_title')" />
 
-    <settings-layout current="admin-boards">
-        <div>
-            <h2 class="text-xl font-semibold text-highlighted">{{ $t('admin.boards_title') }}</h2>
-            <p class="text-sm text-muted mt-0.5">{{ $t('admin.boards_subtitle') }}</p>
-        </div>
+    <admin-layout current="boards" :title="$t('admin.boards_title')" :description="$t('admin.boards_subtitle')">
 
         <div class="divide-y divide-default rounded-lg ring ring-default bg-default">
             <div v-for="board in boards" :key="board.id" class="flex items-center justify-between gap-4 px-4 py-3">
@@ -31,14 +27,14 @@
         <client-only>
             <board-settings-modal :open="editingBoard !== null" :board="editingBoard" @update:open="(v) => !v && (editingBoard = null)" />
         </client-only>
-    </settings-layout>
+    </admin-layout>
 </template>
 
 <script setup>
 import { defineAsyncComponent, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
-import SettingsLayout from '@/Components/SettingsLayout.vue';
+import AdminLayout from '@/Components/AdminLayout.vue';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 

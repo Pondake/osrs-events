@@ -1,11 +1,7 @@
 <template>
     <Head :title="$t('settings.nav_admin_site')" />
 
-    <settings-layout current="admin-site">
-        <div>
-            <h2 class="text-xl font-semibold text-highlighted">{{ $t('settings.nav_admin_site') }}</h2>
-            <p class="text-sm text-muted mt-0.5">{{ $t('admin.site_subtitle') }}</p>
-        </div>
+    <admin-layout current="site" :title="$t('settings.nav_admin_site')" :description="$t('admin.site_subtitle')">
 
         <!-- Second-level nav, horizontal on every breakpoint: the settings
              shell already spends a 208px rail on md+, and a second rail
@@ -139,14 +135,14 @@
                 <span v-if="form.isDirty" class="text-sm text-muted">{{ $t('admin.site_unsaved') }}</span>
             </div>
         </form>
-    </settings-layout>
+    </admin-layout>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import SettingsLayout from '@/Components/SettingsLayout.vue';
+import AdminLayout from '@/Components/AdminLayout.vue';
 import RichText from '@/Components/RichText.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
 import { announcementTypeOptions, styleFor } from '@/Support/announcement';
@@ -234,6 +230,6 @@ const sizeOptions = computed(() =>
 );
 
 function submit() {
-    form.put('/settings/admin/site', { preserveScroll: true });
+    form.put('/admin/site', { preserveScroll: true });
 }
 </script>

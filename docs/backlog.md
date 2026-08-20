@@ -482,11 +482,11 @@ branch's SSR evaluation. Concrete carry-over work:
 - [x] ~~User management beyond Discord OAuth~~ — resolved: email/password is
   now a first-class second auth path (see step 5's Auth entry), so no
   separate "internal account type" is needed. Any account can hold any role.
-- [x] ~~Admin settings shell~~ — done. `/settings/admin/*` renders in the
+- [x] ~~Admin settings shell~~ — done. `/admin/*` renders in the
   same `SettingsLayout` as the personal settings, with the sidebar split
   into "Your account" and "Administration" groups (the admin group is
   hidden for non-admins; every controller still re-checks `isAdmin()`, the
-  sidebar is not the authorization). `/settings/admin/users` replaces the
+  sidebar is not the authorization). `/admin/users` replaces the
   old top-level `/admin/users` nav item (kept as a redirect) and swaps the
   two always-visible selects per row for one `u-dropdown-menu` that only
   offers what's actually applicable — roles not yet held, permissions not
@@ -497,7 +497,7 @@ branch's SSR evaluation. Concrete carry-over work:
 - [ ] **More admin settings pages** — the shell now exists, these are the
   candidates worth filling it with, roughly in order of usefulness:
   1. ~~**Boards & tasks**~~ — **done**. Both now live at
-     `/settings/admin/{boards,tasks}` in the same sidebar; old paths
+     `/admin/{boards,tasks}` in the same sidebar; old paths
      redirect. Their controllers moved to `Settings\Admin\` to match.
      The header nav lost its admin entries entirely (it's what everyone
      uses to *play*, so it stays short) — Administration is now the single
@@ -510,7 +510,7 @@ branch's SSR evaluation. Concrete carry-over work:
   2. ~~**Site settings**~~ — done 2026-08-20. `App\Models\Setting` is a
      key/value store read through one cached array, so the three settings
      shared on every Inertia response cost a cache hit, not a query.
-     `/settings/admin/site` covers: email registration open/closed (Discord
+     `/admin/site` covers: email registration open/closed (Discord
      login is unaffected — it's the only recovery path for accounts without
      an email), default board size + dice roll limit prefilled into the
      create-board form, and a site-wide announcement banner.
@@ -532,7 +532,7 @@ branch's SSR evaluation. Concrete carry-over work:
      ad-hoc syntax: if this later swaps to `u-editor` in markdown mode (see
      the CMS item), the stored format doesn't have to change.
   3. ~~**Audit log**~~ — done 2026-08-20. `App\Models\AuditLog` +
-     `/settings/admin/audit`. Records role grant/revoke, permission
+     `/admin/audit`. Records role grant/revoke, permission
      grant/revoke, user deletion, task deletion and site settings changes
      (diffed, so a save that changed nothing logs nothing).
      The design point worth not undoing: actor and target are each stored
@@ -559,7 +559,7 @@ branch's SSR evaluation. Concrete carry-over work:
      invite create/revoke as of the invites overview below.
      Still not logged, a deliberate gap: board create/delete.
      `AuditLog::record()` is a one-liner per call site.
-  4. ~~**Invites overview**~~ — done 2026-08-20. `/settings/admin/invites`:
+  4. ~~**Invites overview**~~ — done 2026-08-20. `/admin/invites`:
      every `BoardInvite` across every board, with the board, who created it,
      usage, how many people actually joined through it, and expiry.
      Status (active/unused/exhausted/expired) is **derived, not stored** —
@@ -602,7 +602,7 @@ branch's SSR evaluation. Concrete carry-over work:
   (`u-page-hero`, `u-page-section`, `u-page-feature`, …) rather than a
   freeform rich-text blob — the components are already the vocabulary the
   pages are written in, so the editor should speak the same language.
-  `/settings/admin/content` exists as the landing spot and currently does
+  `/admin/content` exists as the landing spot and currently does
   one honest thing: inventories the 8 public pages and states that they're
   still hardcoded Vue. It deliberately does not fake an editor.
   The three real pieces of work, none started:

@@ -1,11 +1,7 @@
 <template>
     <Head :title="$t('settings.nav_admin_audit')" />
 
-    <settings-layout current="admin-audit">
-        <div>
-            <h2 class="text-xl font-semibold text-highlighted">{{ $t('settings.nav_admin_audit') }}</h2>
-            <p class="text-sm text-muted mt-0.5">{{ $t('admin.audit_subtitle') }}</p>
-        </div>
+    <admin-layout current="audit" :title="$t('settings.nav_admin_audit')" :description="$t('admin.audit_subtitle')">
 
         <div class="space-y-3">
             <div class="flex flex-col sm:flex-row gap-3">
@@ -161,13 +157,13 @@
                 />
             </div>
         </div>
-    </settings-layout>
+    </admin-layout>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
-import SettingsLayout from '@/Components/SettingsLayout.vue';
+import AdminLayout from '@/Components/AdminLayout.vue';
 import AuditMetadata from '@/Components/AuditMetadata.vue';
 import FilterClear from '@/Components/FilterClear.vue';
 import { auditActionOptions, auditLabel, auditStyleFor, formatTimestamp } from '@/Support/audit';
@@ -230,7 +226,7 @@ watch([search, action, user, scope], () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
         router.get(
-            '/settings/admin/audit',
+            '/admin/audit',
             {
                 search: search.value || undefined,
                 action: action.value || undefined,

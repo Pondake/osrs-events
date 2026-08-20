@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings\Admin;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -23,7 +23,7 @@ class TaskController extends Controller
             fn ($q) => $q->where('title', 'like', '%'.$request->string('search').'%'),
         )->orderBy('title')->get();
 
-        return Inertia::render('Settings/Admin/Tasks', ['tasks' => $tasks, 'search' => $request->string('search')->toString()]);
+        return Inertia::render('Admin/Tasks', ['tasks' => $tasks, 'search' => $request->string('search')->toString()]);
     }
 
     public function store(Request $request): RedirectResponse

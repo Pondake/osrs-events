@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings\Admin;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +21,7 @@ class ContentController extends Controller
     {
         abort_unless(Auth::user()->isAdmin(), 403);
 
-        return Inertia::render('Settings/Admin/Content', [
+        return Inertia::render('Admin/Content', [
             'pages' => [
                 ['path' => '/', 'label' => trans('nav.home')],
                 ['path' => '/osrs-snakes-and-ladders', 'label' => trans('nav.snakes')],

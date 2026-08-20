@@ -1,11 +1,7 @@
 <template>
     <Head :title="$t('settings.nav_admin_content')" />
 
-    <settings-layout current="admin-content">
-        <div>
-            <h2 class="text-xl font-semibold text-highlighted">{{ $t('settings.nav_admin_content') }}</h2>
-            <p class="text-sm text-muted mt-0.5">{{ $t('admin.content_subtitle') }}</p>
-        </div>
+    <admin-layout current="content" :title="$t('settings.nav_admin_content')" :description="$t('admin.content_subtitle')">
 
         <u-alert
             color="info"
@@ -30,12 +26,12 @@
                 </div>
             </div>
         </div>
-    </settings-layout>
+    </admin-layout>
 </template>
 
 <script setup>
 import { Head } from '@inertiajs/vue3';
-import SettingsLayout from '@/Components/SettingsLayout.vue';
+import AdminLayout from '@/Components/AdminLayout.vue';
 
 defineProps({
     pages: { type: Array, required: true },
