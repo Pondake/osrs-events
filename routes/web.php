@@ -100,6 +100,7 @@ Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
 // so the public vocabulary is events now. The model is still Board — see the
 // backlog for why that rename is sequenced separately.
 Route::get('/events', [BoardController::class, 'index'])->name('events.index');
+Route::get('/events/all', [BoardController::class, 'all'])->name('events.all');
 Route::get('/my-events', [BoardController::class, 'mine'])
     ->middleware('auth')
     ->name('events.mine');

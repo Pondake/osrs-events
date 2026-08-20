@@ -24,6 +24,9 @@ use Inertia\Response;
 class BoardController extends Controller
 {
     /** Which half of the create/edit form each field belongs to. */
+    /** How many of each kind the hub shows before "view all". */
+    private const HUB_SLICE = 3;
+
     private const EVENT_FIELDS = ['title', 'type', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date'];
 
     private const BOARD_FIELDS = ['size', 'dice_roll_limit'];
@@ -63,7 +66,48 @@ class BoardController extends Controller
             ->get()
             ->map(fn (Event $event) => $this->cardData($event));
 
-        return Inertia::render('Boards/Index', ['boards' => $events]);
+        // A slice of what you're playing, so the hub has something to say to
+        // someone who already has events — /my-events existed but nothing
+        // linked to it, which is how it stayed invisible.
+        $mine = collect();
+        if ($user = Auth::user()) {
+            $mine = $user->playerBoards()
+                ->with(['board.event.authors.user', 'board.event.eventTeams.team'])
+                ->get()
+                ->filter(fn ($pb) => $pb->board?->event !== null)
+                ->sortByDesc(fn ($pb) => $pb->board->event->start_date)
+                ->take(self::HUB_SLICE)
+                ->map(fn ($pb) => $this->cardData($pb->board->event))
+                ->values();
+        }
+
+        return Inertia::render('Boards/Index', [
+            // The full list stays — the hub renders a slice of it and the
+            // "view all" page renders the rest from the same prop.
+            'boards' => $events,
+            'mine' => $mine,
+            'mineTotal' => Auth::user()?->playerBoards()->count() ?? 0,
+        ]);
+    }
+
+    /**
+     * The full public list. Same page component as the hub, without the
+     * slices — the hub links here when there is more than it shows.
+     */
+    public function all(): Response
+    {
+        $events = Event::where('is_listed', true)
+            ->with(self::EVENT_WITH)
+            ->orderByDesc('start_date')
+            ->get()
+            ->map(fn (Event $event) => $this->cardData($event));
+
+        return Inertia::render('Boards/Index', [
+            'boards' => $events,
+            'mine' => [],
+            'mineTotal' => 0,
+            'showAll' => true,
+        ]);
     }
 
     /**
@@ -80,7 +124,7 @@ class BoardController extends Controller
         $tileCounts = ['SIZE_5X5' => 25, 'SIZE_7X7' => 49, 'SIZE_9X9' => 81];
 
         $boards = Auth::user()->playerBoards()
-            ->with(['board.event.authors.user', 'board.event.eventTeams.team'])
+            ->with(['board.event.authors.user', 'board.event.eventTeams.team', 'completedTiles', 'board.tiles:id,board_id,position,type'])
             ->get()
             ->filter(fn ($pb) => $pb->board?->event !== null)
             ->sortByDesc(fn ($pb) => $pb->board->event->start_date)
@@ -91,6 +135,21 @@ class BoardController extends Controller
 
                 return [
                     'board' => $this->cardData($pb->board->event),
+                    // Enough to draw the board's shape without shipping every
+                    // tile's task and description: only the tiles that aren't
+                    // plain, plus where this player stands.
+                    'preview' => [
+                        'size' => $pb->board->size,
+                        'specialTiles' => $pb->board->tiles
+                            ->filter(fn ($t) => $t->type !== 'NORMAL')
+                            ->map(fn ($t) => ['position' => $t->position, 'type' => $t->type])
+                            ->values(),
+                        'currentPosition' => max(0, $pb->current_position),
+                        'completedPositions' => $pb->board->tiles
+                            ->whereIn('id', $pb->completedTiles->pluck('tile_id'))
+                            ->pluck('position')
+                            ->values(),
+                    ],
                     'progress' => [
                         'current' => $position + 1,
                         'total' => $total,
