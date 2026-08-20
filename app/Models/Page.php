@@ -50,6 +50,7 @@ class Page extends Model
         'hero',
         'section',
         'features',
+        'image',
         'prose',
         'links',
         'cta',
