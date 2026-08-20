@@ -100,9 +100,16 @@ function iconFor(type) {
     return BLOCK_TYPES[type]?.icon ?? 'i-lucide-circle-dot';
 }
 
-/** First non-empty text-ish prop, trimmed — enough to tell rows apart. */
+// Copy fields, in the order a row is best identified by. Checked by name
+// rather than taking the first string prop: that picked up enum-ish values
+// and labelled a callout "warning" instead of by its title.
+const SUMMARY_KEYS = ['title', 'text', 'label', 'description'];
+
+/** Best available line of the block's own copy, so rows read as content. */
 function summarise(block) {
-    const value = Object.values(block.props ?? {}).find((v) => typeof v === 'string' && v.trim());
+    const props = block.props ?? {};
+    const key = SUMMARY_KEYS.find((k) => typeof props[k] === 'string' && props[k].trim());
+    const value = key ? props[key].trim() : null;
 
     if (!value) return null;
 

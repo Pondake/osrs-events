@@ -58,10 +58,14 @@
                     class="w-full"
                     @update:model-value="set(field.key, $event)"
                 />
+                <icon-picker
+                    v-else-if="field.type === 'icon'"
+                    :model-value="model[field.key]"
+                    @update:model-value="set(field.key, $event)"
+                />
                 <u-input
                     v-else
                     :model-value="model[field.key] ?? ''"
-                    :placeholder="field.type === 'icon' ? 'i-lucide-star' : undefined"
                     class="w-full"
                     @update:model-value="set(field.key, $event)"
                 />
@@ -72,6 +76,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import IconPicker from './IconPicker.vue';
 import { BLOCK_COLORS } from './blocks';
 
 const props = defineProps({
