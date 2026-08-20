@@ -40,18 +40,26 @@
                     </template>
                 </u-select>
 
-                <u-select
+                <!-- Type-ahead rather than a plain select: this list is every
+                     person the log has ever touched, including deleted ones,
+                     so it grows with the log and scrolling it is no way to
+                     find anyone. Filtering is client-side over the full list;
+                     if that list ever gets big enough to matter, it should
+                     become a search endpoint rather than a bigger payload. -->
+                <u-input-menu
                     v-model="user"
                     :items="userOptions"
-                    :placeholder="$t('admin.audit_all_users')"
+                    :placeholder="$t('admin.audit_filter_user')"
                     icon="i-lucide-user"
                     class="w-full"
                 />
 
-                <u-select
+                <u-input-menu
                     v-model="scope"
                     :items="scopeOptions"
-                    :placeholder="$t('admin.audit_all_scopes')"
+                    value-key="value"
+                    label-key="label"
+                    :placeholder="$t('admin.audit_filter_scope')"
                     icon="i-lucide-users"
                     class="w-full"
                 >
@@ -60,7 +68,7 @@
                     <template #item-leading="{ item }">
                         <u-icon :name="item.icon" class="size-4" />
                     </template>
-                </u-select>
+                </u-input-menu>
             </div>
         </div>
 
@@ -158,10 +166,13 @@ const props = defineProps({
     filters: { type: Object, required: true },
 });
 
+// null, not '', for the three menus: an empty string is a value as far as
+// u-input-menu is concerned and shows as a selected-but-blank entry, where
+// null leaves the placeholder in place.
 const search = ref(props.filters.search ?? '');
-const action = ref(props.filters.action ?? '');
-const user = ref(props.filters.user ?? '');
-const scope = ref(props.filters.scope ?? '');
+const action = ref(props.filters.action || null);
+const user = ref(props.filters.user || null);
+const scope = ref(props.filters.scope || null);
 
 const actionOptions = computed(() => auditActionOptions(props.actions));
 
@@ -219,8 +230,8 @@ watch([search, action, user, scope], () => {
 
 function clearFilters() {
     search.value = '';
-    action.value = '';
-    user.value = '';
-    scope.value = '';
+    action.value = null;
+    user.value = null;
+    scope.value = null;
 }
 </script>
