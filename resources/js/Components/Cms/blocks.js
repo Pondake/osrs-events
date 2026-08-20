@@ -5,6 +5,7 @@ import FeaturesBlock from './Blocks/FeaturesBlock.vue';
 import HeroBlock from './Blocks/HeroBlock.vue';
 import ImageBlock from './Blocks/ImageBlock.vue';
 import LinksBlock from './Blocks/LinksBlock.vue';
+import ListBlock from './Blocks/ListBlock.vue';
 import ProseBlock from './Blocks/ProseBlock.vue';
 import SectionBlock from './Blocks/SectionBlock.vue';
 import SeparatorBlock from './Blocks/SeparatorBlock.vue';
@@ -83,6 +84,12 @@ const LINK_FIELDS = [
     { key: 'color', type: 'color', label: 'cms.field_color' },
     { key: 'variant', type: 'select', label: 'cms.field_variant', options: ['solid', 'outline', 'subtle', 'ghost', 'link'] },
 ];
+
+const LIST_ITEM_FIELDS = [
+    { key: 'text', type: 'text', label: 'cms.field_text', hint: 'cms.hint_inline_markdown' },
+];
+
+const LIST_ITEM_SCHEMA = { text };
 
 const CARD_FIELDS = [
     { key: 'icon', type: 'icon', label: 'cms.field_icon' },
@@ -164,6 +171,19 @@ export const BLOCK_TYPES = {
         // see Support/richtext.js.
         component: ProseBlock,
         schema: { text },
+    },
+    list: {
+        label: 'cms.block_list',
+        icon: 'i-lucide-list',
+        fields: [
+            { key: 'items', type: 'repeater', label: 'cms.field_items', fields: LIST_ITEM_FIELDS, max: 24 },
+            { key: 'ordered', type: 'toggle', label: 'cms.field_ordered' },
+        ],
+        // Bulleted or numbered copy. The prose block renders one paragraph,
+        // and a policy or rules page is mostly lists — writing those as
+        // dashed prose would look like a list without being one.
+        component: ListBlock,
+        schema: { items: listOf(LIST_ITEM_SCHEMA, 24), ordered: bool(false) },
     },
     callout: {
         label: 'cms.block_callout',
