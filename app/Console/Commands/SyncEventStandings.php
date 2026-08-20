@@ -8,6 +8,7 @@ use App\Services\EventStandingsService;
 use App\Services\WiseOldManService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Throwable;
 
 /**
  * Refreshes skill-race standings from Wise Old Man.
@@ -57,7 +58,14 @@ class SyncEventStandings extends Command
         foreach ($events as $event) {
             // Cheap and local — catches anyone who renamed since entering, so
             // the lookups below use the name that account actually has now.
-            $standings->syncUsernames($event);
+            // Wrapped for the same reason as the per-row work below: this is
+            // unattended, and one event's problem is not the others'.
+            try {
+                $standings->syncUsernames($event);
+            } catch (Throwable $e) {
+                $this->error("  {$event->title}: {$e->getMessage()}");
+                report($e);
+            }
 
             // Least recently synced first, so a run that gets killed halfway
             // through still makes progress on a different slice next time
@@ -69,24 +77,35 @@ class SyncEventStandings extends Command
                 ->get();
 
             foreach ($rows as $row) {
-                if ($this->option('track') && ($row->sync_error !== null || $row->synced_at === null)) {
-                    $wom->trackPlayer($row->username);
-                    usleep($perRequestDelay);
-                }
+                // One participant must never be able to stop the run. This is
+                // scheduled work with no one watching it: an exception on row
+                // three leaves every row after it stale indefinitely, across
+                // every remaining event, and the only symptom is a leaderboard
+                // that quietly stops moving.
+                try {
+                    if ($this->option('track') && ($row->sync_error !== null || $row->synced_at === null)) {
+                        $wom->trackPlayer($row->username);
+                        usleep($perRequestDelay);
+                    }
 
-                $standings->refresh($event, $row);
+                    $standings->refresh($event, $row);
 
-                if ($row->refresh()->sync_error === null) {
-                    $synced++;
-                } else {
+                    if ($row->refresh()->sync_error === null) {
+                        $synced++;
+                    } else {
+                        $failed++;
+                    }
+                } catch (Throwable $e) {
                     $failed++;
+                    $this->error("  {$row->username}: {$e->getMessage()}");
+                    report($e);
                 }
 
                 usleep($perRequestDelay);
             }
         }
 
-        $this->info("Synced {$synced} standing(s)".($failed > 0 ? ", {$failed} not tracked on Wise Old Man." : '.'));
+        $this->info("Synced {$synced} standing(s)".($failed > 0 ? ", {$failed} not updated." : '.'));
 
         return self::SUCCESS;
     }

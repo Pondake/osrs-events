@@ -171,16 +171,39 @@ class EventStandingsService
                 continue;
             }
 
-            if ($row->username !== $row->user->osrs_username) {
-                $row->fill([
-                    'username' => $row->user->osrs_username,
-                    'start_value' => null,
-                    'end_value' => null,
-                    'gained' => 0,
-                    'sync_error' => null,
-                    'synced_at' => null,
-                ])->save();
+            if ($row->username === $row->user->osrs_username) {
+                continue;
             }
+
+            // enter() refuses a name someone else already races under, but
+            // nothing stops a user changing their RSN in settings afterwards
+            // to a name that is taken here. Writing it anyway violates the
+            // unique index — and because this runs inside the scheduled sync,
+            // that exception killed the whole command, freezing standings for
+            // every remaining participant in every remaining event.
+            //
+            // So the standing keeps the name its numbers came from and says
+            // why it is stuck, which is a thing the page can show. The clash
+            // is between two accounts and only a person can settle it.
+            $taken = EventStanding::where('event_id', $event->id)
+                ->where('username', $row->user->osrs_username)
+                ->whereKeyNot($row->getKey())
+                ->exists();
+
+            if ($taken) {
+                $row->forceFill(['sync_error' => 'duplicate_username'])->save();
+
+                continue;
+            }
+
+            $row->fill([
+                'username' => $row->user->osrs_username,
+                'start_value' => null,
+                'end_value' => null,
+                'gained' => 0,
+                'sync_error' => null,
+                'synced_at' => null,
+            ])->save();
         }
     }
 
