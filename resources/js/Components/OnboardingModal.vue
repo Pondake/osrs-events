@@ -8,7 +8,10 @@
                  right now. Not a canned animation — it renders the same
                  board layout the real page does, so what's previewed is
                  what gets built (see BoardPreview.vue). -->
-            <div class="grid md:grid-cols-2 gap-6 items-start min-h-[22rem]">
+            <!-- min-h only from md up: it exists to stop the modal resizing
+                 as you step through it, but the preview column it's sized
+                 for is hidden on mobile, so there it just adds dead space. -->
+            <div class="grid md:grid-cols-2 gap-6 items-start md:min-h-[22rem]">
                 <div class="space-y-4">
                     <template v-if="step === 'welcome'">
                         <h3 class="text-lg font-semibold text-highlighted">{{ $t('onboarding.welcome_heading', { name: displayName }) }}</h3>

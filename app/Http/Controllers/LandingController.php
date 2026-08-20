@@ -116,6 +116,32 @@ class LandingController extends Controller
 
     public function eventIdeas(): Response
     {
+        // The page is a ranked rundown of formats, so ItemList is the type
+        // that actually describes it — FAQPage (what the other two use)
+        // would be a lie here. Titles are duplicated from the Vue page's
+        // trans() calls rather than shared: JSON-LD has to be emitted
+        // server-side (see the note in snakesAndLadders() on why Inertia's
+        // <Head> can't carry it), and the page's copy lives in the JS
+        // translation file. Keep the two in step by hand.
+        $formats = [
+            'Snakes & Ladders', 'Bingo', 'Drop log race', 'Skill race',
+            'Speedrun ladder', 'Achievement diary or quest race', 'Battleship',
+            'Collection log push',
+        ];
+
+        View::share('jsonLd', [json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'ItemList',
+            'name' => 'OSRS clan event formats',
+            'description' => 'Eight event formats for Old School RuneScape clans, compared.',
+            'numberOfItems' => count($formats),
+            'itemListElement' => array_map(fn ($name, $i) => [
+                '@type' => 'ListItem',
+                'position' => $i + 1,
+                'name' => $name,
+            ], $formats, array_keys($formats)),
+        ])]);
+
         return Inertia::render('OsrsEventIdeas');
     }
 

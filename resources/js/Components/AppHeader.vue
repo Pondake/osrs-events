@@ -71,6 +71,22 @@
                             size="sm"
                             :label="item.label"
                         />
+
+                        <!-- u-dropdown-menu items don't render a `badge`
+                             prop, so the not-yet marker goes through the
+                             trailing slot instead. `disabled` alone only
+                             dims the row, which reads as "broken" rather
+                             than "not built yet". -->
+                        <template #item-trailing="{ item: entry }">
+                            <u-badge
+                                v-if="entry.soon"
+                                :label="$t('nav.badge_soon')"
+                                color="neutral"
+                                variant="subtle"
+                                size="sm"
+                                class="ml-auto"
+                            />
+                        </template>
                     </u-dropdown-menu>
                 </template>
             </nav>
@@ -88,12 +104,17 @@
                 <nav class="hidden lg:flex items-center gap-4">
                     <template v-for="item in navigation" :key="item.label">
                         <a v-if="item.to" :href="item.to" class="text-sm text-muted hover:text-primary transition-colors">{{ item.label }}</a>
-                        <a
-                            v-for="child in item.children ?? []"
-                            :key="child.to"
-                            :href="child.to"
-                            class="text-sm text-muted hover:text-primary transition-colors"
-                        >{{ child.label }}</a>
+                        <!-- `v-if="child.to"` skips the not-yet entries:
+                             they have no destination, and emitting a bare
+                             <a> without href would put a dead link in front
+                             of a crawler. -->
+                        <template v-for="child in item.children ?? []" :key="child.label">
+                            <a
+                                v-if="child.to"
+                                :href="child.to"
+                                class="text-sm text-muted hover:text-primary transition-colors"
+                            >{{ child.label }}</a>
+                        </template>
                     </template>
                 </nav>
             </template>
@@ -106,9 +127,26 @@
             </client-only>
         </template>
 
+        <!-- The mobile drawer. Same `navigation` array as the desktop bar, so
+             the two can't drift — but it needs its own trailing slot: the
+             desktop bar renders through u-dropdown-menu and this through
+             u-navigation-menu, and neither passes the other's slots. Without
+             this, planned entries showed up dimmed on mobile with nothing
+             saying why. -->
         <template v-if="navigation.length" #body>
             <div class="p-4">
-                <u-navigation-menu :items="navigation" orientation="vertical" />
+                <u-navigation-menu :items="navigation" orientation="vertical">
+                    <template #item-trailing="{ item: entry }">
+                        <u-badge
+                            v-if="entry.soon"
+                            :label="$t('nav.badge_soon')"
+                            color="neutral"
+                            variant="subtle"
+                            size="sm"
+                            class="ml-auto"
+                        />
+                    </template>
+                </u-navigation-menu>
             </div>
         </template>
     </u-header>
@@ -133,10 +171,22 @@ const { isAuthenticated, isAdmin, isTeamManager } = useAuth();
 // dropdown's children out side by side and sizes the panel to its trigger,
 // so descriptions turn every label into a one-word-per-line column. These
 // labels say enough on their own.
+/**
+ * Marks a planned destination: shown so the menu reads as a finished
+ * product, but visibly not-yet and deliberately not a link.
+ *
+ * `disabled` keeps it out of the tab order and unclickable, so nothing here
+ * can 404 — these pages genuinely don't exist yet. Revisit each one when the
+ * feature lands rather than leaving them to rot: a "soon" that never arrives
+ * is worse than not listing it at all. Tracked in docs/backlog.md.
+ */
+const soon = (item) => ({ ...item, disabled: true, soon: true });
+
 const guideChildren = () => [
     { label: trans('nav.snakes'), to: '/osrs-snakes-and-ladders', icon: 'i-lucide-arrow-up-from-line' },
     { label: trans('nav.clan_events'), to: '/osrs-clan-events', icon: 'i-lucide-users' },
     { label: trans('nav.event_ideas'), to: '/osrs-event-ideas', icon: 'i-lucide-lightbulb' },
+    soon({ label: trans('nav.runelite'), icon: 'i-lucide-puzzle' }),
 ];
 
 /**
@@ -168,15 +218,24 @@ const navigation = computed(() => {
             children: [
                 { label: trans('nav.my_boards'), to: '/my-boards', icon: 'i-lucide-gamepad-2' },
                 { label: trans('nav.browse_boards'), to: '/boards', icon: 'i-lucide-compass' },
+                soon({ label: trans('nav.calendar'), icon: 'i-lucide-calendar-days' }),
             ],
         },
+        {
+            label: trans('nav.community'),
+            icon: 'i-lucide-users-round',
+            children: [
+                // Teams is real but role-gated, so it sits in this group as
+                // a live entry only for the roles that can reach it.
+                ...(isAdmin.value || isTeamManager.value
+                    ? [{ label: trans('nav.teams'), to: '/teams', icon: 'i-lucide-users' }]
+                    : []),
+                soon({ label: trans('nav.leaderboards'), icon: 'i-lucide-trophy' }),
+                soon({ label: trans('nav.clans'), icon: 'i-lucide-shield' }),
+            ],
+        },
+        { label: trans('nav.guides'), icon: 'i-lucide-book-open', children: guideChildren() },
     ];
-
-    if (isAdmin.value || isTeamManager.value) {
-        items.push({ label: trans('nav.teams'), to: '/teams', icon: 'i-lucide-users' });
-    }
-
-    items.push({ label: trans('nav.guides'), icon: 'i-lucide-book-open', children: guideChildren() });
 
     return items;
 });

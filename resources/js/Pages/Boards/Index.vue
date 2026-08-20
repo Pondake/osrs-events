@@ -1,5 +1,9 @@
 <template>
-    <Head :title="$t('boards.title')" />
+    <!-- This is a public, indexable page (BoardController::index is
+         deliberately outside the auth middleware) but it carried no meta at
+         all — no canonical, no og:, no twitter card. The seo.boards_*
+         translation keys already existed and were simply never wired up. -->
+    <seo-head :options="seo" />
 
     <u-main>
         <u-page>
@@ -37,10 +41,16 @@
 
 <script setup>
 import { defineAsyncComponent, ref } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import BoardCard from '@/Components/BoardCard.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import SeoHead from '@/Components/SeoHead.vue';
+
+const seo = {
+    title: trans('seo.boards_title'),
+    description: trans('seo.boards_desc'),
+};
 
 // Dynamic import, not a static one — a static import would still pull
 // BoardSettingsModal (and the @nuxt/ui form components it uses) into the SSR
