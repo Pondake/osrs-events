@@ -38,7 +38,7 @@ class TaskController extends Controller
 
         Task::create(['id' => (string) str()->uuid(), ...$data]);
 
-        return back()->with('board-save', 'Task created.');
+        return back()->with('board-save', trans('admin.task_created'));
     }
 
     public function update(Request $request, Task $task): RedirectResponse
@@ -53,7 +53,7 @@ class TaskController extends Controller
 
         $task->update($data);
 
-        return back()->with('board-save', 'Task updated.');
+        return back()->with('board-save', trans('admin.task_updated'));
     }
 
     public function destroy(Task $task): RedirectResponse
@@ -63,6 +63,6 @@ class TaskController extends Controller
         AuditLog::record('task.deleted', $task);
         $task->delete();
 
-        return back()->with('board-save', 'Task deleted.');
+        return back()->with('board-save', trans('admin.task_deleted'));
     }
 }

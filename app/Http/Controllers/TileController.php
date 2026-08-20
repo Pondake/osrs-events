@@ -34,7 +34,9 @@ class TileController extends Controller
         ]);
 
         Tile::updateOrCreate(
-            ['event_id' => $event->id, 'position' => $data['position']],
+            // A tile belongs to the BOARD — `tiles` has no event_id column
+            // at all, so this identified nothing.
+            ['board_id' => $event->board?->id, 'position' => $data['position']],
             [
                 'id' => (string) str()->uuid(),
                 'task_id' => $data['task_id'] ?? null,
@@ -44,17 +46,20 @@ class TileController extends Controller
             ],
         );
 
-        return back()->with('board-save', 'Tile saved.');
+        return back()->with('board-save', trans('admin.tile_saved'));
     }
 
     public function destroy(Event $event, Tile $tile): RedirectResponse
     {
         abort_unless(Auth::user()->canEditEvent($event), 403);
-        abort_unless($tile->board_id === $event->id, 404);
+        // Against the BOARD's id, not the event's. Those coincide for rows
+        // the split migration created, which is exactly why this needed
+        // catching — on a newly created event they differ.
+        abort_unless($tile->board_id === $event->board?->id, 404);
 
         $tile->delete();
 
-        return back()->with('board-save', 'Tile cleared.');
+        return back()->with('board-save', trans('admin.tile_cleared'));
     }
 
     /**

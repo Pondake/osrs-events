@@ -55,7 +55,7 @@ class TeamController extends Controller
 
         AuditLog::record('team.created', $team, [], $team);
 
-        return back()->with('board-save', 'Team created.');
+        return back()->with('board-save', trans('teams.created'));
     }
 
     public function update(Request $request, Team $team): RedirectResponse
@@ -84,7 +84,7 @@ class TeamController extends Controller
             AuditLog::record('team.updated', $team, $changes, $team);
         }
 
-        return back()->with('board-save', 'Team updated.');
+        return back()->with('board-save', trans('teams.updated'));
     }
 
     public function destroy(Team $team): RedirectResponse
@@ -100,7 +100,7 @@ class TeamController extends Controller
 
         $team->delete();
 
-        return back()->with('board-save', 'Team deleted.');
+        return back()->with('board-save', trans('teams.deleted'));
     }
 
     public function addMember(Request $request, Team $team): RedirectResponse
@@ -117,7 +117,7 @@ class TeamController extends Controller
         // audit page filters on independently.
         AuditLog::record('team.member_added', User::find($data['user_id']), [], $team);
 
-        return back()->with('board-save', 'Member added.');
+        return back()->with('board-save', trans('teams.member_added'));
     }
 
     public function removeMember(Team $team, string $userId): RedirectResponse
@@ -128,7 +128,7 @@ class TeamController extends Controller
 
         AuditLog::record('team.member_removed', User::find($userId), [], $team);
 
-        return back()->with('board-save', 'Member removed.');
+        return back()->with('board-save', trans('teams.member_removed'));
     }
 
     /** Ported from assertManagerOrAdmin() — admin or TEAM_MANAGER only. */

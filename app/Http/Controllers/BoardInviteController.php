@@ -50,7 +50,7 @@ class BoardInviteController extends Controller
             'max_uses' => $invite->max_uses,
         ]);
 
-        return back()->with('board-save', 'Invite created.');
+        return back()->with('board-save', trans('admin.invite_created'));
     }
 
     public function destroy(Event $event, BoardInvite $invite): RedirectResponse
@@ -66,6 +66,6 @@ class BoardInviteController extends Controller
 
         $invite->delete();
 
-        return back()->with('board-save', 'Invite revoked.');
+        return back()->with('board-save', trans('admin.invite_revoked'));
     }
 }
