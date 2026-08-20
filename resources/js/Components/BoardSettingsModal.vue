@@ -22,8 +22,18 @@
                         <!-- Type first: it is the thing being created, and
                              the fields under it (size, dice limit) only make
                              sense once you know which kind of event it is. -->
-                        <u-form-field :label="$t('events.type_label')" :description="$t('events.type_desc')" required>
-                            <u-select v-model="form.type" :items="typeOptions" class="w-full">
+                        <!-- Locked once the event exists: the type decides
+                             which payload table holds it, and changing it
+                             would orphan a board (and everyone's progress on
+                             it) or leave a race with no board to play. The
+                             server refuses it independently — this just says
+                             so before the click. -->
+                        <u-form-field
+                            :label="$t('events.type_label')"
+                            :description="isEdit ? $t('events.type_locked') : $t('events.type_desc')"
+                            required
+                        >
+                            <u-select v-model="form.type" :items="typeOptions" :disabled="isEdit" class="w-full">
                                 <template #item-leading="{ item }">
                                     <u-icon :name="item.icon" class="size-4" />
                                 </template>
