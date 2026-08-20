@@ -3,6 +3,7 @@
 use App\Http\Controllers\Settings\Admin\AuditLogController;
 use App\Http\Controllers\Settings\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Settings\Admin\ContentController;
+use App\Http\Controllers\Settings\Admin\InviteController;
 use App\Http\Controllers\Settings\Admin\SiteSettingsController;
 use App\Http\Controllers\Settings\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Settings\Admin\UserController as AdminUserController;
@@ -202,6 +203,9 @@ Route::middleware('auth')->group(function () {
 
         // Read-only by design — see AuditLogController.
         Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+
+        Route::get('/invites', [InviteController::class, 'index'])->name('invites');
+        Route::delete('/invites/{invite}', [InviteController::class, 'destroy'])->name('invites.destroy');
     });
 });
 

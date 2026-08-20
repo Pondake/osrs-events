@@ -229,7 +229,18 @@ class DemoDataSeeder extends Seeder
                 'title' => 'VIP Beta Test', 'size' => 'SIZE_5X5', 'mode' => 'SOLO', 'access_mode' => 'INVITE',
                 'description' => 'Invite-only board for testing new tile types before a public launch.',
                 'players' => 2, 'start_date' => null, 'end_date' => null, 'dice_roll_limit' => null,
-                'coauthor' => true, 'invites' => [['max_uses' => 5, 'expires' => now()->addWeek()], ['max_uses' => null, 'expires' => null]],
+                // Deliberately spans every state the admin invites overview
+                // distinguishes — active, unused, exhausted and expired — so
+                // the page has something to show for each without hand-made
+                // rows. `uses` overrides the random count where the state
+                // depends on it.
+                'coauthor' => true, 'invites' => [
+                    ['max_uses' => 5, 'expires' => now()->addWeek()],
+                    ['max_uses' => null, 'expires' => null],
+                    ['max_uses' => 3, 'expires' => null, 'uses' => 3, 'label' => 'Exhausted — first wave'],
+                    ['max_uses' => null, 'expires' => now()->subDays(3), 'uses' => 2, 'label' => 'Expired — beta signup'],
+                    ['max_uses' => 20, 'expires' => now()->addMonth(), 'uses' => 0, 'label' => 'Unused — spare link'],
+                ],
             ],
             [
                 'title' => 'Clan Wars: Spring', 'size' => 'SIZE_7X7', 'mode' => 'TEAM', 'access_mode' => 'OPEN',
@@ -302,10 +313,16 @@ class DemoDataSeeder extends Seeder
             if ($board->access_mode === 'GUILD') {
                 $this->seedGuildMembership($board);
             }
+        }
 
-            if ($board->access_mode === 'INVITE') {
-                $this->seedInvites($board, $owner, $spec['invites'] ?? []);
-            }
+        // Outside the $isNewBoard block, unlike the rows above: invites are
+        // the one part of a board's demo data that gets extended over time
+        // (a new state for the admin overview to show, say), and gating them
+        // on board creation meant the only way to add one was to delete the
+        // board it belonged to. seedInvites() keys on the label to stay
+        // idempotent.
+        if ($board->access_mode === 'INVITE') {
+            $this->seedInvites($board, $owner, $spec['invites'] ?? []);
         }
 
         // Repair-on-run: an earlier crashed seed run can leave a Board row
@@ -378,17 +395,28 @@ class DemoDataSeeder extends Seeder
     private function seedInvites(Board $board, User $owner, array $invites): void
     {
         foreach ($invites as $invite) {
-            BoardInvite::create([
-                'id' => (string) str()->uuid(),
-                'board_id' => $board->id,
-                'token' => (string) str()->uuid(),
-                'short_code' => strtoupper(str()->random(6)),
-                'label' => $invite['max_uses'] ? "Limited ({$invite['max_uses']} uses)" : 'Unlimited invite',
-                'created_by' => $owner->id,
-                'expires_at' => $invite['expires'],
-                'max_uses' => $invite['max_uses'],
-                'use_count' => $invite['max_uses'] ? random_int(0, (int) ($invite['max_uses'] / 2)) : random_int(0, 8),
-            ]);
+            $label = $invite['label']
+                ?? ($invite['max_uses'] ? "Limited ({$invite['max_uses']} uses)" : 'Unlimited invite');
+
+            // Keyed on (board, label) so a re-run tops up newly added demo
+            // invites without duplicating the existing ones — and without
+            // regenerating short_code, which carries a unique constraint.
+            BoardInvite::firstOrCreate(
+                ['board_id' => $board->id, 'label' => $label],
+                [
+                    'id' => (string) str()->uuid(),
+                    'token' => (string) str()->uuid(),
+                    'short_code' => strtoupper(str()->random(6)),
+                    'created_by' => $owner->id,
+                    'expires_at' => $invite['expires'],
+                    'max_uses' => $invite['max_uses'],
+                    // A spec can pin the count when the state depends on it
+                    // (exhausted needs use_count >= max_uses, unused needs 0);
+                    // otherwise it stays random so the demo data isn't uniform.
+                    'use_count' => $invite['uses']
+                        ?? ($invite['max_uses'] ? random_int(0, (int) ($invite['max_uses'] / 2)) : random_int(0, 8)),
+                ],
+            );
         }
     }
 

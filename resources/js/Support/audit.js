@@ -23,6 +23,8 @@ export const AUDIT_STYLES = {
     'team.member_removed': { color: 'warning', icon: 'i-lucide-user-minus' },
     'board.team_added': { color: 'success', icon: 'i-lucide-layout-grid' },
     'board.team_removed': { color: 'warning', icon: 'i-lucide-layout-grid' },
+    'invite.created': { color: 'success', icon: 'i-lucide-ticket' },
+    'invite.revoked': { color: 'error', icon: 'i-lucide-ticket-x' },
     'task.deleted': { color: 'error', icon: 'i-lucide-trash-2' },
     'settings.updated': { color: 'neutral', icon: 'i-lucide-sliders-horizontal' },
 };
@@ -110,6 +112,16 @@ const FIELDS = {
     announcement_type: {
         label: 'audit.field_announcement_type',
         format: (value) => text(trans(`admin.site_announcement_type_${value}`)),
+    },
+    board: { label: 'audit.field_board', format: (value) => (value ? text(value) : empty()) },
+    short_code: { label: 'audit.field_short_code', format: (value) => text(value) },
+    use_count: { label: 'audit.field_use_count', format: (value) => text(String(value)) },
+    max_uses: {
+        label: 'audit.field_max_uses',
+        // null means unlimited here, same convention as the invite itself.
+        format: (value) => (value === null || value === undefined
+            ? text(trans('admin.invite_unlimited'))
+            : text(String(value))),
     },
     name: { label: 'audit.field_name', format: (value) => (value ? text(value) : empty()) },
     icon_url: {

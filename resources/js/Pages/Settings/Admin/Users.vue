@@ -5,7 +5,7 @@
         <div class="flex items-center justify-between gap-4 flex-wrap">
             <div>
                 <h2 class="text-xl font-semibold text-highlighted">{{ $t('settings.nav_admin_users') }}</h2>
-                <p class="text-sm text-muted mt-0.5">{{ $t('admin.users_subtitle', { count: users.length }) }}</p>
+                <p class="text-sm text-muted mt-0.5">{{ $t('admin.users_subtitle') }}</p>
             </div>
             <u-input
                 v-model="search"
