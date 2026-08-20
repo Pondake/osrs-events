@@ -37,6 +37,35 @@ class WiseOldManService
     /** Their published anonymous limit; the sync paces itself against this. */
     public const RATE_LIMIT_PER_MINUTE = 20;
 
+    /** With an API key they allow five times as much. */
+    public const RATE_LIMIT_PER_MINUTE_WITH_KEY = 100;
+
+    /**
+     * How many requests a minute this deployment may make.
+     *
+     * Read rather than assumed constant: pacing every install at the
+     * anonymous rate means an operator who went and got a key still waits
+     * three seconds a participant for no reason.
+     */
+    public function requestsPerMinute(): int
+    {
+        return config('services.wom.api_key')
+            ? self::RATE_LIMIT_PER_MINUTE_WITH_KEY
+            : self::RATE_LIMIT_PER_MINUTE;
+    }
+
+    /**
+     * Whether to pace outbound requests at all.
+     *
+     * Off in tests, where the API is faked: sleeping is politeness toward a
+     * live service, and there isn't one. Never turn this off against the real
+     * API — the limit is theirs, not ours.
+     */
+    public function shouldThrottle(): bool
+    {
+        return (bool) config('services.wom.throttle', true);
+    }
+
     /**
      * Does Wise Old Man know this account?
      *

@@ -29,6 +29,17 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- The Wise Old Man API is faked in tests, so there is nothing to be
+             polite to — without this the sync command really sleeps three
+             seconds per participant. -->
+        <env name="WOM_THROTTLE" value="false"/>
+        <!-- Inertia SSR is on by default, so every page render in a test POSTs
+             to the SSR server over real HTTP. That made the suite depend on
+             whether a Node process happened to be running — caught the moment
+             TestCase started rejecting un-faked outbound requests. Assertions
+             here are about props and status codes, which the server resolves
+             either way. -->
+        <env name="INERTIA_SSR_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

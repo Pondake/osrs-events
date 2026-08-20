@@ -52,6 +52,9 @@ return [
     // WOM_USER_AGENT for any real deployment.
     'wom' => [
         'api_key' => env('WOM_API_KEY'),
+        // Paces outbound requests against their rate limit. Only ever turned
+        // off where the API is faked (phpunit.xml) — the limit is theirs.
+        'throttle' => env('WOM_THROTTLE', true),
         'user_agent' => env('WOM_USER_AGENT', 'osrs-events'),
     ],
 
