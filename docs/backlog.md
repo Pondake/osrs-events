@@ -1231,6 +1231,35 @@ Worth keeping as a habit:
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
 not alongside it — the copy depends on what the app actually ends up doing.
 
+- [ ] **The site still describes itself as a Snakes & Ladders app.** Flagged
+  by the owner 2026-08-20 on the onboarding modal's opening line — "OSRS
+  Events runs Snakes & Ladders style boards for your clan" — which stopped
+  being true when skill races shipped. It is not one string:
+
+  **221 of 1045 strings** in `lang/en.json` mention boards, dice, tiles,
+  snakes or ladders. Most are legitimately board-specific and must stay
+  (`tile_editor.*`, `dice.*`, `board.*`, the admin board settings). The
+  problem is the **~50 product-level** ones — `home.*`, `seo.*`, `about.*`,
+  `onboarding.*`, `nav.*` and the landing hero copy — which describe the
+  *whole app* as one event type. Worst offenders: `home.description`
+  ("Create boards, roll dice and complete tasks together"),
+  `about.feature_boards_desc`, `onboarding.welcome_body`, and the three
+  `home.feature_*` blocks that present Snakes & Ladders mechanics as the
+  product's features.
+
+  Two things make this more than a find-and-replace:
+  * **SEO copy is load-bearing.** `landing.*` and `seo.*` target
+    "OSRS snakes and ladders" deliberately — those pages exist to rank for
+    it. Snakes & Ladders should stay a named, prominent *event type*, not be
+    genericised away.
+  * **The board is still the only screenshot.** `home.preview_*` describes a
+    9x9 grid, and the landing preview renders one. A product that runs races
+    too needs the leaderboard in that story.
+
+  Sequenced here rather than done alongside the build for the reason this
+  whole section exists — the copy depends on what the app ends up doing, and
+  Bingo and drop races are still to come.
+
 - [ ] **Privacy policy needs an update.** `/privacy` was written for the
   Discord-only version of the app and no longer describes what is collected.
   Since then: email/password accounts (email address, hashed password,
