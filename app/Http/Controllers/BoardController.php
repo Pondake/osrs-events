@@ -251,7 +251,7 @@ class BoardController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        return redirect()->route('events.show', $event)->with('board-save', 'Joined the board.');
+        return redirect()->route('events.show', $event)->with('board-save', trans('board.joined'));
     }
 
     /**
@@ -273,7 +273,7 @@ class BoardController extends Controller
             return redirect()->route('events.show', $event)->with('board-save-error', $e->errors()['access'][0] ?? 'Could not join this board.');
         }
 
-        return redirect()->route('events.show', $event)->with('board-save', 'Joined the board.');
+        return redirect()->route('events.show', $event)->with('board-save', trans('board.joined'));
     }
 
     /**
@@ -334,7 +334,7 @@ class BoardController extends Controller
             return $board;
         });
 
-        return redirect()->route('events.show', $event)->with('board-save', 'Board created.');
+        return redirect()->route('events.show', $event)->with('board-save', trans('admin.board_created'));
     }
 
     /**
@@ -385,7 +385,7 @@ class BoardController extends Controller
             }
         });
 
-        return back()->with('board-save', 'Board updated.');
+        return back()->with('board-save', trans('admin.board_updated'));
     }
 
     public function destroy(Event $event): RedirectResponse
@@ -394,7 +394,7 @@ class BoardController extends Controller
 
         $event->delete();
 
-        return redirect()->route('events.index')->with('board-save', 'Board deleted.');
+        return redirect()->route('events.index')->with('board-save', trans('admin.board_deleted'));
     }
 
     /**
@@ -408,7 +408,7 @@ class BoardController extends Controller
     {
         abort_unless($request->user()->canEditEvent($event), 403);
 
-        $assignedTeamIds = $event->boardTeams()->pluck('team_id');
+        $assignedTeamIds = $event->eventTeams()->pluck('team_id');
 
         $availableQuery = Team::query()->orderBy('name');
         if (! $request->user()->isAdmin()) {
@@ -417,7 +417,7 @@ class BoardController extends Controller
         }
 
         return response()->json([
-            'assigned' => $event->boardTeams()->with('team')->get()->pluck('team'),
+            'assigned' => $event->eventTeams()->with('team')->get()->pluck('team'),
             'available' => $availableQuery->whereNotIn('id', $assignedTeamIds)->get(['id', 'name']),
         ]);
     }
@@ -438,7 +438,7 @@ class BoardController extends Controller
         // under the board and when filtering the team's own clan.
         AuditLog::record('board.team_added', $event, [], Team::find($data['team_id']));
 
-        return back()->with('board-save', 'Team added to board.');
+        return back()->with('board-save', trans('admin.team_added'));
     }
 
     /** Ported from BoardsService::removeTeamFromBoard(). */
@@ -446,10 +446,10 @@ class BoardController extends Controller
     {
         abort_unless(Auth::user()->canEditEvent($event), 403);
 
-        BoardTeam::where('board_id', $event->id)->where('team_id', $team->id)->delete();
+        BoardTeam::where('event_id', $event->id)->where('team_id', $team->id)->delete();
 
         AuditLog::record('board.team_removed', $event, [], $team);
 
-        return back()->with('board-save', 'Team removed from board.');
+        return back()->with('board-save', trans('admin.team_removed'));
     }
 }

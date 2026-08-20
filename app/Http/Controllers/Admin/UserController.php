@@ -65,7 +65,7 @@ class UserController extends Controller
             AuditLog::record('user.role_granted', $user, ['role' => $role->name]);
         });
 
-        return back()->with('board-save', 'Role assigned.');
+        return back()->with('board-save', trans('admin.role_assigned', ['role' => $data['role']]));
     }
 
     public function removeRole(User $user, Role $role): RedirectResponse
@@ -75,7 +75,7 @@ class UserController extends Controller
         UserRole::where(['user_id' => $user->id, 'role_id' => $role->id])->delete();
         AuditLog::record('user.role_revoked', $user, ['role' => $role->name]);
 
-        return back()->with('board-save', 'Role removed.');
+        return back()->with('board-save', trans('admin.role_removed', ['role' => $role->name]));
     }
 
     public function grantPermission(Request $request, User $user): RedirectResponse
@@ -87,7 +87,7 @@ class UserController extends Controller
         UserPermission::firstOrCreate(['user_id' => $user->id, 'permission_key' => $data['permission_key']]);
         AuditLog::record('user.permission_granted', $user, ['permission' => $data['permission_key']]);
 
-        return back()->with('board-save', 'Permission granted.');
+        return back()->with('board-save', trans('admin.permission_granted'));
     }
 
     public function revokePermission(User $user, string $permissionKey): RedirectResponse
@@ -97,7 +97,7 @@ class UserController extends Controller
         UserPermission::where(['user_id' => $user->id, 'permission_key' => $permissionKey])->delete();
         AuditLog::record('user.permission_revoked', $user, ['permission' => $permissionKey]);
 
-        return back()->with('board-save', 'Permission revoked.');
+        return back()->with('board-save', trans('admin.permission_revoked'));
     }
 
     /**
