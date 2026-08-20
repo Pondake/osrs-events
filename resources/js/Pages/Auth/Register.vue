@@ -10,7 +10,17 @@
                         <p class="text-muted text-sm mt-1">{{ $t('auth.register_subtitle') }}</p>
                     </template>
 
-                    <form class="space-y-4" @submit.prevent="submit">
+                    <u-alert
+                        v-if="!registrationOpen"
+                        color="warning"
+                        variant="subtle"
+                        icon="i-lucide-lock"
+                        :title="$t('auth.registration_closed_title')"
+                        :description="$t('auth.registration_closed_desc')"
+                        class="mb-4"
+                    />
+
+                    <form v-else class="space-y-4" @submit.prevent="submit">
                         <u-form-field :label="$t('auth.field_display_name')" :description="$t('auth.field_display_name_desc')" :error="form.errors.nickname" required>
                             <u-input v-model="form.nickname" autocomplete="nickname" class="w-full" />
                         </u-form-field>
@@ -50,6 +60,10 @@
 
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+
+defineProps({
+    registrationOpen: { type: Boolean, default: true },
+});
 
 const form = useForm({ nickname: '', email: '', password: '', password_confirmation: '' });
 

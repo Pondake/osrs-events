@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Settings\Admin\ContentController;
+use App\Http\Controllers\Settings\Admin\SiteSettingsController;
 use App\Http\Controllers\Settings\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Settings\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -192,6 +193,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/tasks', [AdminTaskController::class, 'store'])->name('tasks.store');
         Route::patch('/tasks/{task}', [AdminTaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
+
+        Route::get('/site', [SiteSettingsController::class, 'show'])->name('site');
+        Route::put('/site', [SiteSettingsController::class, 'update'])->name('site.update');
 
         Route::get('/content', [ContentController::class, 'index'])->name('content');
     });

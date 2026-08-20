@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserRole;
 use Illuminate\Http\RedirectResponse;
@@ -23,11 +24,18 @@ class RegisteredUserController extends Controller
 {
     public function create(): Response
     {
-        return Inertia::render('Auth/Register');
+        return Inertia::render('Auth/Register', [
+            'registrationOpen' => Setting::get('registration_open'),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        // Enforced here, not only by hiding the form: the endpoint is
+        // reachable directly, so the UI state is a courtesy and this is the
+        // actual gate.
+        abort_unless(Setting::get('registration_open'), 403, 'Registration is currently closed.');
+
         $data = $request->validate([
             // 'nickname', not 'name' — this becomes the user's displayName()
             // the same way a Discord signup's discord_username does, and

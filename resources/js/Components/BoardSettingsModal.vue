@@ -165,7 +165,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
@@ -222,14 +222,20 @@ const accessOptions = [
 ];
 
 function blankForm() {
+    // Size and roll limit come from the admin site settings so a clan can
+    // set the shape its events usually take once, instead of every creator
+    // changing the same two fields each time. Fall back to the previous
+    // hardcoded values if the prop isn't there (e.g. an older cached page).
+    const site = usePage().props?.site ?? {};
+
     return {
         title: '',
         description: '',
-        size: 'SIZE_7X7',
+        size: site.defaultBoardSize ?? 'SIZE_7X7',
         mode: 'SOLO',
         start_date: '',
         end_date: '',
-        dice_roll_limit: null,
+        dice_roll_limit: site.defaultDiceRollLimit ?? null,
         is_listed: true,
         access_mode: 'OPEN',
         required_guild_id: '',

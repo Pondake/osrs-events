@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -49,6 +50,17 @@ class HandleInertiaRequests extends Middleware
                 // kept separate from boardSave's already-formatted sentence
                 // rather than parsing a number back out of display text.
                 'lastRoll' => fn () => $request->session()->get('last-roll'),
+            ],
+            // Shared globally because two of these are needed off any page:
+            // the announcement renders in AppRoot's layout, and the board
+            // defaults seed the create-board form wherever it's opened from
+            // (the boards index, the admin list, the onboarding modal).
+            // Setting::cached() is a single cache read, not a query.
+            'site' => fn () => [
+                'announcement' => Setting::get('announcement'),
+                'announcementType' => Setting::get('announcement_type'),
+                'defaultBoardSize' => Setting::get('default_board_size'),
+                'defaultDiceRollLimit' => Setting::get('default_dice_roll_limit'),
             ],
             'auth' => [
                 'user' => $user ? [
