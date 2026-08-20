@@ -691,6 +691,23 @@ branch's SSR evaluation. Concrete carry-over work:
      every interactive `@nuxt/ui` component needs. `@tiptap/markdown` means
      it can round-trip markdown rather than storing HTML, which is what
      keeps stored content renderable without `v-html`.
+  4. **Editor UI needs a visual pass** — flagged by the owner 2026-08-20:
+     it works and is functionally fine, but reads as "a bad Divi", which is
+     fair — it is a vertical stack of accordion boxes, and you edit in a list
+     that sits beside the thing it changes rather than on it.
+     Deliberately deferred, not forgotten. Three directions were put up; the
+     call was to leave it for now:
+     * **Preview as canvas** — preview full width, hover a block for an
+       outline plus a small toolbar, click to open its fields in a
+       slide-over, insert points between blocks. Biggest change, but
+       everything underneath (renderer, blocks.js, BlockFields) is unaffected
+       by it.
+     * **Tidy the list** — keep two columns, make the rows real cards with a
+       type colour, a drag handle instead of arrows, clearer nesting indent,
+       wider preview. Smallest change.
+     * **Full preview + slide-over** — middle ground: page at true width, a
+       button per block opens its fields, no canvas toolbars.
+
   Sequencing note: the renderer is the risky part and the one that makes
   the other two useful — build a hardcoded block list through the renderer
   first, before any editor UI or table design.
