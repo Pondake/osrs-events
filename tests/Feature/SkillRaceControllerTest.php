@@ -172,6 +172,56 @@ class SkillRaceControllerTest extends TestCase
                 ->has('standings'));
     }
 
+    // ---------------------------------------------------------- my events
+
+    /**
+     * That page was built from PlayerBoard rows, and a race has no board — so
+     * entering one and then not finding it under "my events" was the result.
+     */
+    #[Test]
+    public function a_race_you_entered_appears_under_my_events(): void
+    {
+        $event = $this->race();
+        $user = $this->player();
+        $this->actingAs($user)->post("/events/{$event->id}/enter");
+
+        $this->actingAs($user)
+            ->get('/my-events')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('boards', 1)
+                ->where('boards.0.kind', 'race')
+                ->where('boards.0.board.title', $event->title)
+                ->has('boards.0.standing'));
+    }
+
+    #[Test]
+    public function a_race_you_have_not_entered_stays_out_of_my_events(): void
+    {
+        $this->race();
+
+        $this->actingAs($this->player())
+            ->get('/my-events')
+            ->assertInertia(fn ($page) => $page->has('boards', 0));
+    }
+
+    /** A race row carries no board preview, because there is no board. */
+    #[Test]
+    public function a_race_row_reports_its_placing_rather_than_progress(): void
+    {
+        $event = $this->race();
+        $user = $this->player();
+        $this->actingAs($user)->post("/events/{$event->id}/enter");
+
+        $this->actingAs($user)
+            ->get('/my-events')
+            ->assertInertia(fn ($page) => $page
+                ->where('boards.0.standing.participants', 1)
+                ->where('boards.0.standing.gained', 0)
+                ->missing('boards.0.preview')
+                ->missing('boards.0.progress'));
+    }
+
     #[Test]
     public function the_race_page_reports_whether_the_viewer_is_in_it(): void
     {

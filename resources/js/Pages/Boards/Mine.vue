@@ -57,9 +57,13 @@
                             </div>
 
                             <div class="flex items-center gap-x-4 gap-y-1 flex-wrap mt-3 text-xs text-muted">
-                                <span class="inline-flex items-center gap-1">
+                                <span v-if="entry.kind === 'board'" class="inline-flex items-center gap-1">
                                     <u-icon name="i-lucide-grid-3x3" class="size-3.5" />
                                     {{ sizeLabel(entry.board.size) }}
+                                </span>
+                                <span v-else class="inline-flex items-center gap-1">
+                                    <u-icon name="i-lucide-trophy" class="size-3.5" />
+                                    {{ $t('events.ranked_by', { skill: $t(`skills.${entry.board.metric}`) }) }}
                                 </span>
                                 <span class="inline-flex items-center gap-1">
                                     <u-icon name="i-lucide-calendar" class="size-3.5" />
@@ -67,7 +71,10 @@
                                 </span>
                             </div>
 
-                            <div class="mt-4">
+                            <!-- A board has a position to advance; a race has a
+                                 placing among others. Neither reads as the
+                                 other, so they do not share a widget. -->
+                            <div v-if="entry.kind === 'board'" class="mt-4">
                                 <div class="flex items-center justify-between text-xs mb-1">
                                     <span class="text-muted">{{ $t('boards.progress_tile', { current: entry.progress.current, total: entry.progress.total }) }}</span>
                                     <span class="text-highlighted tabular-nums">{{ entry.progress.pct }}%</span>
@@ -75,15 +82,46 @@
                                 <u-progress :model-value="entry.progress.pct" size="sm" />
                             </div>
 
+                            <div v-else class="mt-4 flex items-center gap-4 flex-wrap">
+                                <div v-if="entry.standing.rank" class="flex items-baseline gap-1.5">
+                                    <span class="text-2xl font-bold text-primary tabular-nums">#{{ entry.standing.rank }}</span>
+                                    <span class="text-xs text-muted">{{ $t('events.of_participants', { count: entry.standing.participants }) }}</span>
+                                </div>
+                                <span v-else-if="entry.standing.error" class="text-sm text-muted inline-flex items-center gap-1">
+                                    <u-icon name="i-lucide-circle-help" class="size-4" />
+                                    {{ $t(`events.error_${entry.standing.error}`) }}
+                                </span>
+                                <span v-else class="text-sm text-muted">{{ $t('events.pending_sync') }}</span>
+
+                                <span v-if="entry.standing.syncedAt && !entry.standing.error" class="text-sm text-highlighted tabular-nums">
+                                    +{{ formatXp(entry.standing.gained) }}
+                                </span>
+                            </div>
+
                             <div class="flex items-center gap-2 mt-4 pt-4 border-t border-default">
-                                <u-button :href="`/events/${entry.board.id}`" size="sm" color="primary" icon="i-lucide-play" :label="$t('boards.continue')" />
-                                <u-button :href="`/events/${entry.board.id}/leaderboard`" size="sm" color="neutral" variant="ghost" icon="i-lucide-trophy" :label="$t('boards.leaderboard')" />
+                                <u-button
+                                    :href="`/events/${entry.board.id}`"
+                                    size="sm"
+                                    color="primary"
+                                    :icon="entry.kind === 'board' ? 'i-lucide-play' : 'i-lucide-trophy'"
+                                    :label="entry.kind === 'board' ? $t('boards.continue') : $t('events.view_standings')"
+                                />
+                                <u-button
+                                    v-if="entry.kind === 'board'"
+                                    :href="`/events/${entry.board.id}/leaderboard`"
+                                    size="sm"
+                                    color="neutral"
+                                    variant="ghost"
+                                    icon="i-lucide-trophy"
+                                    :label="$t('boards.leaderboard')"
+                                />
                             </div>
                         </div>
 
                         <!-- Capped when it stacks: below lg this sat full width,
-                             which turned a 9x9 grid into most of the screen. -->
-                        <div class="w-full max-w-64 mx-auto lg:mx-0 lg:w-64 shrink-0">
+                             which turned a 9x9 grid into most of the screen.
+                             A race has no board to preview at all. -->
+                        <div v-if="entry.kind === 'board'" class="w-full max-w-64 mx-auto lg:mx-0 lg:w-64 shrink-0">
                             <board-preview
                                 :size="entry.preview.size"
                                 :special-tiles="entry.preview.specialTiles"
@@ -114,9 +152,17 @@ import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, boardEventStatus, formatDate } from
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 
 defineProps({
-    // [{ board, progress: { current, total, pct }, preview }]
+    // Two shapes, told apart by `kind`:
+    //   board - { kind, board, progress: { current, total, pct }, preview }
+    //   race  - { kind, board, standing: { rank, gained, syncedAt, error, participants } }
     boards: { type: Array, required: true },
 });
+
+// Grouped thousands, same as the standings page: XP gains run into the
+// millions and an unbroken run of digits cannot be read at a glance.
+function formatXp(value) {
+    return new Intl.NumberFormat('en-GB').format(value ?? 0);
+}
 
 function sizeLabel(size) {
     return trans('admin.board_size_option', { size: BOARD_SIZE_LABEL[size] ?? size, tiles: BOARD_TILE_COUNT[size] ?? '?' });
