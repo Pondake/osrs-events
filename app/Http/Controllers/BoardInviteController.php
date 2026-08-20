@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Board;
+use App\Models\Event;
 use App\Models\BoardInvite;
 use App\Services\BoardAccessService;
 use Illuminate\Http\JsonResponse;
@@ -14,16 +15,16 @@ use Illuminate\Support\Facades\Auth;
 /** Ported from InvitesService — every action requires board-owner-or-admin. */
 class BoardInviteController extends Controller
 {
-    public function index(Board $board): JsonResponse
+    public function index(Event $event): JsonResponse
     {
-        abort_unless(Auth::user()->isBoardOwnerOrAdmin($board), 403);
+        abort_unless(Auth::user()->isEventOwnerOrAdmin($event), 403);
 
-        return response()->json($board->invites()->orderByDesc('created_at')->get());
+        return response()->json($event->invites()->orderByDesc('created_at')->get());
     }
 
-    public function store(Request $request, Board $board, BoardAccessService $access): RedirectResponse
+    public function store(Request $request, Event $event, BoardAccessService $access): RedirectResponse
     {
-        abort_unless(Auth::user()->isBoardOwnerOrAdmin($board), 403);
+        abort_unless(Auth::user()->isEventOwnerOrAdmin($event), 403);
 
         $data = $request->validate([
             'label' => ['nullable', 'string', 'max:255'],
@@ -33,9 +34,9 @@ class BoardInviteController extends Controller
 
         $invite = BoardInvite::create([
             'id' => (string) str()->uuid(),
-            'board_id' => $board->id,
+            'event_id' => $event->id,
             'token' => (string) str()->uuid(),
-            'short_code' => $access->generateUniqueShortCode($board),
+            'short_code' => $access->generateUniqueShortCode($event),
             'created_by' => Auth::id(),
             ...$data,
         ]);
@@ -44,7 +45,7 @@ class BoardInviteController extends Controller
         // depend on which of the two surfaces the action was taken from.
         // The token is deliberately never logged — it IS the credential.
         AuditLog::record('invite.created', $invite, [
-            'board' => $board->title,
+            'board' => $event->title,
             'short_code' => $invite->short_code,
             'max_uses' => $invite->max_uses,
         ]);
@@ -52,13 +53,13 @@ class BoardInviteController extends Controller
         return back()->with('board-save', 'Invite created.');
     }
 
-    public function destroy(Board $board, BoardInvite $invite): RedirectResponse
+    public function destroy(Event $event, BoardInvite $invite): RedirectResponse
     {
-        abort_unless(Auth::user()->isBoardOwnerOrAdmin($board), 403);
-        abort_unless($invite->board_id === $board->id, 404);
+        abort_unless(Auth::user()->isEventOwnerOrAdmin($event), 403);
+        abort_unless($invite->event_id === $event->id, 404);
 
         AuditLog::record('invite.revoked', $invite, [
-            'board' => $board->title,
+            'board' => $event->title,
             'short_code' => $invite->short_code,
             'use_count' => $invite->use_count,
         ]);

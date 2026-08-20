@@ -34,7 +34,7 @@ class InviteController extends Controller
         abort_unless(Auth::user()->isAdmin(), 403);
 
         $invites = BoardInvite::query()
-            ->with(['board:id,title', 'creator:id,discord_username,nickname,email'])
+            ->with(['event:id,title', 'creator:id,discord_username,nickname,email'])
             ->withCount('accesses')
             ->when(
                 $request->string('status')->isNotEmpty(),
@@ -42,7 +42,7 @@ class InviteController extends Controller
             )
             ->when(
                 $request->string('board')->isNotEmpty(),
-                fn ($q) => $q->where('board_id', $request->string('board')),
+                fn ($q) => $q->where('event_id', $request->string('board')),
             )
             ->when(
                 $request->string('creator')->isNotEmpty(),
@@ -56,7 +56,7 @@ class InviteController extends Controller
                     $term = '%'.$request->string('search').'%';
                     $sub->where('label', 'like', $term)
                         ->orWhere('short_code', 'like', $term)
-                        ->orWhereHas('board', fn ($b) => $b->where('title', 'like', $term));
+                        ->orWhereHas('event', fn ($b) => $b->where('title', 'like', $term));
                 }),
             )
             ->orderByDesc('created_at')
@@ -78,7 +78,7 @@ class InviteController extends Controller
                 'id' => $invite->id,
                 'label' => $invite->label,
                 'short_code' => $invite->short_code,
-                'board' => $invite->board ? ['id' => $invite->board->id, 'title' => $invite->board->title] : null,
+                'board' => $invite->event ? ['id' => $invite->event->id, 'title' => $invite->event->title] : null,
                 'creator' => $invite->creator?->displayName(),
                 'created_at' => $invite->created_at,
                 'expires_at' => $invite->expires_at,
@@ -118,7 +118,7 @@ class InviteController extends Controller
         // across every board, which is exactly the kind of thing the audit
         // log exists to leave a trace of.
         AuditLog::record('invite.revoked', $invite, [
-            'board' => $invite->board?->title,
+            'board' => $invite->event?->title,
             'short_code' => $invite->short_code,
             'use_count' => $invite->use_count,
         ]);
@@ -170,9 +170,9 @@ class InviteController extends Controller
     private function boardOptions(): array
     {
         return BoardInvite::query()
-            ->with('board:id,title')
-            ->get(['board_id'])
-            ->pluck('board')
+            ->with('event:id,title')
+            ->get(['event_id'])
+            ->pluck('event')
             ->filter()
             ->unique('id')
             ->map(fn ($board) => ['value' => $board->id, 'label' => $board->title])

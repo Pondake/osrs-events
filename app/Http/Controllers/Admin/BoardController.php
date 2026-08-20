@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Board;
+use App\Models\Event;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,7 +15,7 @@ class BoardController extends Controller
     {
         abort_unless(Auth::user()->isAdmin(), 403);
 
-        $boards = Board::with(['authors.user', 'boardTeams.team'])
+        $boards = Event::with(['authors.user', 'eventTeams.team', 'board'])
             ->orderByDesc('start_date')
             ->get();
 

@@ -17,9 +17,9 @@ use Illuminate\Http\Request;
  *
  * No extra permission gate beyond the route's own 'auth' middleware — a
  * board *owner* who can open BoardSettingsModal in the first place (via
- * canEditBoard(), not the global canCreateBoards permission) needs to
+ * canEditEvent(), not the global canCreateBoards permission) needs to
  * search for co-editors too, and this endpoint has no board context to
- * check canEditBoard() against. A first version gated on
+ * check canEditEvent() against. A first version gated on
  * canCreateBoards/admin, which 403'd for exactly that case — caught live
  * while testing the actual search box, not by reading the code. The
  * returned fields (username, nickname, avatar) aren't sensitive; any

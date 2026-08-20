@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Board;
+use App\Models\Event;
 use App\Models\Task;
 use App\Models\Tile;
 use Illuminate\Http\JsonResponse;
@@ -20,9 +21,9 @@ use Illuminate\Support\Facades\Auth;
  */
 class TileController extends Controller
 {
-    public function upsert(Request $request, Board $board): RedirectResponse
+    public function upsert(Request $request, Event $event): RedirectResponse
     {
-        abort_unless($request->user()->canEditBoard($board), 403);
+        abort_unless($request->user()->canEditEvent($event), 403);
 
         $data = $request->validate([
             'position' => ['required', 'integer', 'min:0'],
@@ -33,7 +34,7 @@ class TileController extends Controller
         ]);
 
         Tile::updateOrCreate(
-            ['board_id' => $board->id, 'position' => $data['position']],
+            ['event_id' => $event->id, 'position' => $data['position']],
             [
                 'id' => (string) str()->uuid(),
                 'task_id' => $data['task_id'] ?? null,
@@ -46,10 +47,10 @@ class TileController extends Controller
         return back()->with('board-save', 'Tile saved.');
     }
 
-    public function destroy(Board $board, Tile $tile): RedirectResponse
+    public function destroy(Event $event, Tile $tile): RedirectResponse
     {
-        abort_unless(Auth::user()->canEditBoard($board), 403);
-        abort_unless($tile->board_id === $board->id, 404);
+        abort_unless(Auth::user()->canEditEvent($event), 403);
+        abort_unless($tile->board_id === $event->id, 404);
 
         $tile->delete();
 

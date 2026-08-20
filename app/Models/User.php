@@ -95,14 +95,14 @@ class User extends Authenticatable
         return $this->isAdmin() || $this->userPermissions()->where('permission_key', $key)->exists();
     }
 
-    public function canEditBoard(Board $board): bool
+    public function canEditEvent(Event $event): bool
     {
-        return $this->isAdmin() || $board->authors()->where('user_id', $this->id)->exists();
+        return $this->isAdmin() || $event->authors()->where('user_id', $this->id)->exists();
     }
 
     /** Ported from InvitesService::assertOwnerOrAdmin() — owner (not just any co-author) or admin. */
-    public function isBoardOwnerOrAdmin(Board $board): bool
+    public function isEventOwnerOrAdmin(Event $event): bool
     {
-        return $this->isAdmin() || $board->authors()->where(['user_id' => $this->id, 'is_owner' => true])->exists();
+        return $this->isAdmin() || $event->authors()->where(['user_id' => $this->id, 'is_owner' => true])->exists();
     }
 }

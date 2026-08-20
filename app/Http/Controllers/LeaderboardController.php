@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Board;
+use App\Models\Event;
 use App\Services\BoardAccessService;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -11,16 +12,19 @@ use Inertia\Response;
 /** Ported from PlayersService::getLeaderboard(). */
 class LeaderboardController extends Controller
 {
-    public function show(Board $board, BoardAccessService $access): Response
+    public function show(Event $event, BoardAccessService $access): Response
     {
-        abort_unless($access->hasAccess(Auth::user(), $board), 403);
+        abort_unless($access->hasAccess(Auth::user(), $event), 403);
 
-        $tiles = $board->tiles()->orderBy('position')->get();
+        // Tiles live on the board; an event without one has none.
+        $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();
         $maxPosition = $tiles->count() - 1;
 
-        $playerBoards = $board->playerBoards()
+        $playerBoards = $event->playerBoards()
             ->with(['user', 'team'])
-            ->orderByDesc('current_position')
+            // Qualified — playerBoards() joins boards, so a bare
+            // column name is ambiguous.
+            ->orderByDesc('player_boards.current_position')
             ->get();
 
         $entries = $playerBoards->values()->map(function ($pb, $index) use ($tiles, $maxPosition) {
@@ -39,7 +43,7 @@ class LeaderboardController extends Controller
         });
 
         return Inertia::render('Boards/Leaderboard', [
-            'board' => $board->only(['id', 'title', 'mode']),
+            'board' => $event->only(['id', 'title', 'mode']),
             'totalTiles' => $tiles->count(),
             'entries' => $entries,
         ]);

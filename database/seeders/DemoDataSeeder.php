@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Board;
+use App\Models\Event;
 use App\Models\BoardAccess;
 use App\Models\BoardAuthor;
 use App\Models\BoardInvite;
@@ -278,40 +279,50 @@ class DemoDataSeeder extends Seeder
 
     private function seedBoard(array $spec): void
     {
-        $isNewBoard = Board::where('title', $spec['title'])->doesntExist();
+        $isNewBoard = Event::where('title', $spec['title'])->doesntExist();
 
         $owner = $this->users->random();
 
-        $board = Board::firstOrCreate(
+        // The competition and its Snakes & Ladders payload are two rows now —
+        // see the split_events_from_boards migration.
+        $event = Event::firstOrCreate(
             ['title' => $spec['title']],
             [
                 'id' => (string) str()->uuid(),
+                'type' => 'SNAKES_LADDERS',
                 'description' => $spec['description'],
-                'size' => $spec['size'],
                 'mode' => $spec['mode'],
                 'access_mode' => $spec['access_mode'],
                 'required_guild_id' => $spec['access_mode'] === 'GUILD' ? fake()->numerify('##################') : null,
                 'is_listed' => true,
                 'start_date' => $spec['start_date'],
                 'end_date' => $spec['end_date'],
+            ],
+        );
+
+        $board = Board::firstOrCreate(
+            ['event_id' => $event->id],
+            [
+                'id' => (string) str()->uuid(),
+                'size' => $spec['size'],
                 'dice_roll_limit' => $spec['dice_roll_limit'],
             ],
         );
 
         if ($isNewBoard) {
             BoardAuthor::create([
-                'id' => (string) str()->uuid(), 'board_id' => $board->id, 'user_id' => $owner->id, 'is_owner' => true,
+                'id' => (string) str()->uuid(), 'event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true,
             ]);
 
             if ($spec['coauthor'] ?? false) {
                 $coauthor = $this->users->where('id', '!=', $owner->id)->random();
                 BoardAuthor::create([
-                    'id' => (string) str()->uuid(), 'board_id' => $board->id, 'user_id' => $coauthor->id, 'is_owner' => false,
+                    'id' => (string) str()->uuid(), 'event_id' => $event->id, 'user_id' => $coauthor->id, 'is_owner' => false,
                 ]);
             }
 
             if ($board->access_mode === 'GUILD') {
-                $this->seedGuildMembership($board);
+                $this->seedGuildMembership($event);
             }
         }
 
@@ -322,7 +333,7 @@ class DemoDataSeeder extends Seeder
         // board it belonged to. seedInvites() keys on the label to stay
         // idempotent.
         if ($board->access_mode === 'INVITE') {
-            $this->seedInvites($board, $owner, $spec['invites'] ?? []);
+            $this->seedInvites($event, $owner, $spec['invites'] ?? []);
         }
 
         // Repair-on-run: an earlier crashed seed run can leave a Board row
@@ -368,7 +379,7 @@ class DemoDataSeeder extends Seeder
 
             return [
                 'id' => (string) str()->uuid(),
-                'board_id' => $board->id,
+                'event_id' => $event->id,
                 'position' => $position,
                 'task_id' => $taskId,
                 'title_override' => $titleOverride,
@@ -382,7 +393,7 @@ class DemoDataSeeder extends Seeder
         Tile::insert($tiles->all());
     }
 
-    private function seedGuildMembership(Board $board): void
+    private function seedGuildMembership(Event $event): void
     {
         // Half the pool "belongs" to the board's required guild, so GUILD
         // access is actually joinable by roughly half of seeded players.
@@ -392,7 +403,7 @@ class DemoDataSeeder extends Seeder
         ));
     }
 
-    private function seedInvites(Board $board, User $owner, array $invites): void
+    private function seedInvites(Event $event, User $owner, array $invites): void
     {
         foreach ($invites as $invite) {
             $label = $invite['label']
@@ -402,7 +413,7 @@ class DemoDataSeeder extends Seeder
             // invites without duplicating the existing ones — and without
             // regenerating short_code, which carries a unique constraint.
             BoardInvite::firstOrCreate(
-                ['board_id' => $board->id, 'label' => $label],
+                ['event_id' => $event->id, 'label' => $label],
                 [
                     'id' => (string) str()->uuid(),
                     'token' => (string) str()->uuid(),
@@ -430,7 +441,7 @@ class DemoDataSeeder extends Seeder
             // re-running the seeder reuses them instead of drawing a fresh
             // random subset each time (which would silently accumulate more
             // teams than $spec['teams'] intended on every re-run).
-            $existingTeams = $board->boardTeams()->with('team.members.user')->get()->pluck('team');
+            $existingTeams = $event->eventTeams()->with('team.members.user')->get()->pluck('team');
             $teams = $existingTeams->isNotEmpty()
                 ? $existingTeams
                 : $this->teams->random(min($spec['teams'], $this->teams->count()));
@@ -447,12 +458,12 @@ class DemoDataSeeder extends Seeder
             // member still gets their own BoardAccess grant regardless.
             $usedUserIds = [];
             foreach ($teams as $team) {
-                if (! BoardTeam::where(['board_id' => $board->id, 'team_id' => $team->id])->exists()) {
-                    BoardTeam::create(['id' => (string) str()->uuid(), 'board_id' => $board->id, 'team_id' => $team->id]);
+                if (! BoardTeam::where(['event_id' => $event->id, 'team_id' => $team->id])->exists()) {
+                    BoardTeam::create(['id' => (string) str()->uuid(), 'event_id' => $event->id, 'team_id' => $team->id]);
                 }
 
                 foreach ($team->members as $member) {
-                    $this->grantBoardAccess($board, $member->user);
+                    $this->grantEventAccess($board->event, $member->user);
                 }
 
                 $representative = $team->members->first(fn ($m) => ! in_array($m->user_id, $usedUserIds, true))?->user
@@ -481,15 +492,15 @@ class DemoDataSeeder extends Seeder
         $players->each(fn (User $user) => $this->seedPlayerBoard($board, $user, $total, $boardTiles));
     }
 
-    private function grantBoardAccess(Board $board, User $user): void
+    private function grantEventAccess(Event $event, User $user): void
     {
-        if ($board->access_mode === 'OPEN') {
+        if ($event->access_mode === 'OPEN') {
             return;
         }
 
         BoardAccess::firstOrCreate(
-            ['board_id' => $board->id, 'user_id' => $user->id],
-            ['id' => (string) str()->uuid(), 'access_mode' => $board->access_mode],
+            ['event_id' => $event->id, 'user_id' => $user->id],
+            ['id' => (string) str()->uuid(), 'access_mode' => $event->access_mode],
         );
     }
 
@@ -506,7 +517,7 @@ class DemoDataSeeder extends Seeder
             ],
         );
 
-        $this->grantBoardAccess($board, $user);
+        $this->grantEventAccess($board->event, $user);
 
         if ($playerBoard->completedTiles()->count() > 0) {
             return;

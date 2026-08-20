@@ -103,33 +103,33 @@ Route::get('/events', [BoardController::class, 'index'])->name('events.index');
 Route::get('/my-events', [BoardController::class, 'mine'])
     ->middleware('auth')
     ->name('events.mine');
-Route::get('/events/{board}', [BoardController::class, 'show'])
+Route::get('/events/{event}', [BoardController::class, 'show'])
     ->middleware('auth')
     ->name('events.show');
-Route::get('/events/{board}/leaderboard', [LeaderboardController::class, 'show'])
+Route::get('/events/{event}/leaderboard', [LeaderboardController::class, 'show'])
     ->middleware('auth')
     ->name('events.leaderboard');
-Route::get('/events/{board}/join/{token}', [BoardController::class, 'joinByLink'])->name('events.join-link');
+Route::get('/events/{event}/join/{token}', [BoardController::class, 'joinByLink'])->name('events.join-link');
 
 Route::middleware('auth')->group(function () {
     Route::post('/events', [BoardController::class, 'store'])->name('events.store');
-    Route::patch('/events/{board}', [BoardController::class, 'update'])->name('events.update');
-    Route::delete('/events/{board}', [BoardController::class, 'destroy'])->name('events.destroy');
+    Route::patch('/events/{event}', [BoardController::class, 'update'])->name('events.update');
+    Route::delete('/events/{event}', [BoardController::class, 'destroy'])->name('events.destroy');
 
-    Route::post('/events/{board}/roll', [PlayerBoardController::class, 'roll'])->name('events.roll');
-    Route::post('/events/{board}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('events.tiles.toggle');
-    Route::post('/events/{board}/join', [BoardController::class, 'join'])->name('events.join');
+    Route::post('/events/{event}/roll', [PlayerBoardController::class, 'roll'])->name('events.roll');
+    Route::post('/events/{event}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('events.tiles.toggle');
+    Route::post('/events/{event}/join', [BoardController::class, 'join'])->name('events.join');
 
-    Route::get('/events/{board}/invites', [BoardInviteController::class, 'index'])->name('events.invites.index');
-    Route::post('/events/{board}/invites', [BoardInviteController::class, 'store'])->name('events.invites.store');
-    Route::delete('/events/{board}/invites/{invite}', [BoardInviteController::class, 'destroy'])->name('events.invites.destroy');
+    Route::get('/events/{event}/invites', [BoardInviteController::class, 'index'])->name('events.invites.index');
+    Route::post('/events/{event}/invites', [BoardInviteController::class, 'store'])->name('events.invites.store');
+    Route::delete('/events/{event}/invites/{invite}', [BoardInviteController::class, 'destroy'])->name('events.invites.destroy');
 
-    Route::post('/events/{board}/tiles', [TileController::class, 'upsert'])->name('events.tiles.upsert');
-    Route::delete('/events/{board}/tiles/{tile}', [TileController::class, 'destroy'])->name('events.tiles.destroy');
+    Route::post('/events/{event}/tiles', [TileController::class, 'upsert'])->name('events.tiles.upsert');
+    Route::delete('/events/{event}/tiles/{tile}', [TileController::class, 'destroy'])->name('events.tiles.destroy');
 
-    Route::get('/events/{board}/teams', [BoardController::class, 'teamsIndex'])->name('events.teams.index');
-    Route::post('/events/{board}/teams', [BoardController::class, 'addTeam'])->name('events.teams.add');
-    Route::delete('/events/{board}/teams/{team}', [BoardController::class, 'removeTeam'])->name('events.teams.remove');
+    Route::get('/events/{event}/teams', [BoardController::class, 'teamsIndex'])->name('events.teams.index');
+    Route::post('/events/{event}/teams', [BoardController::class, 'addTeam'])->name('events.teams.add');
+    Route::delete('/events/{event}/teams/{team}', [BoardController::class, 'removeTeam'])->name('events.teams.remove');
     Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
     Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
 
