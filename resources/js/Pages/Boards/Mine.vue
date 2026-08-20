@@ -81,7 +81,9 @@
                             </div>
                         </div>
 
-                        <div class="w-full lg:w-64 shrink-0">
+                        <!-- Capped when it stacks: below lg this sat full width,
+                             which turned a 9x9 grid into most of the screen. -->
+                        <div class="w-full max-w-64 mx-auto lg:mx-0 lg:w-64 shrink-0">
                             <board-preview
                                 :size="entry.preview.size"
                                 :special-tiles="entry.preview.specialTiles"

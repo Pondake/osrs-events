@@ -6,9 +6,23 @@
              above the page rather than inside it so it shows everywhere,
              and server-side (no client-only) so it's in the served HTML. -->
         <div v-if="announcement && showSiteChrome" class="border-b border-default" :class="bannerClass">
-            <div class="max-w-7xl mx-auto px-4 py-2 flex items-start gap-2 text-sm">
-                <u-icon :name="bannerStyle.icon" class="size-4 shrink-0 mt-0.5" :class="bannerIconClass" />
-                <p class="text-highlighted"><rich-text :text="announcement" /></p>
+            <!-- Same container as u-header and every page body: Nuxt UI's own
+                 --ui-container token with its padding scale. It previously used
+                 max-w-7xl + px-4 and so sat 8px left of the header wordmark and
+                 the page heading, drifting further at sm/lg where the others
+                 step up to 24/32px. Matching the token makes them line up by
+                 construction instead of by a guess that happens to agree. -->
+            <div class="w-full max-w-(--ui-container) mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                <!-- The icon sits INSIDE the paragraph, not beside it in a flex
+                     row. As a sibling it anchored to the text block's left edge,
+                     which on any width where the copy fills the line meant it
+                     drifted away from the words it belongs to. Inline, it is the
+                     first thing on the first line at every width, and wraps with
+                     the sentence. -->
+                <p class="text-sm text-center text-highlighted max-w-3xl mx-auto">
+                    <u-icon :name="bannerStyle.icon" class="size-4 inline-block align-[-3px] me-1.5" :class="bannerIconClass" />
+                    <rich-text :text="announcement" />
+                </p>
             </div>
         </div>
 
