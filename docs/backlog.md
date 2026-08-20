@@ -454,17 +454,21 @@ branch's SSR evaluation. Concrete carry-over work:
   8.14:1 light, 10.17:1 dark. Darkening the fill to amber-700 was the
   alternative (5.05:1 with white text) but it turns the gold brown — the
   brand colour is worth keeping, the white text isn't.
-- [ ] **`text-primary` on light backgrounds** — same root cause, different
-  surface, still open. Amber-500 as *text* on a light background is also
-  2.15:1, and `text-primary` is used in ~7 spots (`AppFooter` link hover,
-  `DiceRoller`'s roll number, `About`'s icon, leaderboard rank numbers in
-  `Leaderboard.vue` and `BoardShow.vue`), plus the 57 non-solid button
-  usages (`soft`/`ghost`/`link`/`subtle`) which all render `text-{color}`.
-  No clean fix without a trade-off, because `--ui-primary` drives both fill
-  and text: bumping light mode to amber-700 makes text pass at 5.05:1 but
-  browns every soft/outline button too. The real answer is splitting brand
-  *fill* from brand *text* into two tokens. Needs a design call — don't
-  silently change it.
+- [x] ~~**`text-primary` on light backgrounds**~~ — done 2026-08-20, with the
+  two-token split this entry called for. Measured in the browser rather than
+  estimated: amber-500 as text is **2.13:1** on white and 1.96:1 on a light
+  panel; dark mode already scored **10.15:1**, so only light mode was wrong.
+  Across the amber ramp on white — 400: 1.72, 500: 2.13, 600: 3.20,
+  **700: 5.03**, 800: 7.09 — amber-700 is the first shade clearing 4.5:1.
+  amber-600 clears only the 3:1 large-text/UI floor, so it was not enough.
+  Fill and text are now separate: `bg-primary` keeps amber-500, and
+  `html:not(.dark) .text-primary` resolves to amber-700 (`resources/css/app.css`).
+  The trade-off this entry warned about is resolved in the same direction
+  `ui.config.ts` already took for solid buttons — move the ink, keep the gold.
+  Soft/ghost/link/subtle buttons are deliberately included: their labels are
+  text and had the same problem. Solid buttons set their own ink and are
+  untouched.
+
 - [x] ~~**Wordmark font**~~ — done 2026-08-20, self-hosted from RuneStar as
   specified (`public/fonts/`, `--font-osrs-game`, `.osrs-game-font` pinning
   24px with smoothing off since the face is drawn at 12px). **Not applied:**
