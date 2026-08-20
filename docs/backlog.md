@@ -788,6 +788,14 @@ sub-pages which aren't discoverable from it.
   10 events, zero orphans, 25 routes returning 200, and a tile completion
   still writing through the chain afterwards.
 
+  **The shared uuid has a sharp edge, found by the infra scan afterwards.**
+  Because migrated events and their boards share an id, code that compares a
+  board id against an event id *passes on every existing row* and only breaks
+  on an event created after the split. One such check had already slipped in
+  (tile ownership in `TileController::destroy`). When touching anything that
+  compares ids across the two tables, assume the equality is a coincidence
+  and check which one you actually mean.
+
   **Still saying "board" and worth a separate mechanical pass:** the models
   `BoardAuthor`/`BoardTeam`/`BoardInvite`/`BoardAccess` and their tables now
   carry `event_id` while still being named for boards, and the Vue pages
@@ -947,6 +955,39 @@ every new user sees.
   plain-HTTP local dev server, but would silently ship session/XSRF cookies
   over HTTP on a real deployment if nobody thought to set it explicitly.
   Now documented in `.env.example` with a comment explaining why it matters.
+
+## Infra scan, 2026-08-20
+
+Run after the events split. Recorded so the next one has a baseline rather
+than starting from scratch.
+
+Clean: 23 migrations all applied with none pending; zero orphans across ten
+referential checks (boards/events, tiles, player_boards and all four
+satellites); no event without a type or title; dev database, `public/hot`,
+`public/build`, `bootstrap/ssr` and `stale/` all correctly gitignored;
+`composer audit` clean; `pnpm audit` one low-severity advisory only;
+`/dev-login` correctly gated on `app()->environment('local')`.
+
+Fixed during the scan:
+- `APP_NAME` was still `Laravel` in both `.env` and `.env.example`. It leaks
+  into mail sender names and anything reading `config('app.name')`.
+- **Three bugs the Board→Event sweep left behind**, none of which a build or
+  a page load would have caught: `tiles` has no `event_id` column so the tile
+  upsert identified nothing; `board_teams` lost its delete filter the same
+  way; and the teams endpoint still called a relation that had moved. All
+  three were on POST/DELETE paths, which is why the earlier "25 routes return
+  200" sweep missed them — **exercise mutations, not just GETs**.
+- 23 hardcoded English flash strings wired to `lang/en.json`, against
+  CLAUDE.md's rule. Most of the keys already existed and had never been used.
+
+Worth keeping as a habit:
+- A translation-key audit (referenced-but-missing vs defined-but-unused)
+  catches the raw-key class of bug. Note that "unused" is a loose upper
+  bound — keys built at runtime (`admin.invite_status_${x}`) look unused.
+- Measuring rendered output means the **live DOM or an SSR render**, not a
+  `fetch()` of the HTML: locally `public/hot` means the served document has
+  an empty `#app`, so scanning it proves nothing. That mistake was made
+  twice in one day before it was spotted.
 
 ## Content review before launch (step 8)
 
