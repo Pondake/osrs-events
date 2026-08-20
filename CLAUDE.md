@@ -96,6 +96,13 @@ Do not extract prematurely. Inline logic is fine for small-to-medium components.
   `tile_editor.*`, `admin.*`, `profile.*`, `dice.*`, `validation.*`, `leaderboard.*`,
   `teams.*`, `errors.*`, `about.*`, `privacy.*`, `terms.*`, `donate.*`, `seo.*`, `landing.*`.
 - Add the key **at the same time** as writing the component — never leave translation as a follow-up task.
+- **One exception to "flat JSON only": `lang/en/validation.php`.** Laravel resolves
+  the `:attribute` placeholder in validation messages through the PHP loader as
+  `validation.attributes.<field>`, and never consults `lang/en.json` for it — so a
+  JSON key of that name is silently ignored and the message falls back to the
+  humanized column name ("The osrs username field is required"). Field-name
+  overrides therefore have to live in that PHP file. Everything else stays in
+  `lang/en.json`.
 - Longer-term direction (not yet built): most of this copy will eventually move to
   backend-editable content instead of static JSON, with a small set of stationary
   exceptions (account/auth strings, button labels, validation messages) staying in

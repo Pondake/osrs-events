@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Rules\OsrsUsername;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -57,13 +58,14 @@ class ProfileController extends Controller
     public function updateOsrsUsername(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            // Jagex allows letters, digits, spaces, underscores and hyphens,
-            // up to 12 characters. Validating here means a name that cannot
-            // exist never reaches the hiscores lookup as a 404.
-            'osrs_username' => ['nullable', 'string', 'max:12', 'regex:/^[a-zA-Z0-9 _-]+$/'],
+            // Required rather than nullable: every account has one by the
+            // time it gets here (RequireOsrsUsername sees to that), so
+            // allowing a blank would let someone quietly undo it and drop
+            // out of every race they had entered.
+            'osrs_username' => ['required', 'string', new OsrsUsername],
         ]);
 
-        $request->user()->update(['osrs_username' => trim($data['osrs_username'] ?? '') ?: null]);
+        $request->user()->update(['osrs_username' => trim($data['osrs_username'])]);
 
         return back()->with('board-save', trans('profile.osrs_username_saved'));
     }

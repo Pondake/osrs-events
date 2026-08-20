@@ -31,9 +31,21 @@
                         <span>{{ formatDate(board.start_date) }} – {{ formatDate(board.end_date) }}</span>
                     </div>
 
-                    <div class="flex items-center gap-2 text-sm text-muted">
+                    <!-- Grid size and dice limit live on the BOARD, and not
+                         every event type has one. Rendered unconditionally
+                         this crashed the whole hub the moment a boardless
+                         event appeared in it: size was null, and $t calls
+                         toString() on whatever it is given to substitute. -->
+                    <div v-if="board.size" class="flex items-center gap-2 text-sm text-muted">
                         <u-icon name="i-lucide-grid-3x3" class="size-4" />
                         <span>{{ $t('boards.size', { size: formatBoardSize(board.size) }) }}</span>
+                    </div>
+
+                    <!-- What a metric event races on, in the slot the grid
+                         size would otherwise occupy. -->
+                    <div v-else-if="board.metric" class="flex items-center gap-2 text-sm text-muted">
+                        <u-icon name="i-lucide-trophy" class="size-4" />
+                        <span>{{ $t('events.ranked_by', { skill: $t(`skills.${board.metric}`) }) }}</span>
                     </div>
 
                     <div v-if="board.dice_roll_limit" class="flex items-center gap-2 text-sm text-muted">
@@ -70,7 +82,14 @@
             </template>
 
             <template #footer>
-                <u-button variant="ghost" color="primary" trailing-icon="i-lucide-arrow-right" size="sm" :label="$t('boards.play')" />
+                <!-- A skill race isn't played; it's watched. -->
+                <u-button
+                    variant="ghost"
+                    color="primary"
+                    trailing-icon="i-lucide-arrow-right"
+                    size="sm"
+                    :label="board.size ? $t('boards.play') : $t('events.view_standings')"
+                />
             </template>
         </u-page-card>
     </Link>

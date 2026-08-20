@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\OsrsUsernameController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BoardController;
@@ -103,24 +104,32 @@ Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
 Route::get('/events', [BoardController::class, 'index'])->name('events.index');
 Route::get('/events/all', [BoardController::class, 'all'])->name('events.all');
 Route::get('/my-events', [BoardController::class, 'mine'])
-    ->middleware('auth')
+    ->middleware(['auth', 'require-osrs-username'])
     ->name('events.mine');
 Route::get('/events/{event}', [BoardController::class, 'show'])
-    ->middleware('auth')
+    ->middleware(['auth', 'require-osrs-username'])
     ->name('events.show');
 Route::get('/events/{event}/leaderboard', [LeaderboardController::class, 'show'])
-    ->middleware('auth')
+    ->middleware(['auth', 'require-osrs-username'])
     ->name('events.leaderboard');
 
 // Server-sent events, not a normal endpoint: it holds a PHP worker open for
 // ~45 seconds per connected viewer. See SkillRaceController for why SSE over
 // WebSockets and what that costs to run.
 Route::get('/events/{event}/standings/stream', [SkillRaceController::class, 'stream'])
-    ->middleware('auth')
+    ->middleware(['auth', 'require-osrs-username'])
     ->name('events.standings.stream');
 Route::get('/events/{event}/join/{token}', [BoardController::class, 'joinByLink'])->name('events.join-link');
 
+// The one thing a logged-in account is allowed to do before it has an OSRS
+// username — everything else in the group below redirects here until it does.
+// See RequireOsrsUsername for why Discord logins can't be asked any earlier.
 Route::middleware('auth')->group(function () {
+    Route::get('/welcome/osrs-username', [OsrsUsernameController::class, 'create'])->name('osrs.create');
+    Route::post('/welcome/osrs-username', [OsrsUsernameController::class, 'store'])->name('osrs.store');
+});
+
+Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/events', [BoardController::class, 'store'])->name('events.store');
     Route::patch('/events/{event}', [BoardController::class, 'update'])->name('events.update');
     Route::delete('/events/{event}', [BoardController::class, 'destroy'])->name('events.destroy');

@@ -5,6 +5,11 @@ OSRS tasks, players roll a daily d6 and work their way across it, and snakes
 and ladders make the standings move. Discord login, or an email account if you
 prefer.
 
+Every account carries an **OSRS username**. It is asked for at signup, and any
+account without one (a Discord login, or anything created before the field
+existed) is sent to a one-field page before it can do anything else — XP is
+read from the hiscores, and the hiscores are keyed by account name.
+
 Snakes & Ladders is the first **event type**. Skill races ("Skill of the
 Month" — one skill, one month, most XP gained wins) are the second, with a
 leaderboard that updates itself. Bingo and drop races are on the roadmap,

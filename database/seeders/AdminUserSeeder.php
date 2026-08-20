@@ -18,6 +18,17 @@ use Illuminate\Database\Seeder;
  */
 class AdminUserSeeder extends Seeder
 {
+    /**
+     * The project owner's OSRS account. Hardcoded rather than read from .env
+     * because it is a fact about who owns this project, not a per-deployment
+     * setting — the same name the Ko-fi link points at.
+     *
+     * It matters that the seeded admin has one at all: every account needs an
+     * OSRS username now (RequireOsrsUsername), so an admin seeded without one
+     * would land on the gate page instead of the admin area.
+     */
+    public const OWNER_OSRS_USERNAME = 'Pondake';
+
     public function run(): void
     {
         $username = env('ADMIN_USER');
@@ -38,7 +49,11 @@ class AdminUserSeeder extends Seeder
         // DatabaseSeeder's prototype_player ('000000000000000001').
         $user = User::updateOrCreate(
             ['discord_id' => 'local-admin-seed'],
-            ['discord_username' => $username, 'avatar_url' => null],
+            [
+                'discord_username' => $username,
+                'avatar_url' => null,
+                'osrs_username' => self::OWNER_OSRS_USERNAME,
+            ],
         );
 
         UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $adminRole->id]);
