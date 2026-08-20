@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings\Admin;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -73,7 +73,7 @@ class InviteController extends Controller
                 ->all(),
         ];
 
-        return Inertia::render('Settings/Admin/Invites', [
+        return Inertia::render('Admin/Invites', [
             'invites' => $invites->through(fn (BoardInvite $invite) => [
                 'id' => $invite->id,
                 'label' => $invite->label,

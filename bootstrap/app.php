@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use App\Http\Middleware\EnsureCanAccessAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -15,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             HandleInertiaRequests::class,
+        ]);
+
+        // Gate for the whole /admin group — see EnsureCanAccessAdmin for why
+        // the controllers still check individually on top of it.
+        $middleware->alias([
+            'can-access-admin' => EnsureCanAccessAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

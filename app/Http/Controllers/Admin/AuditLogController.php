@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings\Admin;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -70,7 +70,7 @@ class AuditLogController extends Controller
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
-        return Inertia::render('Settings/Admin/Audit', [
+        return Inertia::render('Admin/Audit', [
             'logs' => $logs,
             'actions' => AuditLog::ACTIONS,
             'users' => $this->userOptions(),

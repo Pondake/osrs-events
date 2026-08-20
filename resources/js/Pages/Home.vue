@@ -71,7 +71,7 @@ const guideLinks = [
 ];
 
 const adminLinks = [
-    { label: trans('nav.admin_boards'), to: '/settings/admin/boards', icon: 'i-lucide-settings', color: 'primary', variant: 'outline' },
-    { label: trans('home.admin_manage_tasks'), to: '/settings/admin/tasks', icon: 'i-lucide-list-checks', color: 'neutral', variant: 'outline' },
+    { label: trans('nav.admin_boards'), to: '/admin/boards', icon: 'i-lucide-settings', color: 'primary', variant: 'outline' },
+    { label: trans('home.admin_manage_tasks'), to: '/admin/tasks', icon: 'i-lucide-list-checks', color: 'neutral', variant: 'outline' },
 ];
 </script>

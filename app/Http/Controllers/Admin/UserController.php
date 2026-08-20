@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings\Admin;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -38,7 +38,7 @@ class UserController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return Inertia::render('Settings/Admin/Users', [
+        return Inertia::render('Admin/Users', [
             'users' => $users,
             'search' => $request->string('search')->toString(),
             'permissionKeys' => self::PERMISSION_KEYS,

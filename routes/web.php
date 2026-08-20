@@ -1,12 +1,13 @@
 <?php
 
-use App\Http\Controllers\Settings\Admin\AuditLogController;
-use App\Http\Controllers\Settings\Admin\BoardController as AdminBoardController;
-use App\Http\Controllers\Settings\Admin\ContentController;
-use App\Http\Controllers\Settings\Admin\InviteController;
-use App\Http\Controllers\Settings\Admin\SiteSettingsController;
-use App\Http\Controllers\Settings\Admin\TaskController as AdminTaskController;
-use App\Http\Controllers\Settings\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\BoardController as AdminBoardController;
+use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\InviteController;
+use App\Http\Controllers\Admin\SiteSettingsController;
+use App\Http\Controllers\Admin\TaskController as AdminTaskController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -165,19 +166,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember'])->name('teams.members.remove');
     Route::get('/teams/{team}/users/search', [TeamController::class, 'searchUsers'])->name('teams.users.search');
 
-    // Everything admin now lives under /settings/admin (see below); these
-    // three were top-level nav items until then, so they redirect rather
-    // than 404 for anyone with an old link or bookmark.
-    Route::prefix('admin')->group(function () {
-        Route::redirect('/users', '/settings/admin/users');
-        Route::redirect('/boards', '/settings/admin/boards');
-        Route::redirect('/tasks', '/settings/admin/tasks');
-    });
+    // The whole admin area, behind one middleware rather than a check
+    // repeated on every route. Controllers still re-check individually —
+    // see EnsureCanAccessAdmin for why that isn't redundant.
+    Route::prefix('admin')->name('admin.')->middleware('can-access-admin')->group(function () {
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Admin-only settings, rendered in the same SettingsLayout shell as the
-    // personal ones. Every action re-checks isAdmin() in the controller;
-    // the sidebar only hides the group, it isn't the authorization.
-    Route::prefix('settings/admin')->name('settings.admin.')->group(function () {
         Route::get('/users', [AdminUserController::class, 'index'])->name('users');
         Route::post('/users/{user}/roles', [AdminUserController::class, 'assignRole'])->name('users.roles.assign');
         Route::delete('/users/{user}/roles/{role}', [AdminUserController::class, 'removeRole'])->name('users.roles.remove');
@@ -189,8 +183,8 @@ Route::middleware('auth')->group(function () {
 
         // Tasks is gated on canCreateTiles, not isAdmin (see
         // Admin\TaskController) — an EDITOR reaches this without being an
-        // admin, which is why SettingsLayout filters its sidebar per item
-        // rather than hiding the whole Administration group behind isAdmin.
+        // admin, which is why the sidebar filters per item rather than
+        // hiding everything behind isAdmin.
         Route::get('/tasks', [AdminTaskController::class, 'index'])->name('tasks');
         Route::post('/tasks', [AdminTaskController::class, 'store'])->name('tasks.store');
         Route::patch('/tasks/{task}', [AdminTaskController::class, 'update'])->name('tasks.update');
@@ -201,12 +195,18 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/content', [ContentController::class, 'index'])->name('content');
 
-        // Read-only by design — see AuditLogController.
-        Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
-
         Route::get('/invites', [InviteController::class, 'index'])->name('invites');
         Route::delete('/invites/{invite}', [InviteController::class, 'destroy'])->name('invites.destroy');
+
+        // Read-only by design — see AuditLogController.
+        Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
     });
+
+    // Admin lived under /settings/admin until 2026-08-20. Redirects rather
+    // than 404s, since these were linked from the settings sidebar and are
+    // plausibly bookmarked.
+    Route::redirect('/settings/admin', '/admin');
+    Route::redirect('/settings/admin/{path}', '/admin/{path}')->where('path', '.*');
 });
 
 // Local-only: logs in as a seeded user without a real Discord round-trip,

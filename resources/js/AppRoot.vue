@@ -1,11 +1,11 @@
 <template>
     <u-app>
-        <app-header />
+        <app-header v-if="showSiteChrome" />
 
         <!-- Site-wide announcement, set in admin site settings. Rendered
              above the page rather than inside it so it shows everywhere,
              and server-side (no client-only) so it's in the served HTML. -->
-        <div v-if="announcement" class="border-b border-default" :class="bannerClass">
+        <div v-if="announcement && showSiteChrome" class="border-b border-default" :class="bannerClass">
             <div class="max-w-7xl mx-auto px-4 py-2 flex items-start gap-2 text-sm">
                 <u-icon :name="bannerStyle.icon" class="size-4 shrink-0 mt-0.5" :class="bannerIconClass" />
                 <p class="text-highlighted"><rich-text :text="announcement" /></p>
@@ -13,7 +13,7 @@
         </div>
 
         <component :is="page" v-bind="pageProps" />
-        <app-footer />
+        <app-footer v-if="showSiteChrome" />
 
         <!-- Lives here rather than on any one page because it has to be able
              to appear wherever a new user first lands. ClientOnly for the
@@ -95,10 +95,13 @@ watch(
     },
 );
 
-// Local ref seeded from the shared prop rather than bound straight to it:
-// the modal writes to this on close, and the server prop only flips after
-// /onboarding/complete round-trips. Without the local copy the modal would
-// stay open until that response landed.
+// The admin area brings its own full-height shell (AdminLayout's dashboard
+// sidebar + navbar), so the site header, footer and announcement banner would
+// sit on top of it rather than around it. Keyed on the Inertia component name
+// because that is the one thing AppRoot reliably knows about the page it is
+// rendering — it has no access to the page component's own options.
+const showSiteChrome = computed(() => !String(inertiaPage.component ?? '').startsWith('Admin/'));
+
 const announcement = computed(() => inertiaPage.props?.site?.announcement ?? null);
 const bannerStyle = computed(() => styleFor(inertiaPage.props?.site?.announcementType));
 
@@ -120,6 +123,10 @@ const BANNER_ICON = {
 const bannerClass = computed(() => BANNER_BG[bannerStyle.value.color]);
 const bannerIconClass = computed(() => BANNER_ICON[bannerStyle.value.color]);
 
+// Local ref seeded from the shared prop rather than bound straight to it:
+// the modal writes to this on close, and the server prop only flips after
+// /onboarding/complete round-trips. Without the local copy the modal would
+// stay open until that response landed.
 const showOnboarding = ref(false);
 const needsOnboarding = computed(() => inertiaPage.props?.auth?.user?.needsOnboarding ?? false);
 

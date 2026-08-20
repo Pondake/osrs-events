@@ -212,7 +212,7 @@ const guideChildren = () => [
  *   are the thing you come back for. That page didn't exist before; your
  *   own boards were buried in profile settings.
  *
- * Admin entries stay out of both — they live under /settings/admin,
+ * Admin entries stay out of both — they live under /admin,
  * reachable from the settings sidebar and the user menu. This nav is for
  * playing, not administering.
  */

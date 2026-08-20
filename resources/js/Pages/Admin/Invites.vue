@@ -1,11 +1,7 @@
 <template>
     <Head :title="$t('settings.nav_admin_invites')" />
 
-    <settings-layout current="admin-invites">
-        <div>
-            <h2 class="text-xl font-semibold text-highlighted">{{ $t('settings.nav_admin_invites') }}</h2>
-            <p class="text-sm text-muted mt-0.5">{{ $t('admin.invites_subtitle') }}</p>
-        </div>
+    <admin-layout current="invites" :title="$t('settings.nav_admin_invites')" :description="$t('admin.invites_subtitle')">
 
         <!-- Counts are for the whole table, not the filtered page, so they
              stay a fixed reference while you narrow. Clicking one filters. -->
@@ -194,13 +190,13 @@
                 </template>
             </u-modal>
         </client-only>
-    </settings-layout>
+    </admin-layout>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
-import SettingsLayout from '@/Components/SettingsLayout.vue';
+import AdminLayout from '@/Components/AdminLayout.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import FilterClear from '@/Components/FilterClear.vue';
 import { formatDate, inviteStatusLabel, inviteStatusOptions, inviteStyleFor, usageLabel } from '@/Support/invite';
@@ -255,7 +251,7 @@ watch([search, status, board, creator], () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
         router.get(
-            '/settings/admin/invites',
+            '/admin/invites',
             {
                 search: search.value || undefined,
                 status: status.value || undefined,
@@ -286,7 +282,7 @@ function revoke() {
     const id = revokeTarget.value?.id;
     revoking.value = false;
 
-    router.delete(`/settings/admin/invites/${id}`, {
+    router.delete(`/admin/invites/${id}`, {
         preserveScroll: true,
         onError: (errors) => {
             console.error(errors);

@@ -1,12 +1,8 @@
 <template>
     <Head :title="$t('settings.nav_admin_users')" />
 
-    <settings-layout current="admin-users">
-        <div class="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-                <h2 class="text-xl font-semibold text-highlighted">{{ $t('settings.nav_admin_users') }}</h2>
-                <p class="text-sm text-muted mt-0.5">{{ $t('admin.users_subtitle') }}</p>
-            </div>
+    <admin-layout current="users" :title="$t('settings.nav_admin_users')" :description="$t('admin.users_subtitle')">
+        <template #actions>
             <u-input
                 v-model="search"
                 :placeholder="$t('admin.search_users_placeholder')"
@@ -14,7 +10,7 @@
                 class="w-full sm:w-64"
                 @update:model-value="doSearch"
             />
-        </div>
+        </template>
 
         <div class="divide-y divide-default rounded-lg ring ring-default bg-default">
             <div v-for="u in users" :key="u.id" class="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
@@ -67,7 +63,7 @@
                 </template>
             </u-modal>
         </client-only>
-    </settings-layout>
+    </admin-layout>
 </template>
 
 <script setup>
@@ -75,7 +71,7 @@ import { ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
-import SettingsLayout from '@/Components/SettingsLayout.vue';
+import AdminLayout from '@/Components/AdminLayout.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
 const props = defineProps({
@@ -99,7 +95,7 @@ const displayName = (u) => u.nickname ?? u.discord_username ?? u.email;
 const search = ref(props.search);
 
 function doSearch(value) {
-    router.get('/settings/admin/users', { search: value }, { preserveState: true, replace: true });
+    router.get('/admin/users', { search: value }, { preserveState: true, replace: true });
 }
 
 /**
@@ -119,7 +115,7 @@ function menuFor(u) {
         groups.push(grantableRoles.map((role) => ({
             label: trans('admin.assign_role', { role }),
             icon: 'i-lucide-plus',
-            onSelect: () => router.post(`/settings/admin/users/${u.id}/roles`, { role }, { preserveScroll: true }),
+            onSelect: () => router.post(`/admin/users/${u.id}/roles`, { role }, { preserveScroll: true }),
         })));
     }
 
@@ -128,7 +124,7 @@ function menuFor(u) {
         groups.push(revocableRoles.map((ur) => ({
             label: trans('admin.remove_role', { role: ur.role.name }),
             icon: 'i-lucide-minus',
-            onSelect: () => router.delete(`/settings/admin/users/${u.id}/roles/${ur.role.id}`, { preserveScroll: true }),
+            onSelect: () => router.delete(`/admin/users/${u.id}/roles/${ur.role.id}`, { preserveScroll: true }),
         })));
     }
 
@@ -137,7 +133,7 @@ function menuFor(u) {
         groups.push(grantablePerms.map((key) => ({
             label: trans('admin.grant_permission', { key }),
             icon: 'i-lucide-key',
-            onSelect: () => router.post(`/settings/admin/users/${u.id}/permissions`, { permission_key: key }, { preserveScroll: true }),
+            onSelect: () => router.post(`/admin/users/${u.id}/permissions`, { permission_key: key }, { preserveScroll: true }),
         })));
     }
 
@@ -162,7 +158,7 @@ function confirmDelete(u) {
 }
 
 function destroyUser() {
-    router.delete(`/settings/admin/users/${deleteTarget.value.id}`, {
+    router.delete(`/admin/users/${deleteTarget.value.id}`, {
         preserveScroll: true,
         onFinish: () => {
             showDeleteModal.value = false;

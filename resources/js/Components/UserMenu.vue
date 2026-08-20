@@ -22,7 +22,12 @@ import { router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 
-const { user, isAuthenticated } = useAuth();
+const { user, isAuthenticated, isAdmin, canCreateTiles } = useAuth();
+
+// Same gate as the /admin middleware — an EDITOR with canCreateTiles gets
+// in for the Tasks page alone. The link only mirrors that; the server is
+// what actually enforces it.
+const canReachAdmin = computed(() => isAdmin.value || canCreateTiles.value);
 
 const items = computed(() => [
     [{ label: user.value?.nickname ?? user.value?.discordUsername, disabled: true }],
@@ -30,6 +35,9 @@ const items = computed(() => [
         { label: trans('settings.nav_profile'), icon: 'i-lucide-user-circle', to: '/settings/profile' },
         { label: trans('settings.nav_account'), icon: 'i-lucide-shield', to: '/settings/account' },
     ],
+    ...(canReachAdmin.value
+        ? [[{ label: trans('admin.nav_admin_area'), icon: 'i-lucide-layout-dashboard', to: '/admin' }]]
+        : []),
     [{ label: trans('common.logout'), icon: 'i-lucide-log-out', color: 'error', onSelect: logout }],
 ]);
 

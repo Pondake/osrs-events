@@ -47,9 +47,9 @@ watch(
 
 function submit() {
     if (isEdit.value) {
-        form.patch(`/settings/admin/tasks/${props.task.id}`, { onSuccess: () => (isOpen.value = false) });
+        form.patch(`/admin/tasks/${props.task.id}`, { onSuccess: () => (isOpen.value = false) });
     } else {
-        form.post('/settings/admin/tasks', { onSuccess: () => (isOpen.value = false) });
+        form.post('/admin/tasks', { onSuccess: () => (isOpen.value = false) });
     }
 }
 </script>

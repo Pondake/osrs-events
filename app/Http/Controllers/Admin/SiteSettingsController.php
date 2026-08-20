@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings\Admin;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -27,7 +27,7 @@ class SiteSettingsController extends Controller
     {
         abort_unless(Auth::user()->isAdmin(), 403);
 
-        return Inertia::render('Settings/Admin/Site', [
+        return Inertia::render('Admin/Site', [
             'settings' => Setting::cached(),
         ]);
     }
