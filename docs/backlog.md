@@ -1,9 +1,16 @@
 # Backlog
 
 Living priority list for the `experiment/laravel-stack` branch. This is not a
-changelog — when an item is done, **delete it from this file** rather than
-checking it off. `docs/PROGRESS.md` and `docs/ROADMAP.md` are the historical
-record of the old NestJS/Nuxt stack; this file is only what's left to do.
+changelog — finished items eventually get **deleted** from this file rather
+than living on as history. `docs/PROGRESS.md` and `docs/ROADMAP.md` are the
+historical record of the old NestJS/Nuxt stack; this file is only what's
+left to do.
+
+**Two-step done, though** (set 2026-08-20): mark a finished item `[x]` with
+a note on what was built, and leave it in place. Only delete it once the
+project owner has actually verified it — "I built it" is not the same claim
+as "it works", and a `[x]` line is the record of the first while the second
+is still pending. Don't clear `[x]` items out on your own initiative.
 
 Roadmap, in order:
 
@@ -505,6 +512,20 @@ branch's SSR evaluation. Concrete carry-over work:
      unused/expired) is a natural admin page.
 - [ ] Design what "admin functionality" beyond the above needs to cover —
   still worth a real requirements pass rather than guessing further.
+- [ ] **Decide: keep the homegrown roles/permissions, or move to
+  `spatie/laravel-permission`?** Still open — it was raised alongside the
+  onboarding work ("moet via spatie/roles") but is a standalone call, so
+  it's tracked here rather than buried under a finished onboarding step.
+  Current state: hand-rolled and working — `Role`/`UserRole`/
+  `UserPermission` models, `User::hasRole()`/`hasPermission()`/`isAdmin()`,
+  and `canCreateBoards`/`canCreateTiles` gates across the controllers.
+  For spatie: real Gate/Policy integration (`@can`, `authorize()`) instead
+  of hand-written `abort_unless` everywhere, caching, and Filament assumes
+  it if that CMS prototype ever happens.
+  Against: it's a working system with no current pain, the migration
+  touches every authorization call site, and the tables would need
+  converting (spatie keys on a `model_has_roles` morph, not our
+  `user_roles`). Not a side-effect refactor — decide it deliberately.
 - [ ] **CMS / page layout editor** (roadmap Phase 6). The goal, as scoped
   2026-08-20: edit every public page from the admin section through a
   layout editor that composes pages out of Nuxt UI page elements
@@ -553,16 +574,32 @@ every new user sees.
   `landing.*` pages (`OsrsClanEvents.vue`, `OsrsEventIdeas.vue`) don't have
   an equivalent visual yet — same treatment (a relevant demo screenshot per
   page) would close this out fully.
-- [ ] **First-run onboarding modal** — a guided step-by-step flow for
-  setting up your first board, shown to new users (or reachable from a
-  persistent "help me get started" entry point). Two-column layout: a form
-  driving the current step on one side, a **live graphical preview** on the
-  other that updates as fields are filled in — e.g. a board mock-up that
-  visually assembles itself as size/mode/theme fields are set. Evaluate
-  Lottie for the animated piece vs. something driven directly off form
-  state (SVG/Canvas reacting to input) — the latter is probably more
-  honest for "shows what you're actually building" rather than a canned
-  animation, but worth comparing effort/fidelity before committing.
+- [x] ~~**First-run onboarding modal**~~ — done.
+  `Components/OnboardingModal.vue`, mounted in `AppRoot.vue` (not on any one
+  page — it has to be able to appear wherever a new user first lands) and
+  auto-opened off a `needsOnboarding` flag shared by
+  `HandleInertiaRequests`. Backed by a new nullable
+  `users.onboarding_completed_at` (timestamp, not a boolean — it answers
+  "have they?" as well as "when?", leaving room to re-run the flow after a
+  big product change); existing users were backfilled to `now()` in the
+  migration so nobody gets a first-run tour after weeks of use.
+  Three steps in a `u-stepper`, two-column throughout: step content left,
+  live preview right. **Lottie was not used** — the preview is
+  `Components/BoardPreview.vue`, rendering the same boustrophedon layout and
+  the same `.board-tile--*` classes the real board uses, driven straight off
+  form state. That answers the item's own open question: a canned animation
+  would have shown *a* board, this shows *the* board being configured
+  (verified: switching 7×7 → 9×9 re-renders the grid live).
+  Skippable at every step ("Skip for now"), and replayable afterwards from
+  `/settings/profile` (`POST /onboarding/reset`).
+  Step 2 posts to the existing `POST /boards` — a shortcut into the real
+  create flow, not a parallel implementation, so the controller's rules
+  apply unchanged. Without `canCreateBoards` it shows an explanation
+  instead of a form that would only 403 on submit (verified with a
+  PLAYER-only account).
+  **Not done**: the "theme fields" the original item mentioned — boards have
+  no theme/colour concept at all, so there was nothing to preview. Worth
+  revisiting only if board theming ever becomes a feature.
 - [x] ~~**Auth** — email/password path with no Discord account required~~ —
   done. `RegisteredUserController`/`AuthenticatedSessionController`
   (`/register`, `/login`), `Pages/Auth/{Register,Login}.vue`. Discord OAuth
@@ -603,31 +640,17 @@ every new user sees.
   admin/search views (`Admin/Users/Index.vue`, `BoardSettingsModal.vue`)
   assumed `discord_username` always exists — fixed to fall back to
   `nickname`/`email` instead of rendering a bare "@".
-  2. **Roles & permissions explainer** — surface what role/permission the
-     new user has and what it unlocks. Note: role/permission enforcement
-     itself is **already implemented and working** (`Role`, `UserRole`,
-     `UserPermission` models; `User::hasRole()`/`hasPermission()`/
-     `isAdmin()`; gates like `canCreateBoards`/`canCreateTiles` throughout
-     the admin controllers — see `app/Models/User.php`). It's a hand-rolled
-     system, though, **not** `spatie/laravel-permission` — the "moet via
-     spatie/roles" ask needs a decision: keep the current homegrown tables
-     (they work, they're simple, no new dependency) or migrate to
-     `spatie/laravel-permission` for its policy/gate integration and
-     Filament compatibility (relevant if the Filament CMS prototype above
-     ever ships — it already assumes spatie). Don't silently swap the
-     underlying system as a side effect of building the onboarding UI;
-     decide this explicitly first, it's a real migration either way.
-  3. **First board creation** — the actual point of the flow, feeding the
-     live preview described above.
-  4. **RuneLite plugin teaser** — a small screen with mock screenshots
-     showing how a user would install/connect the plugin. `docs/runelite-plugin.md`
-     has the feasibility research; **the plugin itself does not exist yet**
-     (that doc is proof-of-concept notes from a different integration, not
-     a shipped osrs-events plugin). Build the teaser screen anyway with
-     placeholder/mocked screenshots — it's marketing for a real, scoped,
-     "days not months" roadmap item per that doc's effort estimate, not
-     vaporware, but be explicit in the UI copy that it's "coming soon"
-     rather than implying it's installable today.
+  2. ~~**Roles & permissions explainer**~~ — **done** as step 1 of the modal:
+     shows the user's role badges and spells out what they can and can't do,
+     reading live off the shared `auth.user` flags rather than a static list.
+  3. ~~**First board creation**~~ — **done** as step 2, feeding the live
+     preview.
+  4. ~~**RuneLite plugin teaser**~~ — **done** as step 3. The mock is drawn
+     in markup rather than shipped as an image file, specifically so it
+     can't be mistaken for a screenshot of something that exists — the
+     plugin doesn't (`docs/runelite-plugin.md` is feasibility research from
+     a *different* integration). Carries a "Coming soon" badge and an
+     explicit "Mock-up — the plugin hasn't been released yet" line.
 
 ## Security (step 4)
 
