@@ -25,6 +25,17 @@ use Illuminate\Support\Carbon;
  */
 class AuditLogSeeder extends Seeder
 {
+    // Fixed so the scope filter has stable options across re-runs. These
+    // don't point at real `teams` rows on purpose — the whole reason the
+    // labels are stored on the entry is that the team may be gone.
+    private const TEAM_IRON_FIST = '0192b000-0000-7000-8000-00000000000a';
+
+    private const TEAM_VANGUARD = '0192b000-0000-7000-8000-00000000000b';
+
+    private const TEAM_FREELANCE = '0192b000-0000-7000-8000-00000000000c';
+
+    private const GUILD_ID = '318972164434528769';
+
     public function run(): void
     {
         // Linked to a real user where one exists, so the "actor still exists"
@@ -109,6 +120,87 @@ class AuditLogSeeder extends Seeder
                 'metadata' => ['roles' => ['PLAYER', 'EDITOR']],
                 'minutes_ago' => 1500,
             ],
+            // Team- and clan-scoped entries. Two teams under one clan plus a
+            // third with no clan at all, so both filters have something with
+            // more than one row behind it and the "unguilded team" case is
+            // represented too.
+            [
+                'id' => '0192a000-0000-7000-8000-000000000010',
+                'action' => 'team.created',
+                'actor' => $admin,
+                'actor_label' => $adminLabel,
+                'target_type' => 'Team',
+                'target_label' => 'Iron Fist',
+                'team' => ['id' => self::TEAM_IRON_FIST, 'label' => 'Iron Fist', 'guild_id' => self::GUILD_ID, 'guild_label' => 'Lumbridge Legends'],
+                'minutes_ago' => 60,
+            ],
+            [
+                'id' => '0192a000-0000-7000-8000-000000000011',
+                'action' => 'team.member_added',
+                'actor' => $admin,
+                'actor_label' => $adminLabel,
+                'target_type' => 'User',
+                'target_label' => 'Woox',
+                'team' => ['id' => self::TEAM_IRON_FIST, 'label' => 'Iron Fist', 'guild_id' => self::GUILD_ID, 'guild_label' => 'Lumbridge Legends'],
+                'minutes_ago' => 52,
+            ],
+            [
+                'id' => '0192a000-0000-7000-8000-000000000012',
+                'action' => 'team.member_removed',
+                'actor' => $admin,
+                'actor_label' => $adminLabel,
+                'target_type' => 'User',
+                'target_label' => 'Durial321',
+                'team' => ['id' => self::TEAM_IRON_FIST, 'label' => 'Iron Fist', 'guild_id' => self::GUILD_ID, 'guild_label' => 'Lumbridge Legends'],
+                'minutes_ago' => 44,
+            ],
+            [
+                'id' => '0192a000-0000-7000-8000-000000000013',
+                'action' => 'team.updated',
+                'actor' => $admin,
+                'actor_label' => $adminLabel,
+                'target_type' => 'Team',
+                'target_label' => 'Varrock Vanguard',
+                'team' => ['id' => self::TEAM_VANGUARD, 'label' => 'Varrock Vanguard', 'guild_id' => self::GUILD_ID, 'guild_label' => 'Lumbridge Legends'],
+                'metadata' => [
+                    'name' => ['from' => 'Varrock Squad', 'to' => 'Varrock Vanguard'],
+                    'icon_url' => ['from' => null, 'to' => 'https://oldschool.runescape.wiki/images/Team_cape_zero.png'],
+                ],
+                'minutes_ago' => 220,
+            ],
+            [
+                'id' => '0192a000-0000-7000-8000-000000000014',
+                'action' => 'board.team_added',
+                'actor' => $admin,
+                'actor_label' => $adminLabel,
+                'target_type' => 'Board',
+                'target_label' => 'Weekend Warmup',
+                'team' => ['id' => self::TEAM_VANGUARD, 'label' => 'Varrock Vanguard', 'guild_id' => self::GUILD_ID, 'guild_label' => 'Lumbridge Legends'],
+                'minutes_ago' => 400,
+            ],
+            [
+                'id' => '0192a000-0000-7000-8000-000000000015',
+                'action' => 'board.team_removed',
+                'actor' => $admin,
+                'actor_label' => $adminLabel,
+                'target_type' => 'Board',
+                'target_label' => 'Weekend Warmup',
+                // No clan: teams can exist without a Discord guild, and the
+                // team filter has to work for those too.
+                'team' => ['id' => self::TEAM_FREELANCE, 'label' => 'Freelance Ironmen', 'guild_id' => null, 'guild_label' => null],
+                'minutes_ago' => 900,
+            ],
+            [
+                'id' => '0192a000-0000-7000-8000-000000000016',
+                'action' => 'team.deleted',
+                'actor' => $admin,
+                'actor_label' => $adminLabel,
+                'target_type' => 'Team',
+                'target_label' => 'Freelance Ironmen',
+                'team' => ['id' => self::TEAM_FREELANCE, 'label' => 'Freelance Ironmen', 'guild_id' => null, 'guild_label' => null],
+                'metadata' => ['members' => 6],
+                'minutes_ago' => 1100,
+            ],
             [
                 'id' => '0192a000-0000-7000-8000-000000000008',
                 // No metadata at all — the row still has to read properly.
@@ -146,6 +238,10 @@ class AuditLogSeeder extends Seeder
                 'target_type' => $entry['target_type'] ?? null,
                 'target_id' => null,
                 'target_label' => $entry['target_label'] ?? null,
+                'team_id' => $entry['team']['id'] ?? null,
+                'team_label' => $entry['team']['label'] ?? null,
+                'guild_id' => $entry['team']['guild_id'] ?? null,
+                'guild_label' => $entry['team']['guild_label'] ?? null,
                 'metadata' => $entry['metadata'] ?? null,
                 'ip_address' => array_key_exists('ip_address', $entry) ? $entry['ip_address'] : '127.0.0.1',
             ]);

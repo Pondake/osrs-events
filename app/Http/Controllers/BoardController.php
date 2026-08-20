@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Board;
 use App\Models\BoardAuthor;
 use App\Models\BoardTeam;
@@ -325,6 +326,10 @@ class BoardController extends Controller
             ['id' => (string) str()->uuid()],
         );
 
+        // Target is the board, scope is the team — so this shows up both
+        // under the board and when filtering the team's own clan.
+        AuditLog::record('board.team_added', $board, [], Team::find($data['team_id']));
+
         return back()->with('board-save', 'Team added to board.');
     }
 
@@ -334,6 +339,8 @@ class BoardController extends Controller
         abort_unless(Auth::user()->canEditBoard($board), 403);
 
         BoardTeam::where('board_id', $board->id)->where('team_id', $team->id)->delete();
+
+        AuditLog::record('board.team_removed', $board, [], $team);
 
         return back()->with('board-save', 'Team removed from board.');
     }

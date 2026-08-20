@@ -33,6 +33,10 @@ class AuditLog extends Model
         'target_type',
         'target_id',
         'target_label',
+        'team_id',
+        'team_label',
+        'guild_id',
+        'guild_label',
         'metadata',
         'ip_address',
     ];
@@ -62,6 +66,13 @@ class AuditLog extends Model
         'user.permission_granted',
         'user.permission_revoked',
         'user.deleted',
+        'team.created',
+        'team.updated',
+        'team.deleted',
+        'team.member_added',
+        'team.member_removed',
+        'board.team_added',
+        'board.team_removed',
         'task.deleted',
         'settings.updated',
     ];
@@ -77,11 +88,15 @@ class AuditLog extends Model
      * $target is the model acted upon, if any. Its label is resolved now,
      * while the record still exists — passing the model rather than an id is
      * what makes that possible, and is why deletions must call this BEFORE
-     * the delete, not after.
+     * the delete, not after. The same applies to $team.
+     *
+     * $team scopes the entry. The guild is read off it rather than passed
+     * separately: a team already carries the clan it belongs to, and letting
+     * callers supply the two independently invites rows where they disagree.
      *
      * @param  array<string, mixed>  $metadata
      */
-    public static function record(string $action, ?Model $target = null, array $metadata = []): void
+    public static function record(string $action, ?Model $target = null, array $metadata = [], ?Team $team = null): void
     {
         $actor = Auth::user();
 
@@ -95,6 +110,10 @@ class AuditLog extends Model
             'target_type' => $target ? class_basename($target) : null,
             'target_id' => $target?->getKey(),
             'target_label' => $target ? self::labelFor($target) : null,
+            'team_id' => $team?->id,
+            'team_label' => $team?->name,
+            'guild_id' => $team?->guild_id,
+            'guild_label' => $team?->guild_name,
             'metadata' => $metadata ?: null,
             'ip_address' => Request::ip(),
         ]);

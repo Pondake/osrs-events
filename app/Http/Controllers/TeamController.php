@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
@@ -52,6 +53,8 @@ class TeamController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
+        AuditLog::record('team.created', $team, [], $team);
+
         return back()->with('board-save', 'Team created.');
     }
 
@@ -66,7 +69,20 @@ class TeamController extends Controller
             'guild_name' => ['nullable', 'string'],
         ]);
 
+        // Diffed before the update so the entry says what changed, not what
+        // the form happened to submit — same reasoning as SiteSettingsController.
+        $changes = [];
+        foreach ($data as $key => $value) {
+            if ($team->{$key} !== $value) {
+                $changes[$key] = ['from' => $team->{$key}, 'to' => $value];
+            }
+        }
+
         $team->update($data);
+
+        if ($changes !== []) {
+            AuditLog::record('team.updated', $team, $changes, $team);
+        }
 
         return back()->with('board-save', 'Team updated.');
     }
@@ -74,6 +90,14 @@ class TeamController extends Controller
     public function destroy(Team $team): RedirectResponse
     {
         $this->authorizeManage($team);
+
+        // Before the delete — the team is its own scope here, so both the
+        // target label and the team/guild labels have to be read while it
+        // still exists.
+        AuditLog::record('team.deleted', $team, [
+            'members' => $team->members()->count(),
+        ], $team);
+
         $team->delete();
 
         return back()->with('board-save', 'Team deleted.');
@@ -89,6 +113,10 @@ class TeamController extends Controller
             'id' => (string) str()->uuid(),
         ]);
 
+        // Target is the member, scope is the team — the two dimensions the
+        // audit page filters on independently.
+        AuditLog::record('team.member_added', User::find($data['user_id']), [], $team);
+
         return back()->with('board-save', 'Member added.');
     }
 
@@ -97,6 +125,8 @@ class TeamController extends Controller
         $this->authorizeManage($team);
 
         TeamMember::where(['team_id' => $team->id, 'user_id' => $userId])->delete();
+
+        AuditLog::record('team.member_removed', User::find($userId), [], $team);
 
         return back()->with('board-save', 'Member removed.');
     }

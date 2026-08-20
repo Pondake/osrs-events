@@ -16,6 +16,13 @@ export const AUDIT_STYLES = {
     'user.permission_granted': { color: 'success', icon: 'i-lucide-key' },
     'user.permission_revoked': { color: 'warning', icon: 'i-lucide-key-round' },
     'user.deleted': { color: 'error', icon: 'i-lucide-user-x' },
+    'team.created': { color: 'success', icon: 'i-lucide-users-round' },
+    'team.updated': { color: 'neutral', icon: 'i-lucide-pencil' },
+    'team.deleted': { color: 'error', icon: 'i-lucide-users-round' },
+    'team.member_added': { color: 'success', icon: 'i-lucide-user-plus' },
+    'team.member_removed': { color: 'warning', icon: 'i-lucide-user-minus' },
+    'board.team_added': { color: 'success', icon: 'i-lucide-layout-grid' },
+    'board.team_removed': { color: 'warning', icon: 'i-lucide-layout-grid' },
     'task.deleted': { color: 'error', icon: 'i-lucide-trash-2' },
     'settings.updated': { color: 'neutral', icon: 'i-lucide-sliders-horizontal' },
 };
@@ -103,6 +110,19 @@ const FIELDS = {
     announcement_type: {
         label: 'audit.field_announcement_type',
         format: (value) => text(trans(`admin.site_announcement_type_${value}`)),
+    },
+    name: { label: 'audit.field_name', format: (value) => (value ? text(value) : empty()) },
+    icon_url: {
+        label: 'audit.field_icon_url',
+        // The URL itself is noise in a log row; whether there IS one is the
+        // part an admin is reading for.
+        format: (value) => (value ? text(trans('audit.value_set')) : empty()),
+    },
+    guild_id: { label: 'audit.field_guild_id', format: (value) => (value ? text(value) : empty()) },
+    guild_name: { label: 'audit.field_guild_name', format: (value) => (value ? text(value) : empty()) },
+    members: {
+        label: 'audit.field_members',
+        format: (value) => text(trans('audit.value_member_count', { count: value })),
     },
     role: { label: 'audit.field_role', format: (value) => text(roleLabel(value)) },
     permission: { label: 'audit.field_permission', format: (value) => text(permissionLabel(value)) },
