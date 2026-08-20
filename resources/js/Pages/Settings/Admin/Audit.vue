@@ -7,31 +7,61 @@
             <p class="text-sm text-muted mt-0.5">{{ $t('admin.audit_subtitle') }}</p>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-3">
-            <u-input
-                v-model="search"
-                icon="i-lucide-search"
-                :placeholder="$t('admin.audit_search_placeholder')"
-                class="flex-1"
-            />
-            <u-select
-                v-model="action"
-                :items="actionOptions"
-                :placeholder="$t('admin.audit_all_actions')"
-                class="w-full sm:w-64"
-            >
-                <template #item-leading="{ item }">
-                    <u-icon :name="item.icon" class="size-4" />
-                </template>
-            </u-select>
-            <u-button
-                v-if="search || action"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-x"
-                :label="$t('admin.audit_clear')"
-                @click="clearFilters"
-            />
+        <div class="space-y-3">
+            <div class="flex flex-col sm:flex-row gap-3">
+                <u-input
+                    v-model="search"
+                    icon="i-lucide-search"
+                    :placeholder="$t('admin.audit_search_placeholder')"
+                    class="flex-1"
+                />
+                <u-button
+                    v-if="hasFilters"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-lucide-x"
+                    :label="$t('admin.audit_clear')"
+                    class="shrink-0"
+                    @click="clearFilters"
+                />
+            </div>
+
+            <!-- Three narrowing dimensions, each independent: what happened,
+                 who it involved, and which team or clan it belonged to. -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <u-select
+                    v-model="action"
+                    :items="actionOptions"
+                    :placeholder="$t('admin.audit_all_actions')"
+                    class="w-full"
+                >
+                    <template #item-leading="{ item }">
+                        <u-icon :name="item.icon" class="size-4" />
+                    </template>
+                </u-select>
+
+                <u-select
+                    v-model="user"
+                    :items="userOptions"
+                    :placeholder="$t('admin.audit_all_users')"
+                    icon="i-lucide-user"
+                    class="w-full"
+                />
+
+                <u-select
+                    v-model="scope"
+                    :items="scopeOptions"
+                    :placeholder="$t('admin.audit_all_scopes')"
+                    icon="i-lucide-users"
+                    class="w-full"
+                >
+                    <!-- A team and the clan it belongs to can share a name, so
+                         the icon is what tells the two apart. -->
+                    <template #item-leading="{ item }">
+                        <u-icon :name="item.icon" class="size-4" />
+                    </template>
+                </u-select>
+            </div>
         </div>
 
         <div v-if="logs.data.length" class="divide-y divide-default rounded-lg ring ring-default bg-default">
@@ -48,6 +78,29 @@
                     </div>
 
                     <p v-if="log.target_label" class="text-sm text-highlighted truncate">{{ log.target_label }}</p>
+
+                    <!-- Clickable: seeing "in Iron Fist" and wanting the rest
+                         of that team's history is the obvious next step. -->
+                    <div v-if="log.team_label || log.guild_label" class="flex items-center gap-2 flex-wrap mt-0.5">
+                        <button
+                            v-if="log.team_label"
+                            type="button"
+                            class="inline-flex items-center gap-1 text-xs text-muted hover:text-highlighted transition-colors"
+                            @click="scope = `team:${log.team_id}`"
+                        >
+                            <u-icon name="i-lucide-users" class="size-3 shrink-0" />
+                            {{ log.team_label }}
+                        </button>
+                        <button
+                            v-if="log.guild_label"
+                            type="button"
+                            class="inline-flex items-center gap-1 text-xs text-muted hover:text-highlighted transition-colors"
+                            @click="scope = `guild:${log.guild_id}`"
+                        >
+                            <u-icon name="i-lucide-shield" class="size-3 shrink-0" />
+                            {{ log.guild_label }}
+                        </button>
+                    </div>
 
                     <audit-metadata :metadata="log.metadata" />
                 </div>
@@ -100,14 +153,31 @@ import { auditActionOptions, auditLabel, auditStyleFor, formatTimestamp } from '
 const props = defineProps({
     logs: { type: Object, required: true },
     actions: { type: Array, required: true },
+    users: { type: Array, required: true },
+    scopes: { type: Array, required: true },
     filters: { type: Object, required: true },
 });
 
 const search = ref(props.filters.search ?? '');
 const action = ref(props.filters.action ?? '');
+const user = ref(props.filters.user ?? '');
+const scope = ref(props.filters.scope ?? '');
 
 const actionOptions = computed(() => auditActionOptions(props.actions));
-const hasFilters = computed(() => Boolean(search.value || action.value));
+
+// Plain strings: the value IS the label here, because the options come from
+// the log's own stored labels rather than from a users table (see
+// AuditLogController::userOptions — deleted users have to stay selectable).
+const userOptions = computed(() => props.users);
+
+const scopeOptions = computed(() =>
+    props.scopes.map((entry) => ({
+        ...entry,
+        icon: entry.type === 'guild' ? 'i-lucide-shield' : 'i-lucide-users',
+    })),
+);
+
+const hasFilters = computed(() => Boolean(search.value || action.value || user.value || scope.value));
 
 // Written out per colour for the same reason AppRoot's banner is: Tailwind
 // scans source text, so an interpolated text-${color} is never generated.
@@ -126,17 +196,22 @@ function iconClass(actionKey) {
     return ICON_CLASS[auditStyleFor(actionKey).color] ?? ICON_CLASS.neutral;
 }
 
-// Debounced so typing doesn't fire a request per keystroke. The action
-// select reuses the same timer rather than having its own — it's a single
-// "filters changed" signal either way, and two timers could race into two
-// visits for one change.
+// Debounced so typing doesn't fire a request per keystroke. All four filters
+// share one timer rather than having their own — it's a single "filters
+// changed" signal either way, and separate timers could race into two visits
+// for one change.
 let timer;
-watch([search, action], () => {
+watch([search, action, user, scope], () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
         router.get(
             '/settings/admin/audit',
-            { search: search.value || undefined, action: action.value || undefined },
+            {
+                search: search.value || undefined,
+                action: action.value || undefined,
+                user: user.value || undefined,
+                scope: scope.value || undefined,
+            },
             { preserveState: true, replace: true },
         );
     }, 300);
@@ -145,5 +220,7 @@ watch([search, action], () => {
 function clearFilters() {
     search.value = '';
     action.value = '';
+    user.value = '';
+    scope.value = '';
 }
 </script>
