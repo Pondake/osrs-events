@@ -507,11 +507,30 @@ branch's SSR evaluation. Concrete carry-over work:
      gated on `canCreateTiles`, so an EDITOR sees Tasks and nothing else in
      that group — verified live, and matched against the server, which
      returns 200 for tasks and 403 for boards/users/content on that account.
-  2. **Site settings** — the things currently only changeable in `.env` or
-     code and plausibly wanted at runtime: default board size/roll limit
-     for new boards, whether registration is open, maintenance toggle.
-     Needs a settings table (or a cached key/value store) first — none
-     exists yet.
+  2. ~~**Site settings**~~ — done 2026-08-20. `App\Models\Setting` is a
+     key/value store read through one cached array, so the three settings
+     shared on every Inertia response cost a cache hit, not a query.
+     `/settings/admin/site` covers: email registration open/closed (Discord
+     login is unaffected — it's the only recovery path for accounts without
+     an email), default board size + dice roll limit prefilled into the
+     create-board form, and a site-wide announcement banner.
+     The maintenance toggle listed here originally was **not** built —
+     Laravel already has `artisan down`, and a half-toggle that only hides
+     the UI while routes stay live would be worse than nothing.
+     The announcement carries a type (info/success/warning/error) driving
+     colour and icon from `Support/announcement.js`, shared by the live
+     banner and the admin preview so the two can't drift. Two things worth
+     knowing before touching it: the colour classes are written out
+     literally per type because Tailwind never generates an interpolated
+     `bg-${color}/10`, and the page's section nav is plain buttons rather
+     than `u-tabs` — `u-tabs` reaches `#imports` and would drag the whole
+     page behind `ClientOnly`.
+     Announcement copy supports inline `[text](url)` and `**bold**`, parsed
+     to tokens rendered with `v-for` — never `v-html`, and hrefs must be
+     http(s) or site-relative, so `javascript:` and protocol-relative URLs
+     degrade to plain text (verified). Deliberately markdown rather than an
+     ad-hoc syntax: if this later swaps to `u-editor` in markdown mode (see
+     the CMS item), the stored format doesn't have to change.
   3. **Audit log** — who granted which role, who deleted whom. Nothing is
      recorded today; user deletion in particular is irreversible and
      currently leaves no trace.
@@ -552,6 +571,14 @@ branch's SSR evaluation. Concrete carry-over work:
      solve for us (see the Filament note below).
   3. **Editor UI** — add/remove/reorder blocks and edit their props.
      Start read-then-edit on one page (e.g. `/about`) rather than all 8.
+     For the prose inside a block, `@nuxt/ui` v4 already ships `u-editor`
+     (TipTap 3 — `@tiptap/core`, `@tiptap/markdown`, drag handle, bubble
+     menu, mention/emoji menus are all already declared dependencies of
+     `@nuxt/ui`, currently tree-shaken out because nothing imports them).
+     So the rich-text half costs no new dependency, only the SSR handling
+     every interactive `@nuxt/ui` component needs. `@tiptap/markdown` means
+     it can round-trip markdown rather than storing HTML, which is what
+     keeps stored content renderable without `v-html`.
   Sequencing note: the renderer is the risky part and the one that makes
   the other two useful — build a hardcoded block list through the renderer
   first, before any editor UI or table design.
