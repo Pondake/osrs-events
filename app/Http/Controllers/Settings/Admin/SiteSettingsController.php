@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,10 +48,29 @@ class SiteSettingsController extends Controller
 
         // Only the validated keys are written, so the request can't
         // introduce a key that isn't a real setting.
-        Setting::setMany([
+        $values = [
             ...$data,
             'announcement' => $data['announcement'] ?: null,
-        ]);
+        ];
+
+        // Diffed against the current values before writing, so the log holds
+        // what actually changed rather than a full copy of the form on every
+        // save — otherwise "who closed registration" is buried under dozens
+        // of identical no-op rows.
+        $before = Setting::cached();
+        $changes = [];
+
+        foreach ($values as $key => $value) {
+            if (($before[$key] ?? null) !== $value) {
+                $changes[$key] = ['from' => $before[$key] ?? null, 'to' => $value];
+            }
+        }
+
+        Setting::setMany($values);
+
+        if ($changes !== []) {
+            AuditLog::record('settings.updated', null, $changes);
+        }
 
         return back()->with('board-save', trans('admin.site_saved'));
     }

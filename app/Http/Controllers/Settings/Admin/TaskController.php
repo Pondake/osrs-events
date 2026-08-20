@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Task;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,6 +60,7 @@ class TaskController extends Controller
     {
         abort_unless(Auth::user()->hasPermission('canCreateTiles'), 403);
 
+        AuditLog::record('task.deleted', $task);
         $task->delete();
 
         return back()->with('board-save', 'Task deleted.');
