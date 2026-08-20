@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Board;
 use App\Models\BoardAuthor;
 use App\Models\CompletedTile;
+use App\Models\Event;
 use App\Models\PlayerBoard;
 use App\Models\Role;
 use App\Models\Tile;
@@ -23,29 +24,46 @@ class DatabaseSeeder extends Seeder
 
         $user = User::firstOrCreate(
             ['discord_id' => '000000000000000001'],
-            ['discord_username' => 'prototype_player', 'avatar_url' => null],
+            [
+                'discord_username' => 'prototype_player',
+                'avatar_url' => null,
+                // Every account needs one — see RequireOsrsUsername. Without
+                // it this user would be redirected to the gate on login, so a
+                // seeded account with no RSN is a seeded account you can't use.
+                'osrs_username' => 'Prototype',
+            ],
         );
 
         UserRole::firstOrCreate(['user_id' => $user->id, 'role_id' => $playerRole->id]);
 
-        $isNewBoard = Board::where('title', 'Winter Clan Grind')->doesntExist();
+        // Since the Board→Event split this is two rows, not one: the event
+        // holds what the competition IS, the board holds only the Snakes &
+        // Ladders payload. This seeder still wrote the pre-split shape, so
+        // `db:seed` (and therefore `composer setup`) failed outright on
+        // "table boards has no column named title".
+        $isNewEvent = Event::where('title', 'Winter Clan Grind')->doesntExist();
 
-        $board = Board::firstOrCreate(
+        $event = Event::firstOrCreate(
             ['title' => 'Winter Clan Grind'],
             [
                 'id' => (string) str()->uuid(),
+                'type' => 'SNAKES_LADDERS',
                 'description' => 'A 7x7 clan event board for the winter Skilling competition.',
-                'size' => 'SIZE_7X7',
                 'mode' => 'SOLO',
                 'access_mode' => 'OPEN',
                 'is_listed' => true,
             ],
         );
 
-        if ($isNewBoard) {
+        $board = Board::firstOrCreate(
+            ['event_id' => $event->id],
+            ['id' => (string) str()->uuid(), 'size' => 'SIZE_7X7'],
+        );
+
+        if ($isNewEvent) {
             BoardAuthor::create([
                 'id' => (string) str()->uuid(),
-                'board_id' => $board->id,
+                'event_id' => $event->id,
                 'user_id' => $user->id,
                 'is_owner' => true,
             ]);
@@ -92,7 +110,11 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        $this->command->info("Seeded board {$board->id} — visit /boards/{$board->id}");
+        // The EVENT id is what the URL addresses, not the board's. They
+        // coincide for rows the split migration created and differ for
+        // everything made since, which is exactly the trap the backlog warns
+        // about — this printed an unreachable link for any fresh seed.
+        $this->command->info("Seeded event {$event->id} — visit /events/{$event->id}");
 
         $this->call(AdminUserSeeder::class);
         $this->call(GrantOwnerAdminSeeder::class);

@@ -25,6 +25,18 @@
                             <u-input v-model="form.nickname" autocomplete="nickname" class="w-full" />
                         </u-form-field>
 
+                        <!-- Required, not optional: XP is read from the OSRS
+                             hiscores by account name, so an account without
+                             one can never be scored in a race. -->
+                        <u-form-field
+                            :label="$t('auth.field_osrs_username')"
+                            :description="$t('auth.field_osrs_username_desc')"
+                            :error="form.errors.osrs_username"
+                            required
+                        >
+                            <u-input v-model="form.osrs_username" maxlength="12" icon="i-lucide-user-round" class="w-full" />
+                        </u-form-field>
+
                         <u-form-field :label="$t('auth.field_email')" :error="form.errors.email" required>
                             <u-input v-model="form.email" type="email" autocomplete="username" class="w-full" />
                         </u-form-field>
@@ -65,7 +77,7 @@ defineProps({
     registrationOpen: { type: Boolean, default: true },
 });
 
-const form = useForm({ nickname: '', email: '', password: '', password_confirmation: '' });
+const form = useForm({ nickname: '', osrs_username: '', email: '', password: '', password_confirmation: '' });
 
 function submit() {
     form.post('/register', { onFinish: () => form.reset('password', 'password_confirmation') });

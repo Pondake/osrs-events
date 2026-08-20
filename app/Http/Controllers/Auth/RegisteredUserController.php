@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Rules\OsrsUsername;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -44,6 +45,13 @@ class RegisteredUserController extends Controller
             // fall back to. Required here specifically so that invariant
             // can never break, not just conventionally sensible.
             'nickname' => ['required', 'string', 'max:255'],
+            // Required, not optional. Skill races are scored off the OSRS
+            // hiscores, which are keyed by account name — an account without
+            // one cannot be tracked, so it cannot compete. Asking here is the
+            // only moment where it costs the user nothing extra; the Discord
+            // path has no equivalent moment, which is why the middleware
+            // exists (RequireOsrsUsername).
+            'osrs_username' => ['required', 'string', new OsrsUsername],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()],
         ]);
@@ -51,6 +59,7 @@ class RegisteredUserController extends Controller
         $user = DB::transaction(function () use ($data) {
             $user = User::create([
                 'nickname' => $data['nickname'],
+                'osrs_username' => trim($data['osrs_username']),
                 'email' => $data['email'],
                 'password' => $data['password'],
             ]);

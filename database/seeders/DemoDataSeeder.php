@@ -9,6 +9,7 @@ use App\Models\BoardAuthor;
 use App\Models\BoardInvite;
 use App\Models\BoardTeam;
 use App\Models\CompletedTile;
+use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\Task;
 use App\Models\Team;
@@ -16,6 +17,7 @@ use App\Models\TeamMember;
 use App\Models\Tile;
 use App\Models\User;
 use App\Models\UserGuild;
+use App\Services\EventStandingsService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
@@ -52,6 +54,8 @@ class DemoDataSeeder extends Seeder
         foreach ($this->boardSpecs() as $spec) {
             $this->seedBoard($spec);
         }
+
+        $this->seedSkillRace();
 
         $this->command->info('Demo data seeded: '.$this->users->count().' users, '.$this->teams->count().' teams, '.count($this->boardSpecs()).' boards.');
     }
@@ -255,7 +259,10 @@ class DemoDataSeeder extends Seeder
                 'coauthor' => true, 'invites' => [['max_uses' => 10, 'expires' => null]],
             ],
             [
-                'title' => 'Skill of the Month', 'size' => 'SIZE_7X7', 'mode' => 'SOLO', 'access_mode' => 'OPEN',
+                // Renamed: "Skill of the Month" is now the name of an actual
+                // event type (SKILL_RACE, seeded separately below), and a
+                // Snakes & Ladders board wearing that title reads as one.
+                'title' => 'Autumn Sprint', 'size' => 'SIZE_7X7', 'mode' => 'SOLO', 'access_mode' => 'OPEN',
                 'description' => 'Finished last month — kept around to show a completed board state.',
                 'players' => 14, 'start_date' => now()->subMonth(), 'end_date' => now()->subDay(), 'dice_roll_limit' => 1,
             ],
@@ -275,6 +282,78 @@ class DemoDataSeeder extends Seeder
                 'players' => 20, 'start_date' => null, 'end_date' => null, 'dice_roll_limit' => null,
             ],
         ];
+    }
+
+    /**
+     * A live skill race, so the second event type has demo data too.
+     *
+     * No board: a SKILL_RACE has nothing to play on, which is the whole point
+     * of the event/board split.
+     *
+     * The entrants are real OSRS accounts on purpose. Their hiscores are
+     * public and Wise Old Man already publishes exactly these numbers, and it
+     * means `php artisan events:sync-standings` turns this into a leaderboard
+     * with real XP in it rather than a table of zeroes. The deliberately
+     * impossible name is there to demo the third state — someone the hiscores
+     * have no record of, shown as "not tracked" and left unranked.
+     */
+    private function seedSkillRace(): void
+    {
+        $entrants = ['B0aty', 'Lynx Titan', 'Zezima', 'Not A Player'];
+
+        $event = Event::firstOrCreate(
+            ['title' => 'Skill of the Month — Mining'],
+            [
+                'id' => (string) str()->uuid(),
+                'type' => 'SKILL_RACE',
+                'metric' => 'mining',
+                'description' => 'One month, one skill. Most Mining XP gained wins.',
+                'mode' => 'SOLO',
+                'access_mode' => 'OPEN',
+                'is_listed' => true,
+                'start_date' => now()->startOfMonth(),
+                'end_date' => now()->endOfMonth(),
+            ],
+        );
+
+        $owner = User::where('discord_id', 'local-admin-seed')->first() ?? $this->users->random();
+
+        if (! BoardAuthor::where('event_id', $event->id)->exists()) {
+            BoardAuthor::create([
+                'id' => (string) str()->uuid(), 'event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true,
+            ]);
+        }
+
+        $standings = app(EventStandingsService::class);
+
+        // The owner enters under their own name; the rest borrow a demo
+        // account each, since a standing belongs to a user.
+        $standings->enter($event, $owner);
+
+        // One entry per RSN per race is enforced now, so re-running this has
+        // to check what is already in the race rather than reassigning names
+        // and hitting the constraint. Candidates are demo users who aren't in
+        // it yet — reusing one who is would just move their name.
+        $candidates = $this->users
+            ->reject(fn (User $user) => $user->id === $owner->id)
+            ->reject(fn (User $user) => EventStanding::where([
+                'event_id' => $event->id, 'user_id' => $user->id,
+            ])->exists())
+            ->values();
+
+        foreach ($entrants as $name) {
+            $taken = EventStanding::where(['event_id' => $event->id, 'username' => $name])->exists();
+
+            if ($taken || $candidates->isEmpty()) {
+                continue;
+            }
+
+            $user = $candidates->shift();
+            $user->update(['osrs_username' => $name]);
+            $standings->enter($event, $user);
+        }
+
+        $this->command->info("Seeded skill race {$event->id} — run `php artisan events:sync-standings` to fill it in.");
     }
 
     private function seedBoard(array $spec): void
@@ -345,7 +424,7 @@ class DemoDataSeeder extends Seeder
             $this->seedTiles($board);
         }
 
-        $this->seedPlayers($board, $spec);
+        $this->seedPlayers($event, $board, $spec);
     }
 
     private function seedTiles(Board $board): void
@@ -379,7 +458,10 @@ class DemoDataSeeder extends Seeder
 
             return [
                 'id' => (string) str()->uuid(),
-                'event_id' => $event->id,
+                // Tiles belong to the BOARD — `tiles` has no event_id column,
+                // and $event was never in scope here either. Same slip as
+                // TileController::upsert had.
+                'board_id' => $board->id,
                 'position' => $position,
                 'task_id' => $taskId,
                 'title_override' => $titleOverride,
@@ -395,11 +477,13 @@ class DemoDataSeeder extends Seeder
 
     private function seedGuildMembership(Event $event): void
     {
-        // Half the pool "belongs" to the board's required guild, so GUILD
+        // Half the pool "belongs" to the event's required guild, so GUILD
         // access is actually joinable by roughly half of seeded players.
+        // (Guild restriction moved to the event in the split; $board was left
+        // behind here and was never in scope.)
         $this->users->random(intdiv($this->users->count(), 2))->each(fn (User $user) => UserGuild::firstOrCreate(
-            ['user_id' => $user->id, 'guild_id' => $board->required_guild_id],
-            ['id' => (string) str()->uuid(), 'guild_name' => $board->title.' Discord'],
+            ['user_id' => $user->id, 'guild_id' => $event->required_guild_id],
+            ['id' => (string) str()->uuid(), 'guild_name' => $event->title.' Discord'],
         ));
     }
 
@@ -431,12 +515,20 @@ class DemoDataSeeder extends Seeder
         }
     }
 
-    private function seedPlayers(Board $board, array $spec): void
+    /**
+     * Takes the event as well as the board because the split moved `mode`
+     * (and teams, and access) onto the event. This read `$board->mode`, which
+     * is now always null — so every TEAM board quietly took the solo branch
+     * and then died on a spec that has 'teams' and no 'players'. Invisible on
+     * an existing database, where the idempotency check short-circuits first;
+     * only a fresh seed reaches it.
+     */
+    private function seedPlayers(Event $event, Board $board, array $spec): void
     {
         $total = self::TILE_COUNTS[$board->size];
         $boardTiles = Tile::where('board_id', $board->id)->orderBy('position')->get();
 
-        if ($board->mode === 'TEAM') {
+        if ($event->mode === 'TEAM') {
             // Idempotent team selection: once a board has teams assigned,
             // re-running the seeder reuses them instead of drawing a fresh
             // random subset each time (which would silently accumulate more
@@ -463,7 +555,7 @@ class DemoDataSeeder extends Seeder
                 }
 
                 foreach ($team->members as $member) {
-                    $this->grantEventAccess($board->event, $member->user);
+                    $this->grantEventAccess($event, $member->user);
                 }
 
                 $representative = $team->members->first(fn ($m) => ! in_array($m->user_id, $usedUserIds, true))?->user

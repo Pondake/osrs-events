@@ -881,7 +881,64 @@ sub-pages which aren't discoverable from it.
   often the server closes a stream by design. A disconnect only counts after
   a reconnect fails to land within ~6s.
 
+  **Follow-up, same day: an OSRS username is now mandatory for every account.**
+  Flagged by the owner — a tracked event is pointless if half the accounts
+  can't be looked up. Three entry points, because there are three ways an
+  account can come into existence:
+  * The registration form asks for it, required.
+  * **Discord OAuth has nowhere to ask** — the callback returns a Discord
+    identity and nothing else — so `RequireOsrsUsername` middleware redirects
+    any account without one to `/welcome/osrs-username`. Accounts that predate
+    the field land there too, which is the point.
+  * `App\Rules\OsrsUsername` is shared by all three (register, gate, profile
+    settings) rather than copied — three regexes is three chances to disagree
+    about what a valid name is.
+  Shape only, no existence check: Wise Old Man 404s for any real account
+  nobody has ever looked up there, so verifying would reject genuine new
+  players. The standings page already reports that per participant.
+  **`lang/en/validation.php` is new and is a deliberate exception** to this
+  repo's flat-JSON rule — see CLAUDE.md's i18n section for why `:attribute`
+  can't be resolved from `lang/en.json`.
+
+- [x] ~~**`db:seed` had been broken since the Board→Event split.**~~ — fixed
+  2026-08-20 while making the seeder aware of the owner's RSN. `composer
+  setup` runs the seeders, so a fresh checkout of this branch could not be set
+  up at all. Four separate stale spots, and the last two only surface on an
+  empty database:
+  1. `DatabaseSeeder` still wrote the pre-split shape — `Board::firstOrCreate`
+     with title/description/mode/access_mode. Hard failure on the first row.
+  2. `DemoDataSeeder::seedTiles()` inserted `event_id` on `tiles` (no such
+     column) from a `$event` that wasn't in scope.
+  3. `seedGuildMembership(Event $event)` read `$board->required_guild_id` and
+     `$board->title` — `$board` wasn't in scope either.
+  4. `seedPlayers()` branched on `$board->mode`, which the split moved to the
+     event and is now always null — so **every TEAM board silently took the
+     solo branch** and then died on a spec with `teams` and no `players`.
+  Invisible on an existing database, where the idempotency guards
+  short-circuit before reaching any of it. Verified by migrating and seeding a
+  throwaway SQLite file from empty: 11 events, 10 boards (the skill race has
+  none, correctly), 514 tiles, all four TEAM boards with their teams, and
+  every user carrying an RSN.
+  The owner is seeded as **Pondake** (`AdminUserSeeder::OWNER_OSRS_USERNAME`,
+  also applied to the real Discord account by `GrantOwnerAdminSeeder`, but
+  only when empty — a rename made in the app is theirs to keep).
+
+- [x] ~~**A boardless event crashed the events hub.**~~ — fixed 2026-08-20,
+  found by the seeder putting a skill race in the listing. `BoardCard`
+  rendered the grid size unconditionally; for a SKILL_RACE that is null, and
+  `$t()` calls `toString()` on whatever it substitutes — so one boardless
+  event blanked the entire page, header and footer only. It now shows the
+  metric in that slot and "View standings" rather than "Play". **Worth
+  generalising: any card, list or preview that reads a board field off an
+  event now needs a null branch, and the symptom is a blank page rather than
+  an error in the UI.**
+
   **Not done / known gaps:**
+  * **A skill race you entered does not appear in `/my-events`.** That list is
+    built from `PlayerBoard` rows, and a skill race has no board, so your own
+    races are missing from your own list. Needs a design call first: the row
+    there assumes a progress bar and a board preview, neither of which a
+    metric event has.
   * A skill race has no team mode. `events.mode` still offers SOLO/TEAM and a
     TEAM skill race would currently rank individuals — either aggregate by
     team or hide the option for this type.

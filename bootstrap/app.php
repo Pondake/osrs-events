@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use App\Http\Middleware\EnsureCanAccessAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequireOsrsUsername;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // the controllers still check individually on top of it.
         $middleware->alias([
             'can-access-admin' => EnsureCanAccessAdmin::class,
+            'require-osrs-username' => RequireOsrsUsername::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
