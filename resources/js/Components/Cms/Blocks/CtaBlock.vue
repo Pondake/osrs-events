@@ -9,6 +9,8 @@
                 v-for="(link, index) in usableLinks"
                 :key="index"
                 :to="link.to"
+                :target="isExternal(link.to) ? '_blank' : undefined"
+                :rel="isExternal(link.to) ? 'noopener noreferrer' : undefined"
                 :label="link.label"
                 :icon="link.icon ?? undefined"
                 :color="link.color"
@@ -20,6 +22,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { isExternal } from '@/Support/richtext';
 
 const props = defineProps({
     title: { type: String, default: null },

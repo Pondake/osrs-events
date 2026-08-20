@@ -43,4 +43,14 @@ return [
         'redirect' => env('DISCORD_REDIRECT_URI'),
     ],
 
+    // Donation link. Every "support" button on the site points straight at
+    // this rather than at an interstitial page of our own — there is nothing
+    // a middle page could say that Ko-fi's own doesn't.
+    //
+    // Shared to the frontend via HandleInertiaRequests so the footer and the
+    // About page can't drift to different URLs.
+    'kofi' => [
+        'url' => env('KOFI_URL', 'https://ko-fi.com'),
+    ],
+
 ];

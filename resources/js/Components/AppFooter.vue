@@ -9,7 +9,14 @@
 
         <template #right>
             <nav class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-end">
-                <a v-for="link in footerLinks" :key="link.to" :href="link.to" class="text-xs text-muted hover:text-primary transition-colors">
+                <a
+                    v-for="link in footerLinks"
+                    :key="link.to"
+                    :href="link.to"
+                    :target="link.external ? '_blank' : undefined"
+                    :rel="link.external ? 'noopener noreferrer' : undefined"
+                    class="text-xs text-muted hover:text-primary transition-colors"
+                >
                     {{ link.label }}
                 </a>
             </nav>
@@ -18,7 +25,15 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+
+// Shared globally (HandleInertiaRequests) rather than passed as a prop —
+// the footer renders on every page, including ones with no controller of
+// their own.
+const inertiaPage = usePage();
+const kofiUrl = computed(() => inertiaPage.props?.site?.kofiUrl ?? 'https://ko-fi.com');
 
 // Read in UTC, not local time — the server renders in UTC while the browser
 // renders in the visitor's zone, so around New Year a local-time read would
@@ -28,13 +43,16 @@ const currentYear = new Date().getUTCFullYear();
 
 // Guide pages first — the footer is the only site-wide crawl path to them
 // (no header nav entry, since they're marketing/SEO pages not app features).
-const footerLinks = [
+// Ko-fi is linked straight from here rather than through a /donate page of
+// our own. A middle page had nothing to add that Ko-fi's own doesn't say,
+// and it put a click between the button and the thing it's for.
+const footerLinks = computed(() => [
     { to: '/osrs-snakes-and-ladders', label: trans('nav.snakes') },
     { to: '/osrs-clan-events', label: trans('nav.clan_events') },
     { to: '/osrs-event-ideas', label: trans('nav.event_ideas') },
     { to: '/about', label: trans('nav.about') },
-    { to: '/donate', label: trans('nav.donate') },
+    { to: kofiUrl.value, label: trans('nav.support'), external: true },
     { to: '/privacy', label: trans('nav.privacy') },
     { to: '/terms', label: trans('nav.terms') },
-];
+]);
 </script>

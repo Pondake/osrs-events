@@ -28,7 +28,6 @@ class ContentController extends Controller
                 ['path' => '/osrs-clan-events', 'label' => trans('nav.clan_events')],
                 ['path' => '/osrs-event-ideas', 'label' => trans('nav.event_ideas')],
                 ['path' => '/about', 'label' => trans('about.title')],
-                ['path' => '/donate', 'label' => trans('donate.title')],
                 ['path' => '/privacy', 'label' => trans('privacy.title')],
                 ['path' => '/terms', 'label' => trans('terms.title')],
             ],

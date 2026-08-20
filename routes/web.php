@@ -92,7 +92,6 @@ Route::get('/osrs-clan-events', [LandingController::class, 'clanEvents'])->name(
 Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name('landing.event-ideas');
 
 Route::get('/about', [PageController::class, 'about'])->name('about');
-Route::get('/donate', fn () => Inertia::render('Donate'))->name('donate');
 Route::get('/privacy', fn () => Inertia::render('Privacy'))->name('privacy');
 Route::get('/terms', fn () => Inertia::render('Terms'))->name('terms');
 

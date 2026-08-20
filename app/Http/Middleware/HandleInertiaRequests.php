@@ -57,6 +57,10 @@ class HandleInertiaRequests extends Middleware
             // (the boards index, the admin list, the onboarding modal).
             // Setting::cached() is a single cache read, not a query.
             'site' => fn () => [
+                // Config, not a Setting: it's a deploy-time constant, and
+                // the footer needs it on every page including logged-out
+                // ones. Shared so footer and page content can't disagree.
+                'kofiUrl' => config('services.kofi.url'),
                 'announcement' => Setting::get('announcement'),
                 'announcementType' => Setting::get('announcement_type'),
                 'defaultBoardSize' => Setting::get('default_board_size'),
