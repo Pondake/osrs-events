@@ -9,7 +9,10 @@
         <u-page>
             <u-container class="py-12">
                 <div class="flex items-center justify-between gap-4 mb-8">
-                    <h1 class="text-3xl font-bold text-highlighted">{{ $t('boards.title') }}</h1>
+                    <div>
+                        <h1 class="text-3xl font-bold text-highlighted">{{ $t('events.hub_title') }}</h1>
+                        <p class="text-sm text-muted mt-1">{{ $t('events.hub_subtitle') }}</p>
+                    </div>
 
                     <u-button
                         v-if="canCreateBoards"
@@ -20,14 +23,63 @@
                     />
                 </div>
 
-                <div v-if="!boards.length" class="text-center py-16">
-                    <u-icon name="i-lucide-layout-grid" class="size-12 text-muted mx-auto mb-4" />
-                    <p class="text-lg font-medium">{{ $t('boards.no_boards') }}</p>
-                    <p class="text-sm text-muted mt-1">{{ $t('boards.no_boards_desc') }}</p>
-                </div>
+                <!-- A hub of slices, not one flat list: /my-events existed
+                     but nothing pointed at it, so people playing an event had
+                     no route back to it from here. -->
+                <div class="space-y-10">
+                    <section v-if="mine.length">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <h2 class="text-xl font-semibold text-highlighted">{{ $t('events.hub_mine') }}</h2>
+                            <u-button
+                                v-if="mineTotal > mine.length"
+                                href="/my-events"
+                                size="sm"
+                                variant="ghost"
+                                color="neutral"
+                                trailing-icon="i-lucide-arrow-right"
+                                :label="$t('events.hub_view_all')"
+                            />
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <board-card v-for="board in mine" :key="board.id" :board="board" />
+                        </div>
+                    </section>
 
-                <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <board-card v-for="board in boards" :key="board.id" :board="board" />
+                    <section>
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <h2 class="text-xl font-semibold text-highlighted">{{ showAll ? $t('boards.title') : $t('events.hub_public') }}</h2>
+                            <u-button
+                                v-if="boards.length > publicSlice.length"
+                                href="/events/all"
+                                size="sm"
+                                variant="ghost"
+                                color="neutral"
+                                trailing-icon="i-lucide-arrow-right"
+                                :label="$t('events.hub_view_all')"
+                            />
+                        </div>
+
+                        <div v-if="!boards.length" class="text-center py-12 rounded-lg ring ring-default bg-default">
+                            <u-icon name="i-lucide-layout-grid" class="size-10 text-dimmed mx-auto mb-3" />
+                            <p class="text-sm text-muted">{{ $t('events.hub_public_empty') }}</p>
+                        </div>
+                        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <board-card v-for="board in publicSlice" :key="board.id" :board="board" />
+                        </div>
+                    </section>
+
+                    <!-- Advertised in the nav as Soon already; saying so here
+                         too beats a section that silently isn't there. -->
+                    <section v-if="!showAll">
+                        <div class="flex items-center gap-2 mb-4">
+                            <h2 class="text-xl font-semibold text-highlighted">{{ $t('events.hub_calendar') }}</h2>
+                            <u-badge :label="$t('nav.badge_soon')" color="neutral" variant="subtle" size="sm" />
+                        </div>
+                        <div class="rounded-lg ring ring-default bg-default px-5 py-8 text-center">
+                            <u-icon name="i-lucide-calendar" class="size-10 text-dimmed mx-auto mb-3" />
+                            <p class="text-sm text-muted max-w-md mx-auto">{{ $t('events.hub_calendar_desc') }}</p>
+                        </div>
+                    </section>
                 </div>
 
             </u-container>
@@ -40,7 +92,7 @@
 </template>
 
 <script setup>
-import { defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import BoardCard from '@/Components/BoardCard.vue';
@@ -58,9 +110,18 @@ const seo = {
 // server-side. See ClientOnly.vue and vite.config.js for why that matters.
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 
-defineProps({
+const props = defineProps({
     boards: { type: Array, required: true },
+    mine: { type: Array, default: () => [] },
+    mineTotal: { type: Number, default: 0 },
+    /** /events/all renders the same component without the hub slicing. */
+    showAll: { type: Boolean, default: false },
 });
+
+// The hub shows a slice; /events/all renders the same prop in full.
+const HUB_SLICE = 6;
+
+const publicSlice = computed(() => (props.showAll ? props.boards : props.boards.slice(0, HUB_SLICE)));
 
 const { canCreateBoards } = useAuth();
 const showCreateModal = ref(false);
