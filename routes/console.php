@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -21,6 +22,13 @@ Artisan::command('inspire', function () {
  * schedule means an operator turns that on knowingly rather than inheriting
  * it. See SyncEventStandings and WiseOldManService.
  */
+// Named explicitly rather than bare `model:prune`, which would sweep every
+// prunable model in the app — including any added later that nobody meant to
+// hand to this schedule.
+Schedule::command('model:prune', ['--model' => [AuditLog::class]])
+    ->daily()
+    ->onOneServer();
+
 Schedule::command('events:sync-standings')
     ->everyTenMinutes()
     ->withoutOverlapping()

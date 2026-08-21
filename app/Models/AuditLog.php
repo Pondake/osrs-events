@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +20,33 @@ use Illuminate\Support\Facades\Request;
 class AuditLog extends Model
 {
     use HasUuids;
+    use MassPrunable;
+
+    /**
+     * How long a row is kept, in days.
+     *
+     * Nothing pruned these before — the table grew forever, and a single
+     * afternoon of a tester clicking "create invite link" is enough to see
+     * why that matters. Two reasons to bound it rather than keep everything:
+     * an audit trail is for investigating something recent, and these rows
+     * deliberately keep a user's display name AFTER the account is deleted
+     * (see the migration), which is exactly the kind of retention that
+     * should have an end date rather than being indefinite.
+     *
+     * Ninety days by default — long enough to look into a complaint about
+     * last month, short enough that it is not a permanent record of who did
+     * what. Configurable because the right answer is a policy decision.
+     */
+    public static function retentionDays(): int
+    {
+        return (int) config('audit.retention_days', 90);
+    }
+
+    /** Rows eligible for deletion. Mass-pruned, so no model events fire. */
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<', now()->subDays(static::retentionDays()));
+    }
 
     /**
      * Audit rows are never updated, and the migration doesn't create an
