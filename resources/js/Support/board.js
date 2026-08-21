@@ -1,8 +1,13 @@
 // Ported from stale/frontend/app/utils/board.ts — same constants, same
 // boardEventStatus() logic (UTC-day comparison so SSR and the client agree
-// regardless of local timezone), i18n calls stripped since i18n isn't ported
-// yet (see docs/backlog.md); component-side `key` fields below are plain
-// English strings for now instead of translation keys.
+// regardless of local timezone).
+//
+// The label fields below are translation KEYS, not English. They were plain
+// strings while i18n was unported, and that outlived the port: a card and a
+// detail page both render boardEventStatus() output, but the card read the
+// English here and the page read `boards.status_*`, so the same running event
+// was labelled "Live" on the hub and "Running" one click later. Keys here,
+// $t() at the point of render, one wording.
 
 export const BOARD_SIZE_LABEL = {
     SIZE_5X5: '5×5',
@@ -36,15 +41,15 @@ export function formatDate(date, style = 'short') {
 }
 
 export const BOARD_ACCESS_META = {
-    OPEN: { icon: 'i-lucide-globe', label: 'Open to everyone' },
-    GUILD: { icon: 'i-lucide-shield', label: 'Discord server members only' },
-    INVITE: { icon: 'i-lucide-lock', label: 'Invite only' },
+    OPEN: { icon: 'i-lucide-globe', labelKey: 'boards.access_open' },
+    GUILD: { icon: 'i-lucide-shield', labelKey: 'boards.access_server' },
+    INVITE: { icon: 'i-lucide-lock', labelKey: 'boards.access_invite' },
 };
 
 export const BOARD_STATUS_STYLE = {
-    upcoming: { icon: 'i-lucide-clock', label: 'Upcoming', class: 'bg-info/10 text-info' },
-    live: { icon: 'i-lucide-circle-play', label: 'Live', class: 'bg-success/10 text-success' },
-    ended: { icon: 'i-lucide-flag', label: 'Ended', class: 'bg-error/10 text-error' },
+    upcoming: { icon: 'i-lucide-clock', labelKey: 'boards.status_upcoming', class: 'bg-info/10 text-info' },
+    live: { icon: 'i-lucide-circle-play', labelKey: 'boards.status_live', class: 'bg-success/10 text-success' },
+    ended: { icon: 'i-lucide-flag', labelKey: 'boards.status_ended', class: 'bg-error/10 text-error' },
 };
 
 function utcDay(date) {

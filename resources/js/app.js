@@ -43,6 +43,18 @@ createInertiaApp({
         app.mount(el);
     },
     progress: {
-        color: '#7c3aed',
+        // Referenced, not resolved. Inertia interpolates this straight into
+        // `background`, `box-shadow` and `border-top-color`, all of which take
+        // a var() — so the bar follows the theme live through a dark-mode
+        // toggle, and cannot drift the way a pinned hex had (this was still
+        // the scaffold's violet long after the theme became amber). Reading
+        // the computed value here instead would also be too early: the
+        // stylesheet is not guaranteed applied at module-eval time, and the
+        // snapshot silently came back empty.
+        //
+        // `--ui-primary` is the brand FILL, which is what a progress bar is —
+        // the amber-700 override in app.css applies to brand TEXT, where
+        // contrast against a light background matters.
+        color: 'var(--ui-primary)',
     },
 });

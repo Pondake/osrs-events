@@ -7,7 +7,14 @@
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <u-badge :label="$t('events.type_bingo')" color="primary" variant="subtle" size="sm" />
+                            <u-badge
+                                v-if="typeMeta"
+                                :icon="typeMeta.icon"
+                                :label="typeMeta.label"
+                                color="primary"
+                                variant="subtle"
+                                size="sm"
+                            />
                             <u-badge :label="$t(`boards.status_${status}`)" :color="statusColor" variant="subtle" size="sm" />
                             <u-badge
                                 :label="card.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house') : $t('bingo.win_line')"
@@ -228,6 +235,7 @@ import { computed, defineAsyncComponent, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { boardEventStatus, formatDate } from '@/Support/board';
+import { eventTypeMeta } from '@/Support/eventTypes';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
@@ -246,6 +254,8 @@ const props = defineProps({
     pending: { type: Array, default: () => [] },
     canEdit: { type: Boolean, default: false },
 });
+
+const typeMeta = computed(() => eventTypeMeta(props.event.type));
 
 const status = computed(() => boardEventStatus(props.event.start_date, props.event.end_date));
 

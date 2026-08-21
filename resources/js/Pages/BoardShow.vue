@@ -8,7 +8,19 @@
             <u-container class="py-12">
                 <u-page-header :title="board.title" :description="board.description ?? ''">
                     <template #headline>
-                        <u-badge :label="board.mode" color="neutral" variant="subtle" />
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <!-- Says what kind of event this is, matching the
+                                 race and bingo pages. This one said only
+                                 SOLO/TEAM, which is a different question. -->
+                            <u-badge
+                                v-if="typeMeta"
+                                :icon="typeMeta.icon"
+                                :label="typeMeta.label"
+                                color="primary"
+                                variant="subtle"
+                            />
+                            <u-badge :label="board.mode" color="neutral" variant="subtle" />
+                        </div>
                     </template>
                     <template #links>
                         <div class="flex gap-2 flex-wrap">
@@ -406,6 +418,7 @@ import ClientOnly from '@/Components/ClientOnly.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
+import { eventTypeMeta } from '@/Support/eventTypes';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 const TileEditModal = defineAsyncComponent(() => import('@/Components/TileEditModal.vue'));
@@ -422,6 +435,8 @@ const props = defineProps({
 // Everyone's positions, seeded from the render and then kept current by the
 // board's own channel — a roll moves one player and everybody watching should
 // see it, the same as a bingo square being ticked.
+const typeMeta = computed(() => eventTypeMeta(props.board.type));
+
 const livePlayers = ref([...props.players]);
 
 useEventStream({
