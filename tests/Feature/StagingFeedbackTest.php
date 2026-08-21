@@ -244,6 +244,84 @@ class StagingFeedbackTest extends TestCase
         });
     }
 
+    // ------------------------------------------------------ "mine" lists
+
+    /**
+     * "Mine" meant a PlayerBoard row, which only Snakes & Ladders creates.
+     * So a race you entered, a bingo you claimed on, and an event you created
+     * yourself were all missing from your own lists — the hub read as a bare
+     * public directory and the profile said you had no boards, which is what
+     * "I made a skill event but it is not even linked to me" was showing.
+     */
+    #[Test]
+    public function a_race_you_entered_appears_under_your_events_on_the_hub(): void
+    {
+        Http::fake();
+
+        $event = $this->race();
+        $user = $this->player();
+
+        $this->actingAs($user)->post("/events/{$event->id}/enter")->assertRedirect();
+
+        $props = $this->actingAs($user)->get('/events')->viewData('page')['props'];
+
+        $this->assertSame(1, $props['mineTotal']);
+        $this->assertSame($event->id, $props['mine'][0]['id']);
+    }
+
+    /** An event you run is yours whether or not you also play in it. */
+    #[Test]
+    public function an_event_you_created_is_yours_even_without_taking_part(): void
+    {
+        $event = $this->race();
+        $owner = $this->player('Owner');
+
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $props = $this->actingAs($owner)->get('/events')->viewData('page')['props'];
+
+        $this->assertSame($event->id, $props['mine'][0]['id'] ?? null);
+        $this->assertSame(0, EventStanding::count(), 'the host was not entered as a participant');
+    }
+
+    #[Test]
+    public function someone_elses_event_is_not_listed_as_yours(): void
+    {
+        $event = $this->race();
+        $owner = $this->player('Owner');
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $props = $this->actingAs($this->player('Stranger'))->get('/events')->viewData('page')['props'];
+
+        $this->assertSame(0, $props['mineTotal']);
+    }
+
+    /**
+     * The profile list was built from PlayerBoard rows and rendered
+     * `board.title` — a column the event/board split removed — so every row
+     * showed a blank name and linked to /events/{board id}, which is not the
+     * event id for anything created since that split.
+     */
+    #[Test]
+    public function the_profile_lists_events_with_a_title_and_a_working_link(): void
+    {
+        Http::fake();
+
+        $event = $this->race();
+        $user = $this->player();
+
+        $this->actingAs($user)->post("/events/{$event->id}/enter")->assertRedirect();
+
+        $events = $this->actingAs($user)->get('/settings/profile')->viewData('page')['props']['events'];
+
+        $this->assertCount(1, $events);
+        $this->assertSame('Skill of the Month — Mining', $events[0]['title']);
+        $this->assertSame($event->id, $events[0]['id']);
+
+        // A race has a rank, not a position on a grid — no invented percentage.
+        $this->assertNull($events[0]['progress']);
+    }
+
     // --------------------------------------------------------- admin grant
 
     /**
