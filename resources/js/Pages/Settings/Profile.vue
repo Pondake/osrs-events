@@ -68,40 +68,49 @@
         </u-card>
 
         <div>
-            <h3 class="text-lg font-semibold text-highlighted mb-4">{{ $t('profile.your_boards') }}</h3>
+            <h3 class="text-lg font-semibold text-highlighted mb-4">{{ $t('profile.your_events') }}</h3>
 
-            <div v-if="!playerBoards.length" class="text-center py-8 text-muted">
+            <div v-if="!events.length" class="text-center py-8 text-muted">
                 <u-icon name="i-lucide-layout-grid" class="size-10 mx-auto mb-3 block" />
-                <p>{{ $t('profile.no_boards') }}</p>
+                <p>{{ $t('profile.no_events') }}</p>
             </div>
 
             <div v-else class="space-y-3">
-                <u-card v-for="pb in playerBoards" :key="pb.id">
+                <u-card v-for="event in events" :key="event.id">
                     <div class="flex items-center justify-between gap-4 flex-wrap">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-3 mb-1 flex-wrap">
-                                <a :href="`/events/${pb.board.id}`" class="text-lg font-semibold hover:text-primary transition-colors truncate">
-                                    {{ pb.board.title }}
+                                <!-- The event id, not the board id. These are
+                                     the same only for rows migrated at the
+                                     split; anything created since has its own
+                                     board uuid, and this link 404'd. -->
+                                <a :href="`/events/${event.id}`" class="text-lg font-semibold hover:text-primary transition-colors truncate">
+                                    {{ event.title }}
                                 </a>
-                                <u-badge color="primary" variant="subtle" :label="formatBoardSize(pb.board.size)" />
+                                <u-badge v-if="typeMeta(event)" :icon="typeMeta(event).icon" :label="typeMeta(event).label" color="primary" variant="subtle" />
+                                <u-badge v-if="event.size" color="neutral" variant="subtle" :label="formatBoardSize(event.size)" />
+                                <u-badge v-if="event.isOwner" color="warning" variant="subtle" :label="$t('profile.owner_badge')" />
                             </div>
-                            <div class="flex items-center gap-4 text-sm text-muted flex-wrap">
-                                <span><u-icon name="i-lucide-map-pin" class="inline mr-1" />{{ $t('board.tile', { n: pb.current_position + 1 }) }}</span>
-                                <span><u-icon name="i-lucide-circle-check" class="inline mr-1" />{{ pb.completed_tiles.length }} {{ $t('profile.tiles_completed') }}</span>
+
+                            <div v-if="event.progress" class="flex items-center gap-4 text-sm text-muted flex-wrap">
+                                <span><u-icon name="i-lucide-map-pin" class="inline mr-1" />{{ $t('board.tile', { n: event.progress.position }) }}</span>
+                                <span><u-icon name="i-lucide-circle-check" class="inline mr-1" />{{ event.progress.completed }} {{ $t('profile.tiles_completed') }}</span>
                             </div>
                         </div>
 
-                        <div class="w-32 shrink-0">
+                        <!-- Only a board has a position to be a percentage of.
+                             A race is ranked, not traversed. -->
+                        <div v-if="event.progress" class="w-32 shrink-0">
                             <div class="flex justify-between text-xs text-muted mb-1">
                                 <span>{{ $t('profile.progress') }}</span>
-                                <span>{{ progressPct(pb) }}%</span>
+                                <span>{{ event.progress.pct }}%</span>
                             </div>
                             <div class="h-2 rounded-full bg-muted overflow-hidden">
-                                <div class="h-full bg-primary rounded-full transition-all" :style="{ width: `${progressPct(pb)}%` }" />
+                                <div class="h-full bg-primary rounded-full transition-all" :style="{ width: `${event.progress.pct}%` }" />
                             </div>
                         </div>
 
-                        <u-button :href="`/events/${pb.board.id}`" icon="i-lucide-play" color="primary" variant="outline" size="sm" :label="$t('boards.play')" />
+                        <u-button :href="`/events/${event.id}`" icon="i-lucide-arrow-right" color="primary" variant="outline" size="sm" :label="$t('profile.open_event')" />
                     </div>
                 </u-card>
             </div>
@@ -113,16 +122,19 @@
 import { ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { useAuth } from '@/Composables/useAuth';
-import { formatBoardSize, BOARD_TILE_COUNT } from '@/Support/board';
+import { formatBoardSize } from '@/Support/board';
+import { eventTypeMeta } from '@/Support/eventTypes';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
 
 const props = defineProps({
     roles: { type: Array, required: true },
-    playerBoards: { type: Array, required: true },
+    events: { type: Array, required: true },
     osrsUsername: { type: String, default: null },
 });
 
 const { user } = useAuth();
+
+const typeMeta = (event) => eventTypeMeta(event.type);
 
 const editing = ref(false);
 const nicknameInput = ref('');
@@ -165,11 +177,4 @@ const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', TEAM_MANAGER: 'info', P
 const ROLE_ICONS = { ADMIN: 'i-lucide-shield-check', EDITOR: 'i-lucide-pencil', TEAM_MANAGER: 'i-lucide-users', PLAYER: 'i-lucide-user' };
 const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
 const roleIcon = (name) => ROLE_ICONS[name] ?? 'i-lucide-user';
-
-function progressPct(pb) {
-    const total = BOARD_TILE_COUNT[pb.board.size] ?? 25;
-    if (total <= 1) return 0;
-    const pos = Math.max(0, pb.current_position);
-    return Math.min(99, Math.floor((pos / (total - 1)) * 100));
-}
 </script>

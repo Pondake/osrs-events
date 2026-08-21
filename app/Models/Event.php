@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -165,6 +166,31 @@ class Event extends Model
      * hasOne, not hasMany: a Snakes & Ladders event has exactly one board.
      * Null for any event type that doesn't use one.
      */
+    /**
+     * Every event this user has a stake in, whatever its type.
+     *
+     * "Mine" used to mean a PlayerBoard row, which only Snakes & Ladders
+     * creates — so a race you entered, a bingo card you claimed on, and even
+     * an event you created yourself were all absent from your own lists. The
+     * hub then looked like a public directory with nothing of yours in it,
+     * and the profile page said you had no boards.
+     *
+     * Authorship counts too: an event you run is yours whether or not you
+     * also play in it, and for a race the host frequently does not.
+     */
+    public function scopeInvolving(Builder $query, ?User $user): Builder
+    {
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('authors', fn (Builder $a) => $a->where('user_id', $user->id))
+            ->orWhereHas('standings', fn (Builder $s) => $s->where('user_id', $user->id))
+            ->orWhereHas('board.playerBoards', fn (Builder $p) => $p->where('user_id', $user->id))
+            ->orWhereHas('bingoCard.squares.completions', fn (Builder $c) => $c->where('user_id', $user->id)));
+    }
+
     public function board(): HasOne
     {
         return $this->hasOne(Board::class);

@@ -73,27 +73,30 @@ class BoardController extends Controller
             ->get()
             ->map(fn (Event $event) => $this->cardData($event));
 
-        // A slice of what you're playing, so the hub has something to say to
+        // A slice of what you're in, so the hub has something to say to
         // someone who already has events — /my-events existed but nothing
         // linked to it, which is how it stayed invisible.
-        $mine = collect();
-        if ($user = Auth::user()) {
-            $mine = $user->playerBoards()
-                ->with(['board.event.authors.user', 'board.event.eventTeams.team'])
-                ->get()
-                ->filter(fn ($pb) => $pb->board?->event !== null)
-                ->sortByDesc(fn ($pb) => $pb->board->event->start_date)
-                ->take(self::HUB_SLICE)
-                ->map(fn ($pb) => $this->cardData($pb->board->event))
-                ->values();
-        }
+        //
+        // Scoped by involvement rather than by PlayerBoard: that row only
+        // exists for Snakes & Ladders, so a race you entered or an event you
+        // created yourself never appeared here, and the hub looked like a
+        // public directory with nothing of yours in it.
+        $user = Auth::user();
+
+        $mine = Event::involving($user)
+            ->with(self::EVENT_WITH)
+            ->orderByDesc('start_date')
+            ->take(self::HUB_SLICE)
+            ->get()
+            ->map(fn (Event $event) => $this->cardData($event))
+            ->values();
 
         return Inertia::render('Boards/Index', [
             // The full list stays — the hub renders a slice of it and the
             // "view all" page renders the rest from the same prop.
             'boards' => $events,
             'mine' => $mine,
-            'mineTotal' => Auth::user()?->playerBoards()->count() ?? 0,
+            'mineTotal' => Event::involving($user)->count(),
         ]);
     }
 
