@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\Board;
 use App\Models\Event;
 use App\Rules\OsrsUsername;
 use App\Services\OsrsIdentityService;
@@ -36,7 +37,7 @@ class ProfileController extends Controller
         // Ladders: races and bingo cards were absent from "your boards"
         // entirely, which is what "I made a skill event and it is not linked
         // to me" was actually showing.
-        $tileCounts = ['SIZE_5X5' => 25, 'SIZE_7X7' => 49, 'SIZE_9X9' => 81];
+        $tileCounts = Board::TILE_COUNTS;
 
         $playerBoards = $user->playerBoards()->with('completedTiles')->get()->keyBy('board_id');
 

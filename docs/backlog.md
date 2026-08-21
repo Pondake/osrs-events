@@ -1947,6 +1947,75 @@ anybody optimises against it; the session lock is already released early in
 `EventStreamController` (line ~72), so that is not it either.
 
 
+## Test round, 2026-08-22
+
+A dedicated sweep rather than tests-alongside-a-feature, and it earned its
+keep: **five bugs, four of which nothing else was going to find.**
+
+- **`safeHref` accepted `/\evil.example`.** A security hole, not a polish
+  item. It rejected a leading `//` but not `/\`, and browsers following the
+  WHATWG URL spec treat a backslash as a forward slash in a special scheme —
+  so an admin-authored announcement or CMS page could link off-site from
+  something that reads as a site-relative path. Now both spellings go.
+- **A tile could be created off the end of its board.** `position` was
+  bounded at zero and nothing else, so position 99 on a 5x5 was a row that
+  renders nowhere and counts in every query asking how many tiles a board
+  has. `target_position` had the same gap — a snake pointing at a square that
+  does not exist.
+- **A bingo card or a race accepted tile POSTs.** The upsert identifies its
+  row by (board_id, position); with no board that is (null, position), which
+  is not "no match" but "a tile belonging to no board" — a 500 on the NOT
+  NULL constraint rather than a 404.
+- **`destroy` compared `$tile->board_id === $event->board?->id`.** `null ===
+  null` is true, so a board-less event could delete any tile that also had no
+  board. Reachable only via the bug above, but the guard was wrong either way.
+- **`i-lucide-crown` was in two icon groups**, so the picker rendered it
+  twice.
+
+Also folded in: `Board::TILE_COUNTS`, replacing the same three-entry array
+inlined in two controllers and absent from the validation that needed it
+most.
+
+### What now exists
+
+- **Frontend tests.** There were none. `pnpm test` runs Vitest over
+  `tests/js/` — 87 tests across the pure helpers in `resources/js/Support/`.
+  A separate `vitest.config.js`, deliberately: the app's Vite config loads
+  the Laravel and Nuxt UI plugins, and Nuxt UI's virtual `#imports` is the
+  exact thing that cannot resolve outside that pipeline.
+
+  The `trans()` stub returns `t:<key>` rather than the key itself. That is
+  not cosmetic — laravel-vue-i18n returns the key when a translation is
+  missing, and `Support/metrics.js` keys off exactly that to fall back to a
+  raw slug. A stub returning the bare key would have made every test
+  silently exercise the missing-translation path.
+
+- **`Support/bingoLines.js`**, extracted from the bingo page so the line
+  rules can be tested without mounting a page full of @nuxt/ui components —
+  and so there is one place mirroring what `BingoService::lines()` does in
+  PHP. `tests/js/bingoLines.test.js` and
+  `tests/Feature/BingoWinLinesTest.php` assert the same counts on purpose:
+  two implementations in two languages with nothing else forcing them to
+  agree, and a card highlighting a line the standings will not score is a
+  page arguing with its own leaderboard.
+
+- **Backend coverage** for what recent work left untested: event blueprints
+  (including that every seeded one carries a type/metric pairing the create
+  form would actually accept), the settings cache regression, tile editing
+  bounds and permissions, and the win-line rules.
+
+342 backend tests, 87 frontend.
+
+### Worth knowing
+
+The seeded-blueprint tests are the ones most likely to catch a future
+mistake: they walk every row the seeder writes and check it against
+`Event::availableTypes()` and the metric list for its own type. A blueprint
+offering a boss on a skill race would hand the user a validation error they
+did not cause, and that is exactly the kind of thing that gets added in a
+hurry.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,

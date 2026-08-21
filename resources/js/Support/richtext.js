@@ -20,13 +20,19 @@
  * mailto: carries no query string on purpose. `mailto:x@y.com?body=…` is a
  * real shape, but it lets stored content prefill a message the reader didn't
  * write, and no page needs it.
+ *
+ * The backslash rule is the one that is easy to miss. Browsers following the
+ * WHATWG URL spec treat `\` as `/` in a special scheme, so `/\evil.example`
+ * resolves exactly as `//evil.example` would — off-site, from something that
+ * reads as a site-relative path. Rejecting a leading `//` while accepting
+ * `/\` guards the spelling rather than the behaviour, so both go.
  */
 export function safeHref(url) {
     if (typeof url !== 'string') return null;
 
     const trimmed = url.trim();
 
-    if (trimmed.startsWith('//')) return null;
+    if (/^[/\\]{2}/.test(trimmed)) return null;
     if (trimmed.startsWith('/')) return trimmed;
     if (/^mailto:[^\s?&]+@[^\s?&]+$/i.test(trimmed)) return trimmed;
 

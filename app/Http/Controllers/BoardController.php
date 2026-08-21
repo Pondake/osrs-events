@@ -64,6 +64,7 @@ class BoardController extends Controller
                 'winCondition' => $event->bingoCard->win_condition,
                 'lineBonus' => $event->bingoCard->line_bonus,
                 'requiresApproval' => $event->bingoCard->requires_approval,
+                'winLines' => $event->bingoCard->winLines(),
             ] : null,
             'authors' => $event->authors,
         ];
@@ -148,7 +149,7 @@ class BoardController extends Controller
      */
     public function mine(Request $request, EventStandingsService $standings): Response
     {
-        $tileCounts = ['SIZE_5X5' => 25, 'SIZE_7X7' => 49, 'SIZE_9X9' => 81];
+        $tileCounts = Board::TILE_COUNTS;
         $user = Auth::user();
 
         // The hub shows three rows of three; this is where each one's "view
@@ -406,6 +407,10 @@ class BoardController extends Controller
                 'winCondition' => $card->win_condition,
                 'lineBonus' => $card->line_bonus,
                 'requiresApproval' => $card->requires_approval,
+                // Which shapes count, so the page can draw the same lines the
+                // server scores — a hint pointing at a diagonal on a
+                // rows-only card would be a lie the grid tells.
+                'winLines' => $card->winLines(),
                 'squares' => $card->squares->sortBy('position')->values()->map(fn ($square) => [
                     'id' => $square->id,
                     'position' => $square->position,
@@ -430,7 +435,7 @@ class BoardController extends Controller
             // the live channel pushes, so a card that updates mid-event does
             // not disagree with the one that was rendered.
             'approvedBy' => $bingo->approvedBy($card),
-            'completedLines' => $bingo->completedLines($card->size, $approved),
+            'completedLines' => $bingo->completedLines($card->size, $approved, $card->winLines()),
             'hasWon' => $bingo->hasWon($card, $approved),
             'canPlay' => $competitor !== null,
             'standings' => $bingo->standings($event, $card),
@@ -547,6 +552,10 @@ class BoardController extends Controller
             'win_condition' => ['nullable', Rule::in(BingoCard::WIN_CONDITIONS)],
             'line_bonus' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['nullable', 'boolean'],
+            // At least one shape, or "first line wins" is a condition no card
+            // can ever meet.
+            'win_lines' => ['nullable', 'array', 'min:1'],
+            'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
             'mode' => ['nullable', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['nullable', 'boolean'],
@@ -593,6 +602,7 @@ class BoardController extends Controller
                     'id' => (string) str()->uuid(),
                     'size' => $data['bingo_size'] ?? 5,
                     'win_condition' => $data['win_condition'] ?? 'LINE',
+                    'win_lines' => $data['win_lines'] ?? BingoCard::LINE_KINDS,
                     'line_bonus' => $data['line_bonus'] ?? 0,
                     // Defaults to on, matching the column default: a card
                     // nobody checks is a shared checklist, not a competition.
@@ -694,6 +704,8 @@ class BoardController extends Controller
             'win_condition' => ['sometimes', 'nullable', Rule::in(BingoCard::WIN_CONDITIONS)],
             'line_bonus' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['sometimes', 'nullable', 'boolean'],
+            'win_lines' => ['sometimes', 'nullable', 'array', 'min:1'],
+            'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['sometimes', 'boolean'],
@@ -708,7 +720,7 @@ class BoardController extends Controller
         // validation error rather than half-applied alongside the rest.
         if ($event->type === 'BINGO' && $event->bingoCard) {
             $cardChanges = collect($data)
-                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval'])
+                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval', 'win_lines'])
                 // Nulls are "not submitted for this type", not "clear it" —
                 // see the nullable note on the rules above.
                 ->reject(fn ($value) => $value === null)

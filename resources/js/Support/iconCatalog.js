@@ -43,7 +43,9 @@ export const ICON_GROUPS = [
         label: 'icons.group_people',
         icons: [
             'i-lucide-user', 'i-lucide-users', 'i-lucide-users-round', 'i-lucide-user-plus',
-            'i-lucide-user-check', 'i-lucide-user-cog', 'i-lucide-handshake', 'i-lucide-crown',
+            // No crown here: it is already in `general`, and an icon listed
+            // twice renders twice in the picker.
+            'i-lucide-user-check', 'i-lucide-user-cog', 'i-lucide-handshake',
             'i-lucide-message-circle', 'i-lucide-message-square', 'i-lucide-mail', 'i-lucide-bell',
         ],
     },

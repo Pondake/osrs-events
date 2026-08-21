@@ -194,23 +194,36 @@
                                  pointer-events-none or the stroke would eat
                                  the hover that draws it. -->
                             <svg
-                                v-if="lineStroke"
+                                v-if="lineStrokes.length"
                                 class="absolute inset-0 w-full h-full pointer-events-none z-10"
                                 viewBox="0 0 100 100"
                                 preserveAspectRatio="none"
                                 aria-hidden="true"
                             >
+                                <!-- Every line through this square, not just
+                                     the closest one: a centre square sits on
+                                     four, and showing one of them silently
+                                     hid the other three.
+
+                                     Thin and faint. A single 6px stroke read
+                                     as a decision the card had made rather
+                                     than a hint about it — at 3px and 0.35
+                                     it stays legible over the squares
+                                     without competing with them. The nearest
+                                     line is a shade stronger so "which am I
+                                     closest to" still has an answer. -->
                                 <line
-                                    :x1="lineStroke.x1"
-                                    :y1="lineStroke.y1"
-                                    :x2="lineStroke.x2"
-                                    :y2="lineStroke.y2"
+                                    v-for="(stroke, i) in lineStrokes"
+                                    :key="i"
+                                    :x1="stroke.x1"
+                                    :y1="stroke.y1"
+                                    :x2="stroke.x2"
+                                    :y2="stroke.y2"
                                     stroke="var(--ui-primary)"
-                                    stroke-width="1.2"
                                     stroke-linecap="round"
-                                    opacity="0.55"
+                                    :opacity="stroke.nearest ? 0.5 : 0.22"
+                                    :style="{ strokeWidth: stroke.nearest ? '3px' : '2px' }"
                                     vector-effect="non-scaling-stroke"
-                                    style="stroke-width: 6px"
                                 />
                             </svg>
 
@@ -410,6 +423,7 @@ import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { boardEventStatus } from '@/Support/board';
+import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
@@ -448,6 +462,7 @@ const status = computed(() => boardEventStatus(props.event.start_date, props.eve
 const rows = ref([...props.standings]);
 const squares = ref([...props.card.squares]);
 const holders = ref({ ...props.approvedBy });
+const winLines = ref(props.card.winLines ?? ['ROW', 'COLUMN', 'DIAGONAL']);
 
 function holdersOf(square) {
     return holders.value[square.position]?.holders ?? [];
@@ -469,6 +484,9 @@ const { streaming, stale } = useEventStream({
         rows.value = payload.standings;
         if (payload.squares) squares.value = payload.squares;
         if (payload.approvedBy) holders.value = payload.approvedBy;
+        // A host changing which shapes count mid-event reaches every open
+        // card, so the hint never points at a line that stopped counting.
+        if (payload.winLines) winLines.value = payload.winLines;
 
         // The review queue is host-only, so it cannot ride a channel every
         // viewer shares. The stream still says *that* something changed, so a
@@ -516,34 +534,6 @@ function statusOf(square) {
  */
 const hoveredPosition = ref(null);
 
-/**
- * Every winning line, tagged with its orientation.
- *
- * The tag is the tie-break. Without one, the first line generated won every
- * tie — rows are generated first, so on a card with nothing filled in the
- * hint was ALWAYS the row, and the feature looked like it only understood
- * horizontal lines. Reported as exactly that.
- *
- * `rank` orders a tie: diagonal, then column, then row. A row is the line
- * you can already see by looking; a diagonal is the one you cannot, so when
- * both are equally close the diagonal is the one worth pointing at.
- */
-const linesBySize = computed(() => {
-    const size = props.card.size;
-    const lines = [];
-
-    for (let row = 0; row < size; row++) {
-        lines.push({ rank: 2, positions: Array.from({ length: size }, (_, col) => row * size + col) });
-    }
-    for (let col = 0; col < size; col++) {
-        lines.push({ rank: 1, positions: Array.from({ length: size }, (_, row) => row * size + col) });
-    }
-    lines.push({ rank: 0, positions: Array.from({ length: size }, (_, i) => i * size + i) });
-    lines.push({ rank: 0, positions: Array.from({ length: size }, (_, i) => i * size + (size - 1 - i)) });
-
-    return lines;
-});
-
 const mine = computed(() => new Set(props.completed));
 
 /**
@@ -556,51 +546,20 @@ const mine = computed(() => new Set(props.completed));
 const suggestedPositions = computed(() => {
     if (editing.value || hoveredPosition.value === null) return [];
 
-    const candidates = linesBySize.value.filter((line) => line.positions.includes(hoveredPosition.value));
-    if (!candidates.length) return [];
-
-    // Fewest squares still missing wins; a line you have already finished is
-    // not a suggestion, so those drop out first.
-    const open = candidates.filter((line) => line.positions.some((p) => !mine.value.has(p)));
-    if (!open.length) return [];
-
-    const missing = (line) => line.positions.filter((p) => !mine.value.has(p)).length;
-
-    // Closest first, then by orientation — see linesBySize for why the
-    // second key matters more than it looks.
-    const [best] = [...open].sort((a, b) => (missing(a) - missing(b)) || (a.rank - b.rank));
-
-    return best.positions;
+    return openLinesThrough(hoveredPosition.value, props.card.size, mine.value, winLines.value);
 });
 
-// The squares to tint: the line, minus what you already hold and minus the
-// one under the pointer, which has its own hover state.
+// The squares to tint: every square on every candidate line, minus what you
+// already hold and minus the one under the pointer, which has its own hover
+// state.
 const suggestedLine = computed(() => new Set(
-    suggestedPositions.value.filter((p) => !mine.value.has(p) && p !== hoveredPosition.value),
+    suggestedPositions.value.flat().filter((p) => !mine.value.has(p) && p !== hoveredPosition.value),
 ));
 
-/**
- * The stroke across that line, in a 0-100 viewBox stretched over the grid.
- *
- * Centre of a cell in column c of `size` columns is (c + 0.5) / size — the
- * gaps between cells are small enough that ignoring them puts the line a
- * pixel or two off centre at the ends and nowhere else.
- */
-const lineStroke = computed(() => {
-    const line = suggestedPositions.value;
-    if (line.length < 2) return null;
-
-    const size = props.card.size;
-    const centre = (position) => ({
-        x: ((position % size) + 0.5) * (100 / size),
-        y: (Math.floor(position / size) + 0.5) * (100 / size),
-    });
-
-    const from = centre(line[0]);
-    const to = centre(line[line.length - 1]);
-
-    return { x1: from.x, y1: from.y, x2: to.x, y2: to.y };
-});
+// One stroke per candidate line, nearest-to-finishing marked — see
+// Support/bingoLines.js, which is also where the server's own definition of
+// a line is mirrored.
+const lineStrokes = computed(() => strokesFor(suggestedPositions.value, props.card.size, mine.value));
 
 function squareClass(square) {
     // Part of the line the hovered square would complete. Checked before

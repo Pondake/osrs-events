@@ -109,28 +109,41 @@ class BingoService
     }
 
     /**
-     * Every winning line on a card of this size: each row, each column, and
-     * both diagonals, as position lists.
+     * Every winning line on a card of this size, as position lists.
      *
-     * Computed rather than stored — it depends only on the size, and a stored
-     * copy is a thing that can disagree with the grid it describes.
+     * Computed rather than stored — it depends only on the size and the
+     * card's chosen kinds, and a stored copy is a thing that can disagree
+     * with the grid it describes.
      *
+     * `$kinds` is which shapes count. A card that says rows-only has no
+     * column or diagonal lines at all, so nothing downstream — the win
+     * check, the line bonus, the hover hint — has to know about the setting
+     * separately.
+     *
+     * @param  array<int, string>|null  $kinds
      * @return array<int, array<int, int>>
      */
-    public function lines(int $size): array
+    public function lines(int $size, ?array $kinds = null): array
     {
+        $kinds ??= BingoCard::LINE_KINDS;
         $lines = [];
 
-        for ($row = 0; $row < $size; $row++) {
-            $lines[] = range($row * $size, $row * $size + $size - 1);
+        if (in_array('ROW', $kinds, true)) {
+            for ($row = 0; $row < $size; $row++) {
+                $lines[] = range($row * $size, $row * $size + $size - 1);
+            }
         }
 
-        for ($col = 0; $col < $size; $col++) {
-            $lines[] = array_map(fn ($row) => $row * $size + $col, range(0, $size - 1));
+        if (in_array('COLUMN', $kinds, true)) {
+            for ($col = 0; $col < $size; $col++) {
+                $lines[] = array_map(fn ($row) => $row * $size + $col, range(0, $size - 1));
+            }
         }
 
-        $lines[] = array_map(fn ($i) => $i * $size + $i, range(0, $size - 1));
-        $lines[] = array_map(fn ($i) => $i * $size + ($size - 1 - $i), range(0, $size - 1));
+        if (in_array('DIAGONAL', $kinds, true)) {
+            $lines[] = array_map(fn ($i) => $i * $size + $i, range(0, $size - 1));
+            $lines[] = array_map(fn ($i) => $i * $size + ($size - 1 - $i), range(0, $size - 1));
+        }
 
         return $lines;
     }
@@ -140,14 +153,15 @@ class BingoService
      * page can highlight them rather than just announce a win.
      *
      * @param  array<int, int>  $completed
+     * @param  array<int, string>|null  $kinds
      * @return array<int, array<int, int>>
      */
-    public function completedLines(int $size, array $completed): array
+    public function completedLines(int $size, array $completed, ?array $kinds = null): array
     {
         $done = array_flip($completed);
 
         return array_values(array_filter(
-            $this->lines($size),
+            $this->lines($size, $kinds),
             fn ($line) => ! array_diff_key(array_flip($line), $done),
         ));
     }
@@ -169,7 +183,7 @@ class BingoService
             $completed,
         ));
 
-        return $tilePoints + count($this->completedLines($card->size, $completed)) * $card->line_bonus;
+        return $tilePoints + count($this->completedLines($card->size, $completed, $card->winLines())) * $card->line_bonus;
     }
 
     /**
@@ -187,7 +201,7 @@ class BingoService
             return $positions !== [] && ! array_diff($positions, $completed);
         }
 
-        return $this->completedLines($card->size, $completed) !== [];
+        return $this->completedLines($card->size, $completed, $card->winLines()) !== [];
     }
 
     /**
@@ -233,7 +247,7 @@ class BingoService
                     'avatarUrl' => $first->team?->icon_url ?? $first->user?->avatar_url,
                     'squares' => count($positions),
                     'points' => $this->score($card, $positions, $points),
-                    'lines' => count($this->completedLines($card->size, $positions)),
+                    'lines' => count($this->completedLines($card->size, $positions, $card->winLines())),
                     'won' => $this->hasWon($card, $positions),
                 ];
             })
