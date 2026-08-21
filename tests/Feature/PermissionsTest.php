@@ -35,6 +35,52 @@ class PermissionsTest extends TestCase
         );
     }
 
+    private function editor(): User
+    {
+        return tap(User::factory()->create())->assignRole(
+            Role::findOrCreate('EDITOR', 'web'),
+        );
+    }
+
+    // -------------------------------------------------------- role grants
+
+    /**
+     * Roles used to carry no permissions at all — the whole set was granted
+     * per user, inherited from the old `user_permissions` table, which had
+     * no notion of roles. So handing somebody EDITOR granted them nothing,
+     * and boards could only be created by ADMIN, which bypasses the check
+     * rather than holding the permission.
+     *
+     * Asserted through hasPermission() rather than on the pivot rows: the
+     * grant existing and the check passing are different claims, and only
+     * the second one is the feature.
+     */
+    #[Test]
+    public function an_editor_can_create_boards(): void
+    {
+        $this->assertTrue($this->editor()->hasPermission('canCreateBoards'));
+    }
+
+    #[Test]
+    public function a_player_still_cannot_create_boards(): void
+    {
+        $this->assertFalse($this->player()->hasPermission('canCreateBoards'));
+    }
+
+    /**
+     * The grant is the role's, not the person's — revoking the role has to
+     * take the ability with it, or "remove EDITOR" would be cosmetic.
+     */
+    #[Test]
+    public function losing_the_editor_role_loses_board_creation(): void
+    {
+        $user = $this->editor();
+
+        $user->removeRole('EDITOR');
+
+        $this->assertFalse($user->fresh()->hasPermission('canCreateBoards'));
+    }
+
     // ------------------------------------------------------------- schema
 
     /**
@@ -75,8 +121,11 @@ class PermissionsTest extends TestCase
     #[Test]
     public function an_id_cannot_be_mass_assigned_over_the_generated_one(): void
     {
+        // A name no migration seeds — these two assert model mechanics, not
+        // anything about a particular role, and EDITOR now exists by the time
+        // they run.
         $role = Role::create([
-            'name' => 'EDITOR',
+            'name' => 'ROLE_UNDER_TEST',
             'guard_name' => 'web',
             'id' => 'not-a-uuid-at-all',
         ]);
@@ -89,7 +138,7 @@ class PermissionsTest extends TestCase
     #[Test]
     public function a_role_keeps_its_description(): void
     {
-        $role = Role::create(['name' => 'EDITOR', 'guard_name' => 'web', 'description' => 'Edits things']);
+        $role = Role::create(['name' => 'ROLE_UNDER_TEST', 'guard_name' => 'web', 'description' => 'Edits things']);
 
         $this->assertSame('Edits things', $role->fresh()->description);
     }
