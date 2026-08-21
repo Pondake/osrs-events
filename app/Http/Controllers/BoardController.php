@@ -661,4 +661,26 @@ class BoardController extends Controller
 
         return back()->with('board-save', trans('admin.team_removed'));
     }
+
+    /**
+     * The Discord servers this account is in, for the GUILD access picker.
+     *
+     * The form used to ask for the server id as free text — an 18-digit
+     * snowflake nobody knows by heart, for a value already synced on every
+     * Discord login. JSON over fetch() rather than an Inertia prop because
+     * only one tab of one modal ever needs it.
+     */
+    public function myGuilds(Request $request): JsonResponse
+    {
+        $guilds = UserGuild::where('user_id', $request->user()->id)
+            ->orderBy('guild_name')
+            ->get(['guild_id', 'guild_name', 'guild_icon'])
+            ->map(fn (UserGuild $guild) => [
+                'id' => $guild->guild_id,
+                'name' => $guild->guild_name,
+                'icon' => $guild->guild_icon,
+            ]);
+
+        return response()->json(['guilds' => $guilds]);
+    }
 }

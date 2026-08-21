@@ -55,6 +55,54 @@ class SkillRaceControllerTest extends TestCase
         $this->assertSame('Pondake', EventStanding::firstOrFail()->username);
     }
 
+    /**
+     * Entering used to leave the row blank until the scheduled command got
+     * to it, so the first thing anyone saw after joining a race was "waiting
+     * for first sync" for up to ten minutes — indistinguishable from broken.
+     *
+     * Done inline rather than queued because this app runs no queue worker;
+     * a dispatched job would sit in the table forever. The enter route is
+     * throttled, which is what makes an outbound call there affordable.
+     */
+    #[Test]
+    public function entering_baselines_the_standing_immediately(): void
+    {
+        Http::fake(['api.wiseoldman.net/v2/players/*/gained*' => Http::response([
+            'data' => ['skills' => ['mining' => ['metric' => 'mining', 'experience' => [
+                'gained' => 1000,
+                'start' => 500000,
+                'end' => 501000,
+            ]]]],
+        ])]);
+
+        $event = $this->race();
+
+        $this->actingAs($this->player())->post("/events/{$event->id}/enter")->assertRedirect();
+
+        $standing = EventStanding::firstOrFail();
+
+        $this->assertNotNull($standing->synced_at, 'the row should be synced on the way in');
+        $this->assertSame(1000, $standing->gained);
+        $this->assertNull($standing->sync_error);
+    }
+
+    /**
+     * The lookup is somebody else's API and will fail sometimes. Losing the
+     * entry over that would be the worse outcome by far — the scheduled sync
+     * retries, and the row carries its own error in the meantime.
+     */
+    #[Test]
+    public function a_failing_lookup_does_not_cost_the_entry(): void
+    {
+        Http::fake(['api.wiseoldman.net/*' => Http::response('', 500)]);
+
+        $event = $this->race();
+
+        $this->actingAs($this->player())->post("/events/{$event->id}/enter")->assertRedirect();
+
+        $this->assertSame(1, EventStanding::count());
+    }
+
     /** Looking at a public leaderboard must not enrol anyone. */
     #[Test]
     public function merely_viewing_an_open_race_does_not_enter_it(): void

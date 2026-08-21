@@ -91,8 +91,22 @@
                             </u-form-field>
                         </div>
 
+                        <!-- The description has always promised "set to
+                             Unlimited", and null is exactly what the server
+                             stores for it — but a `type=number min=1` spinner
+                             has no way to express null, so the state was
+                             reachable only by never touching the field. -->
                         <u-form-field :label="$t('admin.dice_roll_limit')" :description="$t('admin.dice_roll_limit_desc')">
-                            <u-input v-model.number="form.dice_roll_limit" type="number" min="1" class="w-full" />
+                            <div class="space-y-3">
+                                <u-switch v-model="unlimitedRolls" :label="$t('admin.dice_roll_unlimited')" />
+                                <u-input
+                                    v-if="!unlimitedRolls"
+                                    v-model.number="form.dice_roll_limit"
+                                    type="number"
+                                    min="1"
+                                    class="w-full"
+                                />
+                            </div>
                         </u-form-field>
 
                         <u-switch v-model="form.is_listed" :label="$t('admin.board_listed')" />
@@ -145,7 +159,19 @@
                             :label="$t('admin.required_server')"
                             :description="$t('admin.required_server_desc')"
                         >
-                            <u-input v-model="form.required_guild_id" class="w-full" />
+                            <!-- A Discord server id is an 18-digit snowflake.
+                                 This was a bare text box, which asked the user
+                                 to know or go and find one — for a value we
+                                 already hold, by name and icon, from the guild
+                                 sync that runs on every Discord login. -->
+                            <u-select
+                                v-model="form.required_guild_id"
+                                :items="guildOptions"
+                                :loading="loadingGuilds"
+                                :disabled="!guildOptions.length"
+                                :placeholder="guildPlaceholder"
+                                class="w-full"
+                            />
                         </u-form-field>
                     </div>
                 </template>
@@ -356,6 +382,55 @@ const metricOptions = computed(() => {
 });
 
 const form = useForm(blankForm());
+
+/**
+ * null is "unlimited" on the server side, so this is a view of the field
+ * rather than a value of its own — nothing extra to keep in sync, and
+ * nothing to forget to reset when the modal reopens on another board.
+ */
+const unlimitedRolls = computed({
+    get: () => form.dice_roll_limit === null || form.dice_roll_limit === '',
+    set: (on) => {
+        form.dice_roll_limit = on ? null : (usePage().props?.site?.defaultDiceRollLimit ?? 1);
+    },
+});
+
+// The current user's Discord servers, fetched when the access tab actually
+// needs them rather than shared into every page — same reasoning as the
+// invite and team lists below.
+const guilds = ref([]);
+const loadingGuilds = ref(false);
+
+const guildOptions = computed(() => guilds.value.map((guild) => ({
+    label: guild.name,
+    value: guild.id,
+})));
+
+const guildPlaceholder = computed(() => (
+    loadingGuilds.value
+        ? trans('common.loading')
+        : (guildOptions.value.length ? trans('admin.required_server_pick') : trans('admin.required_server_none'))
+));
+
+async function loadGuilds() {
+    if (guilds.value.length || loadingGuilds.value) return;
+
+    loadingGuilds.value = true;
+
+    try {
+        const response = await fetch('/my-guilds', { headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        guilds.value = data.guilds ?? [];
+    } catch (error) {
+        console.error(error);
+    } finally {
+        loadingGuilds.value = false;
+    }
+}
+
+watch(() => form.access_mode, (mode) => {
+    if (mode === 'GUILD') loadGuilds();
+}, { immediate: true });
 
 // A boss name is not a valid skill race and vice versa, so switching type
 // drops a metric that no longer belongs to the list on offer. Left alone it
