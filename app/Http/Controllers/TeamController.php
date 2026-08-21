@@ -6,11 +6,13 @@ use App\Models\AuditLog;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
+use App\Models\UserGuild;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -73,16 +75,54 @@ class TeamController extends Controller
         return response()->json(['teams' => $teams]);
     }
 
+    /**
+     * A team may only name a Discord server the person doing this is in.
+     *
+     * The field is load-bearing twice: the teams list shows it beside the
+     * name, so people read it as a fact about who the team is, and
+     * Team::scopeVisibleTo publishes a team to every member of the guild it
+     * names. Left unchecked, anyone could label their team as somebody
+     * else's clan and push it into that clan's list.
+     */
+    private function guildYouAreIn(Request $request): Exists
+    {
+        return Rule::exists('user_guilds', 'guild_id')->where('user_id', $request->user()->id);
+    }
+
+    /**
+     * The server's name as Discord gave it to us, not as the form spelled it.
+     *
+     * Otherwise the check above is walked around by naming a server you ARE
+     * in and labelling it as something else. No server means no label — a
+     * name with no id behind it is the same unverified claim by another
+     * route.
+     *
+     * @return array{guild_name: string|null}
+     */
+    private function guildLabel(Request $request, ?string $guildId): array
+    {
+        if ($guildId === null) {
+            return ['guild_name' => null];
+        }
+
+        return ['guild_name' => UserGuild::where('user_id', $request->user()->id)
+            ->where('guild_id', $guildId)
+            ->value('guild_name')];
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'icon_url' => ['nullable', 'string'],
-            'guild_id' => ['nullable', 'string'],
-            'guild_name' => ['nullable', 'string'],
+            'guild_id' => ['nullable', 'string', $this->guildYouAreIn($request)],
         ]);
 
-        $team = Team::create(['id' => (string) str()->uuid(), ...$data]);
+        $team = Team::create([
+            'id' => (string) str()->uuid(),
+            ...$data,
+            ...$this->guildLabel($request, $data['guild_id'] ?? null),
+        ]);
 
         // Auto-add the creator as the first member, same as the old service —
         // as OWNER, which is the whole point: creating a team now grants the
@@ -106,9 +146,14 @@ class TeamController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'icon_url' => ['nullable', 'string'],
-            'guild_id' => ['nullable', 'string'],
-            'guild_name' => ['nullable', 'string'],
+            'guild_id' => ['nullable', 'string', $this->guildYouAreIn($request)],
         ]);
+
+        // Only when the form actually sent one — this endpoint takes partial
+        // updates, and a rename must not knock the team off its server.
+        if ($request->has('guild_id')) {
+            $data = [...$data, ...$this->guildLabel($request, $data['guild_id'] ?? null)];
+        }
 
         // Diffed before the update so the entry says what changed, not what
         // the form happened to submit — same reasoning as SiteSettingsController.

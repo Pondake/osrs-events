@@ -2153,6 +2153,33 @@ recover it with.
   right now it does not end that session — but not worth doing quietly.
 
 
+### Fifth pass, 2026-08-22 — the Discord server a team claims
+
+Round three asked for teams to be visible only to your own server or
+yourself, marked with the server name. The visibility half was built. The
+marking half was taken on trust: `guild_id` and `guild_name` came straight
+off the form with no rule on either.
+
+That is a spoof in a feature whose whole point is provenance. Anyone could
+label their team as somebody else's clan — and because `scopeVisibleTo`
+publishes a team to every member of the guild it names, doing so also pushed
+that team into that clan's list.
+
+Now: `guild_id` has to be a server the person is actually in
+(`Rule::exists` against their own `user_guilds`), and `guild_name` is read
+from that row rather than accepted from the form — otherwise the first check
+is walked around by naming a server you ARE in and labelling it as something
+else. Clearing the server clears the label with it; a name with no id behind
+it is the same unverified claim by another route. The client no longer sends
+`guild_name` at all.
+
+Also pinned: the picker binds to a string, so "no server" arrives as `''`
+rather than a missing key, and it is `ConvertEmptyStringsToNull` that turns
+that into a null the `exists` rule skips. Without that middleware every
+serverless team would fail validation, so it is worth a test rather than an
+assumption.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
