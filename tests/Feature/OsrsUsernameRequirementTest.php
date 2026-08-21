@@ -129,6 +129,26 @@ class OsrsUsernameRequirementTest extends TestCase
     }
 
     /**
+     * The tour's own endpoints sit inside the gated route group, so before
+     * they were exempted a brand-new Discord account — which by definition
+     * has no OSRS name yet — had its completion POST redirected to the gate
+     * instead of saved. Finishing the tour did nothing, and it reopened on
+     * every single navigation, forever.
+     */
+    #[Test]
+    public function finishing_the_tour_persists_even_without_a_name(): void
+    {
+        $user = User::factory()->create([
+            'osrs_username' => null,
+            'onboarding_completed_at' => null,
+        ]);
+
+        $this->actingAs($user)->post('/onboarding/complete');
+
+        $this->assertNotNull($user->fresh()->onboarding_completed_at);
+    }
+
+    /**
      * The other half of that relaxation, and the half that keeps it honest:
      * reads are let through, writes are not. Without this, dismissing the
      * wizard would leave an account able to join, roll and claim with no
