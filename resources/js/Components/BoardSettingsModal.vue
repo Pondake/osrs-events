@@ -204,16 +204,39 @@
                             {{ $t('admin.invite_links_gate_desc') }}
                         </p>
                         <div v-else class="space-y-4">
-                            <div class="flex justify-end">
-                                <u-button size="sm" color="primary" icon="i-lucide-plus" :label="$t('admin.create_invite')" :loading="creatingInvite" @click="createInvite" />
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs text-muted">
+                                    <span v-if="maxOpenInvites !== null">{{ $t('admin.invite_open_count', { open: openInvites, max: maxOpenInvites }) }}</span>
+                                </p>
+                                <u-button
+                                    size="sm"
+                                    color="primary"
+                                    icon="i-lucide-plus"
+                                    :label="$t('admin.create_invite')"
+                                    :loading="creatingInvite"
+                                    :disabled="inviteLimitReached"
+                                    @click="createInvite"
+                                />
                             </div>
+
+                            <!-- Said before the click rather than after it:
+                                 the server refuses past the limit either way,
+                                 and a disabled button with no reason is the
+                                 same dead end as an empty dropdown. -->
+                            <u-alert
+                                v-if="inviteLimitReached"
+                                color="neutral"
+                                variant="subtle"
+                                icon="i-lucide-info"
+                                :description="$t('admin.invite_limit_reached', { max: maxOpenInvites })"
+                            />
 
                             <div class="divide-y divide-default rounded-md ring ring-default">
                                 <div v-for="invite in invites" :key="invite.id" class="flex items-center justify-between gap-3 px-3 py-2">
                                     <div class="min-w-0">
                                         <div class="font-mono text-sm">{{ invite.short_code }}</div>
                                         <div class="text-xs text-muted">
-                                            {{ invite.use_count }}{{ invite.max_uses ? ` / ${invite.max_uses}` : '' }} {{ $t('admin.invite_uses_suffix') }}
+                                            {{ invite.use_count ?? 0 }}{{ invite.max_uses ? ` / ${invite.max_uses}` : '' }} {{ $t('admin.invite_uses_suffix') }}
                                             <span v-if="invite.expires_at"> · {{ $t('admin.invite_expires', { date: new Date(invite.expires_at).toLocaleDateString() }) }}</span>
                                         </div>
                                     </div>
@@ -264,7 +287,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
@@ -468,6 +491,21 @@ watch(() => form.type, () => {
 
 // Mirrors form.author_ids, but carrying display data (username/avatar) the
 // form itself has no use for — kept in sync by addAuthor()/removeAuthor().
+// Dynamic import inside onMounted for the reason AppRoot spells out:
+// useToast statically imports the virtual '#imports' specifier, and pulling
+// it into the SSR module graph crashes the SSR process at startup for every
+// page, not just this one. Optional-called below, since a toast raised
+// before hydration finishes is not worth a crash.
+let toast;
+onMounted(async () => {
+    const { useToast } = await import('@nuxt/ui/composables/useToast');
+    toast = useToast();
+});
+
+const openInvites = ref(0);
+const maxOpenInvites = ref(null);
+const inviteLimitReached = computed(() => maxOpenInvites.value !== null && openInvites.value >= maxOpenInvites.value);
+
 const selectedAuthors = ref([]);
 const authorSearch = ref('');
 const authorResults = ref([]);
@@ -577,28 +615,76 @@ function xsrfHeader() {
     return match ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) } : {};
 }
 
+/**
+ * All three endpoints answer with the same shape — the full list plus the
+ * open count — so creating and revoking need no separate refetch and the
+ * list can never drift from what the server just did.
+ *
+ * None of these checked response.ok before. A 403, a throttle, or the new
+ * limit all came back as a body that is not a list, and the view took it
+ * anyway.
+ */
+function applyInvites(data) {
+    invites.value = Array.isArray(data?.invites) ? data.invites : [];
+    openInvites.value = data?.openCount ?? invites.value.length;
+    maxOpenInvites.value = data?.maxOpen ?? null;
+}
+
+async function inviteRequest(url, options = {}) {
+    const response = await fetch(url, {
+        headers: { Accept: 'application/json', ...xsrfHeader(), ...(options.headers ?? {}) },
+        ...options,
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        console.error('invite request failed', response.status, data);
+
+        toast?.add({
+            id: 'invite-error',
+            title: data?.message ?? trans('errors.generic'),
+            color: 'error',
+        });
+
+        return null;
+    }
+
+    applyInvites(data);
+
+    return data;
+}
+
 async function fetchInvites() {
-    const response = await fetch(`/events/${props.board.id}/invites`, { headers: { Accept: 'application/json' } });
-    invites.value = await response.json();
+    await inviteRequest(`/events/${props.board.id}/invites`);
 }
 
 async function createInvite() {
     creatingInvite.value = true;
-    await fetch(`/events/${props.board.id}/invites`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...xsrfHeader() },
-        body: JSON.stringify({}),
-    });
-    await fetchInvites();
-    creatingInvite.value = false;
+
+    try {
+        const data = await inviteRequest(`/events/${props.board.id}/invites`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+
+        if (data) {
+            toast?.add({ id: 'invite-created', title: trans('admin.invite_created'), color: 'success' });
+        }
+    } finally {
+        // In a finally so a failure cannot leave the button spinning forever,
+        // which is what a spam-click session turns into otherwise.
+        creatingInvite.value = false;
+    }
 }
 
 async function revokeInvite(invite) {
-    await fetch(`/events/${props.board.id}/invites/${invite.id}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json', ...xsrfHeader() },
-    });
-    await fetchInvites();
+    const data = await inviteRequest(`/events/${props.board.id}/invites/${invite.id}`, { method: 'DELETE' });
+
+    if (data) {
+        toast?.add({ id: 'invite-revoked', title: trans('admin.invite_revoked'), color: 'success' });
+    }
 }
 
 // Same fetch()-not-Inertia rationale as invites above.
