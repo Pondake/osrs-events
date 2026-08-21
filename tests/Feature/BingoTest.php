@@ -179,17 +179,17 @@ class BingoTest extends TestCase
     }
 
     #[Test]
-    public function clicking_a_square_marks_and_unmarks_it(): void
+    public function claiming_a_square_and_withdrawing_it_again(): void
     {
         $event = $this->event();
         $card = $this->card($event, 3);
         $square = $card->squares()->orderBy('position')->first();
         $user = $this->player();
 
-        $this->actingAs($user)->post("/events/{$event->id}/bingo/squares/{$square->id}/toggle");
+        $this->actingAs($user)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim");
         $this->assertSame(1, BingoCompletion::count());
 
-        $this->actingAs($user)->post("/events/{$event->id}/bingo/squares/{$square->id}/toggle");
+        $this->actingAs($user)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim");
         $this->assertSame(0, BingoCompletion::count());
     }
 
@@ -207,7 +207,7 @@ class BingoTest extends TestCase
         $foreign = $this->card($theirs, 3)->squares()->first();
 
         $this->actingAs($this->player())
-            ->post("/events/{$mine->id}/bingo/squares/{$foreign->id}/toggle")
+            ->post("/events/{$mine->id}/bingo/squares/{$foreign->id}/claim")
             ->assertNotFound();
     }
 

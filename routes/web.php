@@ -17,6 +17,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BingoController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
+use App\Http\Controllers\EventStreamController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\LeaderboardController;
@@ -123,11 +124,12 @@ Route::get('/events/{event}/leaderboard', [LeaderboardController::class, 'show']
     ->name('events.leaderboard');
 
 // Server-sent events, not a normal endpoint: it holds a PHP worker open for
-// ~45 seconds per connected viewer. See SkillRaceController for why SSE over
-// WebSockets and what that costs to run.
-Route::get('/events/{event}/standings/stream', [SkillRaceController::class, 'stream'])
+// ~45 seconds per connected viewer. One route for every event type — the
+// controller resolves a channel by type and knows nothing else. See
+// EventStreamController for why SSE over WebSockets and what it costs.
+Route::get('/events/{event}/stream', EventStreamController::class)
     ->middleware(['auth', 'require-osrs-username'])
-    ->name('events.standings.stream');
+    ->name('events.stream');
 Route::get('/events/{event}/join/{token}', [BoardController::class, 'joinByLink'])->name('events.join-link');
 
 // The one thing a logged-in account is allowed to do before it has an OSRS
@@ -149,7 +151,8 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
 
     // Bingo. Toggling is a player action gated on access; editing a square
     // or the card is an author action — the same split TileController makes.
-    Route::post('/events/{event}/bingo/squares/{square}/toggle', [BingoController::class, 'toggle'])->name('events.bingo.toggle');
+    Route::post('/events/{event}/bingo/squares/{square}/claim', [BingoController::class, 'claim'])->name('events.bingo.claim');
+    Route::patch('/events/{event}/bingo/claims/{completion}', [BingoController::class, 'review'])->name('events.bingo.review');
     Route::patch('/events/{event}/bingo/squares/{square}', [BingoController::class, 'updateSquare'])->name('events.bingo.square');
     Route::patch('/events/{event}/bingo', [BingoController::class, 'updateCard'])->name('events.bingo.card');
 

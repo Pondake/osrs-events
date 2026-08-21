@@ -1160,6 +1160,60 @@ sub-pages which aren't discoverable from it.
   `mimic`/`nightmare` style boss display names were hand-mapped from slugs —
   worth checking against the wiki before launch.
 
+- [x] ~~**Bingo made real, and SSE generalised to one channel per event
+  type.**~~ — done 2026-08-21.
+
+  **The table question, reconsidered on request.** Re-evaluated whether bingo
+  should reuse `boards`/`tiles`, with real requirements in hand this time
+  (docs/bingo-research.md). The answer is **more strongly separate than
+  before**: researching how clans actually run these showed the two grids
+  diverging, not converging. To share one table, `tiles` would need `points`,
+  `status`, `proof_url`, `submitted_by`, `reviewed_by` and `reviewed_at` —
+  every one meaningless for Snakes & Ladders — while `boards` would carry
+  `win_condition` and bingo would carry `dice_roll_limit`. The completion
+  tables differ more fundamentally still: `player_boards` is one row per
+  player holding a **position**; a bingo completion belongs to a **team** and
+  holds a review state. What the two genuinely share is `Task`, and that is
+  shared already.
+
+  **What the research changed.** The first pass was a shared checklist, not a
+  bingo tracker: a completion was a boolean fact. Every tool clans actually
+  use treats it as a **claim under review**. So:
+  * PENDING / APPROVED / REJECTED, with a proof URL, a note, and who reviewed
+    it. **Only APPROVED scores** — a pending claim is visible to its author
+    and invisible to the standings, or review means nothing.
+  * A rejection **keeps the row** and its reason, so the claimant can see why.
+  * **Points per square plus a line bonus**, because counting squares treats a
+    Zulrah pet and a bucket of sand as equal.
+  * Claims close with the event — "after the deadline" is not a judgement
+    call, and the guides say the cutoff is what hosts most need enforced.
+  * Sizes go to 10x10, which is what competitive events run.
+  * `requires_approval` is a card setting: a clan that trusts everyone should
+    not have to review every square.
+  * The review queue sits **beside the card**, not on another screen — leaving
+    the thing you are judging in order to judge it is the wrong shape.
+
+  **Deliberately not built:** "a drop counts for only one tile" cannot be
+  enforced without item-level tile definitions or the RuneLite plugin. It is a
+  moderation rule the host applies while looking at the proof; a checkbox
+  claiming to enforce it would be worse than a host who knows to look.
+
+  **SSE now covers every type.** `/events/{event}/standings/stream` became
+  `/events/{event}/stream`, and the controller resolves a channel by type
+  instead of knowing about standings. Bingo pushes claims and reviews as they
+  land; Snakes & Ladders pushes player positions, so a roll moves everyone's
+  view. The fingerprint/payload split is the load-bearing part — see CLAUDE.md.
+
+  Verified in the browser end to end, not just by tests: a rival's approved
+  squares appeared on an open card without a reload, a pending claim arrived
+  in the host queue, approving it emptied the queue and moved that rival into
+  first place at 6 points, and moving a player on a Snakes & Ladders board
+  updated an open board's leaderboard. 174 tests.
+
+  **Still open:** bingo has no per-square discussion or dispute state (the
+  research found a fourth "disputed" state some clans use), and the boss
+  display names are still hand-mapped from slugs.
+
 ## Onboarding & landing polish (step 5)
 
 Flagged 2026-08-19: landing pages currently read as placeholder-bare (plain

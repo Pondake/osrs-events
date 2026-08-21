@@ -318,7 +318,7 @@
                             </div>
                         </u-card>
 
-                        <u-card v-if="players.length">
+                        <u-card v-if="livePlayers.length">
                             <template #header>
                                 <div class="flex items-center justify-between">
                                     <span class="font-semibold">{{ $t('leaderboard.title') }}</span>
@@ -327,7 +327,7 @@
                             </template>
                             <div class="flex flex-col gap-1">
                                 <div
-                                    v-for="(p, i) in players.slice(0, 5)"
+                                    v-for="(p, i) in livePlayers.slice(0, 5)"
                                     :key="p.id"
                                     class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm"
                                     :class="isMyPlayerRow(p) ? 'bg-primary/10 ring-1 ring-primary/30' : ''"
@@ -357,13 +357,13 @@
                                     </span>
                                 </div>
                             </div>
-                            <div v-if="players.length > 5" class="mt-1 text-center">
+                            <div v-if="livePlayers.length > 5" class="mt-1 text-center">
                                 <u-button
                                     :href="`/events/${board.id}/leaderboard`"
                                     variant="ghost"
                                     size="xs"
                                     color="neutral"
-                                    :label="$t('leaderboard.show_all', { count: players.length })"
+                                    :label="$t('leaderboard.show_all', { count: livePlayers.length })"
                                 />
                             </div>
                         </u-card>
@@ -405,6 +405,7 @@ import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate } from '@/Support/board';
+import { useEventStream } from '@/Composables/useEventStream';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 const TileEditModal = defineAsyncComponent(() => import('@/Components/TileEditModal.vue'));
@@ -417,6 +418,18 @@ const props = defineProps({
     hasTeam: { type: Boolean, default: true },
     canEdit: { type: Boolean, default: false },
 });
+
+// Everyone's positions, seeded from the render and then kept current by the
+// board's own channel — a roll moves one player and everybody watching should
+// see it, the same as a bingo square being ticked.
+const livePlayers = ref([...props.players]);
+
+useEventStream({
+    url: () => `/events/${props.board.id}/stream`,
+    event: 'players',
+    onMessage: (payload) => (livePlayers.value = payload.players),
+});
+
 
 const showSettingsModal = ref(false);
 const editingTile = ref(null);
@@ -470,8 +483,10 @@ const clickedTileTitle = computed(() => clickedTile.value?.title_override ?? cli
 // only renders on the grid once the "show other players" toggle is on.
 const authUser = computed(() => inertiaPage.props.auth?.user ?? null);
 const isMyPlayerRow = (p) => (props.board.mode === 'TEAM' ? p.team_id === props.playerBoard?.team_id : p.user_id === authUser.value?.id);
-const otherPlayers = computed(() => props.players.filter((p) => !isMyPlayerRow(p)));
-const visiblePlayers = computed(() => props.players.filter((p) => isMyPlayerRow(p) || showOtherPlayers.value));
+const otherPlayers = computed(() => livePlayers.value.filter((p) => !isMyPlayerRow(p)));
+// Reads the live list, so a roll by anyone moves their avatar on every
+// open board rather than only after a refresh.
+const visiblePlayers = computed(() => livePlayers.value.filter((p) => isMyPlayerRow(p) || showOtherPlayers.value));
 
 function playersOnTile(position) {
     return visiblePlayers.value
