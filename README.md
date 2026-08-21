@@ -47,7 +47,7 @@ with a key), and consider supporting them.
 |---|---|
 | Backend | Laravel 13 · PHP 8.3+ |
 | Frontend | Inertia.js v2 · Vue 3 · Nuxt UI v4 · Tailwind v4 |
-| Database | PostgreSQL (SQLite locally) via Eloquent, UUID keys throughout |
+| Database | MySQL 8+ or PostgreSQL (SQLite locally) via Eloquent, UUID keys throughout |
 | Auth | Discord OAuth (Socialite) · email + password |
 | Roles | `spatie/laravel-permission`, with UUID overrides |
 | Live updates | Server-Sent Events, one channel per event type |
@@ -62,7 +62,8 @@ takes it from there.
 
 - PHP 8.3+ and Composer
 - Node 20+ and **pnpm** (never npm or yarn — see `CLAUDE.md`)
-- A database: SQLite works out of the box, PostgreSQL for anything real
+- A database: SQLite works out of the box; MySQL 8+ or PostgreSQL for
+  anything real (the suite runs green against both)
 - A Discord application, if you want Discord login to work
 
 ---
