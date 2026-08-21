@@ -25,18 +25,33 @@ class TileController extends Controller
     {
         abort_unless($request->user()->canEditEvent($event), 403);
 
+        // A bingo card and a race have no board, so there is no tile here to
+        // upsert. Without this the identifying pair below is (null,
+        // position) — which is not "no match", it is a row belonging to no
+        // board, and the insert died on the NOT NULL constraint with a 500
+        // rather than a 404.
+        $board = $event->board;
+        abort_unless($board !== null, 404);
+
+        $lastPosition = $board->tileCount() - 1;
+
         $data = $request->validate([
-            'position' => ['required', 'integer', 'min:0'],
+            // Bounded by the board, not just by zero. A tile at position 99
+            // on a 5x5 renders nowhere and counts in every query that asks
+            // how many tiles a board has.
+            'position' => ['required', 'integer', 'min:0', "max:{$lastPosition}"],
             'task_id' => ['nullable', 'uuid', 'exists:tasks,id'],
             'title_override' => ['nullable', 'string', 'max:255'],
             'type' => ['required', 'in:NORMAL,SNAKE,LADDER'],
-            'target_position' => ['nullable', 'integer', 'min:0'],
+            // Same bound: a snake pointing off the end of the board sends a
+            // player somewhere that does not exist.
+            'target_position' => ['nullable', 'integer', 'min:0', "max:{$lastPosition}"],
         ]);
 
         Tile::updateOrCreate(
             // A tile belongs to the BOARD — `tiles` has no event_id column
             // at all, so this identified nothing.
-            ['board_id' => $event->board?->id, 'position' => $data['position']],
+            ['board_id' => $board->id, 'position' => $data['position']],
             [
                 'id' => (string) str()->uuid(),
                 'task_id' => $data['task_id'] ?? null,
@@ -52,10 +67,15 @@ class TileController extends Controller
     public function destroy(Event $event, Tile $tile): RedirectResponse
     {
         abort_unless(Auth::user()->canEditEvent($event), 403);
+
         // Against the BOARD's id, not the event's. Those coincide for rows
         // the split migration created, which is exactly why this needed
         // catching — on a newly created event they differ.
-        abort_unless($tile->board_id === $event->board?->id, 404);
+        //
+        // The null check is separate on purpose: `null === null` is true, so
+        // comparing straight against `$event->board?->id` would have let a
+        // board-less event delete any tile that somehow had no board either.
+        abort_unless($event->board !== null && $tile->board_id === $event->board->id, 404);
 
         $tile->delete();
 

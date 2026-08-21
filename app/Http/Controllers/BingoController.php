@@ -187,6 +187,8 @@ class BingoController extends Controller
             'win_condition' => ['sometimes', Rule::in(BingoCard::WIN_CONDITIONS)],
             'line_bonus' => ['sometimes', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['sometimes', 'boolean'],
+            'win_lines' => ['sometimes', 'array', 'min:1'],
+            'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
         ]);
 
         if (! $bingo->applyCardSettings($card, $data)) {

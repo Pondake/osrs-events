@@ -76,6 +76,7 @@ class BingoChannel implements EventChannel
 
         return [
             'standings' => $this->bingo->standings($event, $card)->all(),
+            'winLines' => $card->winLines(),
             // Public by definition — an approved claim is already visible in
             // the standings, so putting the same fact on the square it was
             // approved for carries nothing new about anyone.

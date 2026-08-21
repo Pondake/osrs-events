@@ -15,6 +15,8 @@ behaviour came from, not files you can open.
 Always **pnpm** for JS tooling, **composer** for PHP. Never `npm`, `npx`, or `yarn`.
 ```
 pnpm dev            # vite dev server (client HMR)
+pnpm test           # vitest over tests/js (frontend)
+php artisan test    # phpunit over tests/Feature (backend)
 pnpm build          # client bundle -> public/build
 pnpm exec vite build --ssr   # SSR bundle -> bootstrap/ssr/ssr.js
 php artisan serve --port=<port>

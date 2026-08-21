@@ -61,6 +61,29 @@
                 </u-form-field>
             </div>
 
+            <!-- What counts as a line. "First line wins" was quietly doing
+                 three jobs — rows, columns and both diagonals — with no way
+                 to say a card is rows-only, or that the diagonals are the
+                 whole point. On a 3x3 that choice decides how long the
+                 event lasts. -->
+            <u-form-field
+                v-if="form.win_condition === 'LINE'"
+                :label="$t('bingo.win_lines')"
+                :description="$t('bingo.win_lines_desc')"
+                :error="form.errors.win_lines"
+            >
+                <div class="flex flex-col gap-2">
+                    <u-checkbox
+                        v-for="kind in lineKindOptions"
+                        :key="kind.value"
+                        :model-value="(form.win_lines ?? []).includes(kind.value)"
+                        :label="kind.label"
+                        :description="kind.description"
+                        @update:model-value="(on) => toggleLineKind(kind.value, on)"
+                    />
+                </div>
+            </u-form-field>
+
             <u-form-field :label="$t('bingo.line_bonus')" :description="$t('bingo.line_bonus_desc')">
                 <u-input v-model.number="form.line_bonus" type="number" min="0" max="1000" class="w-full sm:max-w-40" />
             </u-form-field>
@@ -150,6 +173,34 @@ const bingoSizeOptions = [3, 4, 5, 6, 7, 8, 9, 10].map((size) => ({
     value: size,
     label: trans('bingo.size_option', { size }),
 }));
+
+const lineKindOptions = [
+    { value: 'ROW', label: trans('bingo.line_rows'), description: trans('bingo.line_rows_desc') },
+    { value: 'COLUMN', label: trans('bingo.line_columns'), description: trans('bingo.line_columns_desc') },
+    { value: 'DIAGONAL', label: trans('bingo.line_diagonals'), description: trans('bingo.line_diagonals_desc') },
+];
+
+/**
+ * Toggling the last one back on rather than off.
+ *
+ * A card with no line kinds at all makes "first line wins" a condition
+ * nothing can meet, so the server refuses it — and refusing a click after
+ * the fact is worse than not letting it land. Unticking the last remaining
+ * kind is ignored.
+ */
+function toggleLineKind(kind, on) {
+    const current = props.form.win_lines ?? [];
+
+    if (on) {
+        props.form.win_lines = [...new Set([...current, kind])];
+
+        return;
+    }
+
+    if (current.length <= 1) return;
+
+    props.form.win_lines = current.filter((k) => k !== kind);
+}
 
 const winConditionOptions = [
     { value: 'LINE', label: trans('bingo.win_line') },

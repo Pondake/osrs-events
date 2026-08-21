@@ -274,6 +274,9 @@ function blankForm() {
         // common event.
         bingo_size: 5,
         win_condition: 'LINE',
+        // All three, which is what every card behaved as before the setting
+        // existed.
+        win_lines: ['ROW', 'COLUMN', 'DIAGONAL'],
         line_bonus: 0,
         requires_approval: true,
         mode: 'SOLO',
@@ -522,6 +525,7 @@ function cardFields(board) {
     return {
         bingo_size: board.card.size,
         win_condition: board.card.winCondition,
+        win_lines: board.card.winLines ?? ['ROW', 'COLUMN', 'DIAGONAL'],
         line_bonus: board.card.lineBonus ?? 0,
         requires_approval: board.card.requiresApproval ?? true,
     };
@@ -694,6 +698,7 @@ function submit() {
             if (data.type !== 'BINGO') {
                 delete payload.bingo_size;
                 delete payload.win_condition;
+                delete payload.win_lines;
                 delete payload.line_bonus;
                 delete payload.requires_approval;
             }
@@ -729,6 +734,7 @@ function submit() {
         if (data.type !== 'BINGO') {
             delete payload.bingo_size;
             delete payload.win_condition;
+            delete payload.win_lines;
             delete payload.line_bonus;
             delete payload.requires_approval;
         }
