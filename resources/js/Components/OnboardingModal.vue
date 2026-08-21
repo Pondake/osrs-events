@@ -60,7 +60,7 @@
                             <u-button href="/settings/account" color="neutral" variant="outline" size="sm" icon="i-lucide-mail" :label="$t('onboarding.connect_email_cta')" />
                         </div>
 
-                        <p class="text-xs text-muted italic">{{ $t('onboarding.connect_optional') }}</p>
+                        <p class="text-xs text-muted italic">{{ $t(missingBoth ? 'onboarding.connect_optional' : 'onboarding.connect_optional_one') }}</p>
                     </template>
 
                     <template v-else-if="step === 'board'">
@@ -224,6 +224,14 @@ const displayName = computed(() => user.value?.nickname ?? user.value?.discordUs
 const roles = computed(() => user.value?.roles ?? []);
 const hasDiscord = computed(() => !!user.value?.discordUsername);
 const hasEmail = computed(() => !!page.props?.auth?.user?.hasEmail);
+
+// This step renders a card per MISSING method, so it is reached with either
+// one or two of them showing. The copy underneath said "Both are optional"
+// in each case — wrong, and confusingly so right after signup, where it
+// reads as though it might be excusing the OSRS username too. That one is
+// required and is asked for elsewhere: on the register form directly, and
+// behind the RequireOsrsUsername gate for Discord logins.
+const missingBoth = computed(() => !hasDiscord.value && !hasEmail.value);
 
 const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', TEAM_MANAGER: 'info', PLAYER: 'primary' };
 const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
