@@ -61,13 +61,26 @@
                                     </a>
                                     <p v-if="entry.board.description" class="text-sm text-muted mt-0.5 line-clamp-2">{{ entry.board.description }}</p>
                                 </div>
-                                <u-badge
-                                    :label="statusLabel(entry.board)"
-                                    :color="statusColor(entry.board)"
-                                    variant="subtle"
-                                    size="sm"
-                                    class="shrink-0"
-                                />
+                                <!-- Same lockup the detail pages use, at the
+                                     same size — a pill with a real icon and
+                                     a coloured status dot. It was two `sm`
+                                     badges, which is the size you use for
+                                     metadata, not for the two facts the row
+                                     exists to tell you. -->
+                                <div class="flex items-center gap-3 shrink-0">
+                                    <span
+                                        v-if="typeMeta(entry.board)"
+                                        class="inline-flex items-center gap-2 rounded-full bg-primary/10 ring-1 ring-primary/30 pl-2 pr-3 py-1"
+                                    >
+                                        <u-icon :name="typeMeta(entry.board).icon" class="size-4 text-primary shrink-0" />
+                                        <span class="text-sm font-medium text-primary">{{ typeMeta(entry.board).label }}</span>
+                                    </span>
+
+                                    <span class="inline-flex items-center gap-2">
+                                        <span class="size-2.5 rounded-full" :class="statusDot(entry.board)" />
+                                        <span class="text-sm font-medium" :class="statusText(entry.board)">{{ statusLabel(entry.board) }}</span>
+                                    </span>
+                                </div>
                             </div>
 
                             <div class="flex items-center gap-x-4 gap-y-1 flex-wrap mt-3 text-xs text-muted">
@@ -134,14 +147,19 @@
 
                         <!-- Capped when it stacks: below lg this sat full width,
                              which turned a 9x9 grid into most of the screen.
-                             A race has no board to preview at all. -->
-                        <div v-if="entry.kind === 'board'" class="w-full max-w-64 mx-auto lg:mx-0 lg:w-64 shrink-0">
+                             A race has no board to preview at all — bingo
+                             does, and used to get nothing. -->
+                        <div v-if="entry.kind === 'board' && entry.preview" class="w-full max-w-64 mx-auto lg:mx-0 lg:w-64 shrink-0">
                             <board-preview
                                 :size="entry.preview.size"
                                 :special-tiles="entry.preview.specialTiles"
                                 :current-position="entry.preview.currentPosition"
                                 :completed-positions="entry.preview.completedPositions"
                             />
+                        </div>
+
+                        <div v-else-if="entry.card" class="w-full max-w-56 mx-auto lg:mx-0 lg:w-56 shrink-0">
+                            <bingo-preview :size="entry.card.size" :completed="entry.card.completed" />
                         </div>
                     </div>
                 </div>
@@ -159,9 +177,11 @@ import { computed, defineAsyncComponent, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
+import BingoPreview from '@/Components/BingoPreview.vue';
 import BoardPreview from '@/Components/BoardPreview.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, boardEventStatus, formatDate } from '@/Support/board';
+import { eventTypeMeta } from '@/Support/eventTypes';
 import { metricKindFor, rankedByLabel } from '@/Support/metrics';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
@@ -178,6 +198,8 @@ const props = defineProps({
     filter: { type: String, default: 'all' },
     counts: { type: Object, default: () => ({ all: 0, hosted: 0, playing: 0 }) },
 });
+
+const typeMeta = (board) => eventTypeMeta(board.type);
 
 // Grouped thousands, same as the standings page: XP gains run into the
 // millions and an unbroken run of digits cannot be read at a glance.
@@ -200,10 +222,17 @@ function statusLabel(board) {
     return trans(`boards.status_${boardEventStatus(board.start_date, board.end_date)}`);
 }
 
-const STATUS_COLOR = { upcoming: 'info', live: 'success', ended: 'neutral' };
+const STATUS_DOT = { upcoming: 'bg-info', live: 'bg-success', ended: 'bg-muted' };
+const STATUS_TEXT = { upcoming: 'text-info', live: 'text-success', ended: 'text-muted' };
 
-function statusColor(board) {
-    return STATUS_COLOR[boardEventStatus(board.start_date, board.end_date)] ?? 'neutral';
+const statusOf = (board) => boardEventStatus(board.start_date, board.end_date);
+
+function statusDot(board) {
+    return STATUS_DOT[statusOf(board)] ?? 'bg-muted';
+}
+
+function statusText(board) {
+    return STATUS_TEXT[statusOf(board)] ?? 'text-muted';
 }
 
 function dateRange(board) {

@@ -44,3 +44,22 @@ export function rankedByLabel(metric, kind) {
         ? trans('events.ranked_by_kills', { metric: name })
         : trans('events.ranked_by', { skill: name });
 }
+
+/**
+ * The OSRS icon for a metric, or null when there isn't one.
+ *
+ * Files are committed under public/images/osrs/skills/, named by the Wise
+ * Old Man metric so no second lookup table stands between the stored value
+ * and the file — see scripts/extract-osrs-icons.mjs, which writes them.
+ *
+ * Skills only. The icon set is built from OSRS Wiki item and category
+ * images, and bosses are neither: there is no "Zulrah icon", only Zulrah's
+ * scales and Zulrah's pet, and picking a signature drop for each of ~70
+ * bosses by hand is a mapping that would be quietly wrong in places. Better
+ * no icon than the wrong one; tracked in docs/backlog.md.
+ */
+export function metricIconUrl(metric, kind) {
+    if (!metric || kind === 'boss') return null;
+
+    return `/images/osrs/skills/${metric}.png`;
+}

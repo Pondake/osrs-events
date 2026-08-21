@@ -5,27 +5,18 @@
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <u-badge
-                                v-if="typeMeta"
-                                :icon="typeMeta.icon"
-                                :label="typeMeta.label"
-                                color="primary"
-                                variant="subtle"
-                                size="sm"
-                            />
-                            <u-badge :label="$t(`boards.status_${status}`)" :color="statusColor" variant="subtle" size="sm" />
-                            <u-badge
-                                :label="card.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house') : $t('bingo.win_line')"
-                                color="neutral"
-                                variant="subtle"
-                                size="sm"
-                            />
-                        </div>
-                        <h1 class="text-3xl font-bold text-highlighted mt-2">{{ event.title }}</h1>
-                        <p v-if="event.description" class="text-muted mt-1">{{ event.description }}</p>
-                    </div>
+                    <event-type-heading :event="event">
+                        <template #meta>
+                            <span class="inline-flex items-center gap-1.5">
+                                <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
+                                {{ $t('bingo.size_option', { size: card.size }) }}
+                            </span>
+                            <span class="inline-flex items-center gap-1.5">
+                                <u-icon name="i-lucide-trophy" class="size-4 shrink-0" />
+                                {{ card.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house') : $t('bingo.win_line') }}
+                            </span>
+                        </template>
+                    </event-type-heading>
 
                     <div class="flex items-center gap-3 shrink-0">
                         <!-- Reports the live channel rather than offering a
@@ -33,30 +24,130 @@
                              or a host reviews. -->
                         <span v-if="streaming" class="inline-flex items-center gap-1.5 text-xs" :class="stale ? 'text-muted' : 'text-success'">
                             <span class="relative flex size-2">
-                                <span v-if="!stale" class="absolute inline-flex size-full rounded-full bg-success opacity-60 animate-ping" />
                                 <span class="relative inline-flex size-2 rounded-full" :class="stale ? 'bg-muted' : 'bg-success'" />
                             </span>
-                            {{ stale ? $t('events.reconnecting') : $t('events.live') }}
+                            {{ stale ? $t('events.reconnecting') : $t('events.auto_updating') }}
                         </span>
 
                         <span class="text-sm text-muted">
                             {{ $t('bingo.squares_done', { done: completed.length, total: squares.length }) }}
                         </span>
 
-                        <!-- An author can both play and edit, and one click
-                             cannot mean both — so which it means is an
-                             explicit mode rather than a guess. -->
                         <u-button
-                            v-if="canEdit"
-                            :color="editing ? 'primary' : 'neutral'"
-                            :variant="editing ? 'solid' : 'outline'"
+                            :href="`/events/${event.id}/participants`"
+                            color="neutral"
+                            variant="outline"
                             size="sm"
-                            icon="i-lucide-pencil"
-                            :label="$t('bingo.edit_mode')"
-                            @click="editing = !editing"
+                            icon="i-lucide-users-round"
+                            :label="$t('participants.open')"
                         />
+
+                        <template v-if="canEdit">
+                            <!-- Three separate things, and they were one
+                                 (a toggle) plus one that did not exist:
+                                 quick edit changes what a SQUARE asks for,
+                                 settings change what the EVENT is, and
+                                 review is an admin job that belongs in its
+                                 own dialog rather than in the sidebar. -->
+                            <!-- "Edit tiles", not "Quick edit". The old
+                                 label read as a shortcut to something,
+                                 sitting next to a button called Edit board
+                                 that does not touch tiles at all — so the
+                                 two names described each other rather than
+                                 what they do. This one is a mode: while it
+                                 is on, clicking a square edits it. -->
+                            <u-button
+                                :color="editing ? 'primary' : 'neutral'"
+                                :variant="editing ? 'solid' : 'outline'"
+                                size="sm"
+                                :icon="editing ? 'i-lucide-check' : 'i-lucide-grid-2x2-plus'"
+                                :label="editing ? $t('bingo.editing_tiles') : $t('bingo.edit_tiles')"
+                                :title="$t('bingo.edit_tiles_desc')"
+                                @click="editing = !editing"
+                            />
+
+                            <u-button
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-list-checks"
+                                :label="$t('tile_list.open')"
+                                @click="showTileList = true"
+                            />
+
+                            <u-button
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-settings"
+                                :label="$t('board.event_settings')"
+                                @click="showSettingsModal = true"
+                            />
+
+                            <!-- The count lives on the button so the page
+                                 says how much is waiting without spending a
+                                 column on it. Colours up only when there is
+                                 something to do. -->
+                            <u-button
+                                :color="pending.length ? 'warning' : 'neutral'"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-gavel"
+                                :label="$t('bingo.review_queue')"
+                                @click="showReviewModal = true"
+                            >
+                                <template v-if="pending.length" #trailing>
+                                    <u-badge :label="String(pending.length)" color="warning" variant="solid" size="sm" />
+                                </template>
+                            </u-button>
+                        </template>
                     </div>
                 </div>
+
+                <!-- A rejected claim used to explain itself only in the
+                     square's `title` attribute — invisible on touch, and a
+                     hover away from being missed anywhere else. It is the
+                     one thing on this page a player has to read, so it says
+                     itself, and steps through the rest when there are
+                     several. -->
+                <u-alert
+                    v-if="visibleRejection"
+                    :key="visibleRejection.position"
+                    icon="i-lucide-circle-x"
+                    color="error"
+                    variant="subtle"
+                    class="mb-6"
+                    :title="$t('bingo.rejected_title', { square: visibleRejection.label })"
+                    :description="visibleRejection.reviewNote || $t('bingo.rejected_no_reason')"
+                    :close="true"
+                    @update:open="dismissRejection"
+                >
+                    <template v-if="rejections.length > 1" #actions>
+                        <div class="flex items-center gap-1">
+                            <u-button
+                                icon="i-lucide-chevron-left"
+                                size="xs"
+                                color="error"
+                                variant="ghost"
+                                :disabled="rejectionIndex === 0"
+                                :aria-label="$t('bingo.rejected_previous')"
+                                @click="rejectionIndex--"
+                            />
+                            <span class="text-xs tabular-nums text-error/90">
+                                {{ rejectionIndex + 1 }} / {{ rejections.length }}
+                            </span>
+                            <u-button
+                                icon="i-lucide-chevron-right"
+                                size="xs"
+                                color="error"
+                                variant="ghost"
+                                :disabled="rejectionIndex >= rejections.length - 1"
+                                :aria-label="$t('bingo.rejected_next')"
+                                @click="rejectionIndex++"
+                            />
+                        </div>
+                    </template>
+                </u-alert>
 
                 <u-alert
                     v-if="hasWon"
@@ -80,18 +171,66 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div class="lg:col-span-2">
-                        <p class="text-xs text-muted mb-2">{{ editing ? $t('bingo.edit_hint') : $t('bingo.mark_hint') }}</p>
+                        <p class="text-xs mb-2" :class="editing ? 'text-primary font-medium' : 'text-muted'">
+                            {{ editing ? $t('bingo.edit_hint') : $t('bingo.mark_hint') }}
+                        </p>
 
-                        <div class="grid gap-2" :class="gridClass">
+                        <!-- While editing, the card itself says so. The mode
+                             lived only in a button at the other end of the
+                             header, so the thing that had changed behaviour
+                             — every square — looked identical either way.
+                             A ring and a soft glow rather than a colour
+                             change, so the squares' own states stay
+                             readable underneath. -->
+                        <div class="relative">
+                            <!-- The line itself, drawn over the grid.
+                                 Tinting the squares alone told you which
+                                 ones without telling you they were a LINE —
+                                 and on a card with several near-misses the
+                                 tint could read as any of them. One stroke
+                                 end to end says which, at a glance, and says
+                                 it in one shape rather than five.
+
+                                 pointer-events-none or the stroke would eat
+                                 the hover that draws it. -->
+                            <svg
+                                v-if="lineStroke"
+                                class="absolute inset-0 w-full h-full pointer-events-none z-10"
+                                viewBox="0 0 100 100"
+                                preserveAspectRatio="none"
+                                aria-hidden="true"
+                            >
+                                <line
+                                    :x1="lineStroke.x1"
+                                    :y1="lineStroke.y1"
+                                    :x2="lineStroke.x2"
+                                    :y2="lineStroke.y2"
+                                    stroke="var(--ui-primary)"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                    opacity="0.55"
+                                    vector-effect="non-scaling-stroke"
+                                    style="stroke-width: 6px"
+                                />
+                            </svg>
+
+                        <div
+                            class="grid gap-2 rounded-xl transition-all duration-200"
+                            :class="[gridClass, editing ? 'ring-2 ring-primary/60 shadow-[0_0_24px_-4px_var(--ui-primary)] p-2 -m-2' : '']"
+                        >
                             <button
                                 v-for="square in squares"
                                 :key="square.id"
                                 type="button"
-                                class="relative aspect-square rounded-lg ring p-2 flex flex-col items-center justify-center text-center gap-1 transition-colors"
+                                class="relative aspect-square rounded-lg ring p-2 flex flex-col items-center justify-center text-center gap-2 transition-all duration-150"
                                 :class="squareClass(square)"
-                                :disabled="!canPlay && !editing"
+                                :disabled="(!canPlay && !editing) || (square.isWildcard && !editing)"
                                 :title="squareTitle(square)"
                                 @click="onSquareClick(square)"
+                                @mouseenter="hoveredPosition = square.position"
+                                @mouseleave="hoveredPosition = null"
+                                @focus="hoveredPosition = square.position"
+                                @blur="hoveredPosition = null"
                             >
                                 <!-- Points sit in the corner rather than in the
                                      label: they matter when choosing what to go
@@ -101,65 +240,72 @@
                                     class="absolute top-1 right-1 text-[10px] font-semibold text-muted tabular-nums"
                                 >{{ square.points }}</span>
 
-                                <u-icon v-if="statusOf(square) === 'APPROVED'" name="i-lucide-check" class="size-5 text-success shrink-0" />
+                                <!-- The icon grows when there is no label to
+                                     share the square with — an unnamed square
+                                     is mostly empty space, and a 24px glyph
+                                     floating in it reads as an accident. -->
+                                <u-icon
+                                    v-if="square.isWildcard"
+                                    name="i-lucide-star"
+                                    class="text-warning shrink-0"
+                                    :class="square.label ? 'size-5' : 'size-8'"
+                                />
                                 <u-icon v-else-if="statusOf(square) === 'PENDING'" name="i-lucide-clock" class="size-5 text-warning shrink-0" />
                                 <u-icon v-else-if="statusOf(square) === 'REJECTED'" name="i-lucide-x" class="size-5 text-error shrink-0" />
-                                <img v-else-if="square.iconUrl" :src="square.iconUrl" alt="" class="size-6 object-contain" />
+                                <img
+                                    v-else-if="square.iconUrl"
+                                    :src="square.iconUrl"
+                                    alt=""
+                                    class="object-contain shrink-0"
+                                    :class="square.label ? 'size-7' : 'size-10'"
+                                />
 
-                                <span class="text-[11px] leading-tight line-clamp-3" :class="square.label ? '' : 'text-dimmed italic'">
-                                    {{ square.label || $t('bingo.empty_square') }}
+                                <span
+                                    v-if="square.label"
+                                    class="text-[11px] leading-tight line-clamp-2"
+                                >{{ square.label }}</span>
+                                <span
+                                    v-else-if="!square.iconUrl && !square.isWildcard"
+                                    class="text-[11px] leading-tight text-dimmed italic"
+                                >{{ $t('bingo.empty_square') }}</span>
+
+                                <!-- Who got it. A tick told you a square was
+                                     done and nothing else; on a team card the
+                                     interesting part is which team, and on a
+                                     solo one it is who beat you to it.
+                                     Capped at three faces plus a count — see
+                                     BingoService::approvedBy().
+
+                                     `xs` rather than `3xs`: at 16px inside a
+                                     square that is 90px wide you could not
+                                     tell there was a face there at all, which
+                                     is the whole point of putting one on. -->
+                                <span v-if="holdersOf(square).length" class="flex items-center -space-x-1.5 mt-0.5">
+                                    <!-- One holder gets a full-size face; a
+                                         crowd steps down so three still fit
+                                         across a square. `xs` was still too
+                                         small to register as a person at a
+                                         glance, which was the whole point. -->
+                                    <u-avatar
+                                        v-for="(holder, i) in holdersOf(square)"
+                                        :key="i"
+                                        :src="holder.avatarUrl ?? undefined"
+                                        :alt="holder.name ?? ''"
+                                        :title="holder.name ?? ''"
+                                        :size="holdersOf(square).length === 1 ? 'md' : 'sm'"
+                                        class="ring-2 ring-default"
+                                    />
+                                    <span
+                                        v-if="extraHolders(square) > 0"
+                                        class="pl-2 text-[11px] font-medium text-muted tabular-nums"
+                                    >+{{ extraHolders(square) }}</span>
                                 </span>
                             </button>
+                        </div>
                         </div>
                     </div>
 
                     <div class="space-y-6">
-                        <!-- The review queue sits beside the card, not on
-                             another screen: leaving the thing you are judging
-                             in order to judge it is the wrong shape. -->
-                        <u-card v-if="canEdit" :ui="{ body: 'p-0 sm:p-0' }">
-                            <template #header>
-                                <div class="flex items-center justify-between gap-2">
-                                    <span class="font-semibold">{{ $t('bingo.pending_queue') }}</span>
-                                    <u-badge v-if="pending.length" :label="String(pending.length)" color="warning" variant="subtle" size="sm" />
-                                </div>
-                            </template>
-
-                            <ul v-if="pending.length" class="divide-y divide-default">
-                                <li v-for="claim in pending" :key="claim.id" class="px-4 py-3 space-y-2">
-                                    <div class="min-w-0">
-                                        <p class="text-sm font-medium truncate">{{ claim.label || $t('bingo.empty_square') }}</p>
-                                        <p class="text-xs text-muted truncate">
-                                            {{ claim.competitor }} · {{ $t('bingo.submitted_by', { name: claim.submittedBy }) }}
-                                        </p>
-                                        <p v-if="claim.note" class="text-xs text-muted mt-1">{{ claim.note }}</p>
-                                    </div>
-
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <u-button
-                                            v-if="claim.proofUrl"
-                                            :href="claim.proofUrl"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            size="xs"
-                                            color="neutral"
-                                            variant="outline"
-                                            icon="i-lucide-image"
-                                            :label="$t('bingo.view_proof')"
-                                        />
-                                        <span v-else class="text-xs text-muted italic">{{ $t('bingo.no_proof') }}</span>
-
-                                        <div class="ms-auto flex items-center gap-1">
-                                            <u-button size="xs" color="success" variant="soft" :label="$t('bingo.approve')" @click="review(claim, 'APPROVED')" />
-                                            <u-button size="xs" color="error" variant="soft" :label="$t('bingo.reject')" @click="review(claim, 'REJECTED')" />
-                                        </div>
-                                    </div>
-                                </li>
-                            </ul>
-
-                            <p v-else class="px-4 py-8 text-center text-sm text-muted">{{ $t('bingo.no_pending') }}</p>
-                        </u-card>
-
                         <u-card :ui="{ body: 'p-0 sm:p-0' }">
                             <template #header>
                                 <span class="font-semibold">{{ $t('bingo.standings') }}</span>
@@ -191,19 +337,37 @@
                             <template #header>
                                 <span class="font-semibold">{{ $t('board.information') }}</span>
                             </template>
+                            <!-- Size, win condition and dates moved up into
+                                 the heading, where they are read once rather
+                                 than hunted for in a sidebar. What is left is
+                                 what the heading has no room for. -->
                             <div class="space-y-2 text-sm">
-                                <div class="flex items-center gap-2">
-                                    <u-icon name="i-lucide-grid-3x3" class="size-4 text-muted shrink-0" />
-                                    <span>{{ $t('bingo.size_option', { size: card.size }) }}</span>
-                                </div>
                                 <div v-if="card.lineBonus" class="flex items-center gap-2">
                                     <u-icon name="i-lucide-plus" class="size-4 text-muted shrink-0" />
                                     <span>{{ $t('bingo.line_bonus') }}: {{ card.lineBonus }}</span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <u-icon name="i-lucide-calendar" class="size-4 text-muted shrink-0" />
-                                    <span>{{ dateRange }}</span>
+                                    <u-icon :name="card.requiresApproval ? 'i-lucide-gavel' : 'i-lucide-zap'" class="size-4 text-muted shrink-0" />
+                                    <span>{{ card.requiresApproval ? $t('bingo.info_reviewed') : $t('bingo.info_instant') }}</span>
                                 </div>
+
+                                <!-- The sentence above tells a host that
+                                     claims wait for them; the button is
+                                     where they act on it. Having the fact
+                                     here and the control only in the page
+                                     header made the two read as unrelated. -->
+                                <u-button
+                                    v-if="canEdit && card.requiresApproval"
+                                    :color="pending.length ? 'warning' : 'neutral'"
+                                    variant="outline"
+                                    size="xs"
+                                    icon="i-lucide-gavel"
+                                    class="mt-1"
+                                    :label="pending.length
+                                        ? $t('bingo.review_pending_count', { count: pending.length })
+                                        : $t('bingo.review_nothing_waiting')"
+                                    @click="showReviewModal = true"
+                                />
                             </div>
                         </u-card>
                     </div>
@@ -226,21 +390,35 @@
                 :event-id="event.id"
                 :square="claimingSquare"
             />
+            <template v-if="canEdit">
+                <board-settings-modal v-model:open="showSettingsModal" :board="event" />
+                <tile-list-editor
+                    v-model:open="showTileList"
+                    :event-id="event.id"
+                    type="BINGO"
+                    :items="squares"
+                    :total="card.size * card.size"
+                />
+                <bingo-review-modal v-model:open="showReviewModal" :event-id="event.id" :claims="pending" />
+            </template>
         </client-only>
     </u-main>
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { boardEventStatus, formatDate } from '@/Support/board';
-import { eventTypeMeta } from '@/Support/eventTypes';
+import { boardEventStatus } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 
 const BingoSquareModal = defineAsyncComponent(() => import('@/Components/BingoSquareModal.vue'));
 const BingoClaimModal = defineAsyncComponent(() => import('@/Components/BingoClaimModal.vue'));
+const BingoReviewModal = defineAsyncComponent(() => import('@/Components/BingoReviewModal.vue'));
+const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
+const TileListEditor = defineAsyncComponent(() => import('@/Components/TileListEditor.vue'));
 
 const props = defineProps({
     event: { type: Object, required: true },
@@ -252,27 +430,35 @@ const props = defineProps({
     canPlay: { type: Boolean, default: false },
     standings: { type: Array, default: () => [] },
     pending: { type: Array, default: () => [] },
+    // Who holds each approved square, keyed by position — see
+    // BingoService::approvedBy(). Public data: an approved claim is already
+    // in the standings.
+    approvedBy: { type: Object, default: () => ({}) },
     canEdit: { type: Boolean, default: false },
 });
 
-const typeMeta = computed(() => eventTypeMeta(props.event.type));
-
+// Still needed here, even though the heading renders its own copy: the live
+// channel closes on an ended event rather than holding a PHP worker open to
+// watch a card that cannot change.
 const status = computed(() => boardEventStatus(props.event.start_date, props.event.end_date));
-
-const STATUS_COLOR = { upcoming: 'info', live: 'success', ended: 'neutral' };
-const statusColor = computed(() => STATUS_COLOR[status.value] ?? 'neutral');
-
-const dateRange = computed(() => {
-    if (!props.event.start_date && !props.event.end_date) return trans('boards.no_dates');
-
-    return `${formatDate(props.event.start_date)} – ${formatDate(props.event.end_date)}`;
-});
 
 // Seeded from the server render, then kept current by the channel. The
 // squares are streamed too, so an author's edit lands on every open card
 // rather than only on the next page load.
 const rows = ref([...props.standings]);
 const squares = ref([...props.card.squares]);
+const holders = ref({ ...props.approvedBy });
+
+function holdersOf(square) {
+    return holders.value[square.position]?.holders ?? [];
+}
+
+// The count beyond the three faces shown, or 0.
+function extraHolders(square) {
+    const entry = holders.value[square.position];
+
+    return entry ? Math.max(0, entry.total - entry.holders.length) : 0;
+}
 
 const { streaming, stale } = useEventStream({
     // A finished card cannot change. Holding a PHP worker open to watch it
@@ -282,6 +468,7 @@ const { streaming, stale } = useEventStream({
     onMessage: (payload) => {
         rows.value = payload.standings;
         if (payload.squares) squares.value = payload.squares;
+        if (payload.approvedBy) holders.value = payload.approvedBy;
 
         // The review queue is host-only, so it cannot ride a channel every
         // viewer shares. The stream still says *that* something changed, so a
@@ -314,7 +501,122 @@ function statusOf(square) {
     return props.claims[square.position]?.status ?? null;
 }
 
+/**
+ * The square the pointer is on, and the squares that would finish a line
+ * through it.
+ *
+ * Bingo is a game about lines, and the card showed none of them until one
+ * was already complete — so "what do I still need" was a question you
+ * answered by counting rows with your finger. Hovering a square now lights
+ * up every square on its best unfinished line.
+ *
+ * "Best" = the line it belongs to that you are closest to finishing. A
+ * square in the middle of a 5x5 sits on four lines, and highlighting all
+ * four lights up most of the card, which says nothing.
+ */
+const hoveredPosition = ref(null);
+
+/**
+ * Every winning line, tagged with its orientation.
+ *
+ * The tag is the tie-break. Without one, the first line generated won every
+ * tie — rows are generated first, so on a card with nothing filled in the
+ * hint was ALWAYS the row, and the feature looked like it only understood
+ * horizontal lines. Reported as exactly that.
+ *
+ * `rank` orders a tie: diagonal, then column, then row. A row is the line
+ * you can already see by looking; a diagonal is the one you cannot, so when
+ * both are equally close the diagonal is the one worth pointing at.
+ */
+const linesBySize = computed(() => {
+    const size = props.card.size;
+    const lines = [];
+
+    for (let row = 0; row < size; row++) {
+        lines.push({ rank: 2, positions: Array.from({ length: size }, (_, col) => row * size + col) });
+    }
+    for (let col = 0; col < size; col++) {
+        lines.push({ rank: 1, positions: Array.from({ length: size }, (_, row) => row * size + col) });
+    }
+    lines.push({ rank: 0, positions: Array.from({ length: size }, (_, i) => i * size + i) });
+    lines.push({ rank: 0, positions: Array.from({ length: size }, (_, i) => i * size + (size - 1 - i)) });
+
+    return lines;
+});
+
+const mine = computed(() => new Set(props.completed));
+
+/**
+ * The line the hovered square would finish, as positions.
+ *
+ * Silent while editing: in that mode a click changes what a square ASKS for,
+ * and a hint about completing lines is answering a question nobody is asking
+ * — it also fights the ring that marks the mode.
+ */
+const suggestedPositions = computed(() => {
+    if (editing.value || hoveredPosition.value === null) return [];
+
+    const candidates = linesBySize.value.filter((line) => line.positions.includes(hoveredPosition.value));
+    if (!candidates.length) return [];
+
+    // Fewest squares still missing wins; a line you have already finished is
+    // not a suggestion, so those drop out first.
+    const open = candidates.filter((line) => line.positions.some((p) => !mine.value.has(p)));
+    if (!open.length) return [];
+
+    const missing = (line) => line.positions.filter((p) => !mine.value.has(p)).length;
+
+    // Closest first, then by orientation — see linesBySize for why the
+    // second key matters more than it looks.
+    const [best] = [...open].sort((a, b) => (missing(a) - missing(b)) || (a.rank - b.rank));
+
+    return best.positions;
+});
+
+// The squares to tint: the line, minus what you already hold and minus the
+// one under the pointer, which has its own hover state.
+const suggestedLine = computed(() => new Set(
+    suggestedPositions.value.filter((p) => !mine.value.has(p) && p !== hoveredPosition.value),
+));
+
+/**
+ * The stroke across that line, in a 0-100 viewBox stretched over the grid.
+ *
+ * Centre of a cell in column c of `size` columns is (c + 0.5) / size — the
+ * gaps between cells are small enough that ignoring them puts the line a
+ * pixel or two off centre at the ends and nowhere else.
+ */
+const lineStroke = computed(() => {
+    const line = suggestedPositions.value;
+    if (line.length < 2) return null;
+
+    const size = props.card.size;
+    const centre = (position) => ({
+        x: ((position % size) + 0.5) * (100 / size),
+        y: (Math.floor(position / size) + 0.5) * (100 / size),
+    });
+
+    const from = centre(line[0]);
+    const to = centre(line[line.length - 1]);
+
+    return { x1: from.x, y1: from.y, x2: to.x, y2: to.y };
+});
+
 function squareClass(square) {
+    // Part of the line the hovered square would complete. Checked before
+    // everything else so the hint is visible on a square whose own state
+    // would otherwise paint over it.
+    if (suggestedLine.value.has(square.position)) {
+        return 'ring-primary bg-primary/10 text-highlighted';
+    }
+
+    // A free square is already everyone's, so it reads as done from the
+    // start — and distinctly from a square you completed, or the fact that
+    // it costs nothing to have is invisible.
+    if (square.isWildcard) {
+        return 'ring-warning/50 bg-warning/10 text-highlighted';
+    }
+
     const state = statusOf(square);
 
     // Four states, not two. A pending claim is visibly different from an
@@ -332,6 +634,8 @@ function squareClass(square) {
 }
 
 function squareTitle(square) {
+    if (square.isWildcard) return trans('bingo.wildcard_desc');
+
     const state = statusOf(square);
 
     if (state === 'PENDING') return trans('bingo.status_pending');
@@ -340,7 +644,50 @@ function squareTitle(square) {
     return square.label ?? '';
 }
 
+/**
+ * This viewer's rejected claims, worst-case several at once.
+ *
+ * Dismissals are held in a Set of positions rather than removing rows, so a
+ * claim that is rejected again after a re-submission comes back — the point
+ * of the notice is that you find out, and "I closed it once" is not the same
+ * as "I know".
+ */
+const dismissedRejections = ref(new Set());
+
+const rejections = computed(() => squares.value
+    .filter((square) => props.claims[square.position]?.status === 'REJECTED')
+    .filter((square) => !dismissedRejections.value.has(square.position))
+    .map((square) => ({
+        position: square.position,
+        label: square.label || trans('bingo.square_number', { n: square.position + 1 }),
+        reviewNote: props.claims[square.position]?.reviewNote ?? null,
+    })));
+
+const rejectionIndex = ref(0);
+
+const visibleRejection = computed(() => rejections.value[Math.min(rejectionIndex.value, rejections.value.length - 1)] ?? null);
+
+function dismissRejection() {
+    if (!visibleRejection.value) return;
+
+    const next = new Set(dismissedRejections.value);
+    next.add(visibleRejection.value.position);
+    dismissedRejections.value = next;
+    rejectionIndex.value = 0;
+}
+
 const editing = ref(false);
+// Opened automatically on ?setup=tiles — the redirect BoardController::store
+// sends a brand-new event to. onMounted rather than at setup, because
+// `location` does not exist during SSR.
+const showTileList = ref(false);
+onMounted(() => {
+    if (props.canEdit && new URLSearchParams(window.location.search).get('setup') === 'tiles') {
+        showTileList.value = true;
+    }
+});
+const showSettingsModal = ref(false);
+const showReviewModal = ref(false);
 const squareModalOpen = ref(false);
 const editingSquare = ref(null);
 const claimModalOpen = ref(false);
@@ -353,6 +700,11 @@ function onSquareClick(square) {
 
         return;
     }
+
+    // Free to everyone, so there is nothing to claim or withdraw. The server
+    // refuses it too; this just stops the click from looking like it did
+    // something.
+    if (square.isWildcard) return;
 
     if (!props.canPlay) return;
 
@@ -380,12 +732,5 @@ function onSquareClick(square) {
 
     claimingSquare.value = square;
     claimModalOpen.value = true;
-}
-
-function review(claim, status) {
-    router.patch(`/events/${props.event.id}/bingo/claims/${claim.id}`, { status }, {
-        preserveScroll: true,
-        onError: (errors) => console.error(errors),
-    });
 }
 </script>

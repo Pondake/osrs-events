@@ -72,6 +72,11 @@ class ProfileController extends Controller
                     'isOwner' => $event->authors->contains(
                         fn ($author) => $author->user_id === $user->id && $author->is_owner,
                     ),
+                    // The created/joined split the page filters on. Broader
+                    // than isOwner deliberately: an event you were added to
+                    // as an editor is one you run, not one you joined, and
+                    // /my-events already draws the line in that same place.
+                    'isHost' => $event->authors->contains(fn ($author) => $author->user_id === $user->id),
                     'progress' => $progress,
                 ];
             })

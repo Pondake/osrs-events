@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\BingoCard;
 use App\Models\Board;
-use App\Models\Event;
-use App\Models\EventStanding;
 use App\Models\BoardAuthor;
 use App\Models\BoardTeam;
+use App\Models\Event;
+use App\Models\EventStanding;
 use App\Models\Team;
 use App\Models\UserGuild;
 use App\Services\BingoService;
@@ -55,6 +55,16 @@ class BoardController extends Controller
             // Bingo's grid is a side length, not a size enum — a separate
             // field so a card never has to guess which kind of grid it holds.
             'bingo_size' => $event->bingoCard?->size,
+            // The whole card, for the settings modal's Format tab. Nested
+            // rather than flattened alongside bingo_size because everything
+            // in here belongs to the card and nothing else reads it — the
+            // modal picks it apart in cardFields().
+            'card' => $event->bingoCard ? [
+                'size' => $event->bingoCard->size,
+                'winCondition' => $event->bingoCard->win_condition,
+                'lineBonus' => $event->bingoCard->line_bonus,
+                'requiresApproval' => $event->bingoCard->requires_approval,
+            ] : null,
             'authors' => $event->authors,
         ];
     }
@@ -170,7 +180,9 @@ class BoardController extends Controller
         $playerBoards = $user->playerBoards()->with('completedTiles')->get()->keyBy('board_id');
         $standingRows = EventStanding::where('user_id', $user->id)->get()->keyBy('event_id');
 
-        $entries = $events->map(function (Event $event) use ($tileCounts, $playerBoards, $standingRows, $standings, $user) {
+        $bingoService = app(BingoService::class);
+
+        $entries = $events->map(function (Event $event) use ($tileCounts, $playerBoards, $standingRows, $standings, $user, $bingoService) {
             $entry = [
                 // What the row IS, for the icon and the meta line. The detail
                 // block below is keyed on what data exists instead, so an
@@ -186,6 +198,22 @@ class BoardController extends Controller
                 'progress' => null,
                 'standing' => null,
             ];
+
+            // A bingo event had nothing beside it on this page while a
+            // Snakes & Ladders one got a board preview, so the row read as
+            // less of an event than its neighbour. Its shape is the card:
+            // the grid, and which squares are done.
+            if ($event->type === 'BINGO' && $event->bingoCard) {
+                $card = $event->bingoCard;
+
+                $entry['card'] = [
+                    'size' => $card->size,
+                    'completed' => $bingoService->approvedPositions(
+                        $card,
+                        $bingoService->competitorFor($event, $user) ?? ['team_id' => null, 'user_id' => $user->id],
+                    ),
+                ];
+            }
 
             if ($event->board && ($pb = $playerBoards->get($event->board->id))) {
                 $total = $tileCounts[$event->board->size] ?? 49;
@@ -387,6 +415,7 @@ class BoardController extends Controller
                     // For the editor: what is currently set, so opening a
                     // square shows its state rather than a blank form.
                     'titleOverride' => $square->title_override,
+                    'isWildcard' => $square->is_wildcard,
                     'task' => $square->task,
                 ]),
             ],
@@ -397,6 +426,10 @@ class BoardController extends Controller
                 'reviewNote' => $claim->review_note,
             ]),
             'completed' => $approved,
+            // Who holds each square, for the faces on the grid. Same source
+            // the live channel pushes, so a card that updates mid-event does
+            // not disagree with the one that was rendered.
+            'approvedBy' => $bingo->approvedBy($card),
             'completedLines' => $bingo->completedLines($card->size, $approved),
             'hasWon' => $bingo->hasWon($card, $approved),
             'canPlay' => $competitor !== null,
@@ -486,8 +519,19 @@ class BoardController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date'],
+            // Required on create, unlike update. An event without a window
+            // is not an event — the whole model (standings read over a
+            // period, late bingo claims refused, upcoming/live/ended badges)
+            // assumes one, and every path that reads a null date has to
+            // invent a fallback. The form pre-fills today and a fortnight
+            // out, so requiring them costs nobody a keystroke.
+            //
+            // update() keeps them nullable on purpose: events created before
+            // this rule exist with null dates, and a required field on edit
+            // would make those uneditable until someone guessed a window for
+            // them. It enforces the pairing instead — see there.
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             // Only creatable types — a planned one is advertised in the UI
             // as coming soon, which is not the same as being selectable.
             'type' => ['nullable', Rule::in(Event::availableTypes())],
@@ -501,13 +545,24 @@ class BoardController extends Controller
             'size' => ['required_if:type,SNAKES_LADDERS', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'bingo_size' => ['nullable', 'integer', Rule::in(BingoCard::SIZES)],
             'win_condition' => ['nullable', Rule::in(BingoCard::WIN_CONDITIONS)],
+            'line_bonus' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'requires_approval' => ['nullable', 'boolean'],
             'mode' => ['nullable', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['nullable', 'boolean'],
             'access_mode' => ['nullable', 'in:OPEN,GUILD,INVITE'],
-            'required_guild_id' => ['nullable', 'string'],
+            // Conditionally required, because GUILD access with no guild is
+            // not a restriction — it is an event nobody can join, saved
+            // without complaint. The form labelled this "required" and the
+            // server accepted it empty, which is the worst of both.
+            'required_guild_id' => ['nullable', 'string', 'required_if:access_mode,GUILD'],
             'author_ids' => ['nullable', 'array'],
             'author_ids.*' => ['uuid', 'exists:users,id'],
+            // Staged by BoardSettingsModal's Teams tab while the event is
+            // still being created — there is no event id to POST them
+            // against yet, so they ride along with the form that creates it.
+            'team_ids' => ['nullable', 'array'],
+            'team_ids.*' => ['uuid', 'exists:teams,id'],
         ]);
 
         // One submission, two rows: the competition and its Snakes &
@@ -538,6 +593,10 @@ class BoardController extends Controller
                     'id' => (string) str()->uuid(),
                     'size' => $data['bingo_size'] ?? 5,
                     'win_condition' => $data['win_condition'] ?? 'LINE',
+                    'line_bonus' => $data['line_bonus'] ?? 0,
+                    // Defaults to on, matching the column default: a card
+                    // nobody checks is a shared checklist, not a competition.
+                    'requires_approval' => $data['requires_approval'] ?? true,
                 ]);
 
                 // Filled out immediately, unlike S&L tiles which appear on
@@ -557,10 +616,30 @@ class BoardController extends Controller
                 ])->all(),
             ]);
 
+            // Same rows addTeam() would write one at a time afterwards, and
+            // only for a TEAM event — a solo event carrying team assignments
+            // would be rows nothing ever reads. unique() because the form
+            // could submit the same id twice and the pivot has no constraint
+            // stopping it.
+            $teamIds = collect($data['team_ids'] ?? [])->unique();
+            if ($event->mode === 'TEAM' && $teamIds->isNotEmpty()) {
+                BoardTeam::insert($teamIds->map(fn ($id) => [
+                    'id' => (string) str()->uuid(), 'event_id' => $event->id, 'team_id' => $id,
+                ])->all());
+            }
+
             return $event;
         });
 
-        return redirect()->route('events.show', $event)->with('board-save', trans('admin.board_created'));
+        // ?setup=tiles opens the tile list editor on arrival. A board is
+        // created empty, and "now go and turn on edit mode and click 49
+        // squares" is not a next step anybody guesses — so the step that
+        // actually finishes the job is offered rather than waited for. It is
+        // a query parameter rather than a flash so a reload keeps it, and
+        // dismissing the dialog clears it.
+        return redirect()
+            ->route('events.show', ['event' => $event, 'setup' => 'tiles'])
+            ->with('board-save', trans('admin.board_created'));
     }
 
     /**
@@ -576,8 +655,12 @@ class BoardController extends Controller
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            // Nullable, unlike create — see the note there. What IS enforced
+            // is the pairing: a start with no end is the one combination
+            // that reads as a mistake rather than as "no dates set", since
+            // every date-aware rule in the app keys off the end.
             'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'required_with:start_date', 'after_or_equal:start_date'],
             // Immutable after creation. The type decides which payload table
             // holds the event, and neither direction survives a swap: turning
             // a board event into a race orphans its board, its tiles and
@@ -593,15 +676,49 @@ class BoardController extends Controller
                     : $fail(trans('validation.event_type_immutable')),
             ],
             'metric' => ['nullable', Rule::in(Event::allMetrics())],
-            'size' => ['sometimes', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
+            'size' => ['sometimes', 'nullable', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
+            // A bingo event's card settings ride the same form as the rest
+            // of its settings, so the edit modal holds the whole event
+            // rather than sending people to a second place for the half of
+            // it that decides how the card is won.
+            //
+            // `nullable` as well as `sometimes`, which is the difference
+            // between working and not: one form carries every type's fields,
+            // so editing a Snakes & Ladders event submits bingo_size as
+            // null. `sometimes` only skips a key that is ABSENT — a present
+            // null is validated, so every non-bingo save failed with "the
+            // card size field must be an integer" about a card the event
+            // does not have. The client drops them too; this is the half
+            // that has to hold.
+            'bingo_size' => ['sometimes', 'nullable', 'integer', Rule::in(BingoCard::SIZES)],
+            'win_condition' => ['sometimes', 'nullable', Rule::in(BingoCard::WIN_CONDITIONS)],
+            'line_bonus' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:1000'],
+            'requires_approval' => ['sometimes', 'nullable', 'boolean'],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['sometimes', 'boolean'],
             'access_mode' => ['sometimes', 'in:OPEN,GUILD,INVITE'],
-            'required_guild_id' => ['nullable', 'string'],
+            'required_guild_id' => ['nullable', 'string', 'required_if:access_mode,GUILD'],
             'author_ids' => ['nullable', 'array'],
             'author_ids.*' => ['uuid', 'exists:users,id'],
         ]);
+
+        // Outside the transaction and before it, because it can refuse: a
+        // shrink that would delete somebody's completions is rejected as a
+        // validation error rather than half-applied alongside the rest.
+        if ($event->type === 'BINGO' && $event->bingoCard) {
+            $cardChanges = collect($data)
+                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval'])
+                // Nulls are "not submitted for this type", not "clear it" —
+                // see the nullable note on the rules above.
+                ->reject(fn ($value) => $value === null)
+                ->mapWithKeys(fn ($value, $key) => [$key === 'bingo_size' ? 'size' : $key => $value])
+                ->all();
+
+            if ($cardChanges !== [] && ! app(BingoService::class)->applyCardSettings($event->bingoCard, $cardChanges)) {
+                throw ValidationException::withMessages(['bingo_size' => trans('bingo.cannot_shrink')]);
+            }
+        }
 
         DB::transaction(function () use ($data, $event) {
             if (array_key_exists('author_ids', $data)) {
@@ -619,7 +736,11 @@ class BoardController extends Controller
 
             $event->update(collect($data)->only(self::EVENT_FIELDS)->toArray());
 
-            $boardChanges = collect($data)->only(self::BOARD_FIELDS)->toArray();
+            // Same null-means-absent rule as the card fields above: a bingo
+            // event's form submits `size` (the S&L enum) as null.
+            $boardChanges = collect($data)->only(self::BOARD_FIELDS)
+                ->reject(fn ($value, $key) => $value === null && $key === 'size')
+                ->toArray();
             if ($boardChanges !== [] && $event->board) {
                 $event->board->update($boardChanges);
             }
@@ -650,15 +771,16 @@ class BoardController extends Controller
 
         $assignedTeamIds = $event->eventTeams()->pluck('team_id');
 
-        $availableQuery = Team::query()->orderBy('name');
-        if (! $request->user()->isAdmin()) {
-            $guildIds = UserGuild::where('user_id', $request->user()->id)->pluck('guild_id');
-            $availableQuery->where(fn ($q) => $q->whereNull('guild_id')->orWhereIn('guild_id', $guildIds));
-        }
-
         return response()->json([
+            // Already assigned, so already this event's business — listed
+            // whether or not the viewer could otherwise see them, or a host
+            // could not remove a team somebody else attached.
             'assigned' => $event->eventTeams()->with('team')->get()->pluck('team'),
-            'available' => $availableQuery->whereNotIn('id', $assignedTeamIds)->get(['id', 'name']),
+            'available' => Team::query()
+                ->visibleTo($request->user())
+                ->whereNotIn('id', $assignedTeamIds)
+                ->orderBy('name')
+                ->get(['id', 'name', 'guild_name']),
         ]);
     }
 

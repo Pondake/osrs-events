@@ -6,18 +6,26 @@ use App\Models\AuditLog;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
-use App\Models\UserGuild;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Ported from the old TeamsService. Visibility rule preserved exactly:
- * admins see every team; everyone else sees teams whose guildId matches one
- * of their synced Discord guilds (UserGuild), plus any unguilded team.
+ * Ported from the old TeamsService, with its visibility rule replaced —
+ * see Team::scopeVisibleTo(). The original said "your guilds, plus any team
+ * with no guild", which made every private team on the site public to every
+ * account, because a guild has always been optional.
+ *
+ * What is NOT ported is the permission rule. The old assertManagerOrAdmin()
+ * asked one global question — "are you an admin, or do you hold the
+ * TEAM_MANAGER role?" — which meant the person who created a team could not
+ * rename it, add anyone to it, or delete it, while a single global role
+ * granted all of that over every team on the site. Rights now live on the
+ * membership row (TeamMember::$role); see Team::isManagedBy()/isOwnedBy().
  */
 class TeamController extends Controller
 {
@@ -25,14 +33,44 @@ class TeamController extends Controller
     {
         $user = Auth::user();
 
-        $query = Team::with(['members.user'])->orderBy('name');
+        $query = Team::with(['members.user'])->visibleTo($user)->orderBy('name');
 
-        if (! $user?->isAdmin()) {
-            $guildIds = UserGuild::where('user_id', Auth::id())->pluck('guild_id');
-            $query->where(fn ($q) => $q->whereNull('guild_id')->orWhereIn('guild_id', $guildIds));
-        }
+        // The page used to gate its buttons on isAdmin alone, with a comment
+        // conceding that a real per-team check "isn't available client-side
+        // without shipping every user's role set down". It is available: the
+        // answer is three booleans per team, decided here by the same
+        // methods the write endpoints re-check with.
+        $teams = $query->get()->map(fn (Team $team) => [
+            ...$team->only(['id', 'name', 'icon_url', 'guild_id', 'guild_name']),
+            'members' => $team->members->map(fn (TeamMember $member) => [
+                'id' => $member->id,
+                'role' => $member->role,
+                'user' => $member->user?->only(['id', 'nickname', 'discord_username', 'avatar_url']),
+            ])->values(),
+            'viewerRole' => $team->roleFor($user),
+            'canManage' => $team->isManagedBy($user),
+            'canDelete' => $team->isOwnedBy($user),
+        ]);
 
-        return Inertia::render('Teams/Index', ['teams' => $query->get()]);
+        return Inertia::render('Teams/Index', ['teams' => $teams]);
+    }
+
+    /**
+     * The teams this user could put on an event, as plain JSON.
+     *
+     * Exists so BoardSettingsModal's Teams tab works while the event is
+     * still being created — before this, the tab could only ever say "save
+     * the board first", because the only team list on offer hung off an
+     * event id that did not exist yet.
+     */
+    public function options(Request $request): JsonResponse
+    {
+        $teams = Team::query()
+            ->visibleTo($request->user())
+            ->orderBy('name')
+            ->get(['id', 'name', 'guild_name']);
+
+        return response()->json(['teams' => $teams]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -46,11 +84,14 @@ class TeamController extends Controller
 
         $team = Team::create(['id' => (string) str()->uuid(), ...$data]);
 
-        // Auto-add the creator as the first member, same as the old service.
+        // Auto-add the creator as the first member, same as the old service —
+        // as OWNER, which is the whole point: creating a team now grants the
+        // right to manage it.
         TeamMember::create([
             'id' => (string) str()->uuid(),
             'team_id' => $team->id,
             'user_id' => $request->user()->id,
+            'role' => TeamMember::OWNER,
         ]);
 
         AuditLog::record('team.created', $team, [], $team);
@@ -89,7 +130,10 @@ class TeamController extends Controller
 
     public function destroy(Team $team): RedirectResponse
     {
-        $this->authorizeManage($team);
+        // Owner (or admin) only, unlike everything else here — a promoted
+        // manager can rename the team and move its members around, but
+        // deleting takes the team's whole history with it.
+        abort_unless($team->isOwnedBy(Auth::user()), 403);
 
         // Before the delete — the team is its own scope here, so both the
         // target label and the team/guild labels have to be read while it
@@ -111,6 +155,7 @@ class TeamController extends Controller
 
         TeamMember::firstOrCreate(['team_id' => $team->id, 'user_id' => $data['user_id']], [
             'id' => (string) str()->uuid(),
+            'role' => TeamMember::MEMBER,
         ]);
 
         // Target is the member, scope is the team — the two dimensions the
@@ -120,27 +165,70 @@ class TeamController extends Controller
         return back()->with('board-save', trans('teams.member_added'));
     }
 
+    /**
+     * Promote a member to MANAGER, or demote them back to MEMBER.
+     *
+     * Owner-only rather than manager-only, so a promoted manager cannot
+     * quietly promote more of them, and OWNER is not a value this accepts:
+     * a team has exactly one, and handing it over is a different action
+     * from handing out management.
+     */
+    public function updateMemberRole(Request $request, Team $team, string $userId): RedirectResponse
+    {
+        abort_unless($team->isOwnedBy(Auth::user()), 403);
+
+        $data = $request->validate([
+            'role' => ['required', Rule::in([TeamMember::MANAGER, TeamMember::MEMBER])],
+        ]);
+
+        $member = TeamMember::where(['team_id' => $team->id, 'user_id' => $userId])->firstOrFail();
+
+        // Demoting the owner would leave the team with nobody who can delete
+        // it, and no route back — there is no "make me owner" action.
+        abort_if($member->role === TeamMember::OWNER, 403, 'The team owner cannot be demoted.');
+
+        // Read before the write: save() re-syncs the original attributes, so
+        // asking the model afterwards returns the value just written.
+        $previousRole = $member->role;
+
+        $member->update(['role' => $data['role']]);
+
+        AuditLog::record('team.member_role_changed', User::find($userId), [
+            'role' => ['from' => $previousRole, 'to' => $data['role']],
+        ], $team);
+
+        return back()->with('board-save', trans(
+            $data['role'] === TeamMember::MANAGER ? 'teams.member_promoted' : 'teams.member_demoted',
+        ));
+    }
+
     public function removeMember(Team $team, string $userId): RedirectResponse
     {
         $this->authorizeManage($team);
 
-        TeamMember::where(['team_id' => $team->id, 'user_id' => $userId])->delete();
+        // Same reasoning as the demote guard above: a team without its owner
+        // is a team nobody can delete.
+        $member = TeamMember::where(['team_id' => $team->id, 'user_id' => $userId])->first();
+        abort_if($member?->role === TeamMember::OWNER, 403, 'The team owner cannot be removed.');
+
+        $member?->delete();
 
         AuditLog::record('team.member_removed', User::find($userId), [], $team);
 
         return back()->with('board-save', trans('teams.member_removed'));
     }
 
-    /** Ported from assertManagerOrAdmin() — admin or TEAM_MANAGER only. */
+    /** Rename the team, and add/remove its members — owner or manager. */
     private function authorizeManage(Team $team): void
     {
-        $user = Auth::user();
-        abort_unless($user->isAdmin() || $user->hasRole('TEAM_MANAGER'), 403);
+        abort_unless($team->isManagedBy(Auth::user()), 403);
     }
 
     /** Lightweight user search for the members modal's add-member autocomplete. */
     public function searchUsers(Request $request, Team $team): JsonResponse
     {
+        $this->authorizeManage($team);
+
         $search = $request->string('search')->toString();
         $existingMemberIds = $team->members()->pluck('user_id');
 

@@ -118,12 +118,32 @@ defineProps({
 // useToast.js is only ever requested client-side, after hydration — never
 // during SSR.
 let toast;
+
+const inertiaPage = usePage();
+
+function raise(message, id, color) {
+    if (message) toast?.add({ id, title: message, color });
+}
+
 onMounted(async () => {
     const { useToast } = await import('@nuxt/ui/composables/useToast');
     toast = useToast();
-});
 
-const inertiaPage = usePage();
+    // The flash carried by THIS page load, which the watchers below cannot
+    // see: a watcher without `immediate` only fires on a change, and adding
+    // `immediate` would not help either — it runs during setup, before the
+    // dynamic import above has resolved `toast`.
+    //
+    // Only reachable on a full page load, since an Inertia visit changes the
+    // value and the watchers handle it — but a full page load is exactly how
+    // every redirect from outside the app arrives. The Discord OAuth
+    // callback is the one that made this matter: a cancelled or expired
+    // login redirects to /login with an explanation, and the explanation was
+    // silently dropped, leaving the user bounced to a login page for no
+    // stated reason.
+    raise(inertiaPage.props?.flash?.boardSave, 'board-save', 'success');
+    raise(inertiaPage.props?.flash?.boardSaveError, 'board-save-error', 'error');
+});
 
 // Optional-chained on `props` itself, not just `flash` — props is briefly
 // undefined mid-visit while Inertia swaps page state for the new response,
@@ -132,24 +152,53 @@ const inertiaPage = usePage();
 // from exactly these two getters).
 watch(
     () => inertiaPage.props?.flash?.boardSave,
-    (message) => {
-        if (message) toast?.add({ id: 'board-save', title: message, color: 'success' });
-    },
+    (message) => raise(message, 'board-save', 'success'),
 );
 
 watch(
     () => inertiaPage.props?.flash?.boardSaveError,
-    (message) => {
-        if (message) toast?.add({ id: 'board-save-error', title: message, color: 'error' });
-    },
+    (message) => raise(message, 'board-save-error', 'error'),
 );
 
-// The admin area brings its own full-height shell (AdminLayout's dashboard
-// sidebar + navbar), so the site header, footer and announcement banner would
-// sit on top of it rather than around it. Keyed on the Inertia component name
-// because that is the one thing AppRoot reliably knows about the page it is
-// rendering — it has no access to the page component's own options.
-const showSiteChrome = computed(() => !String(inertiaPage.component ?? '').startsWith('Admin/'));
+/**
+ * Pages that render without the site header, footer and announcement banner.
+ *
+ * Two of them, for opposite reasons:
+ *
+ *  - **Admin/** brings its own full-height shell (AdminLayout's dashboard
+ *    sidebar + navbar), so the site chrome would sit on top of it rather
+ *    than around it.
+ *  - **SiteLock** is a closed door. It rendered the full header — nav links,
+ *    the user menu, and whatever banner happened to be up — which is exactly
+ *    what a pre-launch lock is meant to keep off the screen. The links all
+ *    bounced back here anyway, so the chrome was a menu of dead ends
+ *    wrapped around a password box.
+ *
+ * Keyed on the Inertia component name because that is the one thing AppRoot
+ * reliably knows about the page it is rendering — it has no access to the
+ * page component's own options.
+ */
+const CHROMELESS_PAGES = ['SiteLock'];
+
+/**
+ * The auth pages, which keep the chrome normally and lose it while the site
+ * is locked.
+ *
+ * The lock screen offers "Running this site? Log in" as the other way in —
+ * and that click used to land on a fully dressed page with the nav, the user
+ * menu and whatever banner was up. Every one of those links bounces straight
+ * back to the lock screen, so it was a menu of dead ends wrapped around a
+ * password box, on the one page a stranger is meant to reach.
+ */
+const AUTH_PAGES = ['Auth/Login', 'Auth/Register', 'Auth/ForgotPassword', 'Auth/ResetPassword'];
+
+const showSiteChrome = computed(() => {
+    const component = String(inertiaPage.component ?? '');
+
+    if (component.startsWith('Admin/') || CHROMELESS_PAGES.includes(component)) return false;
+
+    return !(inertiaPage.props?.site?.locked && AUTH_PAGES.includes(component));
+});
 
 // Pages that are themselves asking the user for something — the OSRS username
 // gate above all. A brand-new Discord account needs onboarding AND has no

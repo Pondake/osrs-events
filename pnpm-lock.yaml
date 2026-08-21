@@ -27,6 +27,9 @@ importers:
         specifier: ^2.6.1
         version: 2.6.3
     devDependencies:
+      '@dava96/osrs-icons':
+        specifier: ^1.0.29
+        version: 1.0.29
       '@iconify-json/lucide':
         specifier: ^1.2.124
         version: 1.2.124
@@ -92,6 +95,9 @@ packages:
   '@capsizecss/unpack@4.0.1':
     resolution: {integrity: sha512-CuNiSqg7+e1cO/GjffyMOm5Tt2jUF9CWHHnvQ/UkqvtkGfHdgwEC0wpmq7fkN3gxwpRnrAN0WzO3vREKmNolMQ==}
     engines: {node: '>=18'}
+
+  '@dava96/osrs-icons@1.0.29':
+    resolution: {integrity: sha512-WUIIphE5RWIOv6eQBdpDtHRZP41WqNq1vdZmZyGy+zYm80GKf2PIXUZG6ZKzag2uvbUMWZnaHpAcVYVnjXCsQA==}
 
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
@@ -2332,6 +2338,8 @@ snapshots:
   '@capsizecss/unpack@4.0.1':
     dependencies:
       fontkitten: 1.0.3
+
+  '@dava96/osrs-icons@1.0.29': {}
 
   '@esbuild/aix-ppc64@0.28.2':
     optional: true

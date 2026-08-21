@@ -63,10 +63,16 @@ class TileController extends Controller
     }
 
     /**
-     * Lightweight task search for the tile editor's autocomplete —
-     * deliberately NOT gated by canCreateTiles like Admin\TaskController:
-     * assigning an existing task to a tile is a different action from
-     * creating new task templates, and any board editor needs it.
+     * Lightweight task search, still used by Admin > Tasks.
+     *
+     * No longer offered in the tile and bingo-square pickers: those search
+     * the OSRS Wiki only now, and the task table behind them is a cache of
+     * it rather than a second place to look. Fourteen seeded rows presented
+     * as a peer of the whole wiki was a choice with an obvious answer, and
+     * making people make it was the cost.
+     *
+     * Deliberately NOT gated by canCreateTiles like Admin\TaskController:
+     * assigning an existing task is a different action from creating one.
      */
     public function searchTasks(Request $request): JsonResponse
     {

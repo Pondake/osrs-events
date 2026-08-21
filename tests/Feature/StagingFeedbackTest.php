@@ -2,13 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\BingoCompletion;
 use App\Models\BoardAuthor;
+use App\Models\BoardTeam;
 use App\Models\Event;
+use App\Models\EventBlueprint;
 use App\Models\EventStanding;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\Team;
+use App\Models\TeamMember;
 use App\Models\User;
 use App\Models\UserGuild;
+use App\Services\BingoService;
+use App\Services\EventStandingsService;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
@@ -228,7 +236,7 @@ class StagingFeedbackTest extends TestCase
             'end_date' => '2026-07-31',
         ])->save();
 
-        app(\App\Services\EventStandingsService::class)
+        app(EventStandingsService::class)
             ->refresh($event->fresh(), EventStanding::firstOrFail());
 
         Http::assertSent(function ($request) {
@@ -466,6 +474,8 @@ class StagingFeedbackTest extends TestCase
         $this->actingAs($editor)->post('/events', [
             'title' => 'Made by an editor',
             'type' => 'SNAKES_LADDERS',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-15',
             'mode' => 'SOLO',
             'access_mode' => 'OPEN',
             'size' => 'SIZE_5X5',
@@ -479,9 +489,464 @@ class StagingFeedbackTest extends TestCase
         $this->actingAs($player)->post('/events', [
             'title' => 'Made by a player',
             'type' => 'SNAKES_LADDERS',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-15',
             'mode' => 'SOLO',
             'access_mode' => 'OPEN',
             'size' => 'SIZE_5X5',
         ])->assertForbidden();
+    }
+
+    // ------------------------------------------- Discord OAuth, gone wrong
+
+    /**
+     * Reported from a phone: closing Discord mid-login produced a full
+     * Laravel stack trace, headed "GuzzleHttp ClientException — POST
+     * /oauth2/token resulted in a 400". Nothing was wrong; a user changed
+     * their mind, and the app answered with a 500.
+     *
+     * The cancel path does not even reach Guzzle — Discord sends the user
+     * back with ?error=access_denied and no code, and the old callback fed
+     * that straight into the token exchange.
+     */
+    #[Test]
+    public function cancelling_the_discord_login_says_so_instead_of_erroring(): void
+    {
+        $this->get('/auth/discord/callback?error=access_denied&error_description=denied')
+            ->assertRedirect('/login')
+            ->assertSessionHas('board-save-error');
+    }
+
+    /**
+     * The other half, and the one in the screenshot: a callback that does
+     * reach Discord and is refused — a spent code, an expired one, a session
+     * whose state no longer matches. Socialite throws; nothing caught it.
+     */
+    #[Test]
+    public function a_dead_discord_callback_lands_on_the_login_page_not_a_stack_trace(): void
+    {
+        config()->set('services.discord', [
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'redirect' => 'http://localhost/auth/discord/callback',
+        ]);
+
+        // No state in the session and none on the request: Socialite raises
+        // InvalidStateException before it ever calls out, which is the same
+        // class of failure as the 400 and takes the same path out.
+        $this->withoutExceptionHandling([AuthenticationException::class])
+            ->get('/auth/discord/callback?code=spent-code&state=mismatched')
+            ->assertRedirect('/login')
+            ->assertSessionHas('board-save-error');
+    }
+
+    /**
+     * A failed link attempt belongs back in account settings, not on the
+     * login page — the user is signed in the whole time.
+     */
+    #[Test]
+    public function a_failed_discord_link_returns_to_account_settings(): void
+    {
+        $this->actingAs($this->player())
+            ->withSession(['discord_link_user_id' => $this->player('Linker')->id])
+            ->get('/auth/discord/callback?error=access_denied')
+            ->assertRedirect('/settings/account');
+    }
+
+    // ------------------------------------------------ teams while creating
+
+    /**
+     * The Teams tab of the create-event form said "save the board first" and
+     * nothing else, which is the report: you turn on team mode, go to the
+     * tab it just revealed, and it refuses to do the thing it is for. There
+     * is no reason for it to — the teams already exist.
+     */
+    #[Test]
+    public function teams_can_be_assigned_while_the_event_is_still_being_created(): void
+    {
+        Http::fake();
+
+        $creator = $this->player('Host');
+        $creator->assignRole($this->boardCreatorRole());
+
+        $team = Team::create(['name' => 'Zulrah Enjoyers']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $creator->id, 'role' => TeamMember::OWNER]);
+
+        $this->actingAs($creator)->post('/events', [
+            'title' => 'Team event',
+            'type' => 'SNAKES_LADDERS',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-15',
+            'size' => 'SIZE_5X5',
+            'mode' => 'TEAM',
+            'access_mode' => 'OPEN',
+            'team_ids' => [$team->id],
+        ])->assertRedirect();
+
+        $event = Event::where('title', 'Team event')->firstOrFail();
+
+        $this->assertSame(1, BoardTeam::where('event_id', $event->id)->where('team_id', $team->id)->count());
+    }
+
+    /** A solo event carrying team rows would be rows nothing ever reads. */
+    #[Test]
+    public function a_solo_event_ignores_submitted_teams(): void
+    {
+        Http::fake();
+
+        $creator = $this->player('Host');
+        $creator->assignRole($this->boardCreatorRole());
+
+        $team = Team::create(['name' => 'Zulrah Enjoyers']);
+
+        $this->actingAs($creator)->post('/events', [
+            'title' => 'Solo event',
+            'type' => 'SNAKES_LADDERS',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-15',
+            'size' => 'SIZE_5X5',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'team_ids' => [$team->id],
+        ])->assertRedirect();
+
+        $event = Event::where('title', 'Solo event')->firstOrFail();
+
+        $this->assertSame(0, BoardTeam::where('event_id', $event->id)->count());
+    }
+
+    /**
+     * The list that tab is filled from before an event id exists.
+     *
+     * Scoped to teams the creator can actually see — a member here, since
+     * this one has no Discord server. Offering every team on the site was
+     * the bug this replaced; see TeamOwnershipTest for the visibility rule
+     * itself.
+     */
+    #[Test]
+    public function the_team_picker_has_a_list_to_offer_before_the_event_exists(): void
+    {
+        $user = $this->player();
+        $team = Team::create(['name' => 'Zulrah Enjoyers']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $user->id, 'role' => TeamMember::OWNER]);
+
+        $this->actingAs($user)
+            ->getJson('/teams/options')
+            ->assertOk()
+            ->assertJsonPath('teams.0.name', 'Zulrah Enjoyers');
+    }
+
+    // ---------------------------------------------------- event blueprints
+
+    #[Test]
+    public function the_title_autocomplete_offers_active_blueprints_only(): void
+    {
+        $creator = $this->player('Host');
+        $creator->assignRole($this->boardCreatorRole());
+
+        EventBlueprint::create(['title' => 'Skill of the Week', 'type' => 'SKILL_RACE', 'metric' => 'overall']);
+        EventBlueprint::create(['title' => 'Retired Format', 'is_active' => false]);
+
+        $response = $this->actingAs($creator)->getJson('/event-blueprints')->assertOk();
+
+        $titles = collect($response->json('blueprints'))->pluck('title');
+
+        $this->assertContains('Skill of the Week', $titles);
+        $this->assertNotContains('Retired Format', $titles);
+    }
+
+    /**
+     * A blueprint prefills type and metric, so a blueprint carrying a pair
+     * the create form rejects would look like the blueprint broke the form.
+     */
+    #[Test]
+    public function a_blueprint_cannot_be_saved_with_a_metric_the_event_form_would_reject(): void
+    {
+        $creator = $this->player('Host');
+        $creator->assignRole($this->boardCreatorRole());
+
+        $this->actingAs($creator)->post('/admin/blueprints', [
+            'title' => 'Nonsense',
+            'type' => 'SKILL_RACE',
+            'metric' => 'not-a-real-metric',
+        ])->assertSessionHasErrors('metric');
+    }
+
+    #[Test]
+    public function managing_blueprints_needs_the_board_creation_permission(): void
+    {
+        $player = $this->player('JustAPlayer');
+        $player->assignRole(Role::findOrCreate('PLAYER', 'web'));
+
+        $this->actingAs($player)->get('/admin/blueprints')->assertForbidden();
+        $this->actingAs($player)->getJson('/event-blueprints')->assertForbidden();
+    }
+
+    // ------------------------------------- created vs joined on the profile
+
+    /**
+     * The profile listed every event in one column with an Owner badge as
+     * the only hint which was which. The page now filters on this flag, so
+     * it has to be there and it has to mean "you run this one".
+     */
+    #[Test]
+    public function the_profile_marks_which_events_you_run(): void
+    {
+        $host = $this->player('Host');
+        $mine = $this->race(['title' => 'Mine']);
+        BoardAuthor::create(['event_id' => $mine->id, 'user_id' => $host->id, 'is_owner' => true]);
+
+        $theirs = $this->race(['title' => 'Theirs']);
+        BoardAuthor::create(['event_id' => $theirs->id, 'user_id' => $this->player('Someone')->id, 'is_owner' => true]);
+        EventStanding::create([
+            'event_id' => $theirs->id,
+            'user_id' => $host->id,
+            'username' => 'Host',
+            'start_value' => 0,
+        ]);
+
+        $events = collect($this->actingAs($host)->get('/settings/profile')->viewData('page')['props']['events'])
+            ->keyBy('title');
+
+        $this->assertTrue($events['Mine']['isHost']);
+        $this->assertFalse($events['Theirs']['isHost']);
+    }
+
+    // ------------------------------------------------------------- dates
+
+    /**
+     * An event without a window is not an event: every status badge, the
+     * standings range and the bingo cutoff all key off one, and each null
+     * date makes some other piece of code invent a fallback.
+     */
+    #[Test]
+    public function creating_an_event_without_dates_is_refused(): void
+    {
+        Http::fake();
+
+        $creator = $this->player('Host');
+        $creator->assignRole($this->boardCreatorRole());
+
+        $this->actingAs($creator)->post('/events', [
+            'title' => 'No window',
+            'type' => 'SNAKES_LADDERS',
+            'size' => 'SIZE_5X5',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+        ])->assertSessionHasErrors(['start_date', 'end_date']);
+    }
+
+    #[Test]
+    public function an_end_date_before_the_start_is_refused(): void
+    {
+        Http::fake();
+
+        $creator = $this->player('Host');
+        $creator->assignRole($this->boardCreatorRole());
+
+        $this->actingAs($creator)->post('/events', [
+            'title' => 'Backwards',
+            'type' => 'SNAKES_LADDERS',
+            'size' => 'SIZE_5X5',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'start_date' => '2026-09-15',
+            'end_date' => '2026-09-01',
+        ])->assertSessionHasErrors('end_date');
+    }
+
+    /**
+     * Editing keeps them nullable — events created before the rule exist
+     * with null dates, and a required field would make those uneditable —
+     * but a start with no end is the one combination that reads as a
+     * mistake rather than as "no dates set".
+     */
+    #[Test]
+    public function editing_refuses_a_start_date_with_no_end_date(): void
+    {
+        $owner = $this->player('Owner');
+        $event = $this->race(['start_date' => null, 'end_date' => null]);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $this->actingAs($owner)
+            ->patch("/events/{$event->id}", ['start_date' => '2026-09-01', 'end_date' => null])
+            ->assertSessionHasErrors('end_date');
+    }
+
+    #[Test]
+    public function editing_still_accepts_an_event_with_no_dates_at_all(): void
+    {
+        $owner = $this->player('Owner');
+        $event = $this->race(['start_date' => null, 'end_date' => null]);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $this->actingAs($owner)
+            ->patch("/events/{$event->id}", ['title' => 'Renamed', 'start_date' => null, 'end_date' => null])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Renamed', $event->fresh()->title);
+    }
+
+    // -------------------------------------------- bingo settings, one form
+
+    /**
+     * A bingo event's win condition is as much "the event's settings" as its
+     * title is. Sending people to a second place for it is what made bingo
+     * feel half-finished, so the event settings modal writes both — through
+     * the same service the card's own endpoint uses.
+     */
+    #[Test]
+    public function the_event_settings_form_can_change_the_bingo_card(): void
+    {
+        $owner = $this->player('Owner');
+
+        $event = Event::create([
+            'title' => 'Card night',
+            'type' => 'BINGO',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+        ]);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $card = $event->bingoCard()->create(['size' => 3, 'win_condition' => 'LINE']);
+        app(BingoService::class)->ensureSquares($card);
+
+        $this->actingAs($owner)->patch("/events/{$event->id}", [
+            'bingo_size' => 5,
+            'win_condition' => 'FULL_HOUSE',
+            'line_bonus' => 10,
+            'requires_approval' => false,
+        ])->assertSessionHasNoErrors();
+
+        $card = $card->fresh();
+
+        $this->assertSame(5, $card->size);
+        $this->assertSame('FULL_HOUSE', $card->win_condition);
+        $this->assertSame(10, $card->line_bonus);
+        $this->assertFalse($card->requires_approval);
+        // Grown, not just relabelled — the squares have to follow the size.
+        $this->assertSame(25, $card->squares()->count());
+    }
+
+    /** Deleting somebody's progress is not something a size dropdown does. */
+    #[Test]
+    public function shrinking_a_card_with_progress_on_it_is_refused_through_the_settings_form(): void
+    {
+        $owner = $this->player('Owner');
+
+        $event = Event::create([
+            'title' => 'Card night',
+            'type' => 'BINGO',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+        ]);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $card = $event->bingoCard()->create(['size' => 5, 'win_condition' => 'LINE']);
+        app(BingoService::class)->ensureSquares($card);
+
+        // A completion on a square that a 3x3 card would not have.
+        BingoCompletion::create([
+            'bingo_square_id' => $card->squares()->where('position', 20)->value('id'),
+            'user_id' => $owner->id,
+            'marked_by' => $owner->id,
+            'status' => 'APPROVED',
+        ]);
+
+        $this->actingAs($owner)
+            ->patch("/events/{$event->id}", ['bingo_size' => 3])
+            ->assertSessionHasErrors('bingo_size');
+
+        $this->assertSame(5, $card->fresh()->size);
+    }
+
+    // ------------------------------------------------- editing a non-bingo
+
+    /**
+     * Reported as "I hit save on a board, it jumped back to Basics and saved
+     * nothing". Two faults in one request, and this is the one that broke
+     * every non-bingo event:
+     *
+     * The settings form carries every type's fields at once, so editing a
+     * Snakes & Ladders event posted bingo_size: null — present, therefore
+     * validated by `sometimes|integer`, therefore rejected with "The card
+     * size field must be an integer" about a card the event does not have
+     * and the form does not show.
+     *
+     * Asserted at the endpoint rather than through the form, because the
+     * rule that has to hold is "a null for another type's field does not
+     * sink the save".
+     */
+    #[Test]
+    public function editing_a_snakes_and_ladders_event_is_not_sunk_by_bingo_fields(): void
+    {
+        $owner = $this->player('Owner');
+
+        $event = Event::create([
+            'title' => 'Board night',
+            'type' => 'SNAKES_LADDERS',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+        ]);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $this->actingAs($owner)
+            ->patch("/events/{$event->id}", ['title' => 'Renamed', 'bingo_size' => null])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Renamed', $event->fresh()->title);
+    }
+
+    /**
+     * A GUILD event whose server was never set — legal until the form
+     * started requiring one — locked itself away from everybody, including
+     * the admin who has to go in and fix it. canEditEvent() let an admin
+     * edit any event while hasAccess() would not let them open one, so the
+     * only route to the settings was behind a gate that turned them away.
+     */
+    #[Test]
+    public function an_admin_can_open_a_guild_event_with_no_server_set(): void
+    {
+        $event = $this->race(['access_mode' => 'GUILD', 'required_guild_id' => null, 'type' => 'SNAKES_LADDERS', 'metric' => null]);
+        $event->board()->create(['size' => 'SIZE_5X5']);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $this->player('Owner')->id, 'is_owner' => true]);
+
+        $admin = $this->player('TheAdmin');
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+
+        $page = $this->actingAs($admin)->get("/events/{$event->id}")->viewData('page');
+
+        // The gate would have rendered Boards/AccessGate instead.
+        $this->assertNotSame('Boards/AccessGate', $page['component']);
+    }
+
+    /** And the wording no longer calls a Discord server a "guild id". */
+    #[Test]
+    public function the_missing_server_message_talks_about_servers_not_guilds(): void
+    {
+        $owner = $this->player('Owner');
+        $event = $this->race(['access_mode' => 'OPEN']);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $this->actingAs($owner)
+            ->patch("/events/{$event->id}", ['access_mode' => 'GUILD'])
+            ->assertSessionHasErrors('required_guild_id');
+
+        $message = $this->app['session.store']->get('errors')->get('required_guild_id')[0];
+
+        $this->assertStringNotContainsStringIgnoringCase('guild', $message);
+        $this->assertStringContainsStringIgnoringCase('server', $message);
+    }
+
+    /** EDITOR is the role that carries canCreateBoards in these tests. */
+    private function boardCreatorRole(): Role
+    {
+        $role = Role::findOrCreate('EDITOR', 'web');
+        $role->givePermissionTo(Permission::findOrCreate('canCreateBoards', 'web'));
+
+        return $role;
     }
 }

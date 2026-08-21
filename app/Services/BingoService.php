@@ -68,19 +68,43 @@ class BingoService
     }
 
     /**
-     * Positions this competitor has had **approved** — the only ones that
-     * count toward a line or a score.
+     * Positions this competitor has had **approved**, plus every wildcard on
+     * the card — the only ones that count toward a line or a score.
+     *
+     * Wildcards are merged in here rather than written as completion rows
+     * because a completion belongs to one competitor and a free square
+     * belongs to all of them at once. That also means turning a square into
+     * a wildcard, or back, takes effect immediately for everybody with no
+     * data to migrate either way.
      *
      * @return array<int, int>
      */
     public function approvedPositions(BingoCard $card, array $competitor): array
     {
-        return $this->claimsFor($card, $competitor)
+        $approved = $this->claimsFor($card, $competitor)
             ->filter(fn (BingoCompletion $c) => $c->isApproved())
             ->keys()
-            ->map(fn ($p) => (int) $p)
+            ->map(fn ($p) => (int) $p);
+
+        return $approved
+            ->merge($this->wildcardPositions($card))
+            ->unique()
             ->sort()
             ->values()
+            ->all();
+    }
+
+    /**
+     * The free squares on a card.
+     *
+     * @return array<int, int>
+     */
+    public function wildcardPositions(BingoCard $card): array
+    {
+        return $card->squares()
+            ->where('is_wildcard', true)
+            ->pluck('position')
+            ->map(fn ($p) => (int) $p)
             ->all();
     }
 
@@ -187,11 +211,21 @@ class BingoService
             ->with(['team:id,name,icon_url', 'user:id,discord_username,nickname,avatar_url'])
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position']);
 
+        $wildcards = $this->wildcardPositions($card);
+
         return $rows
             ->groupBy(fn (BingoCompletion $c) => $c->team_id ?? $c->user_id)
-            ->map(function (Collection $group) use ($card, $points) {
+            ->map(function (Collection $group) use ($card, $points, $wildcards) {
                 $first = $group->first();
-                $positions = $group->pluck('square_position')->map(fn ($p) => (int) $p)->all();
+                // Free squares count for everyone, so they belong in every
+                // competitor's set — otherwise the card shows a line the
+                // standings do not credit.
+                $positions = $group->pluck('square_position')
+                    ->map(fn ($p) => (int) $p)
+                    ->merge($wildcards)
+                    ->unique()
+                    ->values()
+                    ->all();
 
                 return [
                     'id' => $first->team_id ?? $first->user_id,
@@ -220,11 +254,14 @@ class BingoService
             ->where('bingo_squares.bingo_card_id', $card->id)
             ->where('bingo_completions.status', 'PENDING')
             ->with([
-                'team:id,name',
-                'user:id,discord_username,nickname',
-                'markedBy:id,discord_username,nickname',
+                'team:id,name,icon_url',
+                // osrs_username too: the review modal shows both names, so a
+                // host judging a screenshot can match the RSN in it to the
+                // account that submitted it. That is the whole check.
+                'user:id,discord_username,nickname,avatar_url,osrs_username',
+                'markedBy:id,discord_username,nickname,avatar_url,osrs_username',
                 'square:id,position,title_override,task_id',
-                'square.task:id,title',
+                'square.task:id,title,icon_url',
             ])
             ->orderBy('bingo_completions.created_at')
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
@@ -232,12 +269,96 @@ class BingoService
                 'id' => $c->id,
                 'position' => (int) $c->square_position,
                 'label' => $c->square?->label(),
+                'iconUrl' => $c->square?->task?->icon_url,
                 'competitor' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username),
+                'competitorAvatar' => $c->team?->icon_url ?? $c->user?->avatar_url,
+                // Both identities, because they are how a host checks a
+                // claim: the Discord name is who is asking, the OSRS name is
+                // what the screenshot will show. Either can be missing — an
+                // email account has no Discord name — so the modal falls back
+                // rather than rendering a gap.
                 'submittedBy' => $c->markedBy?->nickname ?: $c->markedBy?->discord_username,
+                'submittedByAvatar' => $c->markedBy?->avatar_url,
+                'submittedByOsrs' => $c->markedBy?->osrs_username,
                 'proofUrl' => $c->proof_url,
                 'note' => $c->note,
                 'submittedAt' => $c->created_at?->toIso8601String(),
             ]);
+    }
+
+    /**
+     * Who has had each square approved, keyed by position.
+     *
+     * Turns a card from a grid of ticks into a record of who did what: a
+     * square somebody on your team already got looks different from one
+     * nobody has, and on a solo event you can see who beat you to it.
+     *
+     * Capped at three faces per square with a count for the rest — a 10x10
+     * card in a clan of forty would otherwise ship four hundred avatar rows
+     * to render as 16px circles, and the fourth face tells you nothing the
+     * "+37" does not.
+     *
+     * @return array<int, array{holders: array<int, array{name: ?string, avatarUrl: ?string}>, total: int}>
+     */
+    public function approvedBy(BingoCard $card): array
+    {
+        return BingoCompletion::query()
+            ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
+            ->where('bingo_squares.bingo_card_id', $card->id)
+            ->where('bingo_completions.status', 'APPROVED')
+            ->with(['team:id,name,icon_url', 'user:id,discord_username,nickname,avatar_url'])
+            ->orderBy('bingo_completions.created_at')
+            ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
+            ->groupBy(fn (BingoCompletion $c) => (int) $c->square_position)
+            ->map(fn (Collection $group) => [
+                'holders' => $group->take(3)->map(fn (BingoCompletion $c) => [
+                    // A team event credits the team, a solo one the player —
+                    // the same competitor split competitorFor() makes.
+                    'name' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username),
+                    'avatarUrl' => $c->team?->icon_url ?? $c->user?->avatar_url,
+                ])->values()->all(),
+                'total' => $group->count(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Apply a card's settings, growing or shrinking the grid to match.
+     *
+     * Lives here rather than in BingoController because two places set these
+     * now: the card's own endpoint, and the event settings modal in edit
+     * mode — a bingo event's win condition is one of the "relevant options"
+     * that modal is expected to hold, and having it write through a second
+     * copy of this logic is how the shrink guard below gets forgotten in one
+     * of them.
+     *
+     * Returns false, rather than throwing, when a shrink would drop squares
+     * that carry completions: the caller decides how to say so, and both
+     * callers say it differently (a flash vs. a validation error).
+     */
+    public function applyCardSettings(BingoCard $card, array $data): bool
+    {
+        if (isset($data['size']) && $data['size'] < $card->size) {
+            $hasProgress = BingoCompletion::whereIn(
+                'bingo_square_id',
+                $card->squares()->where('position', '>=', $data['size'] ** 2)->select('id'),
+            )->exists();
+
+            // Growing a card adds squares; shrinking one refuses rather than
+            // dropping squares that carry other people's completions.
+            // Deleting somebody's progress is not something a size dropdown
+            // should be able to do silently.
+            if ($hasProgress) {
+                return false;
+            }
+
+            $card->squares()->where('position', '>=', $data['size'] ** 2)->delete();
+        }
+
+        $card->update($data);
+        $this->ensureSquares($card->fresh());
+
+        return true;
     }
 
     /**

@@ -68,59 +68,94 @@
         </u-card>
 
         <div>
-            <h3 class="text-lg font-semibold text-highlighted mb-4">{{ $t('profile.your_events') }}</h3>
+            <div class="flex items-end justify-between gap-4 flex-wrap mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-highlighted">{{ $t('profile.your_events') }}</h3>
+                    <p class="text-sm text-muted">{{ $t('profile.your_events_desc') }}</p>
+                </div>
+
+                <!-- Two different relationships were being shown as one list,
+                     separated only by a badge: an event you set up and an
+                     event you are playing in are not the same thing to look
+                     at. A client-side toggle rather than links, because
+                     unlike /my-events this is a section of a settings page,
+                     not a destination anything links into. -->
+                <div v-if="events.length" class="flex flex-wrap items-center gap-2">
+                    <u-button
+                        v-for="tab in filterTabs"
+                        :key="tab.key"
+                        size="xs"
+                        :color="filter === tab.key ? 'primary' : 'neutral'"
+                        :variant="filter === tab.key ? 'solid' : 'outline'"
+                        :label="`${tab.label} (${tab.count})`"
+                        @click="filter = tab.key"
+                    />
+                </div>
+            </div>
 
             <div v-if="!events.length" class="text-center py-8 text-muted">
                 <u-icon name="i-lucide-layout-grid" class="size-10 mx-auto mb-3 block" />
                 <p>{{ $t('profile.no_events') }}</p>
             </div>
 
-            <div v-else class="space-y-3">
-                <u-card v-for="event in events" :key="event.id">
-                    <div class="flex items-center justify-between gap-4 flex-wrap">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-3 mb-1 flex-wrap">
-                                <!-- The event id, not the board id. These are
-                                     the same only for rows migrated at the
-                                     split; anything created since has its own
-                                     board uuid, and this link 404'd. -->
-                                <a :href="`/events/${event.id}`" class="text-lg font-semibold hover:text-primary transition-colors truncate">
-                                    {{ event.title }}
-                                </a>
-                                <u-badge v-if="typeMeta(event)" :icon="typeMeta(event).icon" :label="typeMeta(event).label" color="primary" variant="subtle" />
-                                <u-badge v-if="event.size" color="neutral" variant="subtle" :label="formatBoardSize(event.size)" />
-                                <u-badge v-if="event.isOwner" color="warning" variant="subtle" :label="$t('profile.owner_badge')" />
-                            </div>
+            <!-- Rows, not cards. Each one is a line you scan down a column
+                 of — the detail that belongs to an event lives on the
+                 event's own page, and this list exists to get you there. -->
+            <div v-else class="divide-y divide-default rounded-lg ring ring-default bg-default">
+                <a
+                    v-for="event in visibleEvents"
+                    :key="event.id"
+                    :href="`/events/${event.id}`"
+                    class="flex items-center gap-3 px-4 py-3 hover:bg-elevated transition-colors"
+                >
+                    <u-icon v-if="typeMeta(event)" :name="typeMeta(event).icon" class="size-4 text-primary shrink-0" />
 
-                            <div v-if="event.progress" class="flex items-center gap-4 text-sm text-muted flex-wrap">
-                                <span><u-icon name="i-lucide-map-pin" class="inline mr-1" />{{ $t('board.tile', { n: event.progress.position }) }}</span>
-                                <span><u-icon name="i-lucide-circle-check" class="inline mr-1" />{{ event.progress.completed }} {{ $t('profile.tiles_completed') }}</span>
-                            </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <!-- The event id, not the board id. These are
+                                 the same only for rows migrated at the
+                                 split; anything created since has its own
+                                 board uuid, and this link 404'd. -->
+                            <span class="font-medium truncate">{{ event.title }}</span>
+                            <u-badge v-if="event.isOwner" color="warning" variant="subtle" size="sm" :label="$t('profile.owner_badge')" />
+                            <u-badge v-else-if="event.isHost" color="info" variant="subtle" size="sm" :label="$t('profile.editor_badge')" />
                         </div>
 
-                        <!-- Only a board has a position to be a percentage of.
-                             A race is ranked, not traversed. -->
-                        <div v-if="event.progress" class="w-32 shrink-0">
-                            <div class="flex justify-between text-xs text-muted mb-1">
-                                <span>{{ $t('profile.progress') }}</span>
-                                <span>{{ event.progress.pct }}%</span>
-                            </div>
-                            <div class="h-2 rounded-full bg-muted overflow-hidden">
-                                <div class="h-full bg-primary rounded-full transition-all" :style="{ width: `${event.progress.pct}%` }" />
-                            </div>
+                        <div class="flex items-center gap-x-3 gap-y-0.5 flex-wrap text-xs text-muted mt-0.5">
+                            <span v-if="typeMeta(event)">{{ typeMeta(event).label }}</span>
+                            <span v-if="event.size">{{ formatBoardSize(event.size) }}</span>
+                            <span v-if="event.progress">{{ $t('board.tile', { n: event.progress.position }) }}</span>
+                            <span v-if="event.progress">{{ event.progress.completed }} {{ $t('profile.tiles_completed') }}</span>
                         </div>
-
-                        <u-button :href="`/events/${event.id}`" icon="i-lucide-arrow-right" color="primary" variant="outline" size="sm" :label="$t('profile.open_event')" />
                     </div>
-                </u-card>
+
+                    <!-- Only a board has a position to be a percentage of.
+                         A race is ranked, not traversed. -->
+                    <div v-if="event.progress" class="hidden sm:block w-24 shrink-0">
+                        <div class="flex justify-between text-xs text-muted mb-1">
+                            <span>{{ $t('profile.progress') }}</span>
+                            <span class="tabular-nums">{{ event.progress.pct }}%</span>
+                        </div>
+                        <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div class="h-full bg-primary rounded-full transition-all" :style="{ width: `${event.progress.pct}%` }" />
+                        </div>
+                    </div>
+
+                    <u-icon name="i-lucide-chevron-right" class="size-4 text-muted shrink-0" />
+                </a>
+
+                <p v-if="!visibleEvents.length" class="px-4 py-8 text-center text-sm text-muted">
+                    {{ filter === 'created' ? $t('profile.no_created_events') : $t('profile.no_joined_events') }}
+                </p>
             </div>
         </div>
     </settings-layout>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import { formatBoardSize } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
@@ -135,6 +170,27 @@ const props = defineProps({
 const { user } = useAuth();
 
 const typeMeta = (event) => eventTypeMeta(event.type);
+
+// "Created" is being an author, not strictly the owner — an event you were
+// added to as an editor is one you run rather than one you joined, and
+// /my-events already draws the line in that same place. The Owner/Editor
+// badge still tells those two apart inside the list.
+const filter = ref('all');
+
+const visibleEvents = computed(() => props.events.filter((event) => (
+    filter.value === 'all'
+        || (filter.value === 'created' ? event.isHost : !event.isHost)
+)));
+
+const filterTabs = computed(() => {
+    const created = props.events.filter((e) => e.isHost).length;
+
+    return [
+        { key: 'all', label: trans('profile.filter_all'), count: props.events.length },
+        { key: 'created', label: trans('profile.filter_created'), count: created },
+        { key: 'joined', label: trans('profile.filter_joined'), count: props.events.length - created },
+    ];
+});
 
 const editing = ref(false);
 const nicknameInput = ref('');

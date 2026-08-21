@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Event;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -64,20 +65,36 @@ class HandleInertiaRequests extends Middleware
                 'kofiUrl' => Setting::get('kofi_url'),
                 // Shared rather than passed per page: the create-event modal
                 // opens from the events index, the admin list and onboarding.
-                'eventTypes' => collect(\App\Models\Event::EVENT_TYPES)
+                'eventTypes' => collect(Event::EVENT_TYPES)
                     ->map(fn ($meta, $key) => ['value' => $key, ...$meta])
                     ->values()
                     ->all(),
                 // Keyed by metric kind so the create form can offer the right
                 // list once a type is picked, without a round trip.
                 'metricsByKind' => [
-                    'skill' => \App\Models\Event::SKILL_METRICS,
-                    'boss' => \App\Models\Event::BOSS_METRICS,
+                    'skill' => Event::SKILL_METRICS,
+                    'boss' => Event::BOSS_METRICS,
                 ],
-                'announcement' => Setting::get('announcement'),
+                // Withheld while the pre-launch lock is on and this visitor
+                // has not passed it. An announcement is written for the
+                // people already using the site ("summer bingo starts
+                // Friday, sign up in #events") and the lock screen is the
+                // one page a stranger can reach — so the banner was the one
+                // thing leaking past a door built to leak nothing.
+                //
+                // Withheld rather than hidden client-side: a prop that
+                // reaches the browser has already been disclosed, whatever
+                // the template does with it afterwards.
+                // Whether the pre-launch door is shut for THIS visitor. The
+                // lock screen already drops the site chrome; the login page
+                // has to as well, or "let me in" hands a stranger the full
+                // nav bar and a banner one click later.
+                'locked' => fn () => Setting::get('site_lock_enabled') && ! $this->announcementVisible($request),
+                'announcement' => fn () => $this->announcementVisible($request) ? Setting::get('announcement') : null,
                 'announcementType' => Setting::get('announcement_type'),
                 'defaultBoardSize' => Setting::get('default_board_size'),
                 'defaultDiceRollLimit' => Setting::get('default_dice_roll_limit'),
+                'defaultEventDurationDays' => Setting::get('default_event_duration_days'),
             ],
             'auth' => [
                 'user' => $user ? [
@@ -114,5 +131,22 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
         ];
+    }
+
+    /**
+     * Whether this request is allowed to see the site-wide announcement.
+     *
+     * Everything is visible on an unlocked site; on a locked one it takes
+     * the same pass the rest of the site takes — the shared password or an
+     * admin session. See EnsureSiteUnlocked.
+     */
+    private function announcementVisible(Request $request): bool
+    {
+        if (! Setting::get('site_lock_enabled')) {
+            return true;
+        }
+
+        return $request->user()?->isAdmin()
+            || $request->session()->get(EnsureSiteUnlocked::SESSION_KEY) === true;
     }
 }

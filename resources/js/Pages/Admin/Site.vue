@@ -39,6 +39,51 @@
                 <u-form-field :label="$t('admin.site_registration')" :description="$t('admin.site_registration_desc')" :error="form.errors.registration_open">
                     <u-switch v-model="form.registration_open" :label="form.registration_open ? $t('admin.site_registration_on') : $t('admin.site_registration_off')" />
                 </u-form-field>
+
+                <u-separator class="my-6" />
+
+                <!-- The pre-launch door. Not maintenance mode: the app keeps
+                     running and answering, it just asks for a shared password
+                     first — see EnsureSiteUnlocked for why the two are
+                     different tools. -->
+                <u-form-field
+                    :label="$t('admin.site_lock')"
+                    :description="$t('admin.site_lock_desc')"
+                    :error="form.errors.site_lock_enabled"
+                >
+                    <u-switch
+                        v-model="form.site_lock_enabled"
+                        :label="form.site_lock_enabled ? $t('admin.site_lock_on') : $t('admin.site_lock_off')"
+                    />
+                </u-form-field>
+
+                <u-form-field
+                    v-if="form.site_lock_enabled"
+                    class="mt-4 max-w-sm"
+                    :label="$t('admin.site_lock_password')"
+                    :description="settings.site_lock_has_password ? $t('admin.site_lock_password_keep') : $t('admin.site_lock_password_desc')"
+                    :error="form.errors.site_lock_password"
+                >
+                    <!-- Never pre-filled. The stored value is a hash and the
+                         server does not send it back, so blank means "keep
+                         the current one" rather than "clear it". -->
+                    <u-input
+                        v-model="form.site_lock_password"
+                        type="password"
+                        autocomplete="new-password"
+                        class="w-full"
+                        :placeholder="settings.site_lock_has_password ? '••••••••' : ''"
+                    />
+                </u-form-field>
+
+                <u-alert
+                    v-if="form.site_lock_enabled"
+                    class="mt-4"
+                    color="info"
+                    variant="subtle"
+                    icon="i-lucide-info"
+                    :description="$t('admin.site_lock_note')"
+                />
             </u-card>
 
             <u-card v-show="active === 'boards'">
@@ -50,6 +95,23 @@
                 <div class="space-y-4 max-w-sm">
                     <u-form-field :label="$t('admin.board_size')" :error="form.errors.default_board_size">
                         <u-select v-model="form.default_board_size" :items="sizeOptions" class="w-full" />
+                    </u-form-field>
+
+                    <!-- Pre-fills the create form's end date, counted from
+                         the start date. A default, not a rule — the dates
+                         stay editable on the event itself. -->
+                    <u-form-field
+                        :label="$t('admin.site_event_duration')"
+                        :description="$t('admin.site_event_duration_desc')"
+                        :error="form.errors.default_event_duration_days"
+                    >
+                        <u-input
+                            v-model.number="form.default_event_duration_days"
+                            type="number"
+                            min="1"
+                            max="365"
+                            class="w-full"
+                        />
                     </u-form-field>
 
                     <u-form-field :label="$t('admin.dice_roll_limit')" :error="form.errors.default_dice_roll_limit">
@@ -155,9 +217,14 @@ const form = useForm({
     registration_open: props.settings.registration_open,
     default_board_size: props.settings.default_board_size,
     default_dice_roll_limit: props.settings.default_dice_roll_limit,
+    default_event_duration_days: props.settings.default_event_duration_days ?? 14,
     kofi_url: props.settings.kofi_url ?? '',
     announcement: props.settings.announcement ?? '',
     announcement_type: props.settings.announcement_type ?? 'info',
+    site_lock_enabled: props.settings.site_lock_enabled ?? false,
+    // Always blank. The server sends null for this on purpose (the stored
+    // value is a bcrypt hash) and reads a blank submission as "unchanged".
+    site_lock_password: '',
 });
 
 const sections = computed(() => [

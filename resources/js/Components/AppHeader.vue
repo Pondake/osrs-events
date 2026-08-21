@@ -68,7 +68,7 @@
             <nav v-if="navigation.length" class="hidden lg:flex items-center gap-1">
                 <template v-for="item in navigation" :key="item.label">
                     <u-button
-                        v-if="item.to"
+                        v-if="item.to && !item.children"
                         :to="item.to"
                         :icon="item.icon"
                         color="neutral"
@@ -76,8 +76,38 @@
                         size="sm"
                         :label="item.label"
                     />
-                    <u-dropdown-menu v-else :items="[item.children]">
+
+                    <!-- u-popover with mode="hover", not u-dropdown-menu.
+                         A dropdown menu is a click target by definition:
+                         clicking "Events" opened a list instead of going to
+                         Events, so the top-level destination was reachable
+                         from the footer and the logo and nowhere in the nav
+                         that is named after it. A hover popover leaves the
+                         trigger a plain link — click navigates, hover
+                         reveals the rest.
+
+                         The delays matter more than they look. 0ms open
+                         means the panel flashes at anything the pointer
+                         crosses on its way elsewhere, and 0ms close means it
+                         vanishes while you are moving diagonally into it.
+                         300ms open is hover-INTENT rather than hover: the
+                         trigger is also a link, and a panel that appears the
+                         instant the pointer arrives fights the click you were
+                         already on your way to make.
+
+                         z-[60] because the panel is portalled to <body> with
+                         z-index:auto while the header is a sticky z-50
+                         stacking context — so the header painted over its own
+                         dropdown. Reported as "the submenu falls under the
+                         header".
+
+                         Touch is left out (`enable-touch` defaults false):
+                         a tap on a touch screen fires hover AND click, so a
+                         panel would open just as the page navigates away.
+                         Touch gets the mobile drawer below instead. -->
+                    <u-popover v-else-if="item.children" mode="hover" :open-delay="300" :close-delay="200" :ui="{ content: 'p-1 w-56 z-[60]' }">
                         <u-button
+                            :to="item.to"
                             :icon="item.icon"
                             trailing-icon="i-lucide-chevron-down"
                             color="neutral"
@@ -86,22 +116,36 @@
                             :label="item.label"
                         />
 
-                        <!-- u-dropdown-menu items don't render a `badge`
-                             prop, so the not-yet marker goes through the
-                             trailing slot instead. `disabled` alone only
-                             dims the row, which reads as "broken" rather
-                             than "not built yet". -->
-                        <template #item-trailing="{ item: entry }">
-                            <u-badge
-                                v-if="entry.soon"
-                                :label="$t('nav.badge_soon')"
-                                color="neutral"
-                                variant="subtle"
-                                size="sm"
-                                class="ml-auto"
-                            />
+                        <template #content>
+                            <ul class="flex flex-col">
+                                <li v-for="child in item.children" :key="child.label">
+                                    <!-- A planned entry has no destination,
+                                         so it is a <span>, not a dead <a>.
+                                         `disabled` alone only dims a row,
+                                         which reads as broken rather than
+                                         as not-built-yet — hence the badge
+                                         saying which it is. -->
+                                    <component
+                                        :is="child.to ? 'a' : 'span'"
+                                        :href="child.to"
+                                        class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm"
+                                        :class="child.to ? 'text-default hover:bg-elevated transition-colors' : 'text-dimmed cursor-default'"
+                                    >
+                                        <u-icon v-if="child.icon" :name="child.icon" class="size-4 shrink-0" />
+                                        <span class="truncate">{{ child.label }}</span>
+                                        <u-badge
+                                            v-if="child.soon"
+                                            :label="$t('nav.badge_soon')"
+                                            color="neutral"
+                                            variant="subtle"
+                                            size="sm"
+                                            class="ml-auto shrink-0"
+                                        />
+                                    </component>
+                                </li>
+                            </ul>
                         </template>
-                    </u-dropdown-menu>
+                    </u-popover>
                 </template>
             </nav>
 
@@ -118,6 +162,9 @@
                 <nav class="hidden lg:flex items-center gap-4">
                     <template v-for="item in navigation" :key="item.label">
                         <a v-if="item.to" :href="item.to" class="text-sm text-muted hover:text-primary transition-colors">{{ item.label }}</a>
+                        <!-- A group now carries its own `to` as well, so the
+                             parent link is emitted here too rather than only
+                             its children. -->
                         <!-- `v-if="child.to"` skips the not-yet entries:
                              they have no destination, and emitting a bare
                              <a> without href would put a dead link in front
@@ -148,33 +195,91 @@
              this, planned entries showed up dimmed on mobile with nothing
              saying why. -->
         <template v-if="navigation.length" #body>
-            <div class="p-4">
-                <u-navigation-menu :items="navigation" orientation="vertical">
-                    <template #item-trailing="{ item: entry }">
-                        <u-badge
-                            v-if="entry.soon"
-                            :label="$t('nav.badge_soon')"
+            <!-- Hand-rolled rather than u-navigation-menu, for the same
+                 reason the desktop bar dropped u-dropdown-menu: a group with
+                 children turned its whole row into an accordion toggle, so
+                 the parent destination had no way to be tapped. Here the row
+                 is the link and the chevron beside it is its own button with
+                 its own hit area — two targets, which is what a group that
+                 is both a place and a list needs on touch. -->
+            <nav class="p-4 flex flex-col gap-1">
+                <template v-for="item in navigation" :key="item.label">
+                    <div class="flex items-center gap-1">
+                        <component
+                            :is="item.to ? 'a' : 'button'"
+                            :href="item.to"
+                            :type="item.to ? undefined : 'button'"
+                            class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-default hover:bg-elevated transition-colors text-left"
+                            @click="!item.to && toggleGroup(item.label)"
+                        >
+                            <u-icon v-if="item.icon" :name="item.icon" class="size-4 shrink-0" />
+                            <span>{{ item.label }}</span>
+                        </component>
+
+                        <u-button
+                            v-if="item.children"
                             color="neutral"
-                            variant="subtle"
+                            variant="ghost"
                             size="sm"
-                            class="ml-auto"
+                            square
+                            :icon="openGroups.has(item.label) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                            :aria-expanded="openGroups.has(item.label)"
+                            :aria-label="$t(openGroups.has(item.label) ? 'nav.collapse_group' : 'nav.expand_group', { name: item.label })"
+                            @click="toggleGroup(item.label)"
                         />
-                    </template>
-                </u-navigation-menu>
-            </div>
+                    </div>
+
+                    <ul v-if="item.children && openGroups.has(item.label)" class="flex flex-col gap-0.5 pl-5 mb-1">
+                        <li v-for="child in item.children" :key="child.label">
+                            <component
+                                :is="child.to ? 'a' : 'span'"
+                                :href="child.to"
+                                class="flex items-center gap-2 px-3 py-2 rounded-md text-sm"
+                                :class="child.to ? 'text-muted hover:bg-elevated hover:text-default transition-colors' : 'text-dimmed cursor-default'"
+                            >
+                                <u-icon v-if="child.icon" :name="child.icon" class="size-4 shrink-0" />
+                                <span class="truncate">{{ child.label }}</span>
+                                <u-badge
+                                    v-if="child.soon"
+                                    :label="$t('nav.badge_soon')"
+                                    color="neutral"
+                                    variant="subtle"
+                                    size="sm"
+                                    class="ml-auto shrink-0"
+                                />
+                            </component>
+                        </li>
+                    </ul>
+                </template>
+            </nav>
         </template>
     </u-header>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import AppLogo from '@/Components/AppLogo.vue';
 import UserMenu from '@/Components/UserMenu.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
-const { isAuthenticated, isAdmin, isTeamManager } = useAuth();
+const { isAuthenticated, isAdmin } = useAuth();
+
+// Which groups are expanded in the mobile drawer. A Set rather than a single
+// value so opening one does not close another — the drawer is a list you
+// scan, not a wizard.
+const openGroups = ref(new Set());
+
+function toggleGroup(label) {
+    // Reassigned, not mutated: Vue's reactivity tracks Set methods on a
+    // `reactive` Set, but this is a `ref` holding a plain one, and mutating
+    // it in place would not re-render.
+    const next = new Set(openGroups.value);
+
+    next.has(label) ? next.delete(label) : next.add(label);
+    openGroups.value = next;
+}
 
 // The guide pages are the site's SEO surface. They used to be reachable
 // only from the footer, which is the weakest internal-linking position on a
@@ -229,6 +334,12 @@ const navigation = computed(() => {
         {
             label: trans('nav.boards'),
             icon: 'i-lucide-layout-grid',
+            // A group with a destination of its own: clicking goes to the
+            // events index, hovering (desktop) or the chevron (mobile)
+            // opens the rest. Reported as "I still cannot click Events" —
+            // the item had children and no `to`, so the only thing a click
+            // could do was open a list.
+            to: '/events',
             children: [
                 { label: trans('nav.my_boards'), to: '/my-events', icon: 'i-lucide-gamepad-2' },
                 { label: trans('nav.browse_boards'), to: '/events', icon: 'i-lucide-compass' },
@@ -239,11 +350,14 @@ const navigation = computed(() => {
             label: trans('nav.community'),
             icon: 'i-lucide-users-round',
             children: [
-                // Teams is real but role-gated, so it sits in this group as
-                // a live entry only for the roles that can reach it.
-                ...(isAdmin.value || isTeamManager.value
-                    ? [{ label: trans('nav.teams'), to: '/teams', icon: 'i-lucide-users' }]
-                    : []),
+                // Every signed-in account gets Teams. It used to be gated on
+                // isAdmin || isTeamManager, which was wrong in both
+                // directions: creating a team needs no permission at all
+                // (TeamController::store), and the page is now scoped to the
+                // teams you are actually in or share a Discord server with —
+                // so an ordinary player has both a reason to open it and
+                // something to see there.
+                { label: trans('nav.teams'), to: '/teams', icon: 'i-lucide-users' },
                 soon({ label: trans('nav.leaderboards'), icon: 'i-lucide-trophy' }),
                 soon({ label: trans('nav.clans'), icon: 'i-lucide-shield' }),
             ],

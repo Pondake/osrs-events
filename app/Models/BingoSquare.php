@@ -15,9 +15,9 @@ class BingoSquare extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['bingo_card_id', 'position', 'task_id', 'title_override', 'points'];
+    protected $fillable = ['bingo_card_id', 'position', 'task_id', 'title_override', 'points', 'is_wildcard'];
 
-    protected $casts = ['position' => 'integer', 'points' => 'integer'];
+    protected $casts = ['position' => 'integer', 'points' => 'integer', 'is_wildcard' => 'boolean'];
 
     public function card(): BelongsTo
     {
@@ -40,6 +40,10 @@ class BingoSquare extends Model
      */
     public function label(): ?string
     {
+        // No fallback for a wildcard. It draws a star, which says what it is
+        // more clearly than the word does, and printing "Free square" under
+        // the star is the label saying it twice. An override still wins, so
+        // a host who wants one can name it whatever they like.
         return $this->title_override ?: $this->task?->title;
     }
 }

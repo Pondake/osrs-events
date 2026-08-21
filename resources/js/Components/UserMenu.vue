@@ -3,7 +3,21 @@
         <u-button color="neutral" variant="ghost" class="gap-2">
             <u-avatar v-if="user.avatarUrl" :src="user.avatarUrl" :alt="user.discordUsername" size="xs" />
             <u-icon v-else name="i-lucide-user" class="size-5" />
-            <span class="hidden sm:inline text-sm">{{ user.nickname ?? user.discordUsername }}</span>
+
+            <!-- Name over role, stacked. The header had room under the name
+                 and nothing in it, and the role is the one thing about your
+                 account that changes what the rest of the site shows you —
+                 worth reading at a glance rather than only from the profile
+                 page. `leading-none` on both lines: two default line-heights
+                 stacked would push the button taller than the rest of the
+                 header row. -->
+            <span class="hidden sm:flex flex-col items-start leading-none gap-0.5">
+                <span class="text-sm leading-none">{{ user.nickname ?? user.discordUsername }}</span>
+                <span v-if="primaryRole" class="text-[10px] font-medium uppercase tracking-wide leading-none" :class="roleClass">
+                    {{ primaryRole }}
+                </span>
+            </span>
+
             <u-icon name="i-lucide-chevron-down" class="size-4 text-muted" />
         </u-button>
     </u-dropdown-menu>
@@ -28,6 +42,32 @@ const { user, isAuthenticated, isAdmin, canCreateTiles } = useAuth();
 // in for the Tasks page alone. The link only mirrors that; the server is
 // what actually enforces it.
 const canReachAdmin = computed(() => isAdmin.value || canCreateTiles.value);
+
+/**
+ * One badge, not all of them. An account can hold several roles and the
+ * header has room for one line — so this shows the most privileged, which is
+ * the one that explains what you can see. Ordered most-to-least; the first
+ * match wins.
+ *
+ * PLAYER is deliberately absent: it is what everybody has, so printing it
+ * under every name is a row of noise that distinguishes nobody. The full
+ * set still shows on /settings/profile.
+ */
+const ROLE_RANK = ['ADMIN', 'EDITOR', 'TEAM_MANAGER'];
+
+const ROLE_CLASS = {
+    ADMIN: 'text-error',
+    EDITOR: 'text-warning',
+    TEAM_MANAGER: 'text-info',
+};
+
+const primaryRole = computed(() => {
+    const roles = user.value?.roles ?? [];
+
+    return ROLE_RANK.find((role) => roles.includes(role)) ?? null;
+});
+
+const roleClass = computed(() => ROLE_CLASS[primaryRole.value] ?? 'text-muted');
 
 const items = computed(() => [
     [{ label: user.value?.nickname ?? user.value?.discordUsername, disabled: true }],

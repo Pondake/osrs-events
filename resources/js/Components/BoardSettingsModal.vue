@@ -1,286 +1,201 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="isEdit ? $t('admin.edit_board') : $t('admin.create_board')" :dismissible="false">
+    <u-modal
+        v-model:open="isOpen"
+        :title="isEdit ? $t('admin.edit_board') : $t('admin.create_board')"
+        :description="isEdit ? undefined : $t('admin.create_board_desc')"
+        :dismissible="false"
+        :ui="{ content: 'max-w-2xl' }"
+    >
         <template #body>
-            <!-- CLAUDE.md's convention is a stepper for create and tabs for edit
-                 (per-step validation on create). Both use tabs here instead — a
-                 deliberate simplification, not an oversight, since building
-                 per-step validation for one form wasn't worth the scope for this
-                 pass. Noted in docs/backlog.md. Co-author management (the old
-                 EditorsSection.vue) is left out entirely: it needs a user-search
-                 endpoint that doesn't exist yet either. -->
-            <u-tabs :items="tabs" class="w-full">
+            <!-- Every problem with the form, in one place, before the tabs.
+                 Relying on the error appearing under its own field means
+                 relying on the reader being on that tab — and they are not,
+                 because the tab they are on is the one they were working in.
+                 Reported as "I hit save, it jumped back to Basics and saved
+                 nothing": it was a 422 on the Access tab, invisible from
+                 Teams. Clicking a row here goes to the tab that owns it. -->
+            <div v-if="errorList.length" class="mb-4 rounded-lg ring ring-error/40 bg-error/5 px-3 py-2.5">
+                <p class="text-sm font-medium text-error mb-1">{{ $t('validation.form_has_errors') }}</p>
+                <ul class="space-y-0.5">
+                    <li v-for="entry in errorList" :key="entry.field">
+                        <button
+                            type="button"
+                            class="text-xs text-error/90 hover:text-error hover:underline text-left"
+                            @click="showTabFor({ [entry.field]: entry.message })"
+                        >{{ entry.message }}</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- CLAUDE.md's rule, now actually followed: a stepper for
+                 create, tabs for edit. It was tabs for both, which put five
+                 sections of a thing that does not exist yet in front of
+                 someone who has not named it — and let them reach a Teams
+                 tab before choosing whether the event has teams at all.
+                 Editing is free navigation because every section is already
+                 filled in; creating is linear because the later steps depend
+                 on the earlier ones (the type decides which settings exist,
+                 the mode decides whether teams do). -->
+            <u-tabs v-if="isEdit" v-model="activeTab" :items="tabs" class="w-full">
                 <template #basics>
-                    <div class="space-y-4 py-2">
-                        <u-form-field :label="$t('admin.board_title')" required>
-                            <u-input v-model="form.title" class="w-full" :placeholder="$t('admin.board_title_placeholder')" />
-                        </u-form-field>
+                    <basics-fields :form="form" is-edit :blueprints="[]" />
+                </template>
+                <template #format>
+                    <format-fields :form="form" />
+                </template>
+                <template #access>
+                    <access-fields
+                        :form="form"
+                        is-edit
+                        :guilds="guilds"
+                        :loading-guilds="loadingGuilds"
+                        :has-discord="hasDiscord"
+                        :authors="selectedAuthors"
+                        :author-search="authorSearch"
+                        :author-results="authorResults"
+                        :current-user-id="currentUser?.id"
+                        @update:author-search="onAuthorSearch"
+                        @add-author="addAuthor"
+                        @remove-author="removeAuthor"
+                    />
+                </template>
+                <template #invites>
+                    <invite-fields
+                        :invites="invites"
+                        :open-count="openInvites"
+                        :max-open="maxOpenInvites"
+                        :creating="creatingInvite"
+                        @create="createInvite"
+                        @revoke="revokeInvite"
+                    />
+                </template>
+                <template #teams>
+                    <team-fields
+                        v-model="teamToAdd"
+                        :assigned="assignedTeams"
+                        :available="availableTeams"
+                        :loading="loadingTeams"
+                        :adding="addingTeam"
+                        is-edit
+                        @add="addTeam"
+                        @remove="removeTeam"
+                    />
+                </template>
+            </u-tabs>
 
-                        <u-form-field :label="$t('admin.board_description')">
-                            <u-textarea v-model="form.description" class="w-full" :rows="3" />
-                        </u-form-field>
+            <u-stepper v-else ref="stepper" v-model="currentStep" :items="steps" size="sm" class="w-full">
+                <template #type>
+                    <div class="space-y-3 py-2">
+                        <p class="text-sm text-muted">{{ $t('events.type_desc') }}</p>
 
-                        <!-- Type first: it is the thing being created, and
-                             the fields under it (size, dice limit) only make
-                             sense once you know which kind of event it is. -->
-                        <!-- Locked once the event exists: the type decides
-                             which payload table holds it, and changing it
-                             would orphan a board (and everyone's progress on
-                             it) or leave a race with no board to play. The
-                             server refuses it independently — this just says
-                             so before the click. -->
-                        <u-form-field
-                            :label="$t('events.type_label')"
-                            :description="isEdit ? $t('events.type_locked') : $t('events.type_desc')"
-                            required
-                        >
-                            <u-select v-model="form.type" :items="typeOptions" :disabled="isEdit" class="w-full">
-                                <template #item-leading="{ item }">
-                                    <u-icon :name="item.icon" class="size-4" />
-                                </template>
-                                <template #item-trailing="{ item }">
-                                    <u-badge
-                                        v-if="item.disabled"
-                                        :label="$t('events.type_unavailable')"
-                                        color="neutral"
-                                        variant="subtle"
-                                        size="sm"
-                                        class="ml-auto"
-                                    />
-                                </template>
-                            </u-select>
-                        </u-form-field>
-
-                        <!-- Only for types that race on a metric. Snakes &
-                             Ladders has none, and the server rejects one. -->
-                        <u-form-field v-if="needsMetric" :label="$t(metricKind === 'boss' ? 'events.metric_label_boss' : 'events.metric_label')"
-                            :description="$t(metricKind === 'boss' ? 'events.metric_desc_boss' : 'events.metric_desc')"
-                            required
-                        >
-                            <u-select v-model="form.metric" :items="metricOptions" class="w-full" />
-                        </u-form-field>
-
-                        <!-- Bingo brings its own grid, unrelated to the
-                             Snakes & Ladders one: a side length rather than a
-                             size enum, plus what counts as winning. -->
-                        <div v-if="isBingo" class="grid grid-cols-2 gap-4">
-                            <u-form-field :label="$t('bingo.card_size')" required>
-                                <u-select v-model="form.bingo_size" :items="bingoSizeOptions" class="w-full" />
-                            </u-form-field>
-
-                            <u-form-field :label="$t('bingo.win_condition')">
-                                <u-select v-model="form.win_condition" :items="winConditionOptions" class="w-full" />
-                            </u-form-field>
+                        <!-- A grid of cards, not a dropdown. This is the
+                             first decision and it changes every screen after
+                             it; a collapsed <select> shows one option at a
+                             time and hides that there are four kinds of event
+                             to choose between. -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button
+                                v-for="option in typeOptions"
+                                :key="option.value"
+                                type="button"
+                                class="flex items-start gap-3 p-3 rounded-lg ring text-left transition-colors"
+                                :class="typeCardClass(option)"
+                                :disabled="option.disabled"
+                                @click="form.type = option.value"
+                            >
+                                <u-icon :name="option.icon" class="size-5 shrink-0 mt-0.5" :class="form.type === option.value ? 'text-primary' : 'text-muted'" />
+                                <span class="min-w-0">
+                                    <span class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-medium text-sm">{{ option.label }}</span>
+                                        <u-badge v-if="option.disabled" :label="$t('events.type_unavailable')" color="neutral" variant="subtle" size="sm" />
+                                    </span>
+                                    <span class="block text-xs text-muted mt-0.5">{{ option.description }}</span>
+                                </span>
+                            </button>
                         </div>
-
-                        <div v-if="hasBoard" class="grid grid-cols-2 gap-4">
-                            <u-form-field :label="$t('admin.board_size')" required>
-                                <u-select v-model="form.size" :items="sizeOptions" class="w-full" />
-                            </u-form-field>
-
-                            <u-form-field :label="$t('admin.board_mode')">
-                                <u-select v-model="form.mode" :items="modeOptions" class="w-full" />
-                            </u-form-field>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <u-form-field :label="$t('admin.start_date')">
-                                <u-input v-model="form.start_date" type="date" class="w-full" />
-                            </u-form-field>
-                            <u-form-field :label="$t('admin.end_date')">
-                                <u-input v-model="form.end_date" type="date" class="w-full" />
-                            </u-form-field>
-                        </div>
-
-                        <!-- The description has always promised "set to
-                             Unlimited", and null is exactly what the server
-                             stores for it — but a `type=number min=1` spinner
-                             has no way to express null, so the state was
-                             reachable only by never touching the field. -->
-                        <u-form-field :label="$t('admin.dice_roll_limit')" :description="$t('admin.dice_roll_limit_desc')">
-                            <div class="space-y-3">
-                                <u-switch v-model="unlimitedRolls" :label="$t('admin.dice_roll_unlimited')" />
-                                <u-input
-                                    v-if="!unlimitedRolls"
-                                    v-model.number="form.dice_roll_limit"
-                                    type="number"
-                                    min="1"
-                                    class="w-full"
-                                />
-                            </div>
-                        </u-form-field>
-
-                        <u-switch v-model="form.is_listed" :label="$t('admin.board_listed')" />
-
-                        <u-form-field :label="$t('admin.editors')" :description="$t('admin.editors_desc')">
-                            <div class="space-y-2">
-                                <u-input
-                                    v-model="authorSearch"
-                                    icon="i-lucide-search"
-                                    :placeholder="$t('common.search')"
-                                    class="w-full"
-                                    @update:model-value="onAuthorSearch"
-                                />
-
-                                <div v-if="authorResults.length" class="rounded-md ring ring-default divide-y divide-default">
-                                    <button
-                                        v-for="candidate in authorResults"
-                                        :key="candidate.id"
-                                        type="button"
-                                        class="w-full flex items-center gap-3 px-3 py-2 hover:bg-elevated transition-colors text-left"
-                                        @click="addAuthor(candidate)"
-                                    >
-                                        <u-avatar :src="candidate.avatar_url ?? undefined" :alt="candidate.nickname ?? candidate.discord_username" size="xs" />
-                                        <span class="text-sm">{{ candidate.nickname ?? candidate.discord_username }}</span>
-                                    </button>
-                                </div>
-
-                                <div v-if="selectedAuthors.length" class="flex flex-wrap gap-2">
-                                    <u-badge v-for="author in selectedAuthors" :key="author.id" color="primary" variant="subtle" class="flex items-center gap-1">
-                                        {{ author.nickname ?? author.discord_username }}
-                                        <span v-if="author.id === currentUser?.id" class="opacity-70">({{ $t('admin.you_suffix') }})</span>
-                                        <button v-if="!author.is_owner" type="button" class="ml-1 hover:text-error" @click="removeAuthor(author.id)">
-                                            <u-icon name="i-lucide-x" class="size-3" />
-                                        </button>
-                                    </u-badge>
-                                </div>
-                            </div>
-                        </u-form-field>
                     </div>
+                </template>
+
+                <template #basics>
+                    <basics-fields
+                        :form="form"
+                        :blueprints="blueprintResults"
+                        @search-blueprints="onTitleInput"
+                        @apply-blueprint="applyBlueprint"
+                    />
+                </template>
+
+                <template #format>
+                    <format-fields :form="form" />
                 </template>
 
                 <template #access>
-                    <div class="space-y-4 py-2">
-                        <u-form-field :label="$t('admin.access_mode')">
-                            <u-select v-model="form.access_mode" :items="accessOptions" class="w-full" />
-                        </u-form-field>
-
-                        <u-form-field
-                            v-if="form.access_mode === 'GUILD'"
-                            :label="$t('admin.required_server')"
-                            :description="$t('admin.required_server_desc')"
-                        >
-                            <!-- A Discord server id is an 18-digit snowflake.
-                                 This was a bare text box, which asked the user
-                                 to know or go and find one — for a value we
-                                 already hold, by name and icon, from the guild
-                                 sync that runs on every Discord login. -->
-                            <u-select
-                                v-if="loadingGuilds || guildOptions.length"
-                                v-model="form.required_guild_id"
-                                :items="guildOptions"
-                                :loading="loadingGuilds"
-                                :placeholder="guildPlaceholder"
-                                class="w-full"
-                            />
-
-                            <!-- An empty dropdown is the one thing this must
-                                 not be: it looks like the feature is broken
-                                 when the actual situation is either "no
-                                 Discord on this account" or "Discord is
-                                 linked but we never got its server list",
-                                 and those need different actions. -->
-                            <u-alert
-                                v-else
-                                color="warning"
-                                variant="subtle"
-                                icon="i-simple-icons-discord"
-                                :title="hasDiscord ? $t('admin.guilds_none_title') : $t('admin.guilds_no_discord_title')"
-                                :description="hasDiscord ? $t('admin.guilds_none_desc') : $t('admin.guilds_no_discord_desc')"
-                                :actions="[{
-                                    label: hasDiscord ? $t('admin.guilds_reconnect') : $t('profile.connect_discord'),
-                                    color: 'warning',
-                                    variant: 'outline',
-                                    to: '/settings/account',
-                                }]"
-                            />
-                        </u-form-field>
-                    </div>
+                    <access-fields
+                        :form="form"
+                        :guilds="guilds"
+                        :loading-guilds="loadingGuilds"
+                        :has-discord="hasDiscord"
+                        :authors="selectedAuthors"
+                        :author-search="authorSearch"
+                        :author-results="authorResults"
+                        :current-user-id="currentUser?.id"
+                        @update:author-search="onAuthorSearch"
+                        @add-author="addAuthor"
+                        @remove-author="removeAuthor"
+                    />
                 </template>
 
-                <template #invites>
-                    <div class="py-2">
-                        <p v-if="!isEdit" class="text-sm text-muted py-8 text-center">{{ $t('admin.save_first') }}</p>
-                        <p v-else-if="form.access_mode !== 'INVITE'" class="text-sm text-muted py-8 text-center">
-                            {{ $t('admin.invite_links_gate_desc') }}
-                        </p>
-                        <div v-else class="space-y-4">
-                            <div class="flex items-center justify-between gap-3">
-                                <p class="text-xs text-muted">
-                                    <span v-if="maxOpenInvites !== null">{{ $t('admin.invite_open_count', { open: openInvites, max: maxOpenInvites }) }}</span>
-                                </p>
-                                <u-button
-                                    size="sm"
-                                    color="primary"
-                                    icon="i-lucide-plus"
-                                    :label="$t('admin.create_invite')"
-                                    :loading="creatingInvite"
-                                    :disabled="inviteLimitReached"
-                                    @click="createInvite"
-                                />
-                            </div>
-
-                            <!-- Said before the click rather than after it:
-                                 the server refuses past the limit either way,
-                                 and a disabled button with no reason is the
-                                 same dead end as an empty dropdown. -->
-                            <u-alert
-                                v-if="inviteLimitReached"
-                                color="neutral"
-                                variant="subtle"
-                                icon="i-lucide-info"
-                                :description="$t('admin.invite_limit_reached', { max: maxOpenInvites })"
-                            />
-
-                            <div class="divide-y divide-default rounded-md ring ring-default">
-                                <div v-for="invite in invites" :key="invite.id" class="flex items-center justify-between gap-3 px-3 py-2">
-                                    <div class="min-w-0">
-                                        <div class="font-mono text-sm">{{ invite.short_code }}</div>
-                                        <div class="text-xs text-muted">
-                                            {{ invite.use_count ?? 0 }}{{ invite.max_uses ? ` / ${invite.max_uses}` : '' }} {{ $t('admin.invite_uses_suffix') }}
-                                            <span v-if="invite.expires_at"> · {{ $t('admin.invite_expires', { date: new Date(invite.expires_at).toLocaleDateString() }) }}</span>
-                                        </div>
-                                    </div>
-                                    <u-button icon="i-lucide-trash-2" size="xs" color="error" variant="ghost" @click="revokeInvite(invite)" />
-                                </div>
-                                <p v-if="!invites.length" class="px-3 py-4 text-center text-sm text-muted">{{ $t('admin.no_invites') }}</p>
-                            </div>
-                        </div>
-                    </div>
+                <template #teams>
+                    <team-fields
+                        v-model="teamToAdd"
+                        :assigned="assignedTeams"
+                        :available="availableTeams"
+                        :loading="loadingTeams"
+                        :adding="addingTeam"
+                        @add="addTeam"
+                        @remove="removeTeam"
+                    />
                 </template>
-
-                <template v-if="form.mode === 'TEAM'" #teams>
-                    <div class="py-2">
-                        <p v-if="!isEdit" class="text-sm text-muted py-8 text-center">{{ $t('admin.save_first') }}</p>
-                        <div v-else class="space-y-4">
-                            <p class="text-sm text-muted">{{ $t('admin.team_assignment_desc') }}</p>
-
-                            <div class="flex gap-2">
-                                <u-select
-                                    v-model="teamToAdd"
-                                    :items="availableTeams.map((t) => ({ label: t.name, value: t.id }))"
-                                    :placeholder="$t('admin.select_team_placeholder')"
-                                    class="w-full"
-                                />
-                                <u-button icon="i-lucide-plus" :disabled="!teamToAdd" :loading="addingTeam" @click="addTeam" />
-                            </div>
-
-                            <div class="divide-y divide-default rounded-md ring ring-default">
-                                <div v-for="team in assignedTeams" :key="team.id" class="flex items-center justify-between gap-3 px-3 py-2">
-                                    <span class="text-sm">{{ team.name }}</span>
-                                    <u-button icon="i-lucide-x" size="xs" color="error" variant="ghost" @click="removeTeam(team)" />
-                                </div>
-                                <p v-if="!assignedTeams.length" class="px-3 py-4 text-center text-sm text-muted">{{ $t('admin.no_teams_assigned') }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </u-tabs>
+            </u-stepper>
         </template>
 
         <template #footer>
-            <div class="flex justify-end gap-2 w-full">
-                <u-button color="neutral" variant="outline" :label="$t('common.cancel')" @click="isOpen = false" />
-                <u-button color="primary" :label="$t('common.save')" :loading="form.processing" @click="submit" />
+            <div class="flex items-center justify-between gap-2 w-full">
+                <!-- Says which step of how many even when the stepper's own
+                     rail has scrolled out of view on a narrow screen. -->
+                <span v-if="!isEdit" class="text-xs text-muted tabular-nums">
+                    {{ $t('admin.step_counter', { current: stepIndex + 1, total: steps.length }) }}
+                </span>
+                <span v-else />
+
+                <div class="flex items-center gap-2">
+                    <u-button color="neutral" variant="ghost" :label="$t('common.cancel')" @click="isOpen = false" />
+
+                    <u-button
+                        v-if="!isEdit && stepIndex > 0"
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-arrow-left"
+                        :label="$t('common.back')"
+                        @click="goBack"
+                    />
+
+                    <u-button
+                        v-if="!isEdit && stepIndex < steps.length - 1"
+                        color="primary"
+                        trailing-icon="i-lucide-arrow-right"
+                        :label="$t('common.next')"
+                        @click="goNext"
+                    />
+
+                    <u-button
+                        v-else
+                        color="primary"
+                        :label="isEdit ? $t('common.save') : $t('admin.create_board')"
+                        :loading="form.processing"
+                        @click="submit"
+                    />
+                </div>
             </div>
         </template>
     </u-modal>
@@ -291,7 +206,11 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
-import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
+import AccessFields from '@/Components/BoardSettings/AccessFields.vue';
+import BasicsFields from '@/Components/BoardSettings/BasicsFields.vue';
+import FormatFields from '@/Components/BoardSettings/FormatFields.vue';
+import InviteFields from '@/Components/BoardSettings/InviteFields.vue';
+import TeamFields from '@/Components/BoardSettings/TeamFields.vue';
 
 const { user: currentUser } = useAuth();
 
@@ -309,156 +228,212 @@ const isOpen = computed({
 
 const isEdit = computed(() => props.board !== null);
 
-// A computed() array reference changing on every render was originally
-// suspected of resetting u-tabs back to the first tab — that theory turned
-// out to be unverified and probably wrong: clicking ANY tab (even a static
-// one) appeared to silently fail during testing regardless, until the test
-// itself turned out to be the problem — Reka UI's Tabs (underneath u-tabs)
-// requires the tab trigger to actually hold DOM focus (checks
-// document.activeElement) to register a click; a synthetic el.click()
-// without el.focus() first is a silent no-op regardless of how `items` is
-// computed. Now genuinely computed (not static) so the Teams tab only
-// appears for TEAM-mode boards — `u-tabs` only renders a slot whose entry
-// exists in `items`, so gating the slot's own template with v-if alone
-// isn't enough without also gating it here.
-const tabs = computed(() => [
-    { label: trans('admin.step_basics'), slot: 'basics' },
-    { label: trans('admin.step_access'), slot: 'access' },
-    { label: trans('admin.invite_links'), slot: 'invites' },
-    ...(form.mode === 'TEAM' ? [{ label: trans('admin.team_assignment'), slot: 'teams' }] : []),
-]);
+const site = () => usePage().props?.site ?? {};
 
-const sizeOptions = ['SIZE_5X5', 'SIZE_7X7', 'SIZE_9X9'].map((size) => ({
-    label: trans('admin.board_size_option', { size: BOARD_SIZE_LABEL[size], tiles: BOARD_TILE_COUNT[size] }),
-    value: size,
-}));
+// ---------------------------------------------------------------- the form
 
-const modeOptions = [
-    { label: trans('admin.board_mode_solo'), value: 'SOLO' },
-    { label: trans('admin.board_mode_team'), value: 'TEAM' },
-];
+/**
+ * Today, and a fortnight from today, as `<input type="date">` wants them.
+ *
+ * Built from the local date parts rather than toISOString(): that converts
+ * to UTC first, so anyone east of UTC gets tomorrow and anyone far enough
+ * west gets yesterday — the same timezone trap dateFields() below avoids
+ * when reading a saved date back.
+ */
+function isoDate(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
-const accessOptions = [
-    { label: trans('admin.access_mode_open'), value: 'OPEN' },
-    { label: trans('admin.access_mode_guild'), value: 'GUILD' },
-    { label: trans('admin.access_mode_invite'), value: 'INVITE' },
-];
+function defaultDates() {
+    const start = new Date();
+    const end = new Date();
+
+    // How long a new event is pre-filled to run for, from the admin site
+    // settings — a clan that always runs weeklies should say so once rather
+    // than correct the same field on every event. Fourteen is the fallback
+    // for an older cached page with no such prop.
+    end.setDate(end.getDate() + (site().defaultEventDurationDays ?? 14));
+
+    return { start_date: isoDate(start), end_date: isoDate(end) };
+}
 
 function blankForm() {
-    // Size and roll limit come from the admin site settings so a clan can
-    // set the shape its events usually take once, instead of every creator
-    // changing the same two fields each time. Fall back to the previous
-    // hardcoded values if the prop isn't there (e.g. an older cached page).
-    const site = usePage().props?.site ?? {};
+    // Size and roll limit come from the admin site settings so a clan can set
+    // the shape its events usually take once, instead of every creator
+    // changing the same two fields each time.
+    const settings = site();
 
     return {
         title: '',
         type: 'SNAKES_LADDERS',
         metric: null,
         description: '',
-        size: site.defaultBoardSize ?? 'SIZE_7X7',
+        size: settings.defaultBoardSize ?? 'SIZE_7X7',
         // Bingo's own grid. 5x5 is the conventional card, and the win
-        // condition defaults to first-line because that is the shorter,
-        // more common event.
+        // condition defaults to first-line because that is the shorter, more
+        // common event.
         bingo_size: 5,
         win_condition: 'LINE',
+        line_bonus: 0,
+        requires_approval: true,
         mode: 'SOLO',
-        start_date: '',
-        end_date: '',
-        dice_roll_limit: site.defaultDiceRollLimit ?? null,
+        ...defaultDates(),
+        dice_roll_limit: settings.defaultDiceRollLimit ?? null,
         is_listed: true,
         access_mode: 'OPEN',
         required_guild_id: '',
         author_ids: [],
+        // Only read on create — an existing event's teams are added and
+        // removed one at a time against their own endpoints, because those
+        // writes have to land immediately rather than wait for a save.
+        team_ids: [],
     };
 }
+
+const form = useForm(blankForm());
+
+// ------------------------------------------------------------ type & steps
+
+const eventTypes = computed(() => site().eventTypes ?? []);
 
 /**
  * Planned types are listed but disabled rather than hidden — an empty gap
  * where Bingo will be tells nobody anything, and the server rejects them
- * anyway (Board::availableEventTypes()).
+ * anyway (Event::availableTypes()).
  */
-const typeOptions = computed(() =>
-    (usePage().props?.site?.eventTypes ?? []).map((type) => ({
-        value: type.value,
-        label: trans(`events.type_${type.value.toLowerCase()}`),
-        icon: type.icon,
-        disabled: !type.available,
-    })),
-);
+const typeOptions = computed(() => eventTypes.value.map((type) => ({
+    value: type.value,
+    label: trans(`events.type_${type.value.toLowerCase()}`),
+    description: trans(`events.type_${type.value.toLowerCase()}_desc`),
+    icon: type.icon,
+    disabled: !type.available,
+})));
 
-const selectedType = computed(() =>
-    (usePage().props?.site?.eventTypes ?? []).find((t) => t.value === form.type),
-);
+function typeCardClass(option) {
+    if (option.disabled) return 'ring-default opacity-50 cursor-not-allowed';
 
+    return form.type === option.value
+        ? 'ring-primary bg-primary/5'
+        : 'ring-default hover:ring-primary/50 cursor-pointer';
+}
+
+const selectedType = computed(() => eventTypes.value.find((t) => t.value === form.type));
 const needsMetric = computed(() => Boolean(selectedType.value?.needsMetric));
-
-// Snakes & Ladders is the only type with a grid, so size and dice limit are
-// hidden for anything else rather than sitting there doing nothing.
-const hasBoard = computed(() => form.type === 'SNAKES_LADDERS');
-
-const isBingo = computed(() => form.type === 'BINGO');
-
-const bingoSizeOptions = [3, 4, 5, 6, 7].map((size) => ({
-    value: size,
-    label: trans('bingo.size_option', { size }),
-}));
-
-const winConditionOptions = [
-    { value: 'LINE', label: trans('bingo.win_line') },
-    { value: 'FULL_HOUSE', label: trans('bingo.win_full_house') },
-];
-
-// Which list to offer depends on the type: a skill race races on skills, a
-// drop race on boss killcounts. Both come from Wise Old Man's own vocabulary,
-// and the i18n namespace matches the kind so a boss name never gets looked up
-// as a skill.
 const metricKind = computed(() => selectedType.value?.metricKind ?? null);
-
-const metricOptions = computed(() => {
-    const kind = metricKind.value;
-    if (!kind) return [];
-
-    return (usePage().props?.site?.metricsByKind?.[kind] ?? []).map((m) => ({
-        value: m,
-        label: trans(`${kind === 'boss' ? 'bosses' : 'skills'}.${m}`),
-    }));
-});
-
-const form = useForm(blankForm());
+const metricsForKind = computed(() => site().metricsByKind?.[metricKind.value] ?? []);
 
 /**
- * null is "unlimited" on the server side, so this is a view of the field
- * rather than a value of its own — nothing extra to keep in sync, and
- * nothing to forget to reset when the modal reopens on another board.
+ * The create flow, in the order the decisions actually depend on each other.
+ *
+ * Teams is conditional because the question it answers — which teams play —
+ * only exists once you have said the event has teams at all.
  */
-const unlimitedRolls = computed({
-    get: () => form.dice_roll_limit === null || form.dice_roll_limit === '',
-    set: (on) => {
-        form.dice_roll_limit = on ? null : (usePage().props?.site?.defaultDiceRollLimit ?? 1);
-    },
+const steps = computed(() => [
+    { value: 'type', slot: 'type', title: trans('admin.step_type'), icon: 'i-lucide-shapes' },
+    { value: 'basics', slot: 'basics', title: trans('admin.step_basics'), icon: 'i-lucide-text' },
+    { value: 'format', slot: 'format', title: trans('admin.step_format'), icon: 'i-lucide-settings-2' },
+    { value: 'access', slot: 'access', title: trans('admin.step_access'), icon: 'i-lucide-lock' },
+    ...(form.mode === 'TEAM'
+        ? [{ value: 'teams', slot: 'teams', title: trans('admin.team_assignment'), icon: 'i-lucide-users' }]
+        : []),
+]);
+
+const currentStep = ref('type');
+const stepper = ref(null);
+const stepIndex = computed(() => Math.max(0, steps.value.findIndex((s) => s.value === currentStep.value)));
+
+/**
+ * The edit tabs. Two of these are conditional, and both used to be
+ * unconditional — which is the reported confusion exactly: an "Invite links"
+ * tab sat there on an OPEN event, explaining that invites appear once the
+ * event exists, on an event that already existed. It is not a placeholder for
+ * the Teams tab; it is a section that applies to one access mode.
+ */
+const tabs = computed(() => [
+    { value: 'basics', slot: 'basics', label: trans('admin.step_basics') },
+    { value: 'format', slot: 'format', label: trans('admin.step_format') },
+    { value: 'access', slot: 'access', label: trans('admin.step_access') },
+    ...(form.access_mode === 'INVITE' ? [{ value: 'invites', slot: 'invites', label: trans('admin.invite_links') }] : []),
+    ...(form.mode === 'TEAM' ? [{ value: 'teams', slot: 'teams', label: trans('admin.team_assignment') }] : []),
+]);
+
+const activeTab = ref('basics');
+
+// Back to the first tab whenever the dialog is opened, rather than whenever
+// the board prop changes — see the note in the watch on `props.board`.
+watch(() => props.open, (open) => {
+    if (open) activeTab.value = 'basics';
 });
 
-// The current user's Discord servers, fetched when the access tab actually
-// needs them rather than shared into every page — same reasoning as the
-// invite and team lists below.
+// Flattened for the summary above. useForm keeps errors as
+// { field: 'message' }, and the template needs both halves — the message to
+// show and the field to navigate by.
+const errorList = computed(() => Object.entries(form.errors ?? {})
+    .filter(([, message]) => Boolean(message))
+    .map(([field, message]) => ({ field, message })));
+
+// ------------------------------------------------------- step validation
+
+/**
+ * Checked before advancing, and written into form.errors so the message
+ * lands under the field it belongs to rather than in a toast.
+ *
+ * Only the rules that would make the NEXT step nonsense, plus the ones the
+ * server will refuse anyway. The point is not to duplicate validation — it is
+ * that reaching step four and being sent back to step two is a worse way to
+ * learn the title was empty.
+ */
+function validateStep(step) {
+    form.clearErrors();
+
+    if (step === 'type' && !selectedType.value?.available) {
+        form.setError('type', trans('validation.event_type_required'));
+    }
+
+    if (step === 'basics') {
+        if (!form.title.trim()) form.setError('title', trans('validation.title_required'));
+        if (!form.start_date) form.setError('start_date', trans('validation.start_date_required'));
+        if (!form.end_date) form.setError('end_date', trans('validation.end_date_required'));
+        if (form.start_date && form.end_date && form.end_date < form.start_date) {
+            form.setError('end_date', trans('validation.end_before_start'));
+        }
+    }
+
+    if (step === 'format' && needsMetric.value && !form.metric) {
+        form.setError('metric', trans('validation.metric_required'));
+    }
+
+    return !form.hasErrors;
+}
+
+function goNext() {
+    if (!validateStep(currentStep.value)) return;
+
+    stepper.value?.next();
+}
+
+function goBack() {
+    form.clearErrors();
+    stepper.value?.prev();
+}
+
+// A metric belongs to one kind of race. Switching type drops one that no
+// longer belongs to the list on offer — left alone it would submit and be
+// rejected by a rule the user cannot see.
+watch(() => form.type, () => {
+    if (form.metric && !metricsForKind.value.includes(form.metric)) {
+        form.metric = null;
+    }
+});
+
+// ----------------------------------------------------------------- guilds
+
 const guilds = ref([]);
 const loadingGuilds = ref(false);
 
 // Whether the account has Discord at all decides which of the two empty
 // states applies — "link it" and "relink it" are different problems.
 const hasDiscord = computed(() => !!currentUser.value?.discordUsername);
-
-const guildOptions = computed(() => guilds.value.map((guild) => ({
-    label: guild.name,
-    value: guild.id,
-})));
-
-const guildPlaceholder = computed(() => (
-    loadingGuilds.value
-        ? trans('common.loading')
-        : (guildOptions.value.length ? trans('admin.required_server_pick') : trans('admin.required_server_none'))
-));
 
 async function loadGuilds() {
     if (guilds.value.length || loadingGuilds.value) return;
@@ -480,36 +455,40 @@ watch(() => form.access_mode, (mode) => {
     if (mode === 'GUILD') loadGuilds();
 }, { immediate: true });
 
-// A boss name is not a valid skill race and vice versa, so switching type
-// drops a metric that no longer belongs to the list on offer. Left alone it
-// would submit and be rejected by a validation rule the user cannot see.
-watch(() => form.type, () => {
-    if (form.metric && !metricOptions.value.some((option) => option.value === form.metric)) {
-        form.metric = null;
-    }
-});
+// ------------------------------------------------------------------ state
+//
+// Declared above the watch on `props.board`, which runs immediately (during
+// setup) and reaches straight into them — a const declared further down is
+// still in its temporal dead zone at that moment.
 
-// Mirrors form.author_ids, but carrying display data (username/avatar) the
-// form itself has no use for — kept in sync by addAuthor()/removeAuthor().
-// Dynamic import inside onMounted for the reason AppRoot spells out:
-// useToast statically imports the virtual '#imports' specifier, and pulling
-// it into the SSR module graph crashes the SSR process at startup for every
-// page, not just this one. Optional-called below, since a toast raised
-// before hydration finishes is not worth a crash.
-let toast;
-onMounted(async () => {
-    const { useToast } = await import('@nuxt/ui/composables/useToast');
-    toast = useToast();
-});
+const assignedTeams = ref([]);
+const availableTeams = ref([]);
+const teamToAdd = ref(null);
+const addingTeam = ref(false);
+const loadingTeams = ref(false);
 
-const openInvites = ref(0);
-const maxOpenInvites = ref(null);
-const inviteLimitReached = computed(() => maxOpenInvites.value !== null && openInvites.value >= maxOpenInvites.value);
+const blueprintResults = ref([]);
+let blueprintSearchTimeout = null;
 
 const selectedAuthors = ref([]);
 const authorSearch = ref('');
 const authorResults = ref([]);
 let authorSearchTimeout = null;
+
+const invites = ref([]);
+const openInvites = ref(0);
+const maxOpenInvites = ref(null);
+const creatingInvite = ref(false);
+
+// useToast statically imports the virtual '#imports' specifier, and pulling
+// it into the SSR module graph crashes the SSR process at startup for every
+// page — see AppRoot.vue. Optional-called below, since a toast raised before
+// hydration finishes is not worth a crash.
+let toast;
+onMounted(async () => {
+    const { useToast } = await import('@nuxt/ui/composables/useToast');
+    toast = useToast();
+});
 
 /**
  * `<input type="date">` accepts exactly one format, YYYY-MM-DD, and silently
@@ -518,53 +497,157 @@ let authorSearchTimeout = null;
  * looking unset, and re-saving the form then cleared it for real.
  *
  * Sliced rather than parsed through Date: the value is already the calendar
- * day we want, and round-tripping it through a timezone is how it becomes
- * the day before for anyone west of UTC.
+ * day we want, and round-tripping it through a timezone is how it becomes the
+ * day before for anyone west of UTC.
  */
 function dateFields(board) {
     const toInput = (value) => (value ? String(value).slice(0, 10) : '');
 
+    return { start_date: toInput(board.start_date), end_date: toInput(board.end_date) };
+}
+
+/**
+ * The bingo card's settings, flattened onto the one form.
+ *
+ * A bingo event's win condition is as much "the event's settings" as its
+ * title is, and sending people to a second place for it is what made bingo
+ * feel half-finished. BoardController::update routes these back to
+ * BingoService::applyCardSettings, which is the same path the card's own
+ * endpoint uses — including the guard that refuses to shrink a card whose
+ * squares carry completions.
+ */
+function cardFields(board) {
+    if (!board.card) return {};
+
     return {
-        start_date: toInput(board.start_date),
-        end_date: toInput(board.end_date),
+        bingo_size: board.card.size,
+        win_condition: board.card.winCondition,
+        line_bonus: board.card.lineBonus ?? 0,
+        requires_approval: board.card.requiresApproval ?? true,
     };
 }
 
-// Re-seed the form whenever a different board is opened for editing, or the
-// modal is reopened in create mode after a previous edit.
+// Re-seed whenever a different board is opened for editing, or the modal is
+// reopened in create mode after a previous edit.
 watch(
     () => props.board,
     (board) => {
-        form.defaults(board ? { ...blankForm(), ...board, ...dateFields(board) } : blankForm());
+        form.defaults(board
+            ? { ...blankForm(), ...board, ...dateFields(board), ...cardFields(board) }
+            : blankForm());
         form.reset();
+        form.clearErrors();
+
+        currentStep.value = 'type';
+
+        // NOT reset while the modal is open. A successful save updates the
+        // `board` prop, which re-runs this watch — and resetting the tab
+        // there made the dialog visibly snap back to Basics for a frame
+        // before it closed. The tab only needs resetting for the NEXT
+        // opening, which is what the watch on `open` below does.
+        if (! props.open) activeTab.value = 'basics';
+
         if (board && board.access_mode === 'INVITE') fetchInvites();
-        if (board && board.mode === 'TEAM') fetchTeams();
+
+        // Both modes need the pickable list; only an existing event has an
+        // assigned one to read back.
+        assignedTeams.value = [];
+        availableTeams.value = [];
+        teamToAdd.value = null;
+        if ((board?.mode ?? 'SOLO') === 'TEAM') loadTeams();
 
         // The backend always keeps the true owner(s) as an editor regardless
-        // of what is submitted here (see BoardController::store()/update()),
-        // so a new board did not technically need the creator in this list —
-        // and started empty. But the field's own description says "You are
-        // always included as an editor", and an empty list directly under
-        // that reads as though it is not true. Shown as an owner, so it
-        // carries the same non-removable badge it will have a second later.
+        // of what is submitted here, so a new board did not technically need
+        // the creator in this list — and started empty. But the field's own
+        // description says "You are always included as an editor", and an
+        // empty list directly under that reads as though it is not true.
         selectedAuthors.value = board
             ? board.authors.map((a) => ({ ...a.user, is_owner: a.is_owner }))
             : (currentUser.value ? [{ ...currentUser.value, is_owner: true }] : []);
         form.author_ids = selectedAuthors.value.map((a) => a.id);
         authorSearch.value = '';
         authorResults.value = [];
+        blueprintResults.value = [];
     },
     { immediate: true },
 );
 
-function onAuthorSearch() {
+// ------------------------------------------------------------- blueprints
+
+/**
+ * Debounced the same way the author search is, and for the same reason: this
+ * fires on every keystroke of a field people type a full sentence into.
+ *
+ * No minimum length, unlike the author search — an empty title is exactly
+ * when the suggestions are worth the most, so focusing the field with nothing
+ * in it lists the formats rather than waiting for two characters nobody knows
+ * to type.
+ */
+function onTitleInput(value) {
+    if (isEdit.value) return;
+
+    if (blueprintSearchTimeout) clearTimeout(blueprintSearchTimeout);
+
+    blueprintSearchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/event-blueprints?search=${encodeURIComponent(value ?? '')}`, {
+                headers: { Accept: 'application/json' },
+            });
+
+            if (!response.ok) throw new Error(`blueprint lookup failed: ${response.status}`);
+
+            const data = await response.json();
+
+            // Anything typed out in full is not a suggestion any more —
+            // leaving the exact match on screen makes the list look stuck.
+            blueprintResults.value = (data.blueprints ?? []).filter(
+                (b) => b.title.toLowerCase() !== (value ?? '').trim().toLowerCase(),
+            );
+        } catch (error) {
+            // Silent: this is a convenience on a field that works without it,
+            // and a toast over a form someone is mid-way through typing would
+            // be worse than no suggestions.
+            console.error(error);
+            blueprintResults.value = [];
+        }
+    }, 250);
+}
+
+/**
+ * Fills in what the blueprint carries and nothing else — a title-only
+ * blueprint sets a title and leaves a half-configured form alone, which is
+ * the whole reason those exist.
+ */
+function applyBlueprint(blueprint) {
+    form.title = blueprint.title;
+
+    if (blueprint.type) form.type = blueprint.type;
+    // After the type. The watch on form.type drops a metric that isn't on the
+    // new type's list, and it runs after both of these have landed — so
+    // written in this order the new metric is checked against the new type and
+    // survives. Written the other way round it would be checked against the
+    // old one and silently thrown away.
+    if (blueprint.metric) form.metric = blueprint.metric;
+    if (blueprint.description) form.description = blueprint.description;
+
+    blueprintResults.value = [];
+}
+
+// ---------------------------------------------------------------- authors
+
+function onAuthorSearch(value) {
+    authorSearch.value = value;
+
     if (authorSearchTimeout) clearTimeout(authorSearchTimeout);
-    if (authorSearch.value.length < 2) {
+
+    if (value.length < 2) {
         authorResults.value = [];
+
         return;
     }
+
     authorSearchTimeout = setTimeout(async () => {
-        const response = await fetch(`/users/search?search=${encodeURIComponent(authorSearch.value)}`, {
+        const response = await fetch(`/users/search?search=${encodeURIComponent(value)}`, {
             headers: { Accept: 'application/json' },
         });
         const results = response.ok ? await response.json() : [];
@@ -588,41 +671,145 @@ function removeAuthor(userId) {
     form.author_ids = selectedAuthors.value.map((a) => a.id);
 }
 
+// ----------------------------------------------------------------- submit
+
 function submit() {
-    if (isEdit.value) {
-        form.patch(`/events/${props.board.id}`, { onSuccess: () => (isOpen.value = false) });
-    } else {
-        form.post('/events', { onSuccess: () => (isOpen.value = false) });
+    if (!isEdit.value) {
+        // The step on screen is not necessarily the one with the problem, so
+        // every step is re-checked before the request — and the first that
+        // fails is the one we jump back to.
+        for (const step of steps.value) {
+            if (!validateStep(step.value)) {
+                currentStep.value = step.value;
+
+                return;
+            }
+        }
+
+        // Same type-scoping as the edit path below — a bingo event has no
+        // board size and a Snakes & Ladders event has no card.
+        form.transform((data) => {
+            const payload = { ...data };
+
+            if (data.type !== 'BINGO') {
+                delete payload.bingo_size;
+                delete payload.win_condition;
+                delete payload.line_bonus;
+                delete payload.requires_approval;
+            }
+
+            if (data.type !== 'SNAKES_LADDERS') {
+                delete payload.size;
+                delete payload.dice_roll_limit;
+            }
+
+            if (data.mode !== 'TEAM') delete payload.team_ids;
+
+            return payload;
+        }).post('/events', { onSuccess: () => (isOpen.value = false) });
+
+        return;
+    }
+
+    // Only the fields this event type actually has.
+    //
+    // The form carries every type's settings at once (one useForm, five
+    // sections), so an edit on a Snakes & Ladders event was posting
+    // bingo_size: null — present, therefore validated, therefore
+    // "The card size field must be an integer" on an event with no card.
+    // That failed EVERY non-bingo save, and the message named a field the
+    // form does not even show for that type.
+    form.transform((data) => {
+        const payload = { ...data };
+
+        // team_ids is a create-only staging field; on edit the teams are
+        // written one at a time against their own endpoints.
+        delete payload.team_ids;
+
+        if (data.type !== 'BINGO') {
+            delete payload.bingo_size;
+            delete payload.win_condition;
+            delete payload.line_bonus;
+            delete payload.requires_approval;
+        }
+
+        if (data.type !== 'SNAKES_LADDERS') {
+            delete payload.size;
+            delete payload.dice_roll_limit;
+        }
+
+        return payload;
+    }).patch(`/events/${props.board.id}`, {
+        preserveScroll: true,
+        onSuccess: () => (isOpen.value = false),
+        // Reported as "I hit save, it jumped back to Basics and saved
+        // nothing". It was a 422 the user could not see: the offending field
+        // (a GUILD event with no server picked — legal before that rule
+        // existed) lives on the Access tab, and they were on Teams. A form
+        // that fails silently on a tab you are not looking at is
+        // indistinguishable from one that is broken.
+        onError: (errors) => showTabFor(errors),
+    });
+}
+
+/**
+ * The tab holding a given field, so a validation error can bring its own
+ * section forward instead of waiting to be found.
+ */
+const FIELD_TABS = {
+    title: 'basics',
+    description: 'basics',
+    start_date: 'basics',
+    end_date: 'basics',
+    type: 'format',
+    metric: 'format',
+    mode: 'format',
+    size: 'format',
+    bingo_size: 'format',
+    win_condition: 'format',
+    line_bonus: 'format',
+    requires_approval: 'format',
+    dice_roll_limit: 'format',
+    access_mode: 'access',
+    required_guild_id: 'access',
+    is_listed: 'access',
+    author_ids: 'access',
+    team_ids: 'teams',
+};
+
+function showTabFor(errors) {
+    const field = Object.keys(errors ?? {})[0];
+    const tab = FIELD_TABS[field];
+
+    // Only move if the target tab is actually on offer — the Teams tab does
+    // not exist on a solo event, and jumping to a tab that is not rendered
+    // would leave the modal on a blank panel.
+    if (tab && tabs.value.some((t) => t.value === tab)) {
+        activeTab.value = tab;
     }
 }
 
-// Invites are fetched/created/revoked via plain fetch() rather than
-// Inertia's router — an Inertia visit would re-render the whole underlying
-// board page and, since this modal isn't itself a page component, has no
-// natural way to just refresh its own invites list without closing.
+// ----------------------------------------------------------------- invites
 //
-// No <meta name="csrf-token"> exists in app.blade.php (Blade's @csrf
-// directive is for <form> tags, not fetch headers, and Laravel's default
-// scaffold doesn't add one either) — read the XSRF-TOKEN cookie instead,
-// the same encrypted-cookie mechanism VerifyCsrfToken accepts as an
-// alternative to the session token, and what Inertia's own client uses
-// under the hood for its requests.
-const invites = ref([]);
-const creatingInvite = ref(false);
+// Fetched/created/revoked via plain fetch() rather than Inertia's router — an
+// Inertia visit would re-render the whole underlying board page and, since
+// this modal isn't itself a page component, has no natural way to just
+// refresh its own invites list without closing.
+//
+// No <meta name="csrf-token"> exists in app.blade.php, so the XSRF-TOKEN
+// cookie is read instead — the same encrypted-cookie mechanism
+// VerifyCsrfToken accepts, and what Inertia's own client uses under the hood.
 
 function xsrfHeader() {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+
     return match ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) } : {};
 }
 
 /**
  * All three endpoints answer with the same shape — the full list plus the
- * open count — so creating and revoking need no separate refetch and the
- * list can never drift from what the server just did.
- *
- * None of these checked response.ok before. A 403, a throttle, or the new
- * limit all came back as a body that is not a list, and the view took it
- * anyway.
+ * open count — so creating and revoking need no separate refetch and the list
+ * can never drift from what the server just did.
  */
 function applyInvites(data) {
     invites.value = Array.isArray(data?.invites) ? data.invites : [];
@@ -641,11 +828,7 @@ async function inviteRequest(url, options = {}) {
     if (!response.ok) {
         console.error('invite request failed', response.status, data);
 
-        toast?.add({
-            id: 'invite-error',
-            title: data?.message ?? trans('errors.generic'),
-            color: 'error',
-        });
+        toast?.add({ id: 'invite-error', title: data?.message ?? trans('errors.generic'), color: 'error' });
 
         return null;
     }
@@ -669,9 +852,7 @@ async function createInvite() {
             body: JSON.stringify({}),
         });
 
-        if (data) {
-            toast?.add({ id: 'invite-created', title: trans('admin.invite_created'), color: 'success' });
-        }
+        if (data) toast?.add({ id: 'invite-created', title: trans('admin.invite_created'), color: 'success' });
     } finally {
         // In a finally so a failure cannot leave the button spinning forever,
         // which is what a spam-click session turns into otherwise.
@@ -682,53 +863,117 @@ async function createInvite() {
 async function revokeInvite(invite) {
     const data = await inviteRequest(`/events/${props.board.id}/invites/${invite.id}`, { method: 'DELETE' });
 
-    if (data) {
-        toast?.add({ id: 'invite-revoked', title: trans('admin.invite_revoked'), color: 'success' });
+    if (data) toast?.add({ id: 'invite-revoked', title: trans('admin.invite_revoked'), color: 'success' });
+}
+
+// The invites tab only exists on an INVITE event, so switching an existing
+// event to that mode mid-edit is what has to trigger the first fetch.
+watch(() => form.access_mode, (mode) => {
+    if (isEdit.value && mode === 'INVITE' && !invites.value.length) fetchInvites();
+});
+
+// ------------------------------------------------------------------- teams
+//
+// Two sources, one shape. Editing reads the event's own split of
+// assigned/available; creating has no event to ask, so it reads the teams
+// this account may use and stages the picks locally until save.
+
+async function loadTeams() {
+    loadingTeams.value = true;
+
+    try {
+        const url = isEdit.value ? `/events/${props.board.id}/teams` : '/teams/options';
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+
+        if (!response.ok) throw new Error(`teams request failed: ${response.status}`);
+
+        const data = await response.json();
+
+        if (isEdit.value) {
+            assignedTeams.value = data.assigned ?? [];
+            availableTeams.value = data.available ?? [];
+        } else {
+            // A staged pick survives a step change but not a reopen, which is
+            // the same lifetime the rest of the form has.
+            const staged = new Set(form.team_ids);
+            const teams = data.teams ?? [];
+            assignedTeams.value = teams.filter((t) => staged.has(t.id));
+            availableTeams.value = teams.filter((t) => !staged.has(t.id));
+        }
+    } catch (error) {
+        // Not toasted: the step shows its own empty state, and this fails
+        // while someone is filling in a form they can still submit.
+        console.error(error);
+    } finally {
+        loadingTeams.value = false;
     }
 }
 
-// Same fetch()-not-Inertia rationale as invites above.
-const assignedTeams = ref([]);
-const availableTeams = ref([]);
-const teamToAdd = ref(null);
-const addingTeam = ref(false);
-
-async function fetchTeams() {
-    const response = await fetch(`/events/${props.board.id}/teams`, { headers: { Accept: 'application/json' } });
-    const data = await response.json();
-    assignedTeams.value = data.assigned;
-    availableTeams.value = data.available;
-}
-
-// Covers switching an existing board's mode to TEAM mid-edit, not just
-// opening the modal on an already-TEAM board (the watch(board) above).
-watch(
-    () => form.mode,
-    (mode) => {
-        if (isEdit.value && mode === 'TEAM' && assignedTeams.value.length === 0 && availableTeams.value.length === 0) {
-            fetchTeams();
-        }
-    },
-);
+// Covers switching to TEAM mid-form, in both modes — the watch on `board`
+// above only fires when the modal is opened on one that already was.
+watch(() => form.mode, (mode) => {
+    if (mode === 'TEAM' && !assignedTeams.value.length && !availableTeams.value.length) loadTeams();
+});
 
 async function addTeam() {
     if (!teamToAdd.value) return;
+
+    const team = availableTeams.value.find((t) => t.id === teamToAdd.value);
+    if (!team) return;
+
+    // Create: staged on the form, written by BoardController::store in the
+    // same transaction as the event itself.
+    if (!isEdit.value) {
+        assignedTeams.value = [...assignedTeams.value, team];
+        availableTeams.value = availableTeams.value.filter((t) => t.id !== team.id);
+        form.team_ids = assignedTeams.value.map((t) => t.id);
+        teamToAdd.value = null;
+
+        return;
+    }
+
     addingTeam.value = true;
-    await fetch(`/events/${props.board.id}/teams`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...xsrfHeader() },
-        body: JSON.stringify({ team_id: teamToAdd.value }),
-    });
-    teamToAdd.value = null;
-    await fetchTeams();
-    addingTeam.value = false;
+
+    try {
+        const response = await fetch(`/events/${props.board.id}/teams`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...xsrfHeader() },
+            body: JSON.stringify({ team_id: teamToAdd.value }),
+        });
+
+        if (!response.ok) throw new Error(`add team failed: ${response.status}`);
+
+        teamToAdd.value = null;
+        await loadTeams();
+    } catch (error) {
+        console.error(error);
+        toast?.add({ id: 'board-team-error', title: trans('errors.generic'), color: 'error' });
+    } finally {
+        addingTeam.value = false;
+    }
 }
 
 async function removeTeam(team) {
-    await fetch(`/events/${props.board.id}/teams/${team.id}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json', ...xsrfHeader() },
-    });
-    await fetchTeams();
+    if (!isEdit.value) {
+        assignedTeams.value = assignedTeams.value.filter((t) => t.id !== team.id);
+        availableTeams.value = [...availableTeams.value, team].sort((a, b) => a.name.localeCompare(b.name));
+        form.team_ids = assignedTeams.value.map((t) => t.id);
+
+        return;
+    }
+
+    try {
+        const response = await fetch(`/events/${props.board.id}/teams/${team.id}`, {
+            method: 'DELETE',
+            headers: { Accept: 'application/json', ...xsrfHeader() },
+        });
+
+        if (!response.ok) throw new Error(`remove team failed: ${response.status}`);
+
+        await loadTeams();
+    } catch (error) {
+        console.error(error);
+        toast?.add({ id: 'board-team-error', title: trans('errors.generic'), color: 'error' });
+    }
 }
 </script>

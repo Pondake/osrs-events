@@ -2,47 +2,24 @@
     <u-modal v-model:open="isOpen" :title="$t('bingo.edit_square')" :dismissible="false">
         <template #body>
             <div class="space-y-4 py-2">
-                <u-form-field :label="$t('tile_editor.task')" :description="$t('tile_editor.task_desc')">
-                    <div class="space-y-2">
-                        <div v-if="selectedTask" class="flex items-center gap-3 rounded-md ring ring-default px-3 py-2">
-                            <img v-if="selectedTask.icon_url" :src="selectedTask.icon_url" alt="" class="size-6 object-contain" />
-                            <span class="flex-1 min-w-0 truncate text-sm">{{ selectedTask.title }}</span>
-                            <u-button
-                                icon="i-lucide-x"
-                                color="neutral"
-                                variant="ghost"
-                                size="xs"
-                                :aria-label="$t('common.clear')"
-                                @click="selectedTask = null"
-                            />
-                        </div>
+                <!-- The free square. Above the task picker because it
+                     changes what the rest of the form is for: a wildcard
+                     needs no task and cannot be claimed, so asking what it
+                     asks for first would be asking the wrong question. -->
+                <u-form-field :description="$t('bingo.wildcard_desc')">
+                    <u-switch v-model="form.is_wildcard" :label="$t('bingo.wildcard_field')" />
+                </u-form-field>
 
-                        <u-input
-                            v-else
-                            v-model="taskSearch"
-                            icon="i-lucide-search"
-                            :placeholder="$t('common.search')"
-                            class="w-full"
-                            @update:model-value="debouncedSearch"
-                        />
-
-                        <div v-if="taskResults.length" class="rounded-md ring ring-default divide-y divide-default max-h-56 overflow-y-auto">
-                            <button
-                                v-for="task in taskResults"
-                                :key="task.id"
-                                type="button"
-                                class="w-full flex items-center gap-3 px-3 py-2 hover:bg-elevated transition-colors text-left"
-                                @click="selectTask(task)"
-                            >
-                                <img v-if="task.icon_url" :src="task.icon_url" alt="" class="size-5 object-contain" />
-                                <span class="text-sm truncate">{{ task.title }}</span>
-                            </button>
-                        </div>
-                    </div>
+                <u-form-field
+                    v-if="!form.is_wildcard"
+                    :label="$t('tile_editor.task')"
+                    :description="$t('tile_editor.task_desc')"
+                >
+                    <task-picker v-model="selectedTask" :event-id="eventId" />
                 </u-form-field>
 
                 <u-form-field :label="$t('tile_editor.title_override')" :description="$t('tile_editor.title_override_desc')">
-                    <u-input v-model="form.title_override" class="w-full" />
+                    <u-input v-model="form.title_override" class="w-full" :placeholder="selectedTask?.title ?? ''" />
                 </u-form-field>
 
                 <!-- Tile weighting. Counting squares treats a Zulrah pet and
@@ -66,6 +43,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import TaskPicker from '@/Components/TaskPicker.vue';
 
 /**
  * Sets what one bingo square asks for.
@@ -73,7 +51,9 @@ import { useForm } from '@inertiajs/vue3';
  * Deliberately a separate component from TileEditModal rather than a shared
  * one with branches: a Snakes & Ladders tile also carries a type
  * (snake/ladder) and a target position, and none of that means anything on a
- * bingo card. Two small forms beat one form that hides half of itself.
+ * bingo card. Two small forms beat one form that hides half of itself. What
+ * the two genuinely do share — finding the thing a square asks for — is
+ * TaskPicker, which both now use.
  */
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -85,55 +65,24 @@ const emit = defineEmits(['update:open']);
 
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
-const form = useForm({ title_override: '', points: 1 });
+const form = useForm({ title_override: '', points: 1, is_wildcard: false });
 const selectedTask = ref(null);
-const taskSearch = ref('');
-const taskResults = ref([]);
 
 watch(
     () => props.square,
     (square) => {
         form.title_override = square?.titleOverride ?? '';
         form.points = square?.points ?? 1;
+        form.is_wildcard = square?.isWildcard ?? false;
         selectedTask.value = square?.task ?? null;
-        taskSearch.value = '';
-        taskResults.value = [];
     },
     { immediate: true },
 );
 
-// Debounced for the same reason the tile editor's is: this fires per
-// keystroke against a real endpoint.
-let searchTimeout;
-function debouncedSearch(value) {
-    clearTimeout(searchTimeout);
-
-    if (!value) {
-        taskResults.value = [];
-
-        return;
-    }
-
-    searchTimeout = setTimeout(async () => {
-        try {
-            const response = await fetch(`/tasks/search?search=${encodeURIComponent(value)}`, {
-                headers: { Accept: 'application/json' },
-            });
-            taskResults.value = await response.json();
-        } catch (error) {
-            console.error(error);
-        }
-    }, 250);
-}
-
-function selectTask(task) {
-    selectedTask.value = task;
-    taskResults.value = [];
-    taskSearch.value = '';
-}
-
 function submit() {
-    form.transform((data) => ({ ...data, task_id: selectedTask.value?.id ?? null }))
+    // A wildcard drops its task: it is not asking for anything, and leaving
+    // one attached would render a claimable-looking square that isn't.
+    form.transform((data) => ({ ...data, task_id: data.is_wildcard ? null : (selectedTask.value?.id ?? null) }))
         .patch(`/events/${props.eventId}/bingo/squares/${props.square.id}`, {
             preserveScroll: true,
             onSuccess: () => (isOpen.value = false),
