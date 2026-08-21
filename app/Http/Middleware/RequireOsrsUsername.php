@@ -31,6 +31,11 @@ class RequireOsrsUsername
         'osrs.create',
         'osrs.store',
         'logout',
+        // The first-run wizard asks for the name itself, so its own endpoints
+        // have to survive the gate or the tour cannot finish or record that
+        // it finished.
+        'onboarding.complete',
+        'onboarding.joinable',
     ];
 
     public function handle(Request $request, Closure $next): Response
@@ -42,6 +47,19 @@ class RequireOsrsUsername
         }
 
         if (in_array($request->route()?->getName(), self::ALLOWED, true)) {
+            return $next($request);
+        }
+
+        // While the first-run wizard is still pending, it is already asking
+        // for this — bouncing to the standalone page as well meant finishing
+        // the tour and being met immediately by a screen demanding the one
+        // thing the tour just covered.
+        //
+        // Reads only. Anything that WRITES still needs the name, so nobody
+        // can join, roll or claim their way past the gate in this window,
+        // and it closes by itself the moment onboarding is completed or
+        // skipped — which is when the standalone page takes over again.
+        if ($user->onboarding_completed_at === null && $request->isMethodSafe()) {
             return $next($request);
         }
 

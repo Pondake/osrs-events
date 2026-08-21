@@ -214,12 +214,61 @@ const needsOnboarding = computed(
     () => (inertiaPage.props?.auth?.user?.needsOnboarding ?? false) && ! onAuthPage.value,
 );
 
+/**
+ * Closing the tour any way other than the buttons — Escape, the X, a click
+ * outside — used to persist nothing at all, so it reopened on the very next
+ * page load, forever. "Skip" writes onboarding_completed_at and is final;
+ * this is the middle ground that was missing: gone for a day, then offered
+ * again.
+ *
+ * localStorage rather than sessionStorage because a day has to survive
+ * closing the tab, and rather than a cookie because the server has no use
+ * for it — it would ride along on every single request for nothing.
+ */
+const SNOOZE_KEY = 'onboarding-snoozed-until';
+const SNOOZE_MS = 24 * 60 * 60 * 1000;
+
+function snoozedUntil() {
+    if (typeof window === 'undefined') return 0;
+
+    try {
+        return Number(window.localStorage.getItem(SNOOZE_KEY)) || 0;
+    } catch (error) {
+        // Private mode and blocked storage both throw on access rather than
+        // returning null. Treating that as "not snoozed" shows the tour,
+        // which is the harmless direction to fail in.
+        console.error(error);
+
+        return 0;
+    }
+}
+
+function snoozeOnboarding() {
+    try {
+        window.localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 onMounted(() => {
-    showOnboarding.value = needsOnboarding.value;
+    showOnboarding.value = needsOnboarding.value && snoozedUntil() < Date.now();
+});
+
+// Fires for every close, including the ones that reach `finish()` — harmless
+// there, since that account is already flagged complete server-side and the
+// stale key simply expires.
+watch(showOnboarding, (open, wasOpen) => {
+    if (wasOpen && ! open && needsOnboarding.value) {
+        snoozeOnboarding();
+    }
 });
 
 watch(needsOnboarding, (needs) => {
-    if (needs) {
+    // Snooze checked here too, not just on mount: this fires on navigation
+    // (the gate page clearing, for one), and without it the tour would
+    // reopen on the next page change no matter what was stored.
+    if (needs && snoozedUntil() < Date.now()) {
         showOnboarding.value = true;
     } else if (onAuthPage.value) {
         // Close only when a blocking page is the reason. Onboarding finishing

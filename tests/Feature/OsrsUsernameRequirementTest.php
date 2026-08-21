@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Event;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -103,9 +104,55 @@ class OsrsUsernameRequirementTest extends TestCase
     #[Test]
     public function an_account_without_a_name_is_redirected_to_the_gate(): void
     {
-        $user = User::factory()->create(['osrs_username' => null]);
+        $user = User::factory()->create([
+            'osrs_username' => null,
+            'onboarding_completed_at' => now(),
+        ]);
 
         $this->actingAs($user)->get('/my-events')->assertRedirect('/welcome/osrs-username');
+    }
+
+    /**
+     * The first-run wizard asks for the name itself, so during that window
+     * the standalone page would be a second demand for the same field —
+     * arriving, worst of all, the moment the tour finishes.
+     */
+    #[Test]
+    public function browsing_is_allowed_while_the_first_run_wizard_is_still_pending(): void
+    {
+        $user = User::factory()->create([
+            'osrs_username' => null,
+            'onboarding_completed_at' => null,
+        ]);
+
+        $this->actingAs($user)->get('/my-events')->assertOk();
+    }
+
+    /**
+     * The other half of that relaxation, and the half that keeps it honest:
+     * reads are let through, writes are not. Without this, dismissing the
+     * wizard would leave an account able to join, roll and claim with no
+     * name at all — scoring nothing, silently.
+     */
+    #[Test]
+    public function writing_is_still_gated_while_the_wizard_is_pending(): void
+    {
+        $user = User::factory()->create([
+            'osrs_username' => null,
+            'onboarding_completed_at' => null,
+        ]);
+
+        $event = Event::create([
+            'title' => 'Open Board',
+            'type' => 'SNAKES_LADDERS',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->post("/events/{$event->id}/join")
+            ->assertRedirect('/welcome/osrs-username');
     }
 
     #[Test]

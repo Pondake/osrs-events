@@ -36,6 +36,29 @@
                         </div>
                     </template>
 
+                    <!-- Asked here, in the tour, rather than only by the
+                         standalone gate. Finishing the wizard and being met
+                         immediately by a page demanding this was the worst
+                         possible moment for it: the one screen that reads as
+                         "you did the setup wrong" arriving directly after
+                         the setup. The gate still exists for anyone who
+                         skips the tour, and for mutations. -->
+                    <template v-else-if="step === 'osrs'">
+                        <h3 class="text-lg font-semibold text-highlighted">{{ $t('onboarding.osrs_heading') }}</h3>
+                        <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.osrs_body') }}</p>
+
+                        <u-form-field
+                            :label="$t('auth.field_osrs_username')"
+                            :description="$t('auth.field_osrs_username_desc')"
+                            :error="osrsForm.errors.osrs_username"
+                            required
+                        >
+                            <u-input v-model="osrsForm.osrs_username" maxlength="12" icon="i-lucide-user-round" class="w-full" />
+                        </u-form-field>
+
+                        <p class="text-xs text-muted">{{ $t('auth.osrs_change_later') }}</p>
+                    </template>
+
                     <!-- Only reached when something's actually missing (see
                          steps computed) — never shown to an account that
                          already has both a Discord link and an email. -->
@@ -190,7 +213,7 @@
 
                 <div class="flex gap-2">
                     <u-button v-if="stepIndex > 0" color="neutral" variant="outline" :label="$t('common.back')" @click="stepIndex--" />
-                    <u-button v-if="!isLastStep" color="primary" :loading="form.processing" :label="nextLabel" @click="next" />
+                    <u-button v-if="!isLastStep" color="primary" :loading="form.processing || osrsForm.processing" :disabled="nextDisabled" :label="nextLabel" @click="next" />
                     <u-button v-else color="primary" :label="$t('onboarding.finish')" @click="finish" />
                 </div>
             </div>
@@ -233,6 +256,13 @@ const hasEmail = computed(() => !!page.props?.auth?.user?.hasEmail);
 // behind the RequireOsrsUsername gate for Discord logins.
 const missingBoth = computed(() => !hasDiscord.value && !hasEmail.value);
 
+const osrsUsername = computed(() => page.props?.auth?.user?.osrsUsername ?? null);
+
+// `stay` is what stops the controller redirecting to /events on success,
+// which would navigate the page out from under this modal and end the tour
+// on its second step.
+const osrsForm = useForm({ osrs_username: '', stay: true });
+
 const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', TEAM_MANAGER: 'info', PLAYER: 'primary' };
 const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
 
@@ -250,6 +280,12 @@ const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
  */
 const stepDefs = computed(() => {
     const defs = [{ key: 'welcome', title: trans('onboarding.step_welcome'), icon: 'i-lucide-hand' }];
+
+    // Before the optional ones: this is the only field in the whole flow
+    // that anything actually depends on — a race scores nothing without it.
+    if (!osrsUsername.value) {
+        defs.push({ key: 'osrs', title: trans('onboarding.step_osrs'), icon: 'i-lucide-user-round' });
+    }
 
     if (!hasDiscord.value || !hasEmail.value) {
         defs.push({ key: 'connect', title: trans('onboarding.step_connect'), icon: 'i-lucide-link' });
@@ -279,7 +315,7 @@ const accessSummary = computed(() => [
 
 const previewLabel = computed(() => {
     if (step.value === 'runelite') return trans('onboarding.preview_plugin');
-    if (step.value === 'connect' || step.value === 'join') return trans('onboarding.preview_access');
+    if (step.value === 'connect' || step.value === 'join' || step.value === 'osrs') return trans('onboarding.preview_access');
 
     return trans('onboarding.preview_board', { size: BOARD_SIZE_LABEL[form.size], tiles: BOARD_TILE_COUNT[form.size] });
 });
@@ -339,7 +375,27 @@ const nextLabel = computed(() =>
         : trans('common.next'),
 );
 
+// The one step that cannot be walked past empty. Skipping the whole tour is
+// still allowed — that hands the user to the standalone gate, which is the
+// right place to be nagged, rather than letting them through with nothing.
+const nextDisabled = computed(() => step.value === 'osrs' && !osrsForm.osrs_username.trim());
+
 function next() {
+    // Saved as the step is left, so the rest of the tour runs with the name
+    // already set — the board step posts to a route the gate would otherwise
+    // block. Advances only on success; a rejected name keeps the step open
+    // with its error rather than moving on and losing it.
+    if (step.value === 'osrs') {
+        osrsForm.post('/welcome/osrs-username', {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => stepIndex.value++,
+            onError: (errors) => console.error(errors),
+        });
+
+        return;
+    }
+
     // The board step optionally creates a board on its way past. An empty
     // title just moves on — this whole flow is skippable, so requiring one
     // would turn a tour into a wall.

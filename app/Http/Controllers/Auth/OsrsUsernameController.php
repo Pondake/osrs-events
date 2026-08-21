@@ -37,6 +37,11 @@ class OsrsUsernameController extends Controller
     {
         $data = $request->validate([
             'osrs_username' => ['required', 'string', new OsrsUsername],
+            // The first-run wizard posts this from inside its own modal, and
+            // the redirect below would navigate the page out from under it —
+            // closing the tour on the step that was meant to be one of
+            // several. `stay` keeps the save and drops the navigation.
+            'stay' => ['sometimes', 'boolean'],
         ]);
 
         // Saved either way — Wise Old Man only knows accounts somebody has
@@ -44,7 +49,7 @@ class OsrsUsernameController extends Controller
         // name would lock out exactly the people this is for.
         $found = $identity->apply($request->user(), $data['osrs_username']);
 
-        $redirect = redirect()->intended('/events');
+        $redirect = ($data['stay'] ?? false) ? back() : redirect()->intended('/events');
 
         return $found === false
             ? $redirect->with('board-save-error', trans('auth.osrs_not_found'))
