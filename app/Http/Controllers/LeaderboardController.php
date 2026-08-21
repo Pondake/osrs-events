@@ -18,7 +18,10 @@ class LeaderboardController extends Controller
 
         // Tiles live on the board; an event without one has none.
         $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();
-        $maxPosition = $tiles->count() - 1;
+
+        // Floored at zero, so a board whose grid is not filled in yet reports
+        // nothing left rather than minus one tile left.
+        $maxPosition = max($tiles->count() - 1, 0);
 
         $playerBoards = $event->playerBoards()
             ->with(['user', 'team'])
@@ -33,8 +36,23 @@ class LeaderboardController extends Controller
             return [
                 'rank' => $index + 1,
                 'playerId' => $pb->id,
-                'user' => $pb->user,
-                'team' => $pb->team,
+                // Named fields, not the models.
+                //
+                // This handed the browser the whole User row. Only password
+                // and remember_token are marked hidden, so the email address
+                // went out with it — and any account can open the leaderboard
+                // of any open event, which made this an email directory for
+                // everyone playing. Whatever a page needs about a person, it
+                // should have to name.
+                'user' => $pb->user === null ? null : [
+                    'nickname' => $pb->user->nickname,
+                    'discord_username' => $pb->user->discord_username,
+                    'avatar_url' => $pb->user->avatar_url,
+                ],
+                'team' => $pb->team === null ? null : [
+                    'name' => $pb->team->name,
+                    'icon_url' => $pb->team->icon_url,
+                ],
                 'currentPosition' => $pb->current_position,
                 'tilesRemaining' => $maxPosition - $pb->current_position,
                 'pathHasLadder' => $pathTiles->contains(fn ($t) => $t->type === 'LADDER' && $t->target_position !== null),

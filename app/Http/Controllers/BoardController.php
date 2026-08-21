@@ -35,7 +35,16 @@ class BoardController extends Controller
 
     private const BOARD_FIELDS = ['size', 'dice_roll_limit'];
 
-    private const EVENT_WITH = ['authors.user', 'eventTeams.team', 'board', 'bingoCard'];
+    /**
+     * The author's user is loaded by column, not whole.
+     *
+     * `authors` goes to the browser as-is from cardData(), and `User` marks
+     * only password and remember_token hidden — so a bare `authors.user`
+     * published every host's email address on every event page and every
+     * board card. Naming the columns here fixes it for every caller at once;
+     * the pages only ever read the name and the avatar.
+     */
+    private const EVENT_WITH = ['authors.user:id,discord_username,nickname,avatar_url', 'eventTeams.team', 'board', 'bingoCard'];
 
     /**
      * Flattens an event and its board into the shape the cards render.
