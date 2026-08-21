@@ -165,12 +165,33 @@
                                  already hold, by name and icon, from the guild
                                  sync that runs on every Discord login. -->
                             <u-select
+                                v-if="loadingGuilds || guildOptions.length"
                                 v-model="form.required_guild_id"
                                 :items="guildOptions"
                                 :loading="loadingGuilds"
-                                :disabled="!guildOptions.length"
                                 :placeholder="guildPlaceholder"
                                 class="w-full"
+                            />
+
+                            <!-- An empty dropdown is the one thing this must
+                                 not be: it looks like the feature is broken
+                                 when the actual situation is either "no
+                                 Discord on this account" or "Discord is
+                                 linked but we never got its server list",
+                                 and those need different actions. -->
+                            <u-alert
+                                v-else
+                                color="warning"
+                                variant="subtle"
+                                icon="i-simple-icons-discord"
+                                :title="hasDiscord ? $t('admin.guilds_none_title') : $t('admin.guilds_no_discord_title')"
+                                :description="hasDiscord ? $t('admin.guilds_none_desc') : $t('admin.guilds_no_discord_desc')"
+                                :actions="[{
+                                    label: hasDiscord ? $t('admin.guilds_reconnect') : $t('profile.connect_discord'),
+                                    color: 'warning',
+                                    variant: 'outline',
+                                    to: '/settings/account',
+                                }]"
                             />
                         </u-form-field>
                     </div>
@@ -400,6 +421,10 @@ const unlimitedRolls = computed({
 // invite and team lists below.
 const guilds = ref([]);
 const loadingGuilds = ref(false);
+
+// Whether the account has Discord at all decides which of the two empty
+// states applies — "link it" and "relink it" are different problems.
+const hasDiscord = computed(() => !!currentUser.value?.discordUsername);
 
 const guildOptions = computed(() => guilds.value.map((guild) => ({
     label: guild.name,
