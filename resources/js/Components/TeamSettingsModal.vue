@@ -1,5 +1,5 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="$t('teams.create_team')">
+    <u-modal v-model:open="isOpen" :title="$t('teams.create_team')" :dismissible="false">
         <template #body>
             <div class="space-y-4 py-2">
                 <u-form-field :label="$t('teams.team_name')" required>

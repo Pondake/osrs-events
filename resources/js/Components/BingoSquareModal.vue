@@ -1,5 +1,5 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="$t('bingo.edit_square')">
+    <u-modal v-model:open="isOpen" :title="$t('bingo.edit_square')" :dismissible="false">
         <template #body>
             <div class="space-y-4 py-2">
                 <u-form-field :label="$t('tile_editor.task')" :description="$t('tile_editor.task_desc')">
