@@ -1,2 +1,12 @@
+# Everything public is crawlable. The private areas below are excluded not to
+# hide them but because they need a login — a crawler following them only ever
+# reaches a redirect, and the URLs would sit in the index unopenable.
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /settings
+Disallow: /my-events
+Disallow: /welcome
+Disallow: /dev-login
+
+Sitemap: https://osrs-events.com/sitemap.xml

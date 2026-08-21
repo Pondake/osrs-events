@@ -23,6 +23,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\Settings\AccountController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SkillRaceController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TileController;
@@ -87,6 +88,11 @@ Route::middleware('guest')->group(function () {
         ->middleware('throttle:5,1')
         ->name('password.store');
 });
+
+// Built from the routes and CMS rows rather than a static file. There was no
+// sitemap at all in production, which for a site whose traffic plan is
+// organic search is the cheapest omission there is to fix.
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 
 Route::get('/', [LandingController::class, 'home'])->name('home');
 Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadders'])
