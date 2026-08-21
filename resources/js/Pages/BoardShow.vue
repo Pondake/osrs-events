@@ -6,48 +6,78 @@
     <u-main>
         <u-page>
             <u-container class="py-12">
-                <u-page-header :title="board.title" :description="board.description ?? ''">
-                    <template #headline>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <!-- Says what kind of event this is, matching the
-                                 race and bingo pages. This one said only
-                                 SOLO/TEAM, which is a different question. -->
-                            <u-badge
-                                v-if="typeMeta"
-                                :icon="typeMeta.icon"
-                                :label="typeMeta.label"
-                                color="primary"
-                                variant="subtle"
-                            />
-                            <u-badge :label="board.mode" color="neutral" variant="subtle" />
-                        </div>
-                    </template>
-                    <template #links>
-                        <div class="flex gap-2 flex-wrap">
+                <!-- u-page-header dropped entirely, not just its title slot:
+                     it styles everything inside #title as a title, so the
+                     description came out in the same uppercase display face
+                     as the heading. A plain flex row instead, matching the
+                     bingo and race pages so all three announce themselves the
+                     same way. -->
+                <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+                    <event-type-heading :event="board">
+                            <template #meta>
+                                <span class="inline-flex items-center gap-1.5">
+                                    <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
+                                    {{ sizeLabel }}
+                                </span>
+                                <span class="inline-flex items-center gap-1.5">
+                                    <u-icon :name="board.mode === 'TEAM' ? 'i-lucide-users' : 'i-lucide-user'" class="size-4 shrink-0" />
+                                    {{ board.mode === 'TEAM' ? $t('admin.board_mode_team') : $t('admin.board_mode_solo') }}
+                                </span>
+                            </template>
+                    </event-type-heading>
+
+                    <div class="flex gap-2 flex-wrap shrink-0">
+                            <!-- Two buttons that both sound like "see who
+                                 else is here", so they say what they
+                                 actually do: this one draws everyone's
+                                 marker ON the board, the one beside it opens
+                                 the list of who is taking part. -->
                             <u-button
                                 v-if="otherPlayers.length > 0"
                                 :color="showOtherPlayers ? 'primary' : 'neutral'"
                                 :variant="showOtherPlayers ? 'subtle' : 'outline'"
                                 size="sm"
-                                icon="i-lucide-users"
+                                icon="i-lucide-map-pin"
                                 :label="$t('board.show_players')"
+                                :title="$t('board.show_players_desc')"
                                 @click="showOtherPlayers = !showOtherPlayers"
                             />
+                            <u-button
+                                :href="`/events/${board.id}/participants`"
+                                color="neutral"
+                                variant="outline"
+                                size="sm"
+                                icon="i-lucide-users-round"
+                                :label="$t('participants.open')"
+                            />
                             <template v-if="canEdit">
+                                <!-- Named for what they change — the tiles
+                                     versus the event — rather than
+                                     "edit mode" versus "edit board", which
+                                     said nothing about which was which. -->
                                 <u-button
                                     :color="editMode ? 'primary' : 'neutral'"
                                     :variant="editMode ? 'solid' : 'outline'"
                                     size="sm"
-                                    :icon="editMode ? 'i-lucide-eye' : 'i-lucide-pencil'"
-                                    :label="editMode ? $t('board.view_mode') : $t('board.edit_mode')"
+                                    :icon="editMode ? 'i-lucide-check' : 'i-lucide-grid-2x2-plus'"
+                                    :label="editMode ? $t('bingo.editing_tiles') : $t('bingo.edit_tiles')"
+                                    :title="$t('board.edit_tiles_desc')"
                                     @click="editMode = !editMode"
                                 />
                                 <u-button
                                     color="neutral"
                                     variant="outline"
                                     size="sm"
+                                    icon="i-lucide-list-checks"
+                                    :label="$t('tile_list.open')"
+                                    @click="showTileList = true"
+                                />
+                                <u-button
+                                    color="neutral"
+                                    variant="outline"
+                                    size="sm"
                                     icon="i-lucide-settings"
-                                    :label="$t('board.edit_board')"
+                                    :label="$t('board.event_settings')"
                                     @click="showSettingsModal = true"
                                 />
                             </template>
@@ -59,9 +89,8 @@
                                 icon="i-lucide-trophy"
                                 :label="$t('leaderboard.title')"
                             />
-                        </div>
-                    </template>
-                </u-page-header>
+                    </div>
+                </div>
 
                 <u-card v-if="!hasTeam" class="mt-8">
                     <div class="flex flex-col items-center text-center gap-3 py-6">
@@ -398,10 +427,17 @@
 
         <client-only>
             <board-settings-modal v-model:open="showSettingsModal" :board="board" />
+            <tile-list-editor
+                v-model:open="showTileList"
+                :event-id="board.id"
+                type="SNAKES_LADDERS"
+                :items="tiles"
+                :total="tileCount"
+            />
             <tile-edit-modal
                 v-if="editingTile"
                 :open="editingTile !== null"
-                :board-id="board.id"
+                :event-id="board.id"
                 :position="editingTile.position"
                 :tile="editingTile.id ? editingTile : null"
                 @update:open="(v) => !v && (editingTile = null)"
@@ -411,16 +447,17 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
-import { eventTypeMeta } from '@/Support/eventTypes';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
+const TileListEditor = defineAsyncComponent(() => import('@/Components/TileListEditor.vue'));
 const TileEditModal = defineAsyncComponent(() => import('@/Components/TileEditModal.vue'));
 
 const props = defineProps({
@@ -435,7 +472,9 @@ const props = defineProps({
 // Everyone's positions, seeded from the render and then kept current by the
 // board's own channel — a roll moves one player and everybody watching should
 // see it, the same as a bingo square being ticked.
-const typeMeta = computed(() => eventTypeMeta(props.board.type));
+// The grid's own shape, for the heading's meta line. Via the shared helper
+// rather than a second copy of the same lookup.
+const sizeLabel = computed(() => formatBoardSize(props.board.size));
 
 const livePlayers = ref([...props.players]);
 
@@ -448,6 +487,15 @@ useEventStream({
 
 const showSettingsModal = ref(false);
 const editingTile = ref(null);
+
+// Opened automatically on ?setup=tiles — the redirect a freshly created
+// event arrives on. onMounted because `location` does not exist during SSR.
+const showTileList = ref(false);
+onMounted(() => {
+    if (props.canEdit && new URLSearchParams(window.location.search).get('setup') === 'tiles') {
+        showTileList.value = true;
+    }
+});
 const editMode = ref(false);
 const rolling = ref(false);
 const lastRoll = ref(null);

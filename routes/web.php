@@ -1,9 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
-use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EventBlueprintController as AdminEventBlueprintController;
 use App\Http\Controllers\Admin\InviteController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\TaskController as AdminTaskController;
@@ -19,21 +20,33 @@ use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\EventStreamController;
 use App\Http\Controllers\LandingController;
-use App\Http\Controllers\PageController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\Settings\AccountController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
+use App\Http\Controllers\SiteLockController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SkillRaceController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TileController;
 use App\Http\Controllers\UserSearchController;
+use App\Http\Controllers\WikiController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+
+// The pre-launch door. Outside every group that could redirect it, and
+// exempted inside EnsureSiteUnlocked itself — a lock screen behind the lock
+// is an infinite redirect.
+Route::get('/locked', [SiteLockController::class, 'show'])->name('site-lock.show');
+Route::post('/locked', [SiteLockController::class, 'unlock'])
+    // A shared password is guessable by definition, so this is the one form
+    // on the site that genuinely needs a brute-force ceiling.
+    ->middleware('throttle:10,1')
+    ->name('site-lock.unlock');
 
 // Throttled per-IP — these are unauthenticated by definition, so nothing
 // else gates how often they can be hit. `redirect` just builds a URL to
@@ -194,11 +207,31 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/events/{event}/tiles', [TileController::class, 'upsert'])->name('events.tiles.upsert');
     Route::delete('/events/{event}/tiles/{tile}', [TileController::class, 'destroy'])->name('events.tiles.destroy');
 
+    // Who is taking part — teams and people. Its own page rather than a
+    // panel, because on a clan event it is a list of forty names and it is
+    // also where team management is reached from. Names are withheld from
+    // strangers on a public event; see ParticipantController.
+    Route::get('/events/{event}/participants', [ParticipantController::class, 'index'])->name('events.participants');
+
     Route::get('/events/{event}/teams', [BoardController::class, 'teamsIndex'])->name('events.teams.index');
     Route::post('/events/{event}/teams', [BoardController::class, 'addTeam'])->name('events.teams.add');
     Route::delete('/events/{event}/teams/{team}', [BoardController::class, 'removeTeam'])->name('events.teams.remove');
     Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
+
+    // The OSRS Wiki picker behind the tile and bingo-square editors. Scoped
+    // to an event so the permission is canEditEvent (see WikiController),
+    // and throttled because search fires per keystroke against somebody
+    // else's volunteer-run server — the service caches on top of this.
+    Route::get('/events/{event}/wiki/search', [WikiController::class, 'search'])
+        ->middleware('throttle:60,1')
+        ->name('wiki.search');
+    Route::post('/events/{event}/wiki/tasks', [WikiController::class, 'importTask'])
+        ->middleware('throttle:60,1')
+        ->name('wiki.import');
     Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
+    // Read side of the admin blueprint list — the create-event form's
+    // title autocomplete. Same reasoning as tasks/search above it.
+    Route::get('/event-blueprints', [AdminEventBlueprintController::class, 'suggestions'])->name('blueprints.suggestions');
     Route::get('/my-guilds', [BoardController::class, 'myGuilds'])->name('guilds.mine');
 
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
@@ -237,10 +270,15 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::delete('/settings/account/discord', [DiscordController::class, 'disconnect'])->name('settings.discord.disconnect');
 
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+    // Declared above /teams/{team} so the literal segment wins the match —
+    // it only collides with the PATCH/DELETE verbs today, but the next GET
+    // added there would silently swallow this one.
+    Route::get('/teams/options', [TeamController::class, 'options'])->name('teams.options');
     Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
     Route::patch('/teams/{team}', [TeamController::class, 'update'])->name('teams.update');
     Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
     Route::post('/teams/{team}/members', [TeamController::class, 'addMember'])->name('teams.members.add');
+    Route::patch('/teams/{team}/members/{userId}', [TeamController::class, 'updateMemberRole'])->name('teams.members.role');
     Route::delete('/teams/{team}/members/{userId}', [TeamController::class, 'removeMember'])->name('teams.members.remove');
     Route::get('/teams/{team}/users/search', [TeamController::class, 'searchUsers'])->name('teams.users.search');
 
@@ -269,6 +307,12 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::patch('/tasks/{task}', [AdminTaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
 
+        // Gated on canCreateBoards, not isAdmin — see the controller.
+        Route::get('/blueprints', [AdminEventBlueprintController::class, 'index'])->name('blueprints');
+        Route::post('/blueprints', [AdminEventBlueprintController::class, 'store'])->name('blueprints.store');
+        Route::patch('/blueprints/{blueprint}', [AdminEventBlueprintController::class, 'update'])->name('blueprints.update');
+        Route::delete('/blueprints/{blueprint}', [AdminEventBlueprintController::class, 'destroy'])->name('blueprints.destroy');
+
         Route::get('/site', [SiteSettingsController::class, 'show'])->name('site');
         Route::put('/site', [SiteSettingsController::class, 'update'])->name('site.update');
 
@@ -289,42 +333,6 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::redirect('/settings/admin', '/admin');
     Route::redirect('/settings/admin/{path}', '/admin/{path}')->where('path', '.*');
 });
-
-// Local-only: logs in as a seeded user without a real Discord round-trip,
-// since this environment has no Discord app credentials. Guarded by
-// environment() so it can never exist outside local, regardless of the
-// password check below — see docs/backlog.md, which tracks removing it
-// once Dusk/feature tests cover the auth flow properly instead.
-//
-// Two identities:
-// - ?as=player (default) — the DatabaseSeeder prototype_player, no password
-//   needed, matches the original convenience behavior.
-// - ?as=admin&pass=... — the AdminUserSeeder account, gated on ADMIN_PASS
-//   (.env) as a shared secret. Not real auth security (this whole route
-//   only exists in local()), just enough that the login isn't a bare
-//   unauthenticated link to an admin session.
-if (app()->environment('local')) {
-    Route::get('/dev-login', function (Request $request) {
-        if ($request->query('as') === 'admin') {
-            $expected = env('ADMIN_PASS');
-            if (! $expected) {
-                abort(400, 'ADMIN_PASS is not set in .env — see .env.example.');
-            }
-            abort_unless(hash_equals($expected, (string) $request->query('pass', '')), 403, 'Wrong password.');
-
-            $admin = \App\Models\User::where('discord_id', 'local-admin-seed')->first();
-            abort_unless($admin, 404, 'No admin test account seeded — run `php artisan db:seed`.');
-
-            Auth::login($admin);
-
-            return redirect('/admin/boards');
-        }
-
-        Auth::login(\App\Models\User::where('discord_id', '000000000000000001')->firstOrFail());
-
-        return redirect('/boards');
-    });
-}
 
 // CMS pages, resolved by slug. LAST in the file on purpose: Laravel matches
 // routes in declaration order, so every fixed path above wins and a page slug

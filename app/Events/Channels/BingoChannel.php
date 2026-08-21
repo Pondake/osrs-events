@@ -55,12 +55,12 @@ class BingoChannel implements EventChannel
         // mid-event reaches everyone looking at the card.
         $squares = $card->squares()
             ->orderBy('position')
-            ->get(['position', 'task_id', 'title_override', 'points']);
+            ->get(['position', 'task_id', 'title_override', 'points', 'is_wildcard']);
 
         return md5(
             $rows->map(fn ($r) => "{$r->position}:{$r->team_id}{$r->user_id}:{$r->status}")->implode('|')
             .'#'
-            .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}")->implode('|')
+            .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->is_wildcard}")->implode('|')
         );
     }
 
@@ -69,13 +69,17 @@ class BingoChannel implements EventChannel
         $card = $event->bingoCard;
 
         if ($card === null) {
-            return ['standings' => [], 'squares' => []];
+            return ['standings' => [], 'squares' => [], 'approvedBy' => []];
         }
 
         $card->load('squares.task:id,title,icon_url');
 
         return [
             'standings' => $this->bingo->standings($event, $card)->all(),
+            // Public by definition — an approved claim is already visible in
+            // the standings, so putting the same fact on the square it was
+            // approved for carries nothing new about anyone.
+            'approvedBy' => $this->bingo->approvedBy($card),
             'squares' => $card->squares->sortBy('position')->values()->map(fn ($square) => [
                 'id' => $square->id,
                 'position' => $square->position,
@@ -83,6 +87,7 @@ class BingoChannel implements EventChannel
                 'iconUrl' => $square->task?->icon_url,
                 'points' => $square->points,
                 'titleOverride' => $square->title_override,
+                'isWildcard' => $square->is_wildcard,
                 'task' => $square->task,
             ])->all(),
         ];

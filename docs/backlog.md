@@ -431,7 +431,7 @@ branch's SSR evaluation. Concrete carry-over work:
   rolled value to pick a die face, which no flash prop carried yet (the
   existing `board-save` flash is a pre-formatted sentence, not a number) —
   added a `lastRoll` flash key alongside it. Verified live end-to-end via
-  the existing `/dev-login` route (real gameplay, not just reading the
+  a seeded admin login (real gameplay, not just reading the
   code): correct die face, toast, and the connector lines redrawing around
   the new position after a snake hit.
 - [x] ~~`stale/` can be deleted once the migration is verified complete~~ —
@@ -1417,7 +1417,7 @@ referential checks (boards/events, tiles, player_boards and all four
 satellites); no event without a type or title; dev database, `public/hot`,
 `public/build`, `bootstrap/ssr` and `stale/` all correctly gitignored;
 `composer audit` clean; `pnpm audit` one low-severity advisory only;
-`/dev-login` correctly gated on `app()->environment('local')`.
+`/dev-login` has since been removed outright (2026-08-21) — the auth flow is exercised for real, and a local-only login backdoor is one fewer thing to keep correctly gated.
 
 Fixed during the scan:
 - `APP_NAME` was still `Laravel` in both `.env` and `.env.example`. It leaks
@@ -1494,6 +1494,458 @@ event", "OSRS clan event", "runescape events", "old school runescape event"?
      anything contested.
   4. No `ItemList`/`Event` schema on the public events index, which is the
      one page whose content genuinely is a list of events.
+
+## Staging feedback, 2026-08-21
+
+Reported from staging in one pass. Tests live in
+`tests/Feature/StagingFeedbackTest.php` and `tests/Feature/TeamOwnershipTest.php`.
+
+- [x] ~~**Discord login 500'd when the Discord window was closed mid-flow**~~ —
+  done. `DiscordController::callback()` called `Socialite::driver()->user()`
+  as its first statement with nothing around it, so two ordinary situations
+  came back as an unhandled stack trace on the user's screen: a cancelled
+  authorisation (Discord returns `?error=access_denied` and no code, which
+  the old code fed straight into the token exchange as a null code) and a
+  dead round trip (spent or expired code, or a session whose state no longer
+  matches — the 400 from `/oauth2/token` in the screenshot). Both now
+  redirect with a flash message, to `/login` normally and to
+  `/settings/account` if the session was mid-link. The link-user id is
+  pulled *before* anything can fail, because leaving it behind would make
+  the next plain login silently try to link instead.
+- [x] ~~**Teams could not be assigned while creating an event**~~ — done. The
+  Teams tab appeared as soon as you picked TEAM mode and then said "save the
+  board first", which is a tab that refuses to do the one thing it exists
+  for. Invites genuinely cannot work before the event row exists (an invite
+  points at an event id); teams can, because the teams already exist. The
+  tab now stages picks on the form in create mode and `BoardController::store`
+  writes them in the same transaction, reading from a new `/teams/options`
+  endpoint. The empty case — no teams at all — says so, links to `/teams`,
+  and points out that assigning them later is fine.
+- [x] ~~**Team management rights were one global role**~~ — done. `authorizeManage()`
+  asked "are you an admin, or do you hold TEAM_MANAGER?", so creating a team
+  left you with a card you could do nothing with, while one role granted
+  everything over every team on the site. Rights now live on the membership
+  row (`team_members.role`, backfilled: oldest member per team becomes
+  OWNER):
+  * OWNER — the creator. Renames, manages members, promotes, deletes. One
+    per team, and cannot be demoted or removed (a team with no owner is a
+    team nobody can delete).
+  * MANAGER — promoted by the owner. Everything except deleting and
+    promoting.
+  * MEMBER — in the team, manages nothing.
+
+  The teams page ships `viewerRole`/`canManage`/`canDelete` per team rather
+  than gating on `isAdmin` client-side, and `TeamSettingsModal` now handles
+  edit as well as create. Also closed a real hole in passing: the
+  add-member user search had no permission check at all and would list every
+  account on the site to anyone who could guess a team id.
+- [ ] **Retire the global `TEAM_MANAGER` role.** It still grants management
+  over every team, purely so nobody holding it loses access on deploy — but
+  the per-team roles above now cover what it was created for. Either drop
+  the check in `Team::isManagedBy()` and unassign the role, or keep it and
+  rename it to something that admits what it is (site-wide team staff).
+- [x] ~~**Created vs joined was invisible on the profile**~~ — done.
+  `/settings/profile`'s "Your events" listed everything in one column of
+  cards with an Owner badge as the only hint which was which. It is compact
+  rows now, with an All / Created by you / Joined toggle. "Created" means
+  being an author rather than strictly the owner — an event you were added
+  to as an editor is one you run, and `/my-events` already draws the line
+  there; the Owner/Editor badge still separates the two inside the list.
+- [x] ~~**Event blueprints**~~ — done. Reusable event formats ("Skill of the
+  Week", "Boss of the Month", "Clan Bingo Night") carrying an optional type,
+  metric and description. They autocomplete on the create-event title field
+  and prefill whatever they carry; a title-only blueprint is a legitimate
+  entry, for a name a clan reuses whose format changes each run. Managed
+  under `/admin/blueprints`, gated on `canCreateBoards` rather than
+  `isAdmin` — the people running events are the people who know which
+  formats get reused. 22 starters in `EventBlueprintSeeder`, safe to re-run
+  on its own (`php artisan db:seed --class=EventBlueprintSeeder`).
+- [ ] **Let event hosts manage blueprints from the event side.** Right now
+  blueprints only exist as global reference data behind `/admin/blueprints`.
+  The ask is to also reach them from board/event settings, so a host can
+  save the event they just configured as a format, or tweak one, without
+  going to the admin area. Open questions worth settling first: are
+  blueprints global or per-clan/per-guild once they can be created from
+  anywhere, and does "save this event as a blueprint" copy the settings or
+  stay linked to it?
+
+## Staging feedback, round two — 2026-08-21
+
+- [x] ~~**Role badge in the header**~~ — done. The user menu button stacks the
+  display name over the highest-ranking role (ADMIN / EDITOR / TEAM_MANAGER).
+  PLAYER is deliberately absent: everybody has it, so it distinguishes nobody.
+- [x] ~~**"Events" in the nav was not clickable**~~ — done. The grouped entry
+  had children and no `to`, so a click could only open a list. Desktop now
+  uses `u-popover mode="hover"` with a real link as its trigger — click
+  navigates, hover reveals the group — and the mobile drawer renders the
+  parent as a link with a separate chevron button beside it, which is two hit
+  areas rather than one row that means two things. Touch deliberately does not
+  get the hover panel (a tap fires hover *and* click).
+- [x] ~~**Skill/boss picker was an unsearchable dropdown**~~ — done.
+  `MetricPicker` wraps `u-select-menu`, which ships a search box, and skills
+  carry their real OSRS icons. Icons are extracted from `@dava96/osrs-icons`
+  by `scripts/extract-osrs-icons.mjs` into `public/images/osrs/skills/` and
+  committed — the package is a devDependency only, since its ESM build does
+  not load under Node at all and 20k inlined base64 sprites have no business
+  in an SSR render.
+- [ ] **Boss icons.** Skills have all 24; bosses have none. The icon set is
+  built from wiki *item* and *category* images, and there is no "Zulrah icon"
+  — only Zulrah's scales, and Zulrah's pet. Mapping ~70 bosses to a signature
+  drop is a hand-curated table that would be quietly wrong in places, so it is
+  a deliberate gap rather than a guess. Pets are probably the most consistent
+  choice if someone wants to do it properly.
+- [x] ~~**Dates**~~ — done. The create form pre-fills today and a fortnight
+  out, and both are required on create: every status badge, standings window
+  and bingo cutoff keys off a date, and each null one makes some other code
+  invent a fallback. `update()` keeps them nullable — events created before
+  this rule exist with null dates and a required field would make them
+  uneditable — but enforces the pairing (`required_with:start_date`) and the
+  ordering.
+- [x] ~~**Invite links tab appeared on every event**~~ — done. It now only
+  exists in edit mode *and* when access mode is INVITE. It was never a
+  placeholder for the Teams tab; it is a section that applies to one access
+  mode, and rendering it on an OPEN event to explain that invites appear once
+  the event exists — on an event that plainly existed — is what made it read
+  as a bug.
+- [x] ~~**No way to choose individual vs teams**~~ — done, and this was the
+  real one. The Solo/Team switch was rendered only inside the Snakes & Ladders
+  block, so bingo and both race types could never be team events and the Teams
+  step they gate could never appear. The server had scored per-team for all of
+  them the whole time (`BingoService::competitorFor`); the form simply could
+  not say so.
+- [x] ~~**Board creation is a stepper now, not tabs**~~ — done, matching
+  CLAUDE.md's own rule at last. Type → Basics → Format → Access, plus Teams
+  when the mode calls for it, with per-step validation and a first step that
+  presents the four event types as cards rather than hiding three of them
+  inside a `<select>`. Edit stays tabs. The sections live in
+  `Components/BoardSettings/*.vue` and are shared by both, so the two cannot
+  drift.
+- [x] ~~**The OSRS Wiki search did not exist**~~ — done. The home page has
+  promised "search the wiki directly to fill in icons and titles
+  automatically" since this stack was built, and the tile and bingo editors
+  searched the local `tasks` table — fourteen rows. `OsrsWikiService` proxies
+  MediaWiki's own api.php (cached a day, one request for both hits and
+  thumbnails), and picking a result creates a Task keyed on the wiki page id,
+  so the library grows as people use it. Both editors now share
+  `Components/TaskPicker.vue`.
+- [x] ~~**Bingo had no settings button and no review dialog**~~ — done. The
+  page now carries three distinct controls instead of one toggle: Quick edit
+  (what a *square* asks for), Edit board (what the *event* is — including card
+  size, win condition, line bonus and whether claims need approval, which
+  BoardController::update routes through `BingoService::applyCardSettings`),
+  and Review, which carries the pending count and opens a dialog showing the
+  screenshot inline with the claimant's Discord and OSRS names side by side.
+  Approved squares show the holder's avatar.
+- [x] ~~**A list view for filling in a board.**~~ — done, built to the
+  description below. `Components/TileListEditor.vue`, one component for both
+  grids, opened by "Fill in tiles" on either board page and automatically on
+  `?setup=tiles` — the redirect a freshly created event now lands on, since
+  "go and turn on edit mode and click 49 squares" is not a next step anybody
+  guesses. What it does:
+  * A numbered list rather than the grid. Each row is one position: number,
+    what it currently asks for, and empty rows visibly empty.
+  * **Say which way the numbering runs**, because the two grids disagree and
+    that is exactly what makes a list confusing. Snakes & Ladders runs
+    bottom-left to top-right (it is a track); a bingo card reads top-left to
+    bottom-right (it is a grid). Ideally show it, not just say it.
+  * Clicking a row opens a small nested popover with the wiki task picker
+    (`Components/TaskPicker.vue` already does the searching).
+  * A count of how many are filled, so "am I done" has an answer.
+  * Bingo rows carry the free-square toggle; Snakes & Ladders rows carry the
+    snake/ladder target, which should be picked rather than typed as a
+    number.
+
+  Where it lives matters too: the create stepper cannot hold it, because
+  tiles need an event to belong to (S&L tiles are created on first edit, bingo
+  squares with the card). Either a step that appears immediately *after*
+  creating, or a prominent panel on the event page for a board that is still
+  mostly empty.
+- [x] ~~**Pre-launch password lock**~~ — done, and yes it was realistic. A
+  shared password in front of the whole site (`EnsureSiteUnlocked`), set from
+  Admin → Site, with exactly two things reachable while it is on: the lock
+  screen and the auth routes. An admin session walks straight through, so
+  nobody has to hand out the shared password to the people running the site.
+  Deliberately *not* maintenance mode — `php artisan down` takes the app off
+  the air for everyone and cannot be turned off from a browser.
+- [x] ~~**Coming soon page published**~~ — done, on the orphan branch
+  `coming-soon`, one `index.html` plus a README covering the Ploi setup (web
+  root `/`, not `/public`, and no deploy script). Orphan so deploying it
+  cannot drag application code onto a public host. The source of truth stays
+  at `docs/coming-soon/index.html` on this branch.
+
+
+## Staging feedback, round three — 2026-08-21
+
+Done in this pass: the header submenu paints above the header again (it was
+portalled with z-index:auto under a sticky z-50 header) and its hover now
+waits 300ms so it stops fighting the click on the link it hangs off; default
+event length is an admin setting; the Discord server field is conditionally
+required for real on both ends; start-date and card-size finally have the
+guidance their neighbours had; event type shows on the my-events rows; "Quick
+edit" became "Edit tiles" and "Edit board" became "Event settings" on all
+three board pages; bingo squares can be free squares (wildcards); teams no
+longer leak.
+
+That last one deserves its own note:
+
+- [x] ~~**Every private team was visible to every account**~~ — done, and it
+  was a real leak rather than a UI slip. `TeamController` scoped teams to
+  "your Discord guilds, **or any team with no guild**", and a guild has
+  always been optional — so every team anybody made without one was offered
+  to everybody, including in the event form's picker. `Team::scopeVisibleTo()`
+  now says: you are in it, or it belongs to a Discord server you are in, or
+  you are an admin. No catch-all. A team with no server is a private group,
+  not an unclaimed one — which is also why the team form now picks a server
+  from your synced guilds (with "No server — private team" as the default)
+  instead of asking you to type an 18-digit snowflake.
+- [x] ~~**Teams was hidden from the nav**~~ — done. It was gated on
+  `isAdmin || isTeamManager`, which was wrong in both directions: creating a
+  team needs no permission at all, and the page is now scoped to what you can
+  actually see. Every signed-in account gets it.
+- [x] ~~**Announcements leaked past the pre-launch lock**~~ — done. The
+  banner is written for people already using the site ("summer bingo starts
+  Friday, sign up in #events") and the lock screen is the one page a stranger
+  can reach. `HandleInertiaRequests` now withholds the prop entirely unless
+  the request has passed the lock — withheld, not hidden client-side, since a
+  prop that reaches the browser is already disclosed.
+- [ ] **Per-announcement visibility switch.** The blanket rule above is the
+  safe default, but it also means nothing at all can be said on the lock
+  screen. A per-announcement "show this one publicly" toggle would allow a
+  launch date or a link to a Reddit post while keeping clan chatter behind
+  the door. Worth doing only if there turns out to be something to say —
+  otherwise it is a switch to get wrong.
+
+### Blueprints for boards, not just titles
+
+- [ ] **Board layout blueprints.** Event blueprints currently carry a title,
+  type, metric and description. What they cannot carry is the *board*: a
+  Snakes & Ladders layout (where the snakes and ladders sit, which task is on
+  which tile) or a bingo card (the squares, their points, where the free
+  square goes). That is the part that actually takes an hour to set up, and
+  the part a clan most wants to reuse between seasons.
+
+  Presented as the first thing you see once the event type is picked — a row
+  of "start from a template" options above the blank-event route, with a
+  group description explaining what each layout is for. Most relevant for
+  Snakes & Ladders and bingo; a race has almost no layout to speak of, so it
+  can keep the title-only blueprints it has.
+
+  Open questions: does a blueprint store a whole tile set (a snapshot) or a
+  generator (a size plus rules for how many snakes/ladders)? And are layout
+  blueprints global like the current ones, or per-clan once hosts can create
+  them from an event they have already built?
+
+### Icons and metrics
+
+- [ ] **Boss icons via pets, plus a CRUD and a watcher.** Skills have all 24
+  icons; bosses have none, because the icon set is built from wiki item and
+  category images and there is no "Zulrah icon". **Pets are the answer** — a
+  boss's pet is a real inventory sprite, unambiguous, and one per boss.
+  Two caveats worth designing around rather than discovering: a brand-new
+  boss's pet often is not on the wiki for a while (so a blank is a normal,
+  temporary state, not an error), and the boss list itself grows with every
+  game update.
+
+  Wanted, in order of usefulness:
+  * a CRUD under `/admin` for the boss list and each boss's icon, so a gap
+    can always be filled by hand;
+  * a scheduled job that reads the wiki's boss list and reports what this app
+    does not know about yet, by mail or notification;
+  * fully automatic import on top of that, once the mapping has been right
+    by hand for a while.
+
+  `scripts/extract-osrs-icons.mjs` already does the extract-and-commit half
+  for skills and is the obvious place to grow this.
+
+### Privacy
+
+- [ ] **Scope the task library the way teams are now scoped.** `/tasks/search`
+  returns every Task on the site to anyone who can edit a board. Today that is
+  fourteen seeded rows so nothing is exposed — but the wiki picker creates a
+  Task per page anybody imports, so the library grows into a record of what
+  every clan is running. It should be filtered the same way teams are: tasks
+  you created, plus tasks created by people you share a Discord server with,
+  plus the seeded ones. Needs a `created_by` on `tasks` (wiki imports would
+  set it) and the same visibility scope. If that turns out to be more than it
+  is worth, the fallback is simpler and also fine: drop the local library
+  from the picker and let the wiki be the only source.
+
+
+## Staging feedback, round four — 2026-08-21
+
+Fixed here: the save that silently did nothing, the wording that called a
+Discord server a "guild id", pointer cursors everywhere, the avatars nobody
+could see, the free square's doubled-up label, the badges on /my-events, the
+board's edit mode being invisible, a review button where the sentence about
+reviewing is, win-line hints on hover, and the login page keeping its chrome
+behind the lock. Plus the tile list editor above.
+
+Three of those were real bugs rather than polish:
+
+- [x] ~~**Editing any non-bingo event failed validation**~~ — and this was
+  the reported "I hit save, it jumped back to Basics and saved nothing". The
+  settings form carries every type's fields at once, so an edit on a Snakes &
+  Ladders event posted `bingo_size: null`. `sometimes` only skips a key that
+  is ABSENT — a present null is validated — so the save died on "the card
+  size field must be an integer", about a card the event does not have and a
+  field the form does not show. Fixed at both ends: the client strips fields
+  that do not belong to the type, and the server treats a null there as
+  "not submitted" rather than as a value.
+- [x] ~~**Validation errors were invisible on a tab you were not on**~~ —
+  which is what made the above look like nothing happening at all. The modal
+  now lists every problem in a banner above the tabs, each row clickable to
+  jump to the section that owns it.
+- [x] ~~**A GUILD event with no server locked everybody out, permanently**~~ —
+  including the admin who has to fix it. `canEditEvent()` let an admin edit
+  any event while `hasAccess()` would not let them open one, so the only
+  route to the settings was behind a gate that turned them away.
+  `BoardAccessService::canBypass()` now covers authors and admins alike.
+
+### Still open from this round
+
+- [x] ~~**A rejected claim only explained itself on hover.**~~ — done. A
+  dismissible alert above the card names the square and gives the host's
+  reason (or says there wasn't one), with a 1/2 navigator when several were
+  rejected. Dismissals are held per position rather than removing rows, so a
+  claim rejected AGAIN after a re-submission comes back — the point is that
+  you find out, and "I closed it once" is not the same as "I know".
+- [ ] **Clicking a claimed square withdraws it, with no warning.** No hover
+  state says so and nothing confirms it, so an accidental second click
+  quietly undoes a claim. Should open the claim in a dialog with a delete
+  button, matching how everything else destructive works here.
+- [ ] **Review notes on an APPROVED claim go nowhere.** The field is offered
+  whatever the verdict, and only a rejection shows it. Either surface it on
+  the approved square too ("host said: nice one") or stop asking for it when
+  approving. Currently it is quietly discarded, which is the one option that
+  is definitely wrong.
+- [ ] **Say WHY an admin can see a team.** Team visibility is now scoped, but
+  an admin still sees everything with no indication which teams are theirs,
+  which come from a shared Discord server, and which they can only see
+  because they are an admin. Group the teams page under those three headings
+  — useful for everyone, not just admins. (`Team::scopeVisibleTo` already
+  computes the answer; it just is not carried through to the page.)
+- [x] ~~**Teams and participants on the event page.**~~ — done, as its own
+  page (`/events/{event}/participants`) reachable from all three event types.
+  Teams expand to their members with a manage link for whoever runs that
+  team; people are listed with their OSRS name and a Host badge.
+
+  The privacy rule landed as discussed and is the part worth not breaking:
+  **counts are public, names are not.** A listed OPEN event is indexed and
+  reachable by anyone, and nobody joined a board game expecting to end up in
+  a public directory of who plays what — so a stranger sees "12 taking part"
+  and no names, while anyone in the event (including via an assigned team)
+  and anyone running it sees everything. Seven tests in
+  `tests/Feature/ParticipantsTest.php`.
+- [ ] **Accept `7d` / `1w` / `1m` in the default event length.** It is a
+  plain day count today. Parsing short forms would read better, and a month
+  should mean a calendar month (28-31 days) rather than a fixed 30 — which
+  means storing the unit, not just the number.
+- [ ] **Use Nuxt UI's date range picker for the event window.** Two `<input
+  type="date">` fields work but they are two decisions where there is really
+  one. Its range picker also wants a look: every day in the range renders as
+  a filled primary swatch, which is loud — the two ends should be solid and
+  everything between them subtle.
+- [x] ~~**The task library is a wiki cache now, not a second source.**~~ —
+  done. The picker is one search box over the OSRS Wiki; the source toggle is
+  gone. Every page somebody uses is written to `tasks` with a
+  `wiki_synced_at` stamp and a seven-day TTL (`Task::wikiCacheIsStale`), and
+  re-picking a page refreshes the row rather than creating a second one — so
+  a renamed page or a new image corrects itself. Hand-written tasks are never
+  stale; they have no upstream to be stale against. Admin > Tasks still
+  manages them directly.
+
+  This also retires the privacy question from round three: the table stopped
+  being a record of what each clan is running and became an ordinary cache.
+
+### Local development note
+
+`php artisan serve` is **single-threaded**, and the SSE stream holds a
+connection open for ~45 seconds per viewer. So with an event page open,
+every other request — saving a tile, searching the wiki, submitting the
+settings form — queues behind the stream and appears to hang for up to 45s.
+It is not a bug in the app and it does not happen behind nginx + php-fpm,
+which has a worker per request. Worth knowing before debugging a "hang" that
+is really a queue: close the event tab, or hit the endpoint directly.
+
+
+## Staging feedback, round five — 2026-08-21
+
+Done: the wiki picker lost its source toggle and the task table became a
+proper cache; rejected claims explain themselves in an alert with a
+navigator; the win-line hint draws an actual line and goes quiet in edit
+mode; avatars are readable; a bingo row on /my-events has a card preview;
+"Live" became "Updating live" so it stops competing with the event's own
+Running badge; the settings modal no longer snaps back to Basics for a frame
+before closing; `/dev-login` is gone and the seeded admin has real
+credentials.
+
+### Needs your call before I touch it
+
+- [ ] **Should an admin be able to edit every event?** You wrote
+  "canEditEvent mag idd niet alle events bewerken", which I read as agreeing
+  that a site admin editing anybody's event is too much — but it is also the
+  power that makes moderation possible, and `BoardAccessService::canBypass()`
+  now leans on it so an admin can open an event to fix it. I have deliberately
+  NOT changed it. The options as I see them:
+  1. Leave it. Admin is a small, trusted set, and the audit log already
+     records what they change.
+  2. Read-only bypass: an admin can always OPEN any event (needed to
+     moderate, and to unstick a misconfigured one), but editing needs
+     authorship. Moderation actions that genuinely need a write — deleting an
+     event, removing a claim — become explicit admin actions with their own
+     audit entries, rather than a general edit right.
+  3. Full separation: admins get neither, and moderation happens only through
+     purpose-built admin screens.
+
+  My preference is (2): it keeps the "cannot open the thing you are allowed
+  to change" bug from coming back, without a general write over other
+  people's events. Say which and I will do it.
+
+### New
+
+- [ ] **Per-user Wise Old Man API key.** The shared, unauthenticated WOM
+  endpoint is rate-limited per IP, so once this app is busy enough the whole
+  site's standings stall together. Let a user store their own key and use it
+  for the events they run, so a rate limit degrades to "your boards still
+  update" rather than "nothing updates".
+
+  What matters more than the key field: **saying so.** When WOM answers 429,
+  the standings page should say the sync is rate-limited and offer the
+  setting, rather than showing stale numbers with no explanation. That
+  message is most of the value; the key is the fix it points at.
+
+  A key is a credential, so: stored encrypted (`encrypted` cast), never
+  shared back to the browser, and the settings field shows only whether one
+  is set — the same shape the site lock password uses.
+
+### Still open from round four
+
+- [ ] **Clicking a claimed square withdraws it, with no warning.** No hover
+  state says so and nothing confirms it, so an accidental second click
+  quietly undoes a claim. Should open the claim in a dialog with a delete
+  button, matching how everything else destructive works here.
+- [ ] **Review notes on an APPROVED claim go nowhere.** The field is offered
+  whatever the verdict, and only a rejection shows it. Either surface it on
+  the approved square too, or stop asking for it when approving.
+- [ ] **Accept `7d` / `1w` / `1m` in the default event length**, with a month
+  meaning a calendar month rather than a fixed 30 — which means storing the
+  unit, not just the number.
+- [ ] **Use Nuxt UI's date range picker for the event window**, and tone down
+  its range styling: every day in the range renders as a filled primary
+  swatch, where only the two ends should be solid.
+- [ ] **Board layout blueprints** (round three) — still the biggest
+  remaining feature.
+
+### Correction: the "single-threaded dev server" claim
+
+I said local slowness was `php artisan serve` serialising requests behind
+the SSE stream. **That is not supported by measurement** — with a stream
+open, repeated requests returned in ~2.3s each rather than queueing behind
+it. The 25-second waits I saw were real, but the cause is not established
+and the explanation above should not be trusted. Worth a proper look before
+anybody optimises against it; the session lock is already released early in
+`EventStreamController` (line ~72), so that is not it either.
+
 
 ## Content review before launch (step 8)
 

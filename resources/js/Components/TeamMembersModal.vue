@@ -6,9 +6,42 @@
                     <p class="text-xs font-medium text-muted uppercase tracking-wide mb-2">{{ $t('teams.members') }}</p>
                     <div v-if="team.members.length" class="flex flex-col gap-1">
                         <div v-for="member in team.members" :key="member.id" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-elevated">
-                            <u-avatar :src="member.user.avatar_url ?? undefined" size="xs" />
-                            <span class="text-sm flex-1">{{ member.user.nickname ?? member.user.discord_username }}</span>
-                            <u-button variant="ghost" color="error" size="xs" icon="i-lucide-x" @click="removeMember(member.user)" />
+                            <u-avatar :src="member.user?.avatar_url ?? undefined" size="xs" />
+                            <span class="text-sm flex-1 min-w-0 truncate">{{ displayName(member) }}</span>
+
+                            <u-badge
+                                v-if="member.role !== 'MEMBER'"
+                                :label="$t(`teams.role_${member.role.toLowerCase()}`)"
+                                :color="member.role === 'OWNER' ? 'warning' : 'info'"
+                                variant="subtle"
+                                size="sm"
+                            />
+
+                            <!-- Promotion is the owner's alone (see
+                                 TeamController::updateMemberRole), so a
+                                 manager sees the roles without the switch. -->
+                            <u-button
+                                v-if="canPromote && member.role !== 'OWNER'"
+                                variant="ghost"
+                                color="neutral"
+                                size="xs"
+                                :icon="member.role === 'MANAGER' ? 'i-lucide-shield-minus' : 'i-lucide-shield-plus'"
+                                :aria-label="member.role === 'MANAGER' ? $t('teams.demote') : $t('teams.promote')"
+                                :title="member.role === 'MANAGER' ? $t('teams.demote') : $t('teams.promote')"
+                                @click="setRole(member, member.role === 'MANAGER' ? 'MEMBER' : 'MANAGER')"
+                            />
+
+                            <!-- Removing the owner would leave a team nobody
+                                 can delete; the server refuses it too. -->
+                            <u-button
+                                v-if="member.role !== 'OWNER'"
+                                variant="ghost"
+                                color="error"
+                                size="xs"
+                                icon="i-lucide-x"
+                                :aria-label="$t('teams.remove_member')"
+                                @click="removeMember(member.user)"
+                            />
                         </div>
                     </div>
                     <p v-else class="text-xs text-muted italic px-1">{{ $t('teams.no_members') }}</p>
@@ -29,7 +62,7 @@
                             <u-avatar :src="user.avatar_url ?? undefined" size="xs" />
                             <span class="text-sm flex-1">{{ user.nickname ?? user.discord_username }}</span>
                         </div>
-                        <p v-if="search && !results.length" class="text-xs text-muted italic px-1 py-2">{{ $t('teams.no_users_found') }}</p>
+                        <p v-if="search && !results.length && !searching" class="text-xs text-muted italic px-1 py-2">{{ $t('teams.no_users_found') }}</p>
                     </div>
                 </div>
             </div>
@@ -44,6 +77,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -54,21 +88,46 @@ const emit = defineEmits(['update:open']);
 
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
+// Handing out management is the owner's call; the server enforces the same
+// split, this only keeps the button from being there to click.
+const canPromote = computed(() => props.team.viewerRole === 'OWNER' || props.team.canDelete);
+
+// A user row can be missing entirely — team_members cascades on user delete,
+// but a member whose account is mid-deletion still renders here for a beat.
+function displayName(member) {
+    return member.user?.nickname ?? member.user?.discord_username ?? trans('common.unknown');
+}
+
 const search = ref('');
 const results = ref([]);
+const searching = ref(false);
 
 let searchTimeout;
 function debouncedSearch(value) {
     clearTimeout(searchTimeout);
     if (!value) {
         results.value = [];
+        searching.value = false;
         return;
     }
+    searching.value = true;
     searchTimeout = setTimeout(async () => {
-        const response = await fetch(`/teams/${props.team.id}/users/search?search=${encodeURIComponent(value)}`, {
-            headers: { Accept: 'application/json' },
-        });
-        results.value = await response.json();
+        try {
+            const response = await fetch(`/teams/${props.team.id}/users/search?search=${encodeURIComponent(value)}`, {
+                headers: { Accept: 'application/json' },
+            });
+            // A 403 (someone lost manage rights while the modal was open) or
+            // a throttle answers with a body that is not a list, and this
+            // took it anyway — v-for over an object renders nothing and the
+            // empty state never appears, which reads as "no users found".
+            const data = response.ok ? await response.json() : [];
+            results.value = Array.isArray(data) ? data : [];
+        } catch (error) {
+            console.error(error);
+            results.value = [];
+        } finally {
+            searching.value = false;
+        }
     }, 250);
 }
 
@@ -80,6 +139,10 @@ function addMember(user) {
             results.value = [];
         },
     });
+}
+
+function setRole(member, role) {
+    router.patch(`/teams/${props.team.id}/members/${member.user.id}`, { role }, { preserveScroll: true });
 }
 
 function removeMember(user) {

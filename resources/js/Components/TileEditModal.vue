@@ -2,29 +2,12 @@
     <u-modal v-model:open="isOpen" :title="`${$t('tile_editor.title')} ${position + 1}`" :dismissible="false">
         <template #body>
             <div class="space-y-4 py-2">
-                <u-form-field :label="$t('tile_editor.task_label')">
-                    <u-input v-model="taskSearch" :placeholder="$t('tile_editor.task_placeholder')" icon="i-lucide-search" class="w-full" @update:model-value="debouncedSearch" />
-                    <div v-if="taskResults.length" class="mt-2 divide-y divide-default rounded-md ring ring-default max-h-48 overflow-y-auto">
-                        <button
-                            v-for="task in taskResults"
-                            :key="task.id"
-                            type="button"
-                            class="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-elevated"
-                            @click="selectTask(task)"
-                        >
-                            <u-avatar :src="task.icon_url ?? undefined" size="3xs" />
-                            <span class="truncate">{{ task.title }}</span>
-                        </button>
-                    </div>
-                    <div v-if="selectedTask" class="mt-2 flex items-center gap-2 p-2 rounded-md bg-elevated">
-                        <u-avatar :src="selectedTask.icon_url ?? undefined" size="xs" />
-                        <span class="text-sm flex-1 truncate">{{ selectedTask.title }}</span>
-                        <u-button icon="i-lucide-x" size="xs" color="neutral" variant="ghost" @click="selectedTask = null" />
-                    </div>
+                <u-form-field :label="$t('tile_editor.task_label')" :description="$t('tile_editor.task_desc')">
+                    <task-picker v-model="selectedTask" :event-id="eventId" />
                 </u-form-field>
 
                 <u-form-field :label="$t('tile_editor.title_override')" :description="$t('tile_editor.title_override_desc')">
-                    <u-input v-model="form.title_override" class="w-full" />
+                    <u-input v-model="form.title_override" class="w-full" :placeholder="selectedTask?.title ?? ''" />
                 </u-form-field>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -54,10 +37,16 @@
 import { computed, ref, watch } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import TaskPicker from '@/Components/TaskPicker.vue';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
-    boardId: { type: String, required: true },
+    // Named eventId, not boardId: it always WAS the event id — every caller
+    // passes `board.id` from a page whose `board` prop is the event — and
+    // the URLs below are /events/{id}/tiles. TaskPicker needs the same value
+    // for its own event-scoped endpoints, so the misleading name got fixed
+    // rather than propagated.
+    eventId: { type: String, required: true },
     position: { type: Number, required: true },
     tile: { type: Object, default: null },
 });
@@ -72,8 +61,6 @@ const typeOptions = [
     { label: trans('tile_editor.type_ladder_full'), value: 'LADDER' },
 ];
 
-const taskSearch = ref('');
-const taskResults = ref([]);
 const selectedTask = ref(null);
 
 function blankForm() {
@@ -86,48 +73,28 @@ watch(
     () => [props.tile, props.open],
     () => {
         if (!props.open) return;
+
         const t = props.tile;
+
         form.defaults(t ? {
             title_override: t.title_override ?? '',
             type: t.type,
             target_position: t.target_position,
             task_id: t.task?.id ?? null,
         } : blankForm()).reset();
+
         selectedTask.value = t?.task ?? null;
-        taskSearch.value = '';
-        taskResults.value = [];
     },
     { immediate: true },
 );
 
-let searchTimeout;
-function debouncedSearch(value) {
-    clearTimeout(searchTimeout);
-    if (!value) {
-        taskResults.value = [];
-        return;
-    }
-    searchTimeout = setTimeout(async () => {
-        const response = await fetch(`/tasks/search?search=${encodeURIComponent(value)}`, {
-            headers: { Accept: 'application/json' },
-        });
-        taskResults.value = await response.json();
-    }, 250);
-}
-
-function selectTask(task) {
-    selectedTask.value = task;
-    taskResults.value = [];
-    taskSearch.value = '';
-}
-
 function submit() {
     form.transform((data) => ({ ...data, position: props.position, task_id: selectedTask.value?.id ?? null }))
-        .post(`/events/${props.boardId}/tiles`, { onSuccess: () => (isOpen.value = false) });
+        .post(`/events/${props.eventId}/tiles`, { onSuccess: () => (isOpen.value = false) });
 }
 
 function clearTile() {
-    router.delete(`/events/${props.boardId}/tiles/${props.tile.id}`, {
+    router.delete(`/events/${props.eventId}/tiles/${props.tile.id}`, {
         preserveScroll: true,
         onSuccess: () => (isOpen.value = false),
     });

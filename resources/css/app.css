@@ -39,6 +39,24 @@
     font-smooth: never;
 }
 
+/* Every interactive thing gets a pointer, once, rather than per component.
+   ui.config.ts already pins it on u-button, which is exactly why the gap was
+   invisible: everything built from Nuxt UI looked right and every hand-rolled
+   <button> — the bingo squares, the board tiles, the type cards in the create
+   form — did not. Tailwind's preflight sets `cursor: default` on button, so
+   this is a deliberate reversal, not an omission being filled in.
+
+   :disabled is excluded on purpose: a disabled control is not clickable, and
+   a pointer over one promises something that will not happen. */
+button:not(:disabled):not([aria-disabled='true']),
+[role='button']:not([aria-disabled='true']),
+summary,
+label[for],
+select,
+a[href] {
+    cursor: pointer;
+}
+
 h1,
 h2,
 h3,

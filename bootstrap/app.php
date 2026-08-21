@@ -1,12 +1,13 @@
 <?php
 
+use App\Http\Middleware\EnsureCanAccessAdmin;
+use App\Http\Middleware\EnsureSiteUnlocked;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequireOsrsUsername;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use App\Http\Middleware\EnsureCanAccessAdmin;
-use App\Http\Middleware\HandleInertiaRequests;
-use App\Http\Middleware\RequireOsrsUsername;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             HandleInertiaRequests::class,
+            // Last in the group, so a locked site still gets a session and
+            // its shared Inertia props — the lock screen is an Inertia page
+            // like any other, and the flag it checks lives in the session.
+            EnsureSiteUnlocked::class,
         ]);
 
         // Gate for the whole /admin group — see EnsureCanAccessAdmin for why

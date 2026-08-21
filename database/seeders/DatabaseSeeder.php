@@ -117,6 +117,10 @@ class DatabaseSeeder extends Seeder
 
         $this->call(AdminUserSeeder::class);
         $this->call(GrantOwnerAdminSeeder::class);
+        // Reference data rather than demo data: these are the formats the
+        // create-event autocomplete offers, and an empty list makes that
+        // field look broken rather than empty. Safe to re-run on its own.
+        $this->call(EventBlueprintSeeder::class);
         $this->call(DemoDataSeeder::class);
         // After the admin seeders — it links its entries to whichever user
         // holds the ADMIN role.

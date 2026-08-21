@@ -5,21 +5,14 @@
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <u-badge
-                                v-if="typeMeta"
-                                :icon="typeMeta.icon"
-                                :label="typeMeta.label"
-                                color="primary"
-                                variant="subtle"
-                                size="sm"
-                            />
-                            <u-badge :label="$t(`boards.status_${status}`)" :color="statusColor" variant="subtle" size="sm" />
-                        </div>
-                        <h1 class="text-3xl font-bold text-highlighted mt-2">{{ event.title }}</h1>
-                        <p v-if="event.description" class="text-muted mt-1">{{ event.description }}</p>
-                    </div>
+                    <event-type-heading :event="event">
+                        <template #meta>
+                            <span class="inline-flex items-center gap-1.5">
+                                <u-icon name="i-lucide-trophy" class="size-4 shrink-0" />
+                                {{ rankedBy }}
+                            </span>
+                        </template>
+                    </event-type-heading>
 
                     <div class="flex items-center gap-3 shrink-0">
                         <!-- Reports the live channel rather than offering a
@@ -27,11 +20,19 @@
                              button would imply it can't be trusted to. -->
                         <span v-if="streaming" class="inline-flex items-center gap-1.5 text-xs" :class="stale ? 'text-muted' : 'text-success'">
                             <span class="relative flex size-2">
-                                <span v-if="!stale" class="absolute inline-flex size-full rounded-full bg-success opacity-60 animate-ping" />
                                 <span class="relative inline-flex size-2 rounded-full" :class="stale ? 'bg-muted' : 'bg-success'" />
                             </span>
-                            {{ stale ? $t('events.reconnecting') : $t('events.live') }}
+                            {{ stale ? $t('events.reconnecting') : $t('events.auto_updating') }}
                         </span>
+
+                        <u-button
+                            :href="`/events/${event.id}/participants`"
+                            color="neutral"
+                            variant="outline"
+                            size="sm"
+                            icon="i-lucide-users-round"
+                            :label="$t('participants.open')"
+                        />
 
                         <!-- Entering is a decision, so it's a button. Looking
                              at a public leaderboard must not enrol anyone. -->
@@ -64,7 +65,7 @@
                             color="neutral"
                             variant="outline"
                             icon="i-lucide-settings"
-                            :label="$t('board.edit_board')"
+                            :label="$t('board.event_settings')"
                             @click="showSettingsModal = true"
                         />
                     </div>
@@ -203,11 +204,11 @@
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
 import { boardEventStatus, formatDate } from '@/Support/board';
 import { metricLabel, rankedByLabel } from '@/Support/metrics';
-import { eventTypeMeta } from '@/Support/eventTypes';
 import { useEventStream } from '@/Composables/useEventStream';
 
 // Async, exactly as BoardShow loads it: the modal reaches @nuxt/ui
@@ -253,7 +254,6 @@ const rows = ref([...props.standings]);
 // the page assuming everything is a skill.
 const isBossRace = computed(() => props.event.metricKind === 'boss');
 
-const typeMeta = computed(() => eventTypeMeta(props.event.type));
 
 const metricName = computed(() => metricLabel(props.event.metric, props.event.metricKind));
 
@@ -261,8 +261,6 @@ const rankedBy = computed(() => rankedByLabel(props.event.metric, props.event.me
 
 const status = computed(() => boardEventStatus(props.event.start_date, props.event.end_date));
 
-const STATUS_COLOR = { upcoming: 'info', live: 'success', ended: 'neutral' };
-const statusColor = computed(() => STATUS_COLOR[status.value] ?? 'neutral');
 
 const dateRange = computed(() => {
     if (!props.event.start_date && !props.event.end_date) return trans('boards.no_dates');

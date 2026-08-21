@@ -56,6 +56,13 @@ class BingoController extends Controller
             return back()->with('board-save-error', trans('bingo.event_ended'));
         }
 
+        // Nothing to claim: a wildcard already counts for everybody, so a
+        // claim on one would be a row that changes no score and a queue
+        // entry a host has to rule on for no reason.
+        if ($square->is_wildcard) {
+            return back()->with('board-save-error', trans('bingo.wildcard_not_claimable'));
+        }
+
         $competitor = $bingo->competitorFor($event, $request->user());
 
         if ($competitor === null) {
@@ -141,24 +148,31 @@ class BingoController extends Controller
             // events are actually run. Capped so one square cannot be worth
             // more than a whole card.
             'points' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            // A free square, counted as done for every competitor — see the
+            // add_wildcard_to_bingo_squares migration.
+            'is_wildcard' => ['nullable', 'boolean'],
         ]);
 
+        // Every key null-coalesced, including title_override — `?:` on a
+        // key the request did not send is an undefined-index 500, and a
+        // PATCH that changes only one field is a perfectly ordinary request
+        // (the wildcard toggle sends exactly that).
         $square->update([
             'task_id' => $data['task_id'] ?? null,
-            'title_override' => $data['title_override'] ?: null,
+            'title_override' => ($data['title_override'] ?? null) ?: null,
             'points' => $data['points'] ?? 1,
+            'is_wildcard' => $data['is_wildcard'] ?? false,
         ]);
 
         return back()->with('board-save', trans('bingo.square_saved'));
     }
 
     /**
-     * Change the card's size or win condition.
+     * Change the card's size, win condition, line bonus or review setting.
      *
-     * Growing a card adds squares; shrinking one **refuses** rather than
-     * dropping the squares that fall outside the new grid, because those
-     * carry other people's completions. Deleting somebody's progress is not
-     * something a size dropdown should be able to do silently.
+     * The rules live in BingoService::applyCardSettings() — the event
+     * settings modal writes the same fields and has to obey the same shrink
+     * guard.
      */
     public function updateCard(Request $request, Event $event, BingoService $bingo): RedirectResponse
     {
@@ -175,21 +189,9 @@ class BingoController extends Controller
             'requires_approval' => ['sometimes', 'boolean'],
         ]);
 
-        if (isset($data['size']) && $data['size'] < $card->size) {
-            $hasProgress = BingoCompletion::whereIn(
-                'bingo_square_id',
-                $card->squares()->where('position', '>=', $data['size'] ** 2)->select('id'),
-            )->exists();
-
-            if ($hasProgress) {
-                return back()->with('board-save-error', trans('bingo.cannot_shrink'));
-            }
-
-            $card->squares()->where('position', '>=', $data['size'] ** 2)->delete();
+        if (! $bingo->applyCardSettings($card, $data)) {
+            return back()->with('board-save-error', trans('bingo.cannot_shrink'));
         }
-
-        $card->update($data);
-        $bingo->ensureSquares($card->fresh());
 
         return back()->with('board-save', trans('bingo.card_saved'));
     }

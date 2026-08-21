@@ -37,6 +37,12 @@ class Setting extends Model
         'registration_open' => true,
         'default_board_size' => 'SIZE_7X7',
         'default_dice_roll_limit' => 1,
+        // How long the create-event form pre-fills a new event to run for.
+        // A default, not a rule: the dates stay editable on the form, this
+        // only decides what they start at. Clans settle into a rhythm — a
+        // week, a fortnight, a month — and this is where that gets said once
+        // instead of being corrected on every event.
+        'default_event_duration_days' => 14,
         'announcement' => null,
         'announcement_type' => 'info',
         // Every "support" button on the site points straight here. A default
@@ -44,6 +50,12 @@ class Setting extends Model
         // nowhere, and the profile is not something that changes often enough
         // to be worth that failure mode.
         'kofi_url' => 'https://ko-fi.com/pondake',
+        // A shared password in front of the whole site for the pre-launch
+        // stretch — see EnsureSiteUnlocked. The password is stored hashed
+        // under site_lock_password and is never read back into a form; the
+        // admin page can set a new one or leave it alone.
+        'site_lock_enabled' => false,
+        'site_lock_password' => null,
     ];
 
     /** Banner styles. Keys are stored; the UI maps them to colour and icon. */
@@ -59,10 +71,21 @@ class Setting extends Model
      */
     public static function cached(): array
     {
-        return Cache::rememberForever(self::CACHE_KEY, fn () => [
-            ...self::DEFAULTS,
-            ...static::query()->pluck('value', 'key')->all(),
-        ]);
+        // DEFAULTS is merged on READ, not baked into the cached value.
+        //
+        // It used to be inside the closure, which meant the cache held a
+        // snapshot of whichever keys existed when it was written — so adding
+        // a new setting made every read of it an "Undefined array key" until
+        // somebody happened to clear the cache. That is a deploy-time 500
+        // waiting for the next setting anyone adds, and it duly happened the
+        // first time one was (site_lock_password). Only the table's own rows
+        // are cached now, which is the part that costs a query.
+        $stored = Cache::rememberForever(
+            self::CACHE_KEY,
+            fn () => static::query()->pluck('value', 'key')->all(),
+        );
+
+        return [...self::DEFAULTS, ...$stored];
     }
 
     public static function get(string $key): mixed

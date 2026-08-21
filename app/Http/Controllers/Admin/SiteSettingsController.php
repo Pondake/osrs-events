@@ -8,6 +8,7 @@ use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,8 +28,18 @@ class SiteSettingsController extends Controller
     {
         abort_unless(Auth::user()->isAdmin(), 403);
 
+        $settings = Setting::cached();
+
         return Inertia::render('Admin/Site', [
-            'settings' => Setting::cached(),
+            // The hash never leaves the server. The form needs to know only
+            // whether one is set, so the field can say "leave blank to keep
+            // the current password" rather than rendering a bcrypt string
+            // into the page for anyone to copy.
+            'settings' => [
+                ...$settings,
+                'site_lock_password' => null,
+                'site_lock_has_password' => ($settings['site_lock_password'] ?? null) !== null,
+            ],
         ]);
     }
 
@@ -42,12 +53,28 @@ class SiteSettingsController extends Controller
             // nullable = "unlimited", matching the boards table's own
             // dice_roll_limit convention rather than inventing a sentinel.
             'default_dice_roll_limit' => ['nullable', 'integer', 'min:1', 'max:99'],
+            // Capped at a year: this pre-fills a date field, and a default
+            // that lands an event's end date in 2031 is a typo nobody
+            // notices until the standings never close.
+            'default_event_duration_days' => ['required', 'integer', 'min:1', 'max:365'],
             'announcement' => ['nullable', 'string', 'max:280'],
             'announcement_type' => ['required', Rule::in(Setting::ANNOUNCEMENT_TYPES)],
             // http/https only, matching what the page renderer's safeHref()
             // will accept anyway — better to reject it at the form than to
             // store a value that silently renders as no button at all.
             'kofi_url' => ['required', 'url:http,https', 'max:255'],
+            'site_lock_enabled' => ['required', 'boolean'],
+            // Required only when turning the lock on without one already
+            // stored — otherwise blank means "keep the current password",
+            // which is what an admin editing any other field on this page
+            // is doing.
+            'site_lock_password' => [
+                'nullable',
+                'string',
+                'min:6',
+                'max:255',
+                Rule::requiredIf(fn () => $request->boolean('site_lock_enabled') && Setting::get('site_lock_password') === null),
+            ],
         ], [], [
             // Without this the message reads "The kofi url field ...", from
             // Laravel's snake_case-to-words fallback.
@@ -61,6 +88,15 @@ class SiteSettingsController extends Controller
             'announcement' => $data['announcement'] ?: null,
         ];
 
+        // Hashed on the way in, and dropped from the write entirely when the
+        // field was left blank — assigning null there would silently clear
+        // the password every time an admin saved an unrelated setting.
+        if (filled($data['site_lock_password'] ?? null)) {
+            $values['site_lock_password'] = Hash::make($data['site_lock_password']);
+        } else {
+            unset($values['site_lock_password']);
+        }
+
         // Diffed against the current values before writing, so the log holds
         // what actually changed rather than a full copy of the form on every
         // save — otherwise "who closed registration" is buried under dozens
@@ -69,9 +105,17 @@ class SiteSettingsController extends Controller
         $changes = [];
 
         foreach ($values as $key => $value) {
-            if (($before[$key] ?? null) !== $value) {
-                $changes[$key] = ['from' => $before[$key] ?? null, 'to' => $value];
+            if (($before[$key] ?? null) === $value) {
+                continue;
             }
+
+            // The lock password is the one setting whose VALUE must not
+            // reach the audit log — "it changed" is the whole useful fact,
+            // and a bcrypt hash sitting in a table admins can read is a
+            // credential leak with extra steps.
+            $changes[$key] = $key === 'site_lock_password'
+                ? ['from' => '********', 'to' => '********']
+                : ['from' => $before[$key] ?? null, 'to' => $value];
         }
 
         Setting::setMany($values);

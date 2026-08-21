@@ -81,7 +81,8 @@ documented there, but the ones that matter first:
 | Variable | Why |
 |---|---|
 | `DISCORD_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI` | Discord login. Without them the button 400s. |
-| `ADMIN_USER` / `ADMIN_PASS` | Local-only admin account, reachable at `/dev-login?as=admin&pass=…`. Only exists when `APP_ENV=local`. |
+| `ADMIN_USER` / `ADMIN_PASS` | Display name and password for the seeded admin account (`AdminUserSeeder`). Log in at `/login` with `ADMIN_EMAIL` and `ADMIN_PASS`. |
+| `ADMIN_EMAIL` | Email the seeded admin logs in with. Defaults to `admin@osrs-events.test`. |
 | `SESSION_SECURE_COOKIE` | Leave unset locally; **set it to `true` on any HTTPS deployment**, or session cookies go out over plain HTTP. |
 | `WOM_USER_AGENT` | Identifies this app to Wise Old Man. Put a contact address in it. |
 | `MAIL_*` | Password-reset mail. Ships as `log`, which *reports success and delivers nothing* — see [Mail](#mail). |

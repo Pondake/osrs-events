@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Event;
 use App\Models\BoardAccess;
 use App\Models\BoardInvite;
+use App\Models\Event;
 use App\Models\User;
 use App\Models\UserGuild;
 use Illuminate\Support\Facades\DB;
@@ -26,12 +26,33 @@ class BoardAccessService
     }
 
     /**
+     * Who may look at an event whatever its access mode says: its authors,
+     * and admins.
+     *
+     * The admin half was missing, and the mismatch it created is worse than
+     * it sounds: User::canEditEvent() lets an admin edit ANY event, while
+     * hasAccess() did not let them open one — so an admin could change an
+     * event they were not allowed to look at, and the only route to its
+     * settings (the button on its own page) was behind a gate that turned
+     * them away.
+     *
+     * Caught on a GUILD event whose required server was never set. That
+     * combination was legal until the form started requiring one, and it
+     * locks the event away from everybody at once — including the person who
+     * has to go in and fix it.
+     */
+    public function canBypass(User $user, Event $event): bool
+    {
+        return $user->isAdmin() || $this->isAuthor($user, $event);
+    }
+
+    /**
      * Whether the user may join the board without yet having a BoardAccess
      * record. Returns a reason string when denied, for display in the UI.
      */
     public function canJoin(User $user, Event $event): array
     {
-        if ($this->isAuthor($user, $event)) {
+        if ($this->canBypass($user, $event)) {
             return ['allowed' => true];
         }
 
@@ -63,7 +84,7 @@ class BoardAccessService
      */
     public function hasAccess(User $user, Event $event): bool
     {
-        if ($event->access_mode === 'OPEN' || $this->isAuthor($user, $event)) {
+        if ($event->access_mode === 'OPEN' || $this->canBypass($user, $event)) {
             return true;
         }
 
@@ -87,7 +108,7 @@ class BoardAccessService
             return $this->useInvite($event, $tokenOrCode, $user);
         }
 
-        if (! $this->isAuthor($user, $event)) {
+        if (! $this->canBypass($user, $event)) {
             $check = $this->canJoin($user, $event);
             if (! $check['allowed']) {
                 throw ValidationException::withMessages(['access' => $check['reason']]);

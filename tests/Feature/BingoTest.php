@@ -281,6 +281,8 @@ class BingoTest extends TestCase
         $this->actingAs($admin)->post('/events', [
             'title' => 'New bingo',
             'type' => 'BINGO',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-15',
             'bingo_size' => 4,
             'win_condition' => 'FULL_HOUSE',
         ]);

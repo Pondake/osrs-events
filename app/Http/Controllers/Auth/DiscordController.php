@@ -114,7 +114,38 @@ class DiscordController extends Controller
 
     public function callback(Request $request): RedirectResponse
     {
-        $discordUser = Socialite::driver('discord')->user();
+        // Pulled before anything can fail, because it decides where a failed
+        // round-trip sends the user back to — and because leaving it behind
+        // would make the NEXT plain login silently try to link instead.
+        $linkingUserId = $request->session()->pull('discord_link_user_id');
+        $failureRedirect = $linkingUserId ? '/settings/account' : '/login';
+
+        // Discord answers a cancelled authorisation with ?error=access_denied
+        // rather than a code — no exception, just a callback with nothing in
+        // it. Socialite would go on to POST a null code to the token endpoint
+        // and turn a user's own "no thanks" into a 500.
+        if ($request->query('error')) {
+            return redirect($failureRedirect)->with(
+                'board-save-error',
+                trans($request->query('error') === 'access_denied' ? 'auth.discord_cancelled' : 'auth.discord_failed'),
+            );
+        }
+
+        try {
+            $discordUser = Socialite::driver('discord')->user();
+        } catch (\Throwable $e) {
+            // Anything from here is a dead OAuth round-trip, and there are
+            // several ordinary ways to get one: closing the Discord app or
+            // browser tab mid-flow, letting the page sit until the code
+            // expires, or a refresh that replays an already-spent code —
+            // all of which come back as a 400 from Discord's token endpoint
+            // (ClientException) or as an InvalidStateException from a
+            // session that no longer matches. Reported from staging as an
+            // unhandled 500 stack trace on a phone screen.
+            Log::warning('Discord OAuth callback failed: '.$e->getMessage());
+
+            return redirect($failureRedirect)->with('board-save-error', trans('auth.discord_failed'));
+        }
 
         // socialiteproviders/discord's formatAvatar() already returns the
         // full CDN URL (Provider.php) — re-wrapping it in another
@@ -135,7 +166,6 @@ class DiscordController extends Controller
         $discordId = (string) $discordUser->id;
         $discordUsername = $discordUser->nickname ?? $discordUser->name;
 
-        $linkingUserId = $request->session()->pull('discord_link_user_id');
         if ($linkingUserId) {
             return $this->linkToExistingUser($linkingUserId, $discordId, $discordUsername, $avatarUrl, $discordUser->token);
         }

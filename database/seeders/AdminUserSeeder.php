@@ -5,11 +5,13 @@ namespace Database\Seeders;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Seeds a local-only admin test account from ADMIN_USER (.env) — no real
  * Discord app credentials exist in this dev environment, so this plus the
- * password-gated /dev-login route (routes/web.php, environment('local')
+ * ordinary login form — the /dev-login shortcut this used to feed was
+ * removed 2026-08-21 (routes/web.php, environment('local')
  * only) is the only way to actually exercise admin-only pages without them.
  * Skips cleanly if ADMIN_USER isn't set rather than failing the whole seed
  * run — someone running `php artisan migrate:fresh --seed` without having
@@ -31,12 +33,21 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         $username = env('ADMIN_USER');
+        $password = env('ADMIN_PASS');
 
-        if (! $username) {
-            $this->command->warn('ADMIN_USER not set in .env — skipping admin test account. See .env.example.');
+        if (! $username || ! $password) {
+            $this->command->warn('ADMIN_USER / ADMIN_PASS not set in .env — skipping admin test account. See .env.example.');
 
             return;
         }
+
+        // An email and a password, because this account now logs in through
+        // the ordinary form like everybody else. It used to have neither: the
+        // only way in was /dev-login, a local-only route that took ADMIN_PASS
+        // as a query parameter. Removing that route (2026-08-21) would have
+        // left this account unreachable, which is the kind of thing you find
+        // out at the worst moment.
+        $email = env('ADMIN_EMAIL', 'admin@osrs-events.test');
 
         $adminRole = Role::firstOrCreate(
             ['name' => 'ADMIN'],
@@ -52,11 +63,15 @@ class AdminUserSeeder extends Seeder
                 'discord_username' => $username,
                 'avatar_url' => null,
                 'osrs_username' => self::OWNER_OSRS_USERNAME,
+                'email' => $email,
+                // Re-hashed on every seed, so rotating ADMIN_PASS in .env and
+                // re-running the seeder is the way to change it.
+                'password' => Hash::make($password),
             ],
         );
 
         $user->assignRole($adminRole);
 
-        $this->command->info("Seeded admin test account: {$username} (login via /dev-login?as=admin&pass=...)");
+        $this->command->info("Seeded admin account: {$email} — log in at /login with ADMIN_PASS.");
     }
 }
