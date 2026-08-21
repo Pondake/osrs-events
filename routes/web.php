@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\OsrsUsernameController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\BingoController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\LandingController;
@@ -145,6 +146,12 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/events/{event}/roll', [PlayerBoardController::class, 'roll'])->name('events.roll');
     Route::post('/events/{event}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('events.tiles.toggle');
     Route::post('/events/{event}/join', [BoardController::class, 'join'])->name('events.join');
+
+    // Bingo. Toggling is a player action gated on access; editing a square
+    // or the card is an author action — the same split TileController makes.
+    Route::post('/events/{event}/bingo/squares/{square}/toggle', [BingoController::class, 'toggle'])->name('events.bingo.toggle');
+    Route::patch('/events/{event}/bingo/squares/{square}', [BingoController::class, 'updateSquare'])->name('events.bingo.square');
+    Route::patch('/events/{event}/bingo', [BingoController::class, 'updateCard'])->name('events.bingo.card');
 
     // Entering a race is a separate decision from being allowed to look at
     // one — see SkillRaceController::enter.

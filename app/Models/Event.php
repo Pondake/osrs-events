@@ -53,10 +53,14 @@ class Event extends Model
      * planned types just means nobody knows they're coming.
      */
     public const EVENT_TYPES = [
-        'SNAKES_LADDERS' => ['icon' => 'i-lucide-dice-6', 'available' => true, 'needsMetric' => false],
-        'SKILL_RACE' => ['icon' => 'i-lucide-trophy', 'available' => true, 'needsMetric' => true],
-        'BINGO' => ['icon' => 'i-lucide-grid-3x3', 'available' => false, 'needsMetric' => false],
-        'DROP_RACE' => ['icon' => 'i-lucide-swords', 'available' => false, 'needsMetric' => false],
+        'SNAKES_LADDERS' => ['icon' => 'i-lucide-dice-6', 'available' => true, 'needsMetric' => false, 'metricKind' => null],
+        'SKILL_RACE' => ['icon' => 'i-lucide-trophy', 'available' => true, 'needsMetric' => true, 'metricKind' => 'skill'],
+        'BINGO' => ['icon' => 'i-lucide-grid-3x3', 'available' => true, 'needsMetric' => false, 'metricKind' => null],
+        // A drop race is a boss killcount race. Wise Old Man returns
+        // `bosses.{name}.kills` in the same envelope as `skills.{name}
+        // .experience`, so this reuses the whole standings pipeline — the
+        // only thing that differs is which branch of the response is read.
+        'DROP_RACE' => ['icon' => 'i-lucide-swords', 'available' => true, 'needsMetric' => true, 'metricKind' => 'boss'],
     ];
 
     /**
@@ -79,10 +83,76 @@ class Event extends Model
         'construction',
     ];
 
+    /**
+     * Boss killcount metrics, again in Wise Old Man's own vocabulary and for
+     * the same reason as SKILL_METRICS: their API is the source, and a
+     * translation table between two spellings is a thing to keep in step
+     * forever. Pulled from a live response rather than transcribed.
+     */
+    public const BOSS_METRICS = [
+        'abyssal_sire', 'alchemical_hydra', 'amoxliatl', 'araxxor', 'artio',
+        'barrows_chests', 'brutus', 'bryophyta', 'callisto', 'calvarion',
+        'cerberus', 'chambers_of_xeric', 'chambers_of_xeric_challenge_mode',
+        'chaos_elemental', 'chaos_fanatic', 'commander_zilyana', 'corporeal_beast',
+        'crazy_archaeologist', 'dagannoth_prime', 'dagannoth_rex', 'dagannoth_supreme',
+        'deranged_archaeologist', 'doom_of_mokhaiotl', 'duke_sucellus',
+        'general_graardor', 'giant_mole', 'grotesque_guardians', 'hespori',
+        'kalphite_queen', 'king_black_dragon', 'kraken', 'kreearra', 'kril_tsutsaroth',
+        'lunar_chests', 'mad_angel', 'maggot_king', 'mimic', 'nex', 'nightmare',
+        'phosanis_nightmare', 'obor', 'phantom_muspah', 'sarachnis', 'scorpia',
+        'scurrius', 'shellbane_gryphon', 'skotizo', 'sol_heredit', 'spindel',
+        'tempoross', 'the_gauntlet', 'the_corrupted_gauntlet', 'the_hueycoatl',
+        'the_leviathan', 'the_royal_titans', 'the_whisperer', 'theatre_of_blood',
+        'theatre_of_blood_hard_mode', 'thermonuclear_smoke_devil', 'tombs_of_amascut',
+        'tombs_of_amascut_expert', 'tzkal_zuk', 'tztok_jad', 'vardorvis',
+        'venenatis', 'vetion', 'vorkath', 'wintertodt', 'yama', 'zalcano',
+        'zulrah',
+    ];
+
     /** Whether this event's type races on a metric at all. */
     public function needsMetric(): bool
     {
         return self::EVENT_TYPES[$this->type]['needsMetric'] ?? false;
+    }
+
+    /**
+     * Which half of Wise Old Man's response this event's metric lives in —
+     * 'skill', 'boss', or null for types that do not race on one.
+     */
+    public function metricKind(): ?string
+    {
+        return self::EVENT_TYPES[$this->type]['metricKind'] ?? null;
+    }
+
+    /**
+     * The metrics an event of the given type may choose from.
+     *
+     * @return array<int, string>
+     */
+    public static function metricsForType(?string $type): array
+    {
+        return match (self::EVENT_TYPES[$type]['metricKind'] ?? null) {
+            'skill' => self::SKILL_METRICS,
+            'boss' => self::BOSS_METRICS,
+            default => [],
+        };
+    }
+
+    /**
+     * The event types that race on a metric, so the sync command can select
+     * them without naming each one and forgetting the next.
+     *
+     * @return array<int, string>
+     */
+    public static function metricTypes(): array
+    {
+        return array_keys(array_filter(self::EVENT_TYPES, fn ($meta) => $meta['needsMetric']));
+    }
+
+    /** Every metric any available type could use, for validation. */
+    public static function allMetrics(): array
+    {
+        return [...self::SKILL_METRICS, ...self::BOSS_METRICS];
     }
 
     /** @return array<int, string> */
@@ -98,6 +168,15 @@ class Event extends Model
     public function board(): HasOne
     {
         return $this->hasOne(Board::class);
+    }
+
+    /**
+     * hasOne for the same reason board() is: a bingo event has exactly one
+     * card, and every other type has none.
+     */
+    public function bingoCard(): HasOne
+    {
+        return $this->hasOne(BingoCard::class);
     }
 
     public function authors(): HasMany

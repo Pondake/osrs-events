@@ -63,7 +63,7 @@
                                 </span>
                                 <span v-else class="inline-flex items-center gap-1">
                                     <u-icon name="i-lucide-trophy" class="size-3.5" />
-                                    {{ $t('events.ranked_by', { skill: $t(`skills.${entry.board.metric}`) }) }}
+                                    {{ rankedBy(entry.board) }}
                                 </span>
                                 <span class="inline-flex items-center gap-1">
                                     <u-icon name="i-lucide-calendar" class="size-3.5" />
@@ -148,6 +148,7 @@ import { useAuth } from '@/Composables/useAuth';
 import BoardPreview from '@/Components/BoardPreview.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, boardEventStatus, formatDate } from '@/Support/board';
+import { metricKindFor, rankedByLabel } from '@/Support/metrics';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 
@@ -162,6 +163,11 @@ defineProps({
 // millions and an unbroken run of digits cannot be read at a glance.
 function formatXp(value) {
     return new Intl.NumberFormat('en-GB').format(value ?? 0);
+}
+
+// A drop race counts kills, a skill race XP — the noun comes from the type.
+function rankedBy(board) {
+    return rankedByLabel(board.metric, metricKindFor(board.type));
 }
 
 function sizeLabel(size) {

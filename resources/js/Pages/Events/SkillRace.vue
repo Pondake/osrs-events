@@ -7,7 +7,7 @@
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <u-badge :label="$t('events.type_skill_race')" color="primary" variant="subtle" size="sm" />
+                            <u-badge :label="$t(isBossRace ? 'events.type_drop_race' : 'events.type_skill_race')" color="primary" variant="subtle" size="sm" />
                             <u-badge :label="$t(`boards.status_${status}`)" :color="statusColor" variant="subtle" size="sm" />
                         </div>
                         <h1 class="text-3xl font-bold text-highlighted mt-2">{{ event.title }}</h1>
@@ -68,7 +68,7 @@
                             <template #header>
                                 <div class="flex items-center justify-between gap-3 flex-wrap">
                                     <span class="font-semibold">{{ $t('events.standings') }}</span>
-                                    <span class="text-xs text-muted">{{ $t('events.ranked_by', { skill: skillLabel }) }}</span>
+                                    <span class="text-xs text-muted">{{ rankedBy }}</span>
                                 </div>
                             </template>
 
@@ -141,7 +141,7 @@
                             <div class="space-y-2 text-sm">
                                 <div class="flex items-center gap-2">
                                     <u-icon name="i-lucide-trophy" class="size-4 text-muted shrink-0" />
-                                    <span>{{ $t('events.ranked_by', { skill: skillLabel }) }}</span>
+                                    <span>{{ rankedBy }}</span>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <u-icon name="i-lucide-calendar" class="size-4 text-muted shrink-0" />
@@ -177,6 +177,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
 import { boardEventStatus, formatDate } from '@/Support/board';
+import { metricLabel, rankedByLabel } from '@/Support/metrics';
 
 const props = defineProps({
     event: { type: Object, required: true },
@@ -215,7 +216,14 @@ const rows = ref([...props.standings]);
 const streaming = ref(false);
 const stale = ref(false);
 
-const skillLabel = computed(() => (props.event.metric ? trans(`skills.${props.event.metric}`) : '—'));
+// A drop race counts boss kills, a skill race counts XP. Same table, same
+// ranking, different noun — so the copy is chosen from the kind rather than
+// the page assuming everything is a skill.
+const isBossRace = computed(() => props.event.metricKind === 'boss');
+
+const metricName = computed(() => metricLabel(props.event.metric, props.event.metricKind));
+
+const rankedBy = computed(() => rankedByLabel(props.event.metric, props.event.metricKind));
 
 const status = computed(() => boardEventStatus(props.event.start_date, props.event.end_date));
 

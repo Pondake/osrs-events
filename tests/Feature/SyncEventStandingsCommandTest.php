@@ -121,7 +121,7 @@ class SyncEventStandingsCommandTest extends TestCase
         // least-recently-synced first, and both rows start at null, so the
         // order between them is not something to assert on.
         //
-        // A thrown ConnectionException, not a 500: gainedXp() already handles
+        // A thrown ConnectionException, not a 500: gained() already handles
         // a bad status itself, so only a real exception exercises the
         // command's own try/catch — which is the thing under test.
         Http::fake(function ($request) {

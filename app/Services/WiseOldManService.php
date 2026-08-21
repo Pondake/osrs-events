@@ -132,7 +132,13 @@ class WiseOldManService
     }
 
     /**
-     * XP in one skill gained between two moments.
+     * How much of one metric a player gained between two moments.
+     *
+     * Handles both kinds this app races on, because their API returns them in
+     * one envelope and they differ only in where the number sits:
+     *
+     *   skills → `data.skills.{metric}.experience.{gained,start,end}`
+     *   bosses → `data.bosses.{metric}.kills.{gained,start,end}`
      *
      * Returns Wise Old Man's own delta shape unchanged — ['gained', 'start',
      * 'end'] — because reshaping it here is how the two drift apart. Null
@@ -141,10 +147,17 @@ class WiseOldManService
      * distinction rather than flattening it to zero, so the UI can say "not
      * tracked yet" instead of implying someone gained nothing.
      *
-     * @return array{gained:int,start:int,end:int}|null
+     * @param  string  $kind  'skill' or 'boss'
+     * @return array{gained:int,start:int|null,end:int|null}|null
      */
-    public function gainedXp(string $username, string $metric, CarbonInterface $start, CarbonInterface $end): ?array
+    public function gained(string $username, string $metric, string $kind, CarbonInterface $start, CarbonInterface $end): ?array
     {
+        // Where to look, and what the number is called once you are there.
+        [$group, $field] = match ($kind) {
+            'boss' => ['bosses', 'kills'],
+            default => ['skills', 'experience'],
+        };
+
         $response = $this->client()->get('/players/'.rawurlencode($username).'/gained', [
             // ISO-8601 in UTC — their API rejects a bare date.
             'startDate' => $start->toIso8601ZuluString('milliseconds'),
@@ -167,9 +180,9 @@ class WiseOldManService
             return null;
         }
 
-        $experience = $response->json("data.skills.{$metric}.experience");
+        $delta = $response->json("data.{$group}.{$metric}.{$field}");
 
-        if (! is_array($experience) || ! isset($experience['gained'])) {
+        if (! is_array($delta) || ! isset($delta['gained'])) {
             return null;
         }
 
@@ -177,10 +190,21 @@ class WiseOldManService
             // A negative gain is possible on their side (a rollback, a
             // de-ironing, a hiscores glitch). Clamped, because a leaderboard
             // that can go below zero is a bug report waiting to happen.
-            'gained' => max(0, (int) $experience['gained']),
-            'start' => (int) ($experience['start'] ?? 0),
-            'end' => (int) ($experience['end'] ?? 0),
+            'gained' => max(0, (int) $delta['gained']),
+            // -1 is their sentinel for "unranked" — the player is not on the
+            // hiscores for this metric at all, which is common for bosses
+            // nobody in the race has killed. It is an absence, not a count,
+            // so it is stored as null rather than written into an unsigned
+            // column as a negative number.
+            'start' => self::value($delta['start'] ?? null),
+            'end' => self::value($delta['end'] ?? null),
         ];
+    }
+
+    /** Their -1 "unranked" sentinel becomes null; anything else is a count. */
+    private static function value(mixed $raw): ?int
+    {
+        return $raw === null || (int) $raw < 0 ? null : (int) $raw;
     }
 
     /**
@@ -192,7 +216,7 @@ class WiseOldManService
      * behind an explicit --track flag, so an operator opts into generating
      * that traffic rather than the app doing it on every page view.
      *
-     * Without at least one snapshot inside the event window, gainedXp()
+     * Without at least one snapshot inside the event window, gained()
      * returns null forever — which is the entire reason this exists.
      */
     public function trackPlayer(string $username): bool

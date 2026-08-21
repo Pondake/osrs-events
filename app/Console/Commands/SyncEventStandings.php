@@ -29,7 +29,9 @@ class SyncEventStandings extends Command
     public function handle(EventStandingsService $standings, WiseOldManService $wom): int
     {
         $events = Event::query()
-            ->where('type', 'SKILL_RACE')
+            // Every type that races on a metric, not just skill races — a
+            // drop race reads the same standings table.
+            ->whereIn('type', Event::metricTypes())
             ->when($this->option('event'), fn ($q, $id) => $q->where('id', $id))
             // A finished event's numbers are final and a future one has
             // nothing to measure, so neither is worth an API call. Passing

@@ -68,7 +68,12 @@ class HandleInertiaRequests extends Middleware
                     ->map(fn ($meta, $key) => ['value' => $key, ...$meta])
                     ->values()
                     ->all(),
-                'skillMetrics' => \App\Models\Event::SKILL_METRICS,
+                // Keyed by metric kind so the create form can offer the right
+                // list once a type is picked, without a round trip.
+                'metricsByKind' => [
+                    'skill' => \App\Models\Event::SKILL_METRICS,
+                    'boss' => \App\Models\Event::BOSS_METRICS,
+                ],
                 'announcement' => Setting::get('announcement'),
                 'announcementType' => Setting::get('announcement_type'),
                 'defaultBoardSize' => Setting::get('default_board_size'),
