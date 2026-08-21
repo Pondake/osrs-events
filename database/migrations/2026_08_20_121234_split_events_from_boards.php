@@ -112,8 +112,13 @@ return new class extends Migration
             DB::statement("UPDATE {$tableName} SET event_id = board_id");
 
             Schema::table($tableName, function (Blueprint $table) use ($tableName, $second) {
-                $table->dropUnique("{$tableName}_board_id_{$second}_unique");
+                // Foreign key first, index second. MySQL requires an index on
+                // a foreign key's columns and refuses to drop the one the FK
+                // is relying on ("Cannot drop index ...: needed in a foreign
+                // key constraint"). Reversing these is invisible on SQLite and
+                // PostgreSQL, which is why it shipped.
                 $table->dropForeign(['board_id']);
+                $table->dropUnique("{$tableName}_board_id_{$second}_unique");
             });
 
             Schema::table($tableName, function (Blueprint $table) {
@@ -145,8 +150,9 @@ return new class extends Migration
             DB::statement("UPDATE {$tableName} SET board_id = event_id");
 
             Schema::table($tableName, function (Blueprint $table) use ($second) {
-                $table->dropUnique(['event_id', $second]);
+                // Same ordering rule as up() — see the comment there.
                 $table->dropForeign(['event_id']);
+                $table->dropUnique(['event_id', $second]);
             });
 
             Schema::table($tableName, function (Blueprint $table) {
