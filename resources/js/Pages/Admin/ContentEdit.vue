@@ -1,11 +1,11 @@
 <template>
     <Head :title="form.title" />
 
-    <admin-layout current="content" :title="form.title || $t('cms.untitled')" :description="`/${page.slug}`">
+    <admin-layout current="content" :title="form.title || $t('cms.untitled')" :description="page.publicPath">
         <template #actions>
             <div class="flex items-center gap-2">
                 <span v-if="form.isDirty" class="text-xs text-muted">{{ $t('admin.site_unsaved') }}</span>
-                <u-button :href="`/${page.slug}`" target="_blank" size="sm" variant="ghost" color="neutral" icon="i-lucide-external-link" :label="$t('cms.view_live')" />
+                <u-button :href="page.publicPath" target="_blank" size="sm" variant="ghost" color="neutral" icon="i-lucide-external-link" :label="$t('cms.view_live')" />
                 <u-button size="sm" color="primary" :loading="form.processing" :label="$t('common.save')" @click="submit" />
             </div>
         </template>

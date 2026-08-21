@@ -31,6 +31,11 @@ class ContentController extends Controller
 
         return Inertia::render('Admin/Content', [
             'pages' => Page::query()
+                // Partial pages are listed in their own group below, with a
+                // note about which half is code. Without this they appeared
+                // twice — once here as if wholly editable, which is the one
+                // impression this inventory exists to prevent.
+                ->whereNotIn('slug', Page::PARTIAL_SLUGS)
                 ->orderBy('slug')
                 // `blocks` is selected because blockCount below reads it.
                 // Without it every page reported "0 blocks" — the column was
@@ -45,11 +50,24 @@ class ContentController extends Controller
                     'updatedAt' => $page->updated_at,
                     'blockCount' => is_array($page->blocks ?? null) ? count($page->blocks) : 0,
                 ]),
+            // Pages where only PART of the content is editable. Listed
+            // apart from the fully-editable ones so nobody opens the editor
+            // expecting to find the whole page in it — what is missing from
+            // the editor is missing because it is behaviour, not because it
+            // was forgotten.
+            'partialPages' => [
+                [
+                    'slug' => 'home',
+                    'path' => '/',
+                    'label' => 'Home',
+                    'editable' => 'Headline, standfirst, and a content region below the preview.',
+                    'logic' => 'The hero button changes with whether you are signed in, the admin shortcuts only appear for admins, and the feature and guide grids are structured lists rather than blocks.',
+                ],
+            ],
             // Pages that still live as hardcoded Vue components. Listed so
             // the inventory stays honest about what the CMS does not cover
             // yet, rather than implying every public page is editable.
             'staticPages' => [
-                ['path' => '/', 'label' => 'Home'],
                 ['path' => '/osrs-snakes-and-ladders', 'label' => 'Snakes & Ladders'],
                 ['path' => '/osrs-clan-events', 'label' => 'Clan Events'],
                 ['path' => '/osrs-event-ideas', 'label' => 'Event Ideas'],
@@ -65,6 +83,11 @@ class ContentController extends Controller
             'page' => [
                 'id' => $page->id,
                 'slug' => $page->slug,
+                // Where this content is actually published. Not always
+                // "/{slug}": a partial page's row backs a component mounted
+                // somewhere else, and /home 404s by design. Sent from here
+                // rather than built in the template, which cannot know.
+                'publicPath' => $page->publicPath(),
                 'title' => $page->title,
                 'subtitle' => $page->subtitle,
                 'seoTitle' => $page->seo_title,
