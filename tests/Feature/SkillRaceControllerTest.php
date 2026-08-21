@@ -276,7 +276,10 @@ class SkillRaceControllerTest extends TestCase
                 ->where('boards.0.standing.participants', 1)
                 ->where('boards.0.standing.gained', 0)
                 ->missing('boards.0.preview')
-                ->missing('boards.0.progress'));
+                // Present but null, not absent: every row carries the same
+                // keys so the page can branch on the value rather than on
+                // which event type happened to fill them in.
+                ->where('boards.0.progress', null));
     }
 
     #[Test]

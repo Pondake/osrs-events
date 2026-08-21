@@ -186,7 +186,33 @@ class Event extends Model
 
         return $query->where(fn (Builder $q) => $q
             ->whereHas('authors', fn (Builder $a) => $a->where('user_id', $user->id))
-            ->orWhereHas('standings', fn (Builder $s) => $s->where('user_id', $user->id))
+            ->orWhere(fn (Builder $played) => $played->playedBy($user)));
+    }
+
+    /** Events this user runs — author or owner, playing or not. */
+    public function scopeHostedBy(Builder $query, ?User $user): Builder
+    {
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('authors', fn (Builder $a) => $a->where('user_id', $user->id));
+    }
+
+    /**
+     * Events this user takes part in, by whichever record their type keeps:
+     * a standing for a race, a player board for Snakes & Ladders, a claim for
+     * bingo. Hosting is deliberately not participation — running a race you
+     * are not entered in is common.
+     */
+    public function scopePlayedBy(Builder $query, ?User $user): Builder
+    {
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('standings', fn (Builder $s) => $s->where('user_id', $user->id))
             ->orWhereHas('board.playerBoards', fn (Builder $p) => $p->where('user_id', $user->id))
             ->orWhereHas('bingoCard.squares.completions', fn (Builder $c) => $c->where('user_id', $user->id)));
     }

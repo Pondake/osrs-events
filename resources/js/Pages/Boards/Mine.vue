@@ -21,6 +21,20 @@
                     />
                 </div>
 
+                <!-- Links, not a client-side toggle: each one is a real URL
+                     the hub can point at, and it survives a refresh. -->
+                <div class="flex flex-wrap items-center gap-2 mb-6">
+                    <u-button
+                        v-for="tab in filterTabs"
+                        :key="tab.key"
+                        :href="tab.href"
+                        size="sm"
+                        :color="filter === tab.key ? 'primary' : 'neutral'"
+                        :variant="filter === tab.key ? 'solid' : 'outline'"
+                        :label="`${tab.label} (${tab.count})`"
+                    />
+                </div>
+
                 <div v-if="!boards.length" class="text-center py-16">
                     <u-icon name="i-lucide-layout-grid" class="size-12 text-muted mx-auto mb-4" />
                     <p class="text-lg font-medium">{{ $t('boards.mine_empty') }}</p>
@@ -57,11 +71,11 @@
                             </div>
 
                             <div class="flex items-center gap-x-4 gap-y-1 flex-wrap mt-3 text-xs text-muted">
-                                <span v-if="entry.kind === 'board'" class="inline-flex items-center gap-1">
+                                <span v-if="entry.kind === 'board' && entry.board.size" class="inline-flex items-center gap-1">
                                     <u-icon name="i-lucide-grid-3x3" class="size-3.5" />
                                     {{ sizeLabel(entry.board.size) }}
                                 </span>
-                                <span v-else class="inline-flex items-center gap-1">
+                                <span v-else-if="entry.kind === 'race'" class="inline-flex items-center gap-1">
                                     <u-icon name="i-lucide-trophy" class="size-3.5" />
                                     {{ rankedBy(entry.board) }}
                                 </span>
@@ -74,7 +88,7 @@
                             <!-- A board has a position to advance; a race has a
                                  placing among others. Neither reads as the
                                  other, so they do not share a widget. -->
-                            <div v-if="entry.kind === 'board'" class="mt-4">
+                            <div v-if="entry.progress" class="mt-4">
                                 <div class="flex items-center justify-between text-xs mb-1">
                                     <span class="text-muted">{{ $t('boards.progress_tile', { current: entry.progress.current, total: entry.progress.total }) }}</span>
                                     <span class="text-highlighted tabular-nums">{{ entry.progress.pct }}%</span>
@@ -82,7 +96,7 @@
                                 <u-progress :model-value="entry.progress.pct" size="sm" />
                             </div>
 
-                            <div v-else class="mt-4 flex items-center gap-4 flex-wrap">
+                            <div v-else-if="entry.standing" class="mt-4 flex items-center gap-4 flex-wrap">
                                 <div v-if="entry.standing.rank" class="flex items-baseline gap-1.5">
                                     <span class="text-2xl font-bold text-primary tabular-nums">#{{ entry.standing.rank }}</span>
                                     <span class="text-xs text-muted">{{ $t('events.of_participants', { count: entry.standing.participants }) }}</span>
@@ -141,7 +155,7 @@
 </template>
 
 <script setup>
-import { defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
@@ -152,11 +166,17 @@ import { metricKindFor, rankedByLabel } from '@/Support/metrics';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 
-defineProps({
-    // Two shapes, told apart by `kind`:
-    //   board - { kind, board, progress: { current, total, pct }, preview }
-    //   race  - { kind, board, standing: { rank, gained, syncedAt, error, participants } }
+const props = defineProps({
+    // One shape per event, with the detail blocks present only where the
+    // event type has them:
+    //   kind      - 'board' | 'race' | 'bingo', for the icon and meta line
+    //   progress  - a board you are playing: { current, total, pct }
+    //   standing  - a race you entered: { rank, gained, syncedAt, error, participants }
+    // An event you only host has neither, and renders as just the event —
+    // which is why the template branches on the data rather than on `kind`.
     boards: { type: Array, required: true },
+    filter: { type: String, default: 'all' },
+    counts: { type: Object, default: () => ({ all: 0, hosted: 0, playing: 0 }) },
 });
 
 // Grouped thousands, same as the standings page: XP gains run into the
@@ -191,6 +211,12 @@ function dateRange(board) {
 
     return `${formatDate(board.start_date)} – ${formatDate(board.end_date)}`;
 }
+
+const filterTabs = computed(() => [
+    { key: 'all', label: trans('events.mine_filter_all'), count: props.counts.all, href: '/my-events' },
+    { key: 'hosted', label: trans('events.mine_filter_hosted'), count: props.counts.hosted, href: '/my-events?filter=hosted' },
+    { key: 'playing', label: trans('events.mine_filter_playing'), count: props.counts.playing, href: '/my-events?filter=playing' },
+]);
 
 const { canCreateBoards } = useAuth();
 const showCreateModal = ref(false);

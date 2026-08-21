@@ -265,8 +265,8 @@ class StagingFeedbackTest extends TestCase
 
         $props = $this->actingAs($user)->get('/events')->viewData('page')['props'];
 
-        $this->assertSame(1, $props['mineTotal']);
-        $this->assertSame($event->id, $props['mine'][0]['id']);
+        $this->assertSame(1, $props['playingTotal']);
+        $this->assertSame($event->id, $props['playing'][0]['id']);
     }
 
     /** An event you run is yours whether or not you also play in it. */
@@ -280,7 +280,11 @@ class StagingFeedbackTest extends TestCase
 
         $props = $this->actingAs($owner)->get('/events')->viewData('page')['props'];
 
-        $this->assertSame($event->id, $props['mine'][0]['id'] ?? null);
+        // Under "events you run", and deliberately NOT under "events you are
+        // in" — hosting a race you have not entered is the normal case, and
+        // the same card in both rows reads as a bug.
+        $this->assertSame($event->id, $props['hosted'][0]['id'] ?? null);
+        $this->assertSame([], $props['playing']);
         $this->assertSame(0, EventStanding::count(), 'the host was not entered as a participant');
     }
 
@@ -293,7 +297,8 @@ class StagingFeedbackTest extends TestCase
 
         $props = $this->actingAs($this->player('Stranger'))->get('/events')->viewData('page')['props'];
 
-        $this->assertSame(0, $props['mineTotal']);
+        $this->assertSame(0, $props['hostedTotal']);
+        $this->assertSame(0, $props['playingTotal']);
     }
 
     /**
@@ -320,6 +325,70 @@ class StagingFeedbackTest extends TestCase
 
         // A race has a rank, not a position on a grid — no invented percentage.
         $this->assertNull($events[0]['progress']);
+    }
+
+    /**
+     * Each dashboard row links to its own view of /my-events, so those
+     * filters have to actually filter — a "view all" that lands on
+     * everything is the same dead end as no link.
+     */
+    #[Test]
+    public function the_my_events_filters_show_the_row_they_were_reached_from(): void
+    {
+        Http::fake();
+
+        $user = $this->player();
+
+        $hosted = $this->race(['title' => 'One I run']);
+        BoardAuthor::create(['event_id' => $hosted->id, 'user_id' => $user->id, 'is_owner' => true]);
+
+        $entered = $this->race(['title' => 'One I am in']);
+        $this->actingAs($user)->post("/events/{$entered->id}/enter")->assertRedirect();
+
+        $all = $this->actingAs($user)->get('/my-events')->viewData('page')['props'];
+        $this->assertCount(2, $all['boards']);
+        $this->assertSame(2, $all['counts']['all']);
+
+        $onlyHosted = $this->actingAs($user)->get('/my-events?filter=hosted')->viewData('page')['props'];
+        $this->assertCount(1, $onlyHosted['boards']);
+        $this->assertSame('One I run', $onlyHosted['boards'][0]['board']['title']);
+
+        $onlyPlaying = $this->actingAs($user)->get('/my-events?filter=playing')->viewData('page')['props'];
+        $this->assertCount(1, $onlyPlaying['boards']);
+        $this->assertSame('One I am in', $onlyPlaying['boards'][0]['board']['title']);
+    }
+
+    /** An unknown filter falls back to everything rather than to nothing. */
+    #[Test]
+    public function an_unrecognised_filter_shows_everything(): void
+    {
+        $user = $this->player();
+        $event = $this->race();
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $user->id, 'is_owner' => true]);
+
+        $props = $this->actingAs($user)->get('/my-events?filter=nonsense')->viewData('page')['props'];
+
+        $this->assertSame('all', $props['filter']);
+        $this->assertCount(1, $props['boards']);
+    }
+
+    /**
+     * An event you host but do not play has neither a progress bar nor a
+     * rank. The page used to reach straight into entry.standing.rank for
+     * anything that was not a board.
+     */
+    #[Test]
+    public function a_hosted_event_you_do_not_play_carries_no_progress_or_standing(): void
+    {
+        $user = $this->player();
+        $event = $this->race();
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $user->id, 'is_owner' => true]);
+
+        $row = $this->actingAs($user)->get('/my-events')->viewData('page')['props']['boards'][0];
+
+        $this->assertNull($row['progress']);
+        $this->assertNull($row['standing']);
+        $this->assertTrue($row['isHost']);
     }
 
     // --------------------------------------------------------- admin grant

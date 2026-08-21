@@ -73,17 +73,17 @@ class BoardController extends Controller
             ->get()
             ->map(fn (Event $event) => $this->cardData($event));
 
-        // A slice of what you're in, so the hub has something to say to
-        // someone who already has events — /my-events existed but nothing
-        // linked to it, which is how it stayed invisible.
+        // Three separate rows rather than one "yours" bucket: what you run,
+        // what you play, and what anyone can join are different questions,
+        // and a host is very often not a participant in their own race.
         //
         // Scoped by involvement rather than by PlayerBoard: that row only
         // exists for Snakes & Ladders, so a race you entered or an event you
-        // created yourself never appeared here, and the hub looked like a
+        // created yourself never appeared here at all, and the hub read as a
         // public directory with nothing of yours in it.
         $user = Auth::user();
 
-        $mine = Event::involving($user)
+        $slice = fn ($query) => $query
             ->with(self::EVENT_WITH)
             ->orderByDesc('start_date')
             ->take(self::HUB_SLICE)
@@ -91,12 +91,19 @@ class BoardController extends Controller
             ->map(fn (Event $event) => $this->cardData($event))
             ->values();
 
+        // Anything you host is already in the row above, so it is left out
+        // here — the same card twice on one page reads as a bug.
+        $playing = fn () => Event::playedBy($user)
+            ->whereDoesntHave('authors', fn ($a) => $a->where('user_id', $user?->id));
+
         return Inertia::render('Boards/Index', [
             // The full list stays — the hub renders a slice of it and the
             // "view all" page renders the rest from the same prop.
             'boards' => $events,
-            'mine' => $mine,
-            'mineTotal' => Event::involving($user)->count(),
+            'hosted' => $slice(Event::hostedBy($user)),
+            'hostedTotal' => Event::hostedBy($user)->count(),
+            'playing' => $slice($playing()),
+            'playingTotal' => $playing()->count(),
         ]);
     }
 
@@ -129,89 +136,110 @@ class BoardController extends Controller
      * count comes from the board's size enum, and duplicating that mapping
      * into JS is how it drifts.
      */
-    public function mine(EventStandingsService $standings): Response
+    public function mine(Request $request, EventStandingsService $standings): Response
     {
         $tileCounts = ['SIZE_5X5' => 25, 'SIZE_7X7' => 49, 'SIZE_9X9' => 81];
         $user = Auth::user();
 
-        $boards = $user->playerBoards()
-            ->with(['board.event.authors.user', 'board.event.eventTeams.team', 'completedTiles', 'board.tiles:id,board_id,position,type'])
-            ->get()
-            ->filter(fn ($pb) => $pb->board?->event !== null)
-            ->sortByDesc(fn ($pb) => $pb->board->event->start_date)
-            ->values()
-            ->map(function ($pb) use ($tileCounts) {
-                $total = $tileCounts[$pb->board->size] ?? 49;
+        // The hub shows three rows of three; this is where each one's "view
+        // all" lands, so it has to be able to show that row on its own rather
+        // than dumping everything and making the reader find it again.
+        $filter = in_array($request->query('filter'), ['hosted', 'playing'], true)
+            ? $request->query('filter')
+            : 'all';
+
+        // Driven by involvement, not by the rows one event type happens to
+        // create. This was two queries — PlayerBoard for boards, EventStanding
+        // for races — which meant bingo never appeared at all, and neither did
+        // an event you host without playing in it. On a page called "my
+        // events", anything missing is the bug.
+        $query = match ($filter) {
+            'hosted' => Event::hostedBy($user),
+            'playing' => Event::playedBy($user)
+                ->whereDoesntHave('authors', fn ($a) => $a->where('user_id', $user?->id)),
+            default => Event::involving($user),
+        };
+
+        $events = $query
+            ->with([...self::EVENT_WITH, 'board.tiles:id,board_id,position,type', 'bingoCard'])
+            ->orderByDesc('start_date')
+            ->get();
+
+        // Fetched once and matched in memory rather than per event, so the
+        // page costs the same whether you are in three events or thirty.
+        $playerBoards = $user->playerBoards()->with('completedTiles')->get()->keyBy('board_id');
+        $standingRows = EventStanding::where('user_id', $user->id)->get()->keyBy('event_id');
+
+        $entries = $events->map(function (Event $event) use ($tileCounts, $playerBoards, $standingRows, $standings, $user) {
+            $entry = [
+                // What the row IS, for the icon and the meta line. The detail
+                // block below is keyed on what data exists instead, so an
+                // event you only host renders as itself rather than as a
+                // half-filled participant row.
+                'kind' => match ($event->type) {
+                    'SNAKES_LADDERS' => 'board',
+                    'BINGO' => 'bingo',
+                    default => 'race',
+                },
+                'board' => $this->cardData($event),
+                'isHost' => $event->authors->contains(fn ($a) => $a->user_id === $user->id),
+                'progress' => null,
+                'standing' => null,
+            ];
+
+            if ($event->board && ($pb = $playerBoards->get($event->board->id))) {
+                $total = $tileCounts[$event->board->size] ?? 49;
                 $position = max(0, $pb->current_position);
 
-                return [
-                    // Which kind of row this is. The two event types have
-                    // nothing in common to render — one has a grid and a
-                    // position, the other a rank — so the page branches on
-                    // this rather than guessing from which fields are null.
-                    'kind' => 'board',
-                    'board' => $this->cardData($pb->board->event),
-                    // Enough to draw the board's shape without shipping every
-                    // tile's task and description: only the tiles that aren't
-                    // plain, plus where this player stands.
-                    'preview' => [
-                        'size' => $pb->board->size,
-                        'specialTiles' => $pb->board->tiles
-                            ->filter(fn ($t) => $t->type !== 'NORMAL')
-                            ->map(fn ($t) => ['position' => $t->position, 'type' => $t->type])
-                            ->values(),
-                        'currentPosition' => max(0, $pb->current_position),
-                        'completedPositions' => $pb->board->tiles
-                            ->whereIn('id', $pb->completedTiles->pluck('tile_id'))
-                            ->pluck('position')
-                            ->values(),
-                    ],
-                    'progress' => [
-                        'current' => $position + 1,
-                        'total' => $total,
-                        // Capped at 99 until the final tile is actually
-                        // completed — same rule the profile page uses, so a
-                        // board in progress never reads as finished.
-                        'pct' => $total <= 1 ? 0 : min(99, (int) floor(($position / ($total - 1)) * 100)),
-                    ],
+                $entry['progress'] = [
+                    'current' => $position + 1,
+                    'total' => $total,
+                    'pct' => $total <= 1 ? 0 : min(99, (int) floor(($position / ($total - 1)) * 100)),
                 ];
-            });
 
-        // Races were missing from this page entirely. It was built from
-        // PlayerBoard rows, and a skill race has no board — so entering one
-        // and then not finding it under "my events" was the result.
-        $races = EventStanding::query()
-            ->where('user_id', $user->id)
-            ->with(['event' => fn ($q) => $q->with(self::EVENT_WITH)])
-            ->get()
-            ->filter(fn ($standing) => $standing->event !== null)
-            ->map(function (EventStanding $standing) use ($standings) {
-                // Rank has to come from the whole field, not the row — it is
-                // a position among others. Bounded by how many races one
-                // person has entered, which is a handful.
-                $field = $standings->forEvent($standing->event);
-                $mine = $field->firstWhere('id', $standing->id);
-
-                return [
-                    'kind' => 'race',
-                    'board' => $this->cardData($standing->event),
-                    'standing' => [
-                        'rank' => $mine['rank'] ?? null,
-                        'gained' => $standing->gained,
-                        'syncedAt' => $standing->synced_at?->toIso8601String(),
-                        'error' => $standing->sync_error,
-                        'participants' => $field->count(),
-                    ],
+                $entry['preview'] = [
+                    'size' => $event->board->size,
+                    'specialTiles' => $event->board->tiles
+                        ->filter(fn ($tile) => $tile->type !== 'NORMAL')
+                        ->map(fn ($tile) => ['position' => $tile->position, 'type' => $tile->type])
+                        ->values(),
+                    'currentPosition' => $position,
+                    'completedPositions' => $event->board->tiles
+                        ->whereIn('id', $pb->completedTiles->pluck('tile_id'))
+                        ->pluck('position')
+                        ->values(),
                 ];
-            });
+            }
 
-        $entries = $boards->concat($races)
-            // One list, newest first, so the two types interleave by when they
-            // run rather than being segregated by an implementation detail.
-            ->sortByDesc(fn ($entry) => $entry['board']['start_date'])
-            ->values();
+            if ($standing = $standingRows->get($event->id)) {
+                // Rank comes from the whole field, not the row — it is a
+                // position among others. Bounded by how many races one person
+                // has entered, which is a handful.
+                $field = $standings->forEvent($event);
 
-        return Inertia::render('Boards/Mine', ['boards' => $entries]);
+                $entry['standing'] = [
+                    'rank' => $field->firstWhere('id', $standing->id)['rank'] ?? null,
+                    'gained' => $standing->gained,
+                    'syncedAt' => $standing->synced_at?->toIso8601String(),
+                    'error' => $standing->sync_error,
+                    'participants' => $field->count(),
+                ];
+            }
+
+            return $entry;
+        })->values();
+
+        return Inertia::render('Boards/Mine', [
+            'boards' => $entries,
+            'filter' => $filter,
+            'counts' => [
+                'all' => Event::involving($user)->count(),
+                'hosted' => Event::hostedBy($user)->count(),
+                'playing' => Event::playedBy($user)
+                    ->whereDoesntHave('authors', fn ($a) => $a->where('user_id', $user?->id))
+                    ->count(),
+            ],
+        ]);
     }
 
     /**

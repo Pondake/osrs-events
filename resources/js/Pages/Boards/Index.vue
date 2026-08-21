@@ -23,16 +23,20 @@
                     />
                 </div>
 
-                <!-- A hub of slices, not one flat list: /my-events existed
-                     but nothing pointed at it, so people playing an event had
-                     no route back to it from here. -->
+                <!-- An event dashboard, not one flat list. Four rows in the
+                     order you actually care about them: what you run, what
+                     you play, what anyone can join, and what is coming. Each
+                     shows a few and links to its own overview.
+
+                     Hosting and playing are separate rows because they are
+                     separate questions — the host of a race is very often not
+                     entered in it, and one merged "yours" bucket hid that. -->
                 <div class="space-y-10">
-                    <section v-if="mine.length">
+                    <section v-if="!showAll && hosted.length">
                         <div class="flex items-center justify-between gap-3 mb-4">
-                            <h2 class="text-xl font-semibold text-highlighted">{{ $t('events.hub_mine') }}</h2>
+                            <h2 class="text-xl font-semibold text-highlighted">{{ $t('events.hub_hosted') }}</h2>
                             <u-button
-                                v-if="mineTotal > mine.length"
-                                href="/my-events"
+                                href="/my-events?filter=hosted"
                                 size="sm"
                                 variant="ghost"
                                 color="neutral"
@@ -41,7 +45,24 @@
                             />
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <board-card v-for="board in mine" :key="board.id" :board="board" />
+                            <board-card v-for="board in hosted" :key="board.id" :board="board" />
+                        </div>
+                    </section>
+
+                    <section v-if="!showAll && playing.length">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <h2 class="text-xl font-semibold text-highlighted">{{ $t('events.hub_playing') }}</h2>
+                            <u-button
+                                href="/my-events?filter=playing"
+                                size="sm"
+                                variant="ghost"
+                                color="neutral"
+                                trailing-icon="i-lucide-arrow-right"
+                                :label="$t('events.hub_view_all')"
+                            />
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <board-card v-for="board in playing" :key="board.id" :board="board" />
                         </div>
                     </section>
 
@@ -112,8 +133,10 @@ const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/Board
 
 const props = defineProps({
     boards: { type: Array, required: true },
-    mine: { type: Array, default: () => [] },
-    mineTotal: { type: Number, default: 0 },
+    hosted: { type: Array, default: () => [] },
+    hostedTotal: { type: Number, default: 0 },
+    playing: { type: Array, default: () => [] },
+    playingTotal: { type: Number, default: 0 },
     /** /events/all renders the same component without the hub slicing. */
     showAll: { type: Boolean, default: false },
 });
