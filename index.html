@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>OSRS Events — Coming Soon</title>
+<meta name="description" content="Free Old School RuneScape clan events. Snakes &amp; Ladders boards with a task on every tile, Skill of the Month races off the hiscores, and bingo cards. Launching soon.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#1c1919">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="OSRS Events — Coming Soon">
+<meta property="og:description" content="Free Old School RuneScape clan events. Snakes &amp; Ladders boards, Skill of the Month races, and bingo cards. Launching soon.">
+<!-- Absolute once this is on the real domain — og:image is one of the few
+     tags crawlers will not resolve relatively. -->
+<meta property="og:image" content="/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<!-- Inlined as a data URI so this file stands alone: dropped on any host,
+     with nothing else beside it, it still renders complete. Same pixel mugs
+     as the app's own mark, same rects. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='1' y='9' width='1' height='4' fill='%23c15c1f'/%3E%3Crect x='2' y='9' width='1' height='1' fill='%23c15c1f'/%3E%3Crect x='2' y='12' width='1' height='1' fill='%23c15c1f'/%3E%3Crect x='3' y='7' width='5' height='8' fill='%23e0762f'/%3E%3Crect x='3' y='7' width='1' height='8' fill='%23f09a4e'/%3E%3Crect x='3' y='14' width='5' height='1' fill='%23b4501a'/%3E%3Crect x='3' y='4' width='5' height='2' fill='%23ffcf5c'/%3E%3Crect x='15' y='9' width='1' height='4' fill='%239a721e'/%3E%3Crect x='14' y='9' width='1' height='1' fill='%239a721e'/%3E%3Crect x='14' y='12' width='1' height='1' fill='%239a721e'/%3E%3Crect x='9' y='7' width='5' height='8' fill='%23d4a33e'/%3E%3Crect x='9' y='7' width='1' height='8' fill='%23eec257'/%3E%3Crect x='9' y='14' width='5' height='1' fill='%239a721e'/%3E%3Crect x='9' y='4' width='5' height='2' fill='%23f2d894'/%3E%3Crect x='7' y='1' width='2' height='2' fill='%23ffcf5c'/%3E%3Crect x='4' y='2' width='1' height='1' fill='%23e0762f'/%3E%3Crect x='11' y='2' width='1' height='1' fill='%23d4a33e'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&family=Instrument+Sans:wght@400;500;600&display=swap">
+
+<style>
+/* --------------------------------------------------------------------------
+   Tokens, lifted from the app's own theme rather than re-picked by eye:
+   primary is Tailwind `amber` as set in ui.config.ts, neutral is `stone`,
+   and the mug's oranges/golds come straight off the logo rects above.
+
+   Committed to one dark look on purpose — no prefers-color-scheme swap.
+   The app has a light mode because people use it for an hour at a time;
+   this page is a held note, and the OSRS interface it evokes is dark.
+   -------------------------------------------------------------------------- */
+:root {
+    --ink:        #1c1919;   /* the app's stone-950 stand-in */
+    --ink-deep:   #141111;
+    --panel:      #221d1a;
+    --panel-edge: #3a302a;
+
+    --gold:       #d4a33e;
+    --gold-lit:   #ffcf5c;
+    --gold-dim:   #9a721e;
+    --copper:     #e0762f;
+
+    --text:       #efe9e2;
+    --text-muted: #a8a09a;
+
+    --shell: min(62rem, 100%);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(1.25rem, 4vw, 3rem);
+    gap: clamp(1.5rem, 4vw, 2.5rem);
+
+    font-family: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: var(--text);
+    line-height: 1.6;
+
+    /* Two soft gold pools behind a near-black base — the light a torch throws
+       on a stone wall, not a flat gradient. */
+    background-color: var(--ink);
+    background-image:
+        radial-gradient(60rem 40rem at 15% -10%, rgba(224, 118, 47, .13), transparent 60%),
+        radial-gradient(50rem 38rem at 88% 8%, rgba(212, 163, 62, .11), transparent 62%),
+        linear-gradient(180deg, var(--ink) 0%, var(--ink-deep) 100%);
+    background-attachment: fixed;
+}
+
+/* A 4px pixel grid over everything, barely there. The mark is a pixel face
+   and the game is a pixel game; this is the quietest possible nod to that.
+   pointer-events:none so it never eats a click on the links below it. */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .5;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, .022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .022) 1px, transparent 1px);
+    background-size: 4px 4px;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* ---------------------------------------------------------------- the panel */
+
+/* An OSRS interface panel: dark fill, a tan bevel lit from the top-left, and
+   a hard dark seat under it. Built from box-shadows rather than border-image
+   so it scales with the panel and costs no asset. */
+.panel {
+    width: var(--shell);
+    padding: clamp(1.75rem, 5vw, 3.5rem) clamp(1.5rem, 5vw, 4rem);
+    text-align: center;
+
+    background:
+        linear-gradient(180deg, rgba(255, 207, 92, .05), transparent 45%),
+        var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 4px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 207, 92, .16),
+        inset 0 0 0 1px rgba(0, 0, 0, .35),
+        0 1px 0 rgba(255, 255, 255, .03),
+        0 24px 60px -20px rgba(0, 0, 0, .8);
+}
+
+/* ------------------------------------------------------------------ the mark */
+
+.mark {
+    width: 64px;   /* 4x the 16-unit viewBox — the mark's spec forbids a
+                      non-integer scale, which turns crisp pixels to mush. */
+    height: 64px;
+    display: block;
+    margin: 0 auto 1.25rem;
+}
+
+.wordmark {
+    margin: 0;
+    font-family: 'Cinzel Decorative', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(1.75rem, 6.5vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: .04em;
+
+    /* Gold leaf: a light band travels across the letters once, slowly, and
+       then rests. Anything faster reads as a loading state. */
+    background: linear-gradient(100deg, var(--gold) 0%, var(--gold-lit) 22%, var(--gold) 44%, var(--gold-dim) 78%, var(--gold) 100%);
+    background-size: 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: sheen 9s ease-in-out infinite;
+}
+
+@keyframes sheen {
+    0%, 22%   { background-position: 130% 0; }
+    58%, 100% { background-position: -30% 0; }
+}
+
+/* ----------------------------------------------------------------- the notice */
+
+.eyebrow {
+    margin: 0 0 .35rem;
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: 600;
+    font-size: .75rem;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    color: var(--copper);
+}
+
+.headline {
+    margin: 1.5rem 0 0;
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(1.35rem, 4vw, 2rem);
+    line-height: 1.25;
+    color: var(--text);
+}
+
+.lede {
+    max-width: 44ch;
+    margin: .9rem auto 0;
+    color: var(--text-muted);
+    font-size: clamp(1rem, 2.2vw, 1.0625rem);
+}
+
+.rule {
+    width: min(18rem, 70%);
+    height: 1px;
+    margin: clamp(1.75rem, 5vw, 2.5rem) auto;
+    border: 0;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+}
+
+/* ---------------------------------------------------------------- the formats */
+
+.formats {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    /* Mobile-first: one column, then as many as fit at 14rem. */
+    grid-template-columns: 1fr;
+    text-align: left;
+}
+
+@media (min-width: 40rem) {
+    .formats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.format {
+    display: flex;
+    gap: .75rem;
+    padding: .9rem 1rem;
+    background: rgba(0, 0, 0, .22);
+    border: 1px solid rgba(212, 163, 62, .16);
+    border-radius: 3px;
+}
+
+.format svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    margin-top: .15rem;
+    color: var(--gold);
+}
+
+.format-name {
+    display: block;
+    font-family: 'Cinzel', Georgia, serif;
+    font-weight: 600;
+    font-size: .95rem;
+    color: var(--text);
+}
+
+.format-note {
+    display: block;
+    margin-top: .1rem;
+    font-size: .8125rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------------- actions */
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    justify-content: center;
+    margin-top: clamp(1.75rem, 5vw, 2.25rem);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .6rem 1.15rem;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: .9375rem;
+    text-decoration: none;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
+}
+
+/* Ink on gold, not white on gold. White on amber is 2.15:1 — the app's
+   ui.config.ts pins this exact ink for the same reason; here it measures
+   8.1:1 against #d4a33e. */
+.btn-primary {
+    background: var(--gold);
+    color: #1c1919;
+    border: 1px solid var(--gold-lit);
+}
+
+.btn-primary:hover { background: var(--gold-lit); }
+
+.btn-ghost {
+    color: var(--text);
+    border: 1px solid rgba(212, 163, 62, .3);
+}
+
+.btn-ghost:hover {
+    border-color: var(--gold);
+    color: var(--gold-lit);
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn svg { width: 16px; height: 16px; flex: none; }
+
+/* One visible focus style for every interactive thing, gold so it reads as
+   deliberate rather than as the browser's default blue on a dark panel. */
+a:focus-visible {
+    outline: 2px solid var(--gold-lit);
+    outline-offset: 3px;
+    border-radius: 2px;
+}
+
+/* -------------------------------------------------------------------- footer */
+
+footer {
+    text-align: center;
+    font-size: .8125rem;
+    color: var(--text-muted);
+}
+
+footer a {
+    color: var(--text-muted);
+    text-decoration-color: rgba(212, 163, 62, .45);
+    text-underline-offset: 3px;
+}
+
+footer a:hover { color: var(--gold-lit); }
+
+/* #7d7671 was the first pick and measures 3.96:1 on the page ground — under
+   AA for body text, and this is the one paragraph on the page with legal
+   weight. #8b8480 clears it at 4.82:1 and still reads as the quietest thing
+   here. */
+.disclaimer {
+    max-width: 52ch;
+    margin: .5rem auto 0;
+    font-size: .75rem;
+    color: #8b8480;
+}
+
+/* The sheen is decoration and nothing depends on it; drop it outright rather
+   than slowing it down. */
+@media (prefers-reduced-motion: reduce) {
+    .wordmark { animation: none; }
+    .btn { transition: none; }
+    .btn:active { transform: none; }
+}
+</style>
+</head>
+
+<body>
+
+<main>
+    <div class="panel">
+        <!-- Byte-identical to Components/AppLogo.vue's rects. Two toasting
+             mugs; the app's whole mark, at 4x. -->
+        <svg class="mark" viewBox="0 0 16 16" shape-rendering="crispEdges" role="img" aria-label="OSRS Events">
+            <rect x="1"  y="9"  width="1" height="4" fill="#c15c1f"/>
+            <rect x="2"  y="9"  width="1" height="1" fill="#c15c1f"/>
+            <rect x="2"  y="12" width="1" height="1" fill="#c15c1f"/>
+            <rect x="3"  y="7"  width="5" height="8" fill="#e0762f"/>
+            <rect x="3"  y="7"  width="1" height="8" fill="#f09a4e"/>
+            <rect x="3"  y="14" width="5" height="1" fill="#b4501a"/>
+            <rect x="3"  y="4"  width="5" height="2" fill="#ffcf5c"/>
+            <rect x="15" y="9"  width="1" height="4" fill="#9a721e"/>
+            <rect x="14" y="9"  width="1" height="1" fill="#9a721e"/>
+            <rect x="14" y="12" width="1" height="1" fill="#9a721e"/>
+            <rect x="9"  y="7"  width="5" height="8" fill="#d4a33e"/>
+            <rect x="9"  y="7"  width="1" height="8" fill="#eec257"/>
+            <rect x="9"  y="14" width="5" height="1" fill="#9a721e"/>
+            <rect x="9"  y="4"  width="5" height="2" fill="#f2d894"/>
+            <rect x="7"  y="1"  width="2" height="2" fill="#ffcf5c"/>
+            <rect x="4"  y="2"  width="1" height="1" fill="#e0762f"/>
+            <rect x="11" y="2"  width="1" height="1" fill="#d4a33e"/>
+        </svg>
+
+        <p class="eyebrow">Coming soon</p>
+        <h1 class="wordmark">OSRS Events</h1>
+
+        <h2 class="headline">Clan events worth showing up for.</h2>
+
+        <p class="lede">
+            A free place to run Old School RuneScape events for your clan — set one up,
+            share a link, and watch the standings move while everyone plays.
+        </p>
+
+        <hr class="rule">
+
+        <ul class="formats">
+            <li class="format">
+                <!-- Lucide dice-6 / trophy / grid-3x3, the same icons the app
+                     uses for these three event types. -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="18" height="18" x="3" y="3" rx="2"/>
+                    <path d="M16 8h.01M8 8h.01M8 12h.01M16 12h.01M8 16h.01M16 16h.01"/>
+                </svg>
+                <span>
+                    <span class="format-name">Snakes &amp; Ladders</span>
+                    <span class="format-note">A board of any size with an OSRS task on every tile. Roll a daily d6; ladders jump you ahead, snakes drop you back.</span>
+                </span>
+            </li>
+
+            <li class="format">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                    <path d="M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                </svg>
+                <span>
+                    <span class="format-name">Skill &amp; drop races</span>
+                    <span class="format-note">Pick a skill or a boss and race on what everyone gains. The leaderboard reads the hiscores and updates itself while you watch.</span>
+                </span>
+            </li>
+
+            <li class="format">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="18" height="18" x="3" y="3" rx="2"/>
+                    <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+                </svg>
+                <span>
+                    <span class="format-name">Bingo</span>
+                    <span class="format-note">A card of drops and goals, claimed with a screenshot and signed off by the host. Line or full house.</span>
+                </span>
+            </li>
+        </ul>
+
+        <div class="actions">
+            <!-- Replace with the real Discord invite before this goes live;
+                 there is deliberately no placeholder link here, because a
+                 dead invite on a launch page is worse than no invite. -->
+            <a class="btn btn-primary" href="https://ko-fi.com/pondake" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                </svg>
+                Support the project
+            </a>
+
+            <a class="btn btn-ghost" href="https://oldschool.runescape.wiki/" rel="noopener">
+                Old School RuneScape Wiki
+            </a>
+        </div>
+    </div>
+</main>
+
+<footer>
+    <p>&copy; <span id="year">2026</span> OSRS Events · Free to use, for every clan.</p>
+    <p class="disclaimer">
+        Not affiliated with, endorsed by, or associated with Jagex Ltd.
+        Old School RuneScape is a trademark of Jagex Ltd.
+    </p>
+</footer>
+
+<script>
+    // The only script on the page, and it fails safe: the markup already
+    // carries a year, so a browser with JS off shows a stale one rather than
+    // an empty span.
+    document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
