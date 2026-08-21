@@ -15,7 +15,7 @@
                          to a global `Ziggy` variable that doesn't exist in Node —
                          reintroducing the exact SSR crash fixed in
                          HandleInertiaRequests, just for this one page. -->
-                    <u-button v-else :href="route('login')" size="xl" color="primary" icon="i-simple-icons-discord" :label="$t('landing.cta_login')" />
+                    <u-button v-else :href="route('auth.discord.redirect')" size="xl" color="primary" icon="i-simple-icons-discord" :label="$t('landing.cta_login')" />
                     <u-button href="/osrs-snakes-and-ladders" size="xl" color="neutral" variant="outline" trailing-icon="i-lucide-arrow-right" :label="$t('landing.event_ideas.supported_cta')" />
                 </template>
             </u-page-hero>

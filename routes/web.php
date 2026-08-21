@@ -42,7 +42,7 @@ use Inertia\Inertia;
 // expensive and more sensitive of the two, so it gets the tighter limit.
 Route::get('/auth/discord/redirect', [DiscordController::class, 'redirect'])
     ->middleware('throttle:20,1')
-    ->name('login');
+    ->name('auth.discord.redirect');
 Route::get('/auth/discord/callback', [DiscordController::class, 'callback'])
     ->middleware('throttle:10,1')
     ->name('auth.discord.callback');
@@ -59,21 +59,26 @@ Route::post('/logout', function (Request $request) {
     return redirect('/');
 })->middleware('auth')->name('logout');
 
-// Email/password path — see routes 26-31 above for the Discord OAuth path,
-// which stays the primary flow. `guest` keeps an already-authenticated user
-// from landing back on a signup/login form. Route names are `auth.*` rather
-// than Laravel's usual bare `register`/`login` because `login` is already
-// taken by the Discord redirect route above (route('login') is used
-// throughout the app for the Discord login button).
+// Email/password path. `guest` keeps an already-authenticated user from
+// landing back on a signup/login form.
+//
+// `login` names the PAGE, which is the only thing that can safely answer to
+// that name. It used to name the Discord kickoff instead, so that everything
+// reaching for "send them to log in" — Laravel's own auth middleware,
+// redirect()->guest(), every CTA in the app — dropped the user into an OAuth
+// consent screen. That was a dead end for anyone holding an email/password
+// account, and it sent already-signed-in users through Discord too.
+// The OAuth entry point is `auth.discord.redirect`, and pages that mean
+// Discord specifically say so.
 Route::middleware('guest')->group(function () {
-    Route::get('/register', [RegisteredUserController::class, 'create'])->name('auth.register');
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store'])
         ->middleware('throttle:5,1')
-        ->name('auth.register.store');
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('auth.login');
+        ->name('register.store');
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])
         ->middleware('throttle:10,1')
-        ->name('auth.login.store');
+        ->name('login.store');
 
     // Password reset by emailed link. The POST is throttled hardest of the
     // lot: it's the one that actually sends mail, so it's the one worth
