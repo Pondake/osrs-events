@@ -10,10 +10,19 @@ account without one (a Discord login, or anything created before the field
 existed) is sent to a one-field page before it can do anything else — XP is
 read from the hiscores, and the hiscores are keyed by account name.
 
-Snakes & Ladders is the first **event type**. Skill races ("Skill of the
-Month" — one skill, one month, most XP gained wins) are the second, with a
-leaderboard that updates itself. Bingo and drop races are on the roadmap,
-which is why the model separates an *event* from the board it is played on.
+There are four **event types**, which is why the model separates an *event*
+from the board it is played on — only one of them has a board at all:
+
+| Type | What it is |
+|---|---|
+| Snakes & Ladders | A board of OSRS tasks, a daily d6, snakes and ladders |
+| Skill race | One skill, one month, most XP gained wins |
+| Drop race | Same, ranked on boss kill counts |
+| Bingo | A 3×3–10×10 card of tasks; players claim squares, a host approves them, lines score |
+
+Every type has a **live channel**: the page opens one `EventSource` and the
+server pushes when something it displays actually changed. Adding a type
+means writing a channel, not touching the stream controller.
 
 ---
 
@@ -38,8 +47,10 @@ with a key), and consider supporting them.
 |---|---|
 | Backend | Laravel 13 · PHP 8.3+ |
 | Frontend | Inertia.js v2 · Vue 3 · Nuxt UI v4 · Tailwind v4 |
-| Database | PostgreSQL (SQLite locally) via Eloquent |
+| Database | PostgreSQL (SQLite locally) via Eloquent, UUID keys throughout |
 | Auth | Discord OAuth (Socialite) · email + password |
+| Roles | `spatie/laravel-permission`, with UUID overrides |
+| Live updates | Server-Sent Events, one channel per event type |
 | Rendering | SSR through a long-running Node process |
 
 There is no separate API: controllers return `Inertia::render(...)` and Vue
@@ -72,6 +83,7 @@ documented there, but the ones that matter first:
 | `ADMIN_USER` / `ADMIN_PASS` | Local-only admin account, reachable at `/dev-login?as=admin&pass=…`. Only exists when `APP_ENV=local`. |
 | `SESSION_SECURE_COOKIE` | Leave unset locally; **set it to `true` on any HTTPS deployment**, or session cookies go out over plain HTTP. |
 | `WOM_USER_AGENT` | Identifies this app to Wise Old Man. Put a contact address in it. |
+| `MAIL_*` | Password-reset mail. Ships as `log`, which *reports success and delivers nothing* — see [Mail](#mail). |
 
 ---
 
@@ -81,12 +93,13 @@ documented there, but the ones that matter first:
 php artisan serve --port=8000
 ```
 
-> **Working on the skill-race leaderboard?** Don't use `artisan serve`. That
-> page holds an SSE connection open for ~45 seconds at a time, and PHP's
-> built-in server handles one request at a time — so a single open tab blocks
-> the entire dev server. (`PHP_CLI_SERVER_WORKERS` helps on Linux/macOS with
-> `--no-reload`; it forks, so on Windows it does nothing.) Serve through
-> Herd, Valet, or nginx + php-fpm instead.
+> **Working on any event page?** Don't use `artisan serve`. Every event page
+> holds an SSE connection open for ~45 seconds at a time, and PHP's built-in
+> server handles one request at a time — so a single open tab blocks the
+> entire dev server, and a second stream never connects at all.
+> (`PHP_CLI_SERVER_WORKERS` helps on Linux/macOS with `--no-reload`; it
+> forks, so on Windows it does nothing.) Serve through Herd, Valet, or
+> nginx + php-fpm instead.
 
 ```bash
 pnpm dev
@@ -103,9 +116,17 @@ node bootstrap/ssr/ssr.js
 ```
 
 It loads `bootstrap/ssr/ssr.js` once at startup, so it must be **restarted
-after every SSR build** — it will not pick up changes on its own. While
-`public/hot` exists, Inertia routes rendering through Vite and SSR is bypassed
-entirely, which is why SSR problems tend to surface only in production.
+after every SSR build** — it will not pick up changes on its own.
+
+> **`public/hot` silently switches SSR off.** Inertia checks for it first and,
+> when present, posts to `INERTIA_SSR_HOT_URL` — which nothing here sets — so
+> the render fails and falls back to client rendering *without a word*. The
+> file is written while `pnpm dev` runs and deleted on a clean exit, so a
+> killed dev server leaves it behind and every later page ships an empty
+> `<div id="app">`. The browser looks perfect; only view-source shows it.
+> When verifying anything SEO-related, check view-source and `ls public/hot`
+> — and remember that while the dev server is up you are testing HMR source,
+> never the built bundle.
 
 ---
 
@@ -129,7 +150,8 @@ app/
 │   └── Admin/               everything behind /admin
 ├── Http/Middleware/
 ├── Models/
-└── Services/                real business logic (board access, player boards)
+├── Events/Channels/         one live channel per event type + the resolver
+└── Services/                real business logic (board access, bingo, WOM)
 resources/
 ├── js/
 │   ├── Pages/               one component per route, PascalCase
@@ -143,6 +165,7 @@ routes/web.php
 routes/console.php           scheduled work (standings sync)
 ui.config.ts                 Nuxt UI theme, wired into vite.config.js
 lang/en.json                 flat dotted-key translations
+lang/en/validation.php       the one exception — :attribute names must live here
 docs/backlog.md              what is done, what is not, and why
 ```
 
@@ -158,6 +181,55 @@ php artisan events:sync-standings
 `routes/console.php` runs it every ten minutes, so a deployment needs
 Laravel's scheduler running (`php artisan schedule:work`, or the usual
 one-line cron entry). Without it, standings never move.
+
+---
+
+## Mail
+
+One thing sends mail: the **password-reset link** for email/password
+accounts. Discord logins never need it, which is exactly why this is easy to
+leave broken — most testing never touches it.
+
+It ships as `MAIL_MAILER=log`. That writes the message to
+`storage/logs/laravel.log` and tells the user their reset link is on its way,
+so the failure looks like success from every side. Deploy without changing it
+and password reset is dead with nothing in the logs saying so.
+
+**Brevo** is the intended provider — 300 mails/day free with no expiry,
+EU-hosted, and it speaks plain SMTP, so Laravel's built-in `smtp` mailer
+covers it with no package and no code:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_SCHEME=smtp
+MAIL_USERNAME=<your Brevo login email>
+MAIL_PASSWORD=<SMTP key from Transactional → Settings → SMTP relay>
+MAIL_FROM_ADDRESS=<an address at a domain you verified with Brevo>
+```
+
+`MAIL_FROM_ADDRESS` is the one with no working default: an unverified From
+gets rejected or filed as spam, and `hello@example.com` is neither verified
+nor yours.
+
+Volume decides whether that stays the right answer. At password-reset-only
+traffic it is a rounding error against 300/day, and the free tier never
+expires. Reconsider when either changes:
+
+| If | Then |
+|---|---|
+| Still transactional-only | Brevo free tier, indefinitely |
+| Mail becomes a feature (event digests, invite mails) | Compare on volume — `resend` (3k/mo free) or `ses` (~$0.10 per 1,000) |
+| Deliverability starts mattering commercially | `postmark`, paid, best-in-class for transactional |
+
+All four are env-level swaps: `ses` and `postmark` are built into Laravel and
+read their keys from `config/services.php`; `resend` also needs
+`composer require resend/resend-laravel`. No application code knows which one
+is in use.
+
+To check what the app would send without sending it, leave `MAIL_MAILER=log`
+and read the tail of `storage/logs/laravel.log` after requesting a reset.
 
 ---
 

@@ -1514,6 +1514,30 @@ not alongside it — the copy depends on what the app actually ends up doing.
   showing a live skill race is worth adding, and would let the preview
   section carry the same "more than one format" message the features do.
 
+- [ ] **Outbound mail has never been configured, and password reset is dead
+  without it.** `/forgot-password` works end to end — the broker returns
+  `passwords.sent`, the notification renders, the link points at the right
+  route — and then `MAIL_MAILER=log` writes all 13KB of it to
+  `storage/logs/laravel.log`. The user is told the mail is on its way. There
+  is no error anywhere. Verified 2026-08-21 by sending a real reset link
+  against a throwaway account.
+
+  `.env.example` and the README now document Brevo over plain SMTP (300/day
+  free, EU-hosted, no package needed because Laravel's `smtp` mailer covers
+  it). **Nothing is configured yet** — that is a deployment step, and the
+  From address has to be at a domain verified with whichever provider wins.
+
+  Two things deliberately left undecided rather than assumed:
+  - **Queueing.** Laravel's `ResetPassword` notification is not `ShouldQueue`,
+    so the SMTP round trip happens inside the web request. Fine at
+    reset-only volume; not fine if mail ever becomes a feature.
+  - **Email verification.** `User` does not implement `MustVerifyEmail`, so
+    an email/password account is usable with an address nobody proved they
+    own. That is a product decision, not an oversight to quietly fix.
+
+  Also worth noting: the reset mail is Laravel's stock template, zinc button
+  and all, with none of the OSRS branding the rest of the app has.
+
 - [ ] **Privacy policy needs an update.** `/privacy` was written for the
   Discord-only version of the app and no longer describes what is collected.
   Since then: email/password accounts (email address, hashed password,
