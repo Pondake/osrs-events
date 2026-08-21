@@ -63,15 +63,35 @@ class ContentController extends Controller
                     'editable' => 'Headline, standfirst, and a content region below the preview.',
                     'logic' => 'The hero button changes with whether you are signed in, the admin shortcuts only appear for admins, and the feature and guide grids are structured lists rather than blocks.',
                 ],
+                [
+                    'slug' => 'osrs-snakes-and-ladders',
+                    'path' => '/osrs-snakes-and-ladders',
+                    'label' => 'Snakes & Ladders',
+                    'editable' => 'The FAQ. Each entry is also published as FAQPage structured data, so editing one updates what Google reads.',
+                    'logic' => 'The five how-it-works steps and the board-size cards drive HowTo schema, and the page title, description and canonical URL are set in code.',
+                ],
+                [
+                    'slug' => 'osrs-clan-events',
+                    'path' => '/osrs-clan-events',
+                    'label' => 'Clan Events',
+                    'editable' => 'The FAQ, which is also published as FAQPage structured data.',
+                    'logic' => 'The feature and access-mode cards, plus the page title, description and canonical URL.',
+                ],
+                [
+                    'slug' => 'osrs-event-ideas',
+                    'path' => '/osrs-event-ideas',
+                    'label' => 'Event Ideas',
+                    'editable' => 'Nothing yet — the row exists so copy can move here without another migration.',
+                    'logic' => 'The eight event formats drive ItemList schema, so they are a code list rather than blocks.',
+                ],
             ],
             // Pages that still live as hardcoded Vue components. Listed so
             // the inventory stays honest about what the CMS does not cover
             // yet, rather than implying every public page is editable.
-            'staticPages' => [
-                ['path' => '/osrs-snakes-and-ladders', 'label' => 'Snakes & Ladders'],
-                ['path' => '/osrs-clan-events', 'label' => 'Clan Events'],
-                ['path' => '/osrs-event-ideas', 'label' => 'Event Ideas'],
-            ],
+            // Empty now that the landing pages have rows. Kept rather than
+            // deleted: the next page someone hardcodes belongs here, and an
+            // inventory that cannot express "not covered" stops being honest.
+            'staticPages' => [],
         ]);
     }
 

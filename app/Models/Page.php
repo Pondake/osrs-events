@@ -52,6 +52,8 @@ class Page extends Model
         'features',
         'image',
         'prose',
+        'list',
+        'faq',
         'links',
         'cta',
         'callout',
@@ -80,7 +82,7 @@ class Page extends Model
      * catch-all must not also serve it at `/home`, which would be the same
      * content on a second URL.
      */
-    public const PARTIAL_SLUGS = ['home'];
+    public const PARTIAL_SLUGS = ['home', 'osrs-snakes-and-ladders', 'osrs-clan-events', 'osrs-event-ideas'];
 
     /**
      * The public URL this page's content appears on.
@@ -94,8 +96,54 @@ class Page extends Model
     {
         return match ($this->slug) {
             'home' => '/',
+            // The landing slugs happen to equal their public path, so the
+            // default is already right for them.
             default => '/'.$this->slug,
         };
+    }
+
+    /**
+     * Every FAQ entry stored anywhere in this page's block tree, flattened.
+     *
+     * The landing pages render these AND emit them as FAQPage structured
+     * data. Pulling both from one place is the whole point: schema that
+     * disagrees with the visible page is worse than no schema, and keeping a
+     * separate PHP array in step with an editable block by hand is a promise
+     * nobody keeps.
+     *
+     * @return array<int, array{question: string, answer: string}>
+     */
+    public function faqItems(): array
+    {
+        return $this->collectFaqs($this->blocks ?? []);
+    }
+
+    /**
+     * @param  array<int, mixed>  $blocks
+     * @return array<int, array{question: string, answer: string}>
+     */
+    private function collectFaqs(array $blocks): array
+    {
+        $found = [];
+
+        foreach ($blocks as $block) {
+            if (($block['type'] ?? null) === 'faq') {
+                foreach ($block['props']['items'] ?? [] as $item) {
+                    // Both halves required — a question with no answer is not
+                    // a valid Question node, and Google rejects the whole
+                    // block rather than the one entry.
+                    if (filled($item['question'] ?? null) && filled($item['answer'] ?? null)) {
+                        $found[] = ['question' => $item['question'], 'answer' => $item['answer']];
+                    }
+                }
+            }
+
+            if (is_array($block['blocks'] ?? null)) {
+                $found = [...$found, ...$this->collectFaqs($block['blocks'])];
+            }
+        }
+
+        return $found;
     }
 
     public function getRouteKeyName(): string

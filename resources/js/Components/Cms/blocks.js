@@ -1,6 +1,7 @@
 import { safeHref } from '@/Support/richtext';
 import CalloutBlock from './Blocks/CalloutBlock.vue';
 import CtaBlock from './Blocks/CtaBlock.vue';
+import FaqBlock from './Blocks/FaqBlock.vue';
 import FeaturesBlock from './Blocks/FeaturesBlock.vue';
 import HeroBlock from './Blocks/HeroBlock.vue';
 import ImageBlock from './Blocks/ImageBlock.vue';
@@ -90,6 +91,13 @@ const LIST_ITEM_FIELDS = [
 ];
 
 const LIST_ITEM_SCHEMA = { text };
+
+const FAQ_FIELDS = [
+    { key: 'question', type: 'text', label: 'cms.field_question' },
+    { key: 'answer', type: 'textarea', label: 'cms.field_answer', hint: 'cms.hint_inline_markdown', rows: 3 },
+];
+
+const FAQ_SCHEMA = { question: text, answer: text };
 
 const CARD_FIELDS = [
     { key: 'icon', type: 'icon', label: 'cms.field_icon' },
@@ -184,6 +192,17 @@ export const BLOCK_TYPES = {
         // dashed prose would look like a list without being one.
         component: ListBlock,
         schema: { items: listOf(LIST_ITEM_SCHEMA, 24), ordered: bool(false) },
+    },
+    faq: {
+        label: 'cms.block_faq',
+        icon: 'i-lucide-circle-question-mark',
+        fields: [{ key: 'items', type: 'repeater', label: 'cms.field_items', fields: FAQ_FIELDS, max: 20 }],
+        // Not just copy: the landing pages emit FAQPage structured data built
+        // from these same entries, so this block is the single source for
+        // both. See LandingController — schema that disagrees with what is on
+        // the page is worse than no schema at all.
+        component: FaqBlock,
+        schema: { items: listOf(FAQ_SCHEMA, 20) },
     },
     callout: {
         label: 'cms.block_callout',
