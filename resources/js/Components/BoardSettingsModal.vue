@@ -473,12 +473,31 @@ const authorSearch = ref('');
 const authorResults = ref([]);
 let authorSearchTimeout = null;
 
+/**
+ * `<input type="date">` accepts exactly one format, YYYY-MM-DD, and silently
+ * renders empty for anything else. The API sends what the datetime cast
+ * serialises — 2026-08-21T00:00:00.000000Z — so every saved date came back
+ * looking unset, and re-saving the form then cleared it for real.
+ *
+ * Sliced rather than parsed through Date: the value is already the calendar
+ * day we want, and round-tripping it through a timezone is how it becomes
+ * the day before for anyone west of UTC.
+ */
+function dateFields(board) {
+    const toInput = (value) => (value ? String(value).slice(0, 10) : '');
+
+    return {
+        start_date: toInput(board.start_date),
+        end_date: toInput(board.end_date),
+    };
+}
+
 // Re-seed the form whenever a different board is opened for editing, or the
 // modal is reopened in create mode after a previous edit.
 watch(
     () => props.board,
     (board) => {
-        form.defaults(board ? { ...blankForm(), ...board } : blankForm());
+        form.defaults(board ? { ...blankForm(), ...board, ...dateFields(board) } : blankForm());
         form.reset();
         if (board && board.access_mode === 'INVITE') fetchInvites();
         if (board && board.mode === 'TEAM') fetchTeams();
