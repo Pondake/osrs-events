@@ -28,6 +28,12 @@ class PageController extends Controller
         // information.
         abort_unless($page->is_published, 404);
 
+        // A partial page's row exists to feed a hand-written component, not
+        // to be a page of its own. Serving it here too would put the same
+        // copy on a second URL (`/home` beside `/`) with none of the parts
+        // the component adds.
+        abort_if(in_array($page->slug, Page::PARTIAL_SLUGS, true), 404);
+
         return Inertia::render('Page', [
             'seo' => [
                 'title' => $page->seoTitle(),

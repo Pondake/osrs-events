@@ -37,6 +37,13 @@ class PageSeeder extends Seeder
             ? 'Seeded the About page.'
             : 'About page already exists — left untouched.');
 
+        // Partly editable, unlike the others: Home.vue takes its hero copy
+        // and one block region from this row and keeps the rest — the
+        // auth-dependent button, the feature grid, the admin section — in
+        // code. Seeded with an empty block list on purpose, so the page looks
+        // exactly as it did until someone actually adds something.
+        $this->seedPage('home', __('home.title'), __('home.description'), []);
+
         $this->seedPage('privacy', 'Privacy Policy', 'What we collect, and what we do not.', $this->privacyBlocks());
         $this->seedPage('terms', 'Terms of Service', 'The rules for using OSRS Events.', $this->termsBlocks());
     }

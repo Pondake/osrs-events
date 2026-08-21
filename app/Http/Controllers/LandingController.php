@@ -2,15 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Page;
 use Illuminate\Support\Facades\View;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class LandingController extends Controller
 {
+    /**
+     * The home page is **partly** editable, unlike /about, /privacy and
+     * /terms which are wholly CMS documents.
+     *
+     * The copy an admin should be able to change — the hero headline and
+     * standfirst, plus a free content region — comes from a `pages` row.
+     * Everything else stays in the component because it is behaviour, not
+     * text: the hero button depends on whether you are signed in, the admin
+     * section only exists for admins, and the feature grid and guide links
+     * are structured data the CMS vocabulary has no equivalent for.
+     *
+     * `firstWhere` rather than a required lookup: the page renders from its
+     * own translations if the row is missing, so a fresh install without the
+     * seeder is a plain home page, not a 500.
+     */
     public function home(): Response
     {
-        return Inertia::render('Home');
+        $page = Page::where('slug', 'home')->where('is_published', true)->first();
+
+        return Inertia::render('Home', [
+            'page' => $page === null ? null : [
+                'title' => $page->title,
+                'subtitle' => $page->subtitle,
+                'blocks' => $page->blocks ?? [],
+            ],
+        ]);
     }
 
     /**

@@ -70,6 +70,34 @@ class Page extends Model
 
     public const MAX_DEPTH = 3;
 
+    /**
+     * Slugs whose row backs only PART of a hand-written page.
+     *
+     * `home` is a real row — Home.vue reads its hero copy and block region —
+     * but the page itself is a component at `/`. Two things follow, and both
+     * are handled by callers checking this list: the row must not be offered
+     * as a fully editable page in the CMS inventory, and the `/{page}`
+     * catch-all must not also serve it at `/home`, which would be the same
+     * content on a second URL.
+     */
+    public const PARTIAL_SLUGS = ['home'];
+
+    /**
+     * The public URL this page's content appears on.
+     *
+     * Usually `/{slug}` through the catch-all, but a partial page's row backs
+     * a component mounted elsewhere — `home` renders at `/`, and `/home`
+     * deliberately 404s. Kept here so the editor's "view live" link and any
+     * future sitemap agree on one answer.
+     */
+    public function publicPath(): string
+    {
+        return match ($this->slug) {
+            'home' => '/',
+            default => '/'.$this->slug,
+        };
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

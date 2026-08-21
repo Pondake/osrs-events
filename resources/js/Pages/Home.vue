@@ -3,7 +3,12 @@
 
     <u-main>
         <u-page>
-            <u-page-hero :title="$t('home.title')" :description="$t('home.description')">
+            <!-- Copy from the CMS when a `home` page row exists, falling
+                 back to the translations so the page still reads correctly
+                 without one. The BUTTON below stays in code: which one you
+                 get depends on whether you are signed in, and that is
+                 behaviour rather than content. -->
+            <u-page-hero :title="heroTitle" :description="heroDescription">
                 <template #links>
                     <u-button v-if="isAuthenticated" href="/events" trailing-icon="i-lucide-arrow-right" size="xl" color="primary" :label="$t('home.cta_boards')" />
                     <u-button v-else :href="route('login')" size="xl" icon="i-simple-icons-discord" color="primary" :label="$t('home.cta_login')" />
@@ -29,6 +34,15 @@
                 </u-container>
             </u-page-section>
 
+            <!-- The editable region. Anything an admin adds in
+                 /admin/content/home lands here, between the preview and the
+                 fixed "what's available" grid. -->
+            <u-page-section v-if="blocks.length">
+                <u-container class="max-w-4xl">
+                    <page-renderer :blocks="blocks" />
+                </u-container>
+            </u-page-section>
+
             <u-page-section :title="$t('home.how_it_works')" :description="$t('home.how_subtitle')" :features="features" />
 
             <u-page-section :title="$t('home.guides_title')" :description="$t('home.guides_subtitle')" :links="guideLinks" />
@@ -44,11 +58,28 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import SeoHead from '@/Components/SeoHead.vue';
+import PageRenderer from '@/Components/Cms/PageRenderer.vue';
 import { useAuth } from '@/Composables/useAuth';
 
 const { isAuthenticated, isAdmin } = useAuth();
+
+/**
+ * Unlike /about, /privacy and /terms, this page is only PARTLY editable.
+ * The hero copy and the block region come from a `pages` row; the rest of
+ * the page is behaviour — an auth-dependent call to action, an admin-only
+ * section, and structured feature and guide lists the block vocabulary has
+ * no equivalent for.
+ */
+const props = defineProps({
+    page: { type: Object, default: null },
+});
+
+const heroTitle = computed(() => props.page?.title || trans('home.title'));
+const heroDescription = computed(() => props.page?.subtitle || trans('home.description'));
+const blocks = computed(() => props.page?.blocks ?? []);
 
 const seo = {
     title: trans('seo.home_title'),

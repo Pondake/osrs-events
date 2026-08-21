@@ -745,7 +745,31 @@ branch's SSR evaluation. Concrete carry-over work:
        blocks"** for every page because `blocks` was missing from the column
        list the count reads.
 
-  5. **Editor UI needs a visual pass** — flagged by the owner 2026-08-20:
+  5. **The home page is partly editable** — done 2026-08-21, at the owner's
+     request: embed content in Home with a note saying which parts are logic.
+     Its hero headline and standfirst come from a `pages` row, plus one block
+     region rendered below the preview. Everything else stays in the
+     component because it is **behaviour, not text** — the hero button
+     depends on whether you are signed in, the admin shortcuts only exist for
+     admins, and the feature and guide grids are structured lists the block
+     vocabulary has no equivalent for.
+     `/admin/content` now has three groups rather than two: fully editable,
+     **partly editable** (with a "you can edit" / "handled in code" note per
+     page), and still hardcoded. An admin who opens that editor expecting the
+     whole page should learn why half of it is missing there, not by hunting.
+     Two seams that needed guarding, both found by looking at the result:
+     * The row was listed **twice** — once as a fully editable page, which is
+       exactly the impression the inventory exists to prevent.
+       `Page::PARTIAL_SLUGS` filters it out of that list.
+     * `/{page}` served it at **`/home`**, a second URL with the same copy and
+       none of the parts the component adds. It 404s now, and `Page::
+       publicPath()` is the one place that knows a partial page's row is
+       published somewhere other than `/{slug}` — the editor's "view live"
+       link was pointing at the dead URL until it existed.
+     Falls back to the translations when the row is missing, so a fresh
+     install without the seeder is a plain home page rather than a 500.
+
+  6. **Editor UI needs a visual pass** — flagged by the owner 2026-08-20:
      it works and is functionally fine, but reads as "a bad Divi", which is
      fair — it is a vertical stack of accordion boxes, and you edit in a list
      that sits beside the thing it changes rather than on it.
