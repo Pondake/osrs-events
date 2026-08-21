@@ -43,13 +43,19 @@
                 :description="$t('landing.snakes.lead')"
             >
                 <template #links>
-                    <!-- Board creation lives behind a modal on /boards (not yet
-                         ported — see docs/backlog.md), so unauthenticated visitors
-                         go straight through Discord login rather than to a page
-                         they can't act on yet, matching the old Nuxt page's
-                         behavior (frontend/app/pages/osrs-snakes-and-ladders.vue,
-                         kept in stale/ for reference). -->
-                    <u-button size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" :href="route('login')" />
+                    <!-- Sent to /events, where the create modal actually
+                         lives. This used to point at route('login') for
+                         everyone, unconditionally — a name that means the
+                         DISCORD kickoff, not the login page. So "Create a
+                         board" threw you into an OAuth consent screen, and
+                         did it even when you were already signed in. The
+                         comment here justified it by saying the create modal
+                         was not ported yet; it has been for some time.
+                         Guests get the login page, which offers Discord and
+                         email side by side — neither is required to make a
+                         board. -->
+                    <u-button v-if="isAuthenticated" to="/events" size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" />
+                    <u-button v-else href="/login" size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" />
                     <u-button
                         to="/events"
                         size="xl"
@@ -102,6 +108,9 @@
 <script setup>
 import { trans } from 'laravel-vue-i18n';
 import { useSeoData } from '@/Composables/useSeo';
+import { useAuth } from '@/Composables/useAuth';
+
+const { isAuthenticated } = useAuth();
 
 const props = defineProps({
     steps: { type: Array, required: true },
