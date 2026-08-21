@@ -68,10 +68,22 @@ export function useEventStream({ url, event, onMessage }) {
         // reconnects by itself, so this starts a grace period rather than
         // tearing anything down.
         source.addEventListener('error', (error) => {
-            console.error(error);
+            // CLOSED means EventSource has given up and will not retry —
+            // the only case here that is actually a fault. CONNECTING is the
+            // scheduled 45-second turnover reconnecting, and logging that
+            // put an error in the console every 45 seconds of a healthy
+            // page, which is how a real failure gets missed.
+            if (source?.readyState === EventSource.CLOSED) {
+                console.error(error);
+            }
 
             if (staleTimer === null) {
-                staleTimer = setTimeout(() => (stale.value = true), STALE_AFTER_MS);
+                staleTimer = setTimeout(() => {
+                    stale.value = true;
+                    // The reconnect never landed. Logged once per stall
+                    // rather than once per disconnect.
+                    console.error('Event stream went stale', { url: target, event });
+                }, STALE_AFTER_MS);
             }
         });
     });

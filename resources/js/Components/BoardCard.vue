@@ -6,9 +6,22 @@
                     <span class="truncate">{{ board.title }}</span>
                     <div class="flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 shrink-0" :class="status.class">
                         <u-icon :name="status.icon" class="size-3.5" />
-                        <span>{{ status.label }}</span>
+                        <span>{{ $t(status.labelKey) }}</span>
                     </div>
                 </div>
+
+                <!-- Which kind of event this is, said once and plainly. The
+                     card used to leave you to infer it from whether it
+                     mentioned a grid size or a metric. -->
+                <u-badge
+                    v-if="typeMeta"
+                    :icon="typeMeta.icon"
+                    :label="typeMeta.label"
+                    color="primary"
+                    variant="subtle"
+                    size="sm"
+                    class="mt-2"
+                />
             </template>
 
             <template #description>
@@ -26,9 +39,13 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 text-sm text-muted">
+                    <!-- Both dates are nullable — an open-ended board has
+                         neither, and this rendered formatDate()'s em-dash
+                         placeholder twice ("— – —") as if the data were
+                         missing rather than absent by design. -->
+                    <div v-if="dateRange" class="flex items-center gap-2 text-sm text-muted">
                         <u-icon name="i-lucide-calendar" class="size-4" />
-                        <span>{{ formatDate(board.start_date) }} – {{ formatDate(board.end_date) }}</span>
+                        <span>{{ dateRange }}</span>
                     </div>
 
                     <!-- Grid size and dice limit live on the BOARD, and not
@@ -61,7 +78,7 @@
 
                     <div v-if="access" class="flex items-center gap-2 text-sm text-muted">
                         <u-icon :name="access.icon" class="size-4" />
-                        <span>{{ access.label }}</span>
+                        <span>{{ $t(access.labelKey) }}</span>
                     </div>
 
                     <div v-if="board.mode === 'TEAM'" class="flex items-center gap-2 text-sm text-muted">
@@ -106,11 +123,29 @@ import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { formatBoardSize, formatDate, boardEventStatus, BOARD_ACCESS_META, BOARD_STATUS_STYLE } from '@/Support/board';
 import { metricKindFor, rankedByLabel } from '@/Support/metrics';
+import { eventTypeMeta } from '@/Support/eventTypes';
+import { trans } from 'laravel-vue-i18n';
 
 const props = defineProps({
     board: { type: Object, required: true },
     // { current, total, pct } — omitted on the public index.
     progress: { type: Object, default: null },
+});
+
+const typeMeta = computed(() => eventTypeMeta(props.board.type));
+
+/**
+ * Null when the board is open-ended, so the row is dropped rather than filled
+ * with placeholders. Half-open ranges read as a bound, not as a gap.
+ */
+const dateRange = computed(() => {
+    const { start_date: start, end_date: end } = props.board;
+
+    if (start && end) return `${formatDate(start)} – ${formatDate(end)}`;
+    if (start) return trans('boards.date_from', { date: formatDate(start) });
+    if (end) return trans('boards.date_until', { date: formatDate(end) });
+
+    return null;
 });
 
 const rankedBy = computed(() => rankedByLabel(props.board.metric, metricKindFor(props.board.type)));

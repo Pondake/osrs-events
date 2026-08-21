@@ -304,6 +304,30 @@ branch's SSR evaluation. Concrete carry-over work:
      wasn't the actual cause here. Left as a static array with content-level
      `v-if` gating instead, which sidesteps the question rather than
      resolving it either way.
+  14. **A leftover `public/hot` silently turns SSR off entirely.** Laravel
+     writes that file while `pnpm dev` runs and deletes it on a clean exit;
+     if the dev server is killed, or simply left running, the file stays.
+     Inertia's `HttpGateway` checks `Vite::isRunningHot()` FIRST and, when
+     hot, posts to `INERTIA_SSR_HOT_URL` — which nothing here sets — so the
+     request fails and SSR falls back to client rendering. The fallback is
+     deliberately silent (that's the documented behaviour on any SSR error),
+     so the only symptom is `<div id="app"></div>` in view-source while the
+     page looks perfect in a browser. Found this way: the SSR process was
+     healthy on :13714 and answering /health with 200, and pages still
+     shipped 55KB of empty shell instead of 134KB of rendered markup. Check
+     view-source, not the browser, when verifying anything SEO-related — and
+     `ls public/hot` before concluding SSR is broken. Corollary: while the
+     dev server is up, every "verification" runs against HMR source and
+     never exercises the built bundle at all.
+  15. `php artisan serve` cannot serve an SSE stream and anything else at the
+     same time. PHP's built-in server is single-threaded, and
+     `PHP_CLI_SERVER_WORKERS` forks, so it does nothing on Windows. One open
+     `EventSource` holds the only worker for the full 45s stream, and every
+     other request — including a second stream — queues behind it. Symptom:
+     a page whose own stream works, plus console `error` events, plus any
+     other tab hanging. Not an app bug; use Herd/nginx+fpm when working on
+     live-channel pages, and mutate via `artisan tinker` (its own process)
+     rather than a second HTTP request when testing a push end to end.
 - [x] ~~Site navigation (header/footer/user menu)~~ — done, and it was a real
   gap, not polish: every page existed in isolation with no way to navigate
   between them except typing URLs directly, which is how this entire
