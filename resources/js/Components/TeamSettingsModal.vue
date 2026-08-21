@@ -84,7 +84,7 @@ const isOpen = computed({
 
 const isEdit = computed(() => props.team !== null);
 
-const blank = () => ({ name: '', icon_url: '', guild_id: '', guild_name: '' });
+const blank = () => ({ name: '', icon_url: '', guild_id: '' });
 
 const form = useForm(blank());
 
@@ -114,13 +114,6 @@ onMounted(async () => {
     } finally {
         loadingGuilds.value = false;
     }
-});
-
-// guild_name is stored alongside the id purely so the team card can label
-// itself without a join. Derived here rather than asked for, so the two can
-// never disagree.
-watch(() => form.guild_id, (id) => {
-    form.guild_name = guilds.value.find((guild) => guild.id === id)?.name ?? '';
 });
 
 // Re-seeded on every switch between teams (and back to create), the same way
