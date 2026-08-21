@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,20 @@ class BoardInvite extends Model
         'expires_at' => 'datetime',
         'created_at' => 'datetime',
     ];
+
+    /**
+     * Invites that could still let somebody in right now.
+     *
+     * "Open" is the only count worth capping: a link that expired last week
+     * or has burned its last use is history, not clutter, and refusing a new
+     * one because of it would be a limit the host cannot clear.
+     */
+    public function scopeOpen(Builder $query): Builder
+    {
+        return $query
+            ->where(fn (Builder $q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->where(fn (Builder $q) => $q->whereNull('max_uses')->orWhereColumn('use_count', '<', 'max_uses'));
+    }
 
     public function event(): BelongsTo
     {
