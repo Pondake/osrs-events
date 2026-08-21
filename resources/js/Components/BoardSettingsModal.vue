@@ -1,5 +1,5 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="isEdit ? $t('admin.edit_board') : $t('admin.create_board')">
+    <u-modal v-model:open="isOpen" :title="isEdit ? $t('admin.edit_board') : $t('admin.create_board')" :dismissible="false">
         <template #body>
             <!-- CLAUDE.md's convention is a stepper for create and tabs for edit
                  (per-step validation on create). Both use tabs here instead — a
@@ -503,12 +503,15 @@ watch(
         if (board && board.mode === 'TEAM') fetchTeams();
 
         // The backend always keeps the true owner(s) as an editor regardless
-        // of what's submitted here (see BoardController::store()/update()),
-        // so a brand-new board just starts empty — the creator becomes owner
-        // server-side without needing to appear in this list at all.
+        // of what is submitted here (see BoardController::store()/update()),
+        // so a new board did not technically need the creator in this list —
+        // and started empty. But the field's own description says "You are
+        // always included as an editor", and an empty list directly under
+        // that reads as though it is not true. Shown as an owner, so it
+        // carries the same non-removable badge it will have a second later.
         selectedAuthors.value = board
             ? board.authors.map((a) => ({ ...a.user, is_owner: a.is_owner }))
-            : [];
+            : (currentUser.value ? [{ ...currentUser.value, is_owner: true }] : []);
         form.author_ids = selectedAuthors.value.map((a) => a.id);
         authorSearch.value = '';
         authorResults.value = [];

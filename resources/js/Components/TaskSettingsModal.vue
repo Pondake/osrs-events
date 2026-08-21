@@ -1,5 +1,5 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="isEdit ? $t('tile_editor.action_edit_task') : $t('tile_editor.action_create_task')">
+    <u-modal v-model:open="isOpen" :title="isEdit ? $t('tile_editor.action_edit_task') : $t('tile_editor.action_create_task')" :dismissible="false">
         <template #body>
             <div class="space-y-4 py-2">
                 <u-form-field :label="$t('admin.task_title_label')" required>

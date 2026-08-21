@@ -1,5 +1,5 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="`${$t('tile_editor.title')} ${position + 1}`">
+    <u-modal v-model:open="isOpen" :title="`${$t('tile_editor.title')} ${position + 1}`" :dismissible="false">
         <template #body>
             <div class="space-y-4 py-2">
                 <u-form-field :label="$t('tile_editor.task_label')">

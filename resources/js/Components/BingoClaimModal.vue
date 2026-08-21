@@ -1,5 +1,5 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="square?.label || $t('bingo.empty_square')">
+    <u-modal v-model:open="isOpen" :title="square?.label || $t('bingo.empty_square')" :dismissible="false">
         <template #body>
             <div class="space-y-4 py-2">
                 <p class="text-sm text-muted">{{ $t('bingo.claim_intro') }}</p>
