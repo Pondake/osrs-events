@@ -426,9 +426,18 @@ class BoardController extends Controller
             ],
             // Keyed by position so the grid can colour a square by its state
             // without searching a list per cell.
+            // The whole claim, not just its verdict. The square's dialog shows
+            // what was submitted and what the host said back — a rejection
+            // that explains nothing is the thing players complain about, and
+            // a note left on an APPROVAL was being written and then thrown
+            // away entirely.
             'claims' => $claims->map(fn ($claim) => [
+                'id' => $claim->id,
                 'status' => $claim->status,
                 'reviewNote' => $claim->review_note,
+                'proofUrl' => $claim->proof_url,
+                'note' => $claim->note,
+                'reviewedAt' => $claim->reviewed_at?->toIso8601String(),
             ]),
             'completed' => $approved,
             // Who holds each square, for the faces on the grid. Same source

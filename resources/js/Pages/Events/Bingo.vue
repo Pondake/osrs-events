@@ -402,6 +402,7 @@
                 v-model:open="claimModalOpen"
                 :event-id="event.id"
                 :square="claimingSquare"
+                :claim="claims[claimingSquare.position] ?? null"
             />
             <template v-if="canEdit">
                 <board-settings-modal v-model:open="showSettingsModal" :board="event" />
@@ -594,11 +595,12 @@ function squareClass(square) {
 
 function squareTitle(square) {
     if (square.isWildcard) return trans('bingo.wildcard_desc');
+    if (editing.value) return trans('bingo.edit_tiles_desc');
 
-    const state = statusOf(square);
-
-    if (state === 'PENDING') return trans('bingo.status_pending');
-    if (state === 'REJECTED') return props.claims[square.position]?.reviewNote || trans('bingo.status_rejected');
+    // A claimed square says a click opens it rather than what the verdict
+    // was — the verdict is on the square already, and the reason lives in
+    // the dialog where there is room for it.
+    if (statusOf(square)) return trans('bingo.open_claim');
 
     return square.label ?? '';
 }
@@ -667,13 +669,13 @@ function onSquareClick(square) {
 
     if (!props.canPlay) return;
 
-    // Withdrawing a claim needs no proof, so it does not need the dialog —
-    // only making one does.
+    // An existing claim always opens the dialog, whatever the card's review
+    // setting. Withdrawing used to happen on a bare second click — no hover
+    // state saying so, nothing confirming it — so a stray click quietly
+    // undid a claim and, on a reviewed card, its place in the queue.
     if (statusOf(square)) {
-        router.post(`/events/${props.event.id}/bingo/squares/${square.id}/claim`, {}, {
-            preserveScroll: true,
-            onError: (errors) => console.error(errors),
-        });
+        claimingSquare.value = square;
+        claimModalOpen.value = true;
 
         return;
     }

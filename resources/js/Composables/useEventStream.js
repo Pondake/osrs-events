@@ -26,6 +26,7 @@ export function useEventStream({ url, event, onMessage }) {
 
     let source = null;
     let staleTimer = null;
+    let target = null;
 
     // The server ends every stream after ~45 seconds by design, so a
     // disconnect is the normal case rather than a fault. Flipping the
@@ -40,17 +41,9 @@ export function useEventStream({ url, event, onMessage }) {
         stale.value = false;
     }
 
-    onMounted(() => {
-        // Guarded: SSR has no EventSource, and neither do a few old browsers.
-        // The page is already fully rendered without it, so there is nothing
-        // to fall back to — it just stops updating by itself, and the
-        // indicator stays hidden rather than claiming to be live.
-        if (typeof window === 'undefined' || !('EventSource' in window)) return;
+    function connect() {
+        if (source || !target) return;
 
-        const target = url();
-        if (!target) return;
-
-        streaming.value = true;
         source = new EventSource(target);
 
         source.addEventListener('open', markLive);
@@ -86,14 +79,70 @@ export function useEventStream({ url, event, onMessage }) {
                 }, STALE_AFTER_MS);
             }
         });
-    });
+    }
 
-    onBeforeUnmount(() => {
+    function disconnect() {
         // Without this the browser keeps reconnecting to a page nobody is on,
         // and every reconnect takes a PHP worker for 45 seconds.
         clearTimeout(staleTimer);
+        staleTimer = null;
         source?.close();
         source = null;
+    }
+
+    /**
+     * A backgrounded tab drops its connection and picks it up again on
+     * return.
+     *
+     * A held stream is not free at either end. The server keeps a PHP worker
+     * for the life of it, so a viewer who left the tab open yesterday costs
+     * exactly as much as one watching. And a browser will only hold so many
+     * connections to one origin — measured here, a second stream to the same
+     * origin does not connect at all while the first is open, and ordinary
+     * requests from that tab stall behind it. Someone with the site open in
+     * three tabs was starving the two they were not looking at.
+     *
+     * Nothing is missed by dropping it: the channel sends a full snapshot
+     * rather than a diff, and the reconnect carries no Last-Event-ID, so the
+     * first thing a returning tab gets is current state.
+     */
+    function onVisibilityChange() {
+        if (document.visibilityState === 'hidden') {
+            disconnect();
+            // Not stale — deliberately disconnected. Saying otherwise would
+            // put a warning on a tab that is working exactly as intended.
+            stale.value = false;
+
+            return;
+        }
+
+        connect();
+    }
+
+    onMounted(() => {
+        // Guarded: SSR has no EventSource, and neither do a few old browsers.
+        // The page is already fully rendered without it, so there is nothing
+        // to fall back to — it just stops updating by itself, and the
+        // indicator stays hidden rather than claiming to be live.
+        if (typeof window === 'undefined' || !('EventSource' in window)) return;
+
+        target = url();
+        if (!target) return;
+
+        streaming.value = true;
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        // A tab restored from the background starts hidden, so this is not
+        // always true at mount.
+        if (document.visibilityState !== 'hidden') connect();
+    });
+
+    onBeforeUnmount(() => {
+        if (typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        }
+
+        disconnect();
     });
 
     return { streaming, stale };
