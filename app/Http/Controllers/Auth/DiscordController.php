@@ -34,13 +34,19 @@ class DiscordController extends Controller
         // here) rather than replacing it. Confirmed by curling this route:
         // ->scopes() produced "identify email guilds" in the redirect URL.
         //
-        // prompt=consent overrides the driver's own prompt=none. With
-        // prompt=none Discord silently reuses an EXISTING authorisation, so
-        // an account that first logged in before `guilds` was requested gets
-        // a token without it — /users/@me/guilds then 401s, syncGuilds is
-        // deliberately non-fatal, and the user ends up permanently with zero
-        // servers and nothing on screen explaining why. Re-consenting is one
-        // extra click on a flow nobody runs twice a day.
+        // withConsent(), which is the driver's own switch, and NOT
+        // ->with(['prompt' => 'consent']): getCodeFields() overwrites prompt
+        // AFTER merging custom parameters, so passing it that way is
+        // silently discarded. A test asserts the value on the real URL,
+        // because the first attempt here looked completely correct and
+        // changed nothing.
+        //
+        // It matters because the driver's default is prompt=none, which makes
+        // Discord silently reuse an EXISTING authorisation: an account that
+        // first logged in before `guilds` was requested gets a token without
+        // it, /users/@me/guilds 401s, syncGuilds is deliberately non-fatal,
+        // and that account is left with zero servers forever and nothing on
+        // screen explaining why.
         //
         // Wrapped in Inertia::location() rather than returned bare. Every
         // button that starts this flow is rendered by @nuxt/ui, which routes
@@ -56,7 +62,7 @@ class DiscordController extends Controller
         return Inertia::location(
             Socialite::driver('discord')
                 ->setScopes(['identify', 'guilds'])
-                ->with(['prompt' => 'consent'])
+                ->withConsent()
                 ->redirect()
         );
     }
@@ -77,7 +83,7 @@ class DiscordController extends Controller
         return Inertia::location(
             Socialite::driver('discord')
                 ->setScopes(['identify', 'guilds'])
-                ->with(['prompt' => 'consent'])
+                ->withConsent()
                 ->redirect()
         );
     }
