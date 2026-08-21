@@ -328,6 +328,21 @@ branch's SSR evaluation. Concrete carry-over work:
      other tab hanging. Not an app bug; use Herd/nginx+fpm when working on
      live-channel pages, and mutate via `artisan tinker` (its own process)
      rather than a second HTTP request when testing a push end to end.
+  16. **A deploy that rebuilds the SSR bundle but does not restart the SSR
+     process keeps serving the previous build, forever.** The process loads
+     `bootstrap/ssr/ssr.js` once at startup; nothing re-reads it. Ploi's
+     "Restart NodeJS server after deployment" checkbox was ticked and did
+     not do it, so the deploy script now kills the process by full script
+     path (`pkill -f .../bootstrap/ssr/ssr.js`) and lets supervisor respawn
+     it — by path rather than supervisor program name, since the path is
+     unique to the site and needs no knowledge of Ploi's naming.
+     Caught after renaming a route: pages whose stale compiled SSR still
+     called `route('login')` threw inside ziggy (unknown name), Inertia fell
+     back to client rendering, and exactly those pages shipped an empty
+     `<div id="app">` — 44KB and no `<title>` — while every page that did
+     not reference the renamed route rendered perfectly. A partial SSR
+     outage looks like nothing at all in a browser, and the give-away is a
+     page's byte count and title count, not its appearance.
 - [x] ~~Site navigation (header/footer/user menu)~~ — done, and it was a real
   gap, not polish: every page existed in isolation with no way to navigate
   between them except typing URLs directly, which is how this entire
