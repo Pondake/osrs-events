@@ -916,6 +916,7 @@
     "onboarding.connect_email_title": "Add an email address",
     "onboarding.connect_heading": "Finish setting up your account",
     "onboarding.connect_optional": "Both are optional — you can do this later from your account settings.",
+    "onboarding.connect_optional_one": "This one is optional — you can do it later from your account settings.",
     "onboarding.create_and_continue": "Create board",
     "onboarding.finish": "Get started",
     "onboarding.join_body": "Pick one to open it. You'll join automatically if it's open to everyone.",
