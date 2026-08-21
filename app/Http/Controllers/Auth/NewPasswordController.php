@@ -55,6 +55,6 @@ class NewPasswordController extends Controller
             ]);
         }
 
-        return redirect()->route('auth.login')->with('status', trans('auth.password_reset_success'));
+        return redirect()->route('login')->with('status', trans('auth.password_reset_success'));
     }
 }

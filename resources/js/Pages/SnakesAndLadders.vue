@@ -45,10 +45,11 @@
                 <template #links>
                     <!-- Sent to /events, where the create modal actually
                          lives. This used to point at route('login') for
-                         everyone, unconditionally — a name that means the
-                         DISCORD kickoff, not the login page. So "Create a
-                         board" threw you into an OAuth consent screen, and
-                         did it even when you were already signed in. The
+                         everyone, unconditionally — back when that name
+                         meant the DISCORD kickoff rather than the login
+                         page. So "Create a board" threw you into an OAuth
+                         consent screen, and did it even when you were
+                         already signed in. The
                          comment here justified it by saying the create modal
                          was not ported yet; it has been for some time.
                          Guests get the login page, which offers Discord and

@@ -11,7 +11,7 @@
             <u-page-hero :title="heroTitle" :description="heroDescription">
                 <template #links>
                     <u-button v-if="isAuthenticated" href="/events" trailing-icon="i-lucide-arrow-right" size="xl" color="primary" :label="$t('home.cta_boards')" />
-                    <u-button v-else :href="route('login')" size="xl" icon="i-simple-icons-discord" color="primary" :label="$t('home.cta_login')" />
+                    <u-button v-else :href="route('auth.discord.redirect')" size="xl" icon="i-simple-icons-discord" color="primary" :label="$t('home.cta_login')" />
                 </template>
             </u-page-hero>
 

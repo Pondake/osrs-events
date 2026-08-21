@@ -422,10 +422,12 @@ class BoardController extends Controller
 
     /**
      * Direct invite-link join (GET /boards/{board}/join/{token}) — ported
-     * from the old join/[token].vue. Unauthenticated visitors go through
-     * Discord login first; redirect()->intended() (Laravel's own mechanism,
-     * not a hand-rolled localStorage flag like the old client-side version
-     * needed) brings them right back here afterward.
+     * from the old join/[token].vue. Unauthenticated visitors log in first —
+     * on the login page, which offers Discord and email/password both; this
+     * used to go straight to Discord, which an email account could not get
+     * past. redirect()->intended() (Laravel's own mechanism, not a
+     * hand-rolled localStorage flag like the old client-side version needed)
+     * brings them right back here afterward.
      */
     public function joinByLink(Request $request, Event $event, string $token, BoardAccessService $access): RedirectResponse
     {

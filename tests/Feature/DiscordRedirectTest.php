@@ -90,6 +90,20 @@ class DiscordRedirectTest extends TestCase
         $this->assertSame('identify guilds', $query['scope'] ?? null);
     }
 
+    /**
+     * The reason `login` names the page and not the OAuth kickoff.
+     *
+     * Laravel's auth middleware, redirect()->guest() and every "sign in"
+     * CTA all resolve route('login'). While that pointed at the Discord
+     * redirect, all of them dropped the visitor straight into an OAuth
+     * consent screen — a dead end for anyone holding an email/password
+     * account, since the form they needed was never reachable from there.
+     */
+    public function test_a_guest_hitting_a_protected_page_lands_on_the_login_page_not_discord(): void
+    {
+        $this->get('/my-events')->assertRedirect('/login');
+    }
+
     public function test_connecting_discord_to_an_existing_account_also_leaves_via_inertia_location(): void
     {
         $user = User::factory()->create();
