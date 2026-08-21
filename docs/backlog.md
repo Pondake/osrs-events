@@ -1117,6 +1117,49 @@ sub-pages which aren't discoverable from it.
     working on that page. Worth remembering when sizing fpm in production
     too: this feature holds a worker per viewer.
 
+- [x] ~~**Bingo and drop races implemented.**~~ — done 2026-08-21. All four
+  event types are now `available: true`.
+
+  **A drop race turned out to be a boss killcount race**, which made it small
+  rather than large. Wise Old Man returns `bosses.{name}.kills` in the same
+  envelope as `skills.{name}.experience`, so it reuses the entire standings
+  pipeline — the sync command, the SSE stream, the leaderboard page, the
+  enter/leave flow — and differs only in which branch of the response is read.
+  `EVENT_TYPES` gained a `metricKind`, and `gainedXp()` became `gained($kind)`.
+  71 boss metrics pulled from a live response rather than transcribed.
+  * **Their `-1` means unranked, not a count.** Found by running a real race:
+    Lynx Titan has no Zulrah killcount and came back as -1, which was heading
+    into an unsigned column as a value. It is an absence, so it stores null.
+  * The metric picker and every label switch on the kind — calling boss kills
+    "XP gained" would just be wrong, and a boss slug looked up under `skills.`
+    renders as the raw key.
+
+  **Bingo needed its own payload**, and deliberately does not reuse `boards`
+  and `tiles` despite both being grids. A Snakes & Ladders board has a dice
+  limit, a per-player position, and tiles whose snake/ladder type and target
+  mean nothing on a card; bingo needs something they lack — a completion that
+  belongs to a **team**, not to one player's walk across a board. Three tables
+  (`bingo_cards`, `bingo_squares`, `bingo_completions`) cost three migrations
+  once; a shared table with a nullable position and a completion that means
+  two things by parent type would cost every query afterwards.
+  * **Line detection is server-side** (`BingoService`), because the server has
+    to be able to agree with what a player was shown. Rows, columns and both
+    diagonals, computed from the size rather than stored — a stored copy is a
+    thing that can disagree with the grid it describes.
+  * **Shrinking a card is refused** when squares outside the new grid carry
+    completions. A size dropdown must not be able to erase other people's
+    progress silently.
+  * Squares are created up front, unlike S&L tiles which appear on first edit:
+    a card has to be clickable the moment it exists, and a missing row renders
+    as a hole.
+  * An author can both play and edit, and one click cannot mean both — so
+    edit mode is an explicit toggle rather than a guess.
+
+  **Still open:** bingo has no SSE stream (its standings are page-load only,
+  where a race's are live), no per-square proof or approval flow, and the
+  `mimic`/`nightmare` style boss display names were hand-mapped from slugs —
+  worth checking against the wiki before launch.
+
 ## Onboarding & landing polish (step 5)
 
 Flagged 2026-08-19: landing pages currently read as placeholder-bare (plain

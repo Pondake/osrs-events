@@ -52,9 +52,25 @@
 
                         <!-- Only for types that race on a metric. Snakes &
                              Ladders has none, and the server rejects one. -->
-                        <u-form-field v-if="needsMetric" :label="$t('events.metric_label')" :description="$t('events.metric_desc')" required>
+                        <u-form-field v-if="needsMetric" :label="$t(metricKind === 'boss' ? 'events.metric_label_boss' : 'events.metric_label')"
+                            :description="$t(metricKind === 'boss' ? 'events.metric_desc_boss' : 'events.metric_desc')"
+                            required
+                        >
                             <u-select v-model="form.metric" :items="metricOptions" class="w-full" />
                         </u-form-field>
+
+                        <!-- Bingo brings its own grid, unrelated to the
+                             Snakes & Ladders one: a side length rather than a
+                             size enum, plus what counts as winning. -->
+                        <div v-if="isBingo" class="grid grid-cols-2 gap-4">
+                            <u-form-field :label="$t('bingo.card_size')" required>
+                                <u-select v-model="form.bingo_size" :items="bingoSizeOptions" class="w-full" />
+                            </u-form-field>
+
+                            <u-form-field :label="$t('bingo.win_condition')">
+                                <u-select v-model="form.win_condition" :items="winConditionOptions" class="w-full" />
+                            </u-form-field>
+                        </div>
 
                         <div v-if="hasBoard" class="grid grid-cols-2 gap-4">
                             <u-form-field :label="$t('admin.board_size')" required>
@@ -271,6 +287,11 @@ function blankForm() {
         metric: null,
         description: '',
         size: site.defaultBoardSize ?? 'SIZE_7X7',
+        // Bingo's own grid. 5x5 is the conventional card, and the win
+        // condition defaults to first-line because that is the shorter,
+        // more common event.
+        bingo_size: 5,
+        win_condition: 'LINE',
         mode: 'SOLO',
         start_date: '',
         end_date: '',
@@ -306,14 +327,44 @@ const needsMetric = computed(() => Boolean(selectedType.value?.needsMetric));
 // hidden for anything else rather than sitting there doing nothing.
 const hasBoard = computed(() => form.type === 'SNAKES_LADDERS');
 
-const metricOptions = computed(() =>
-    (usePage().props?.site?.skillMetrics ?? []).map((m) => ({
+const isBingo = computed(() => form.type === 'BINGO');
+
+const bingoSizeOptions = [3, 4, 5, 6, 7].map((size) => ({
+    value: size,
+    label: trans('bingo.size_option', { size }),
+}));
+
+const winConditionOptions = [
+    { value: 'LINE', label: trans('bingo.win_line') },
+    { value: 'FULL_HOUSE', label: trans('bingo.win_full_house') },
+];
+
+// Which list to offer depends on the type: a skill race races on skills, a
+// drop race on boss killcounts. Both come from Wise Old Man's own vocabulary,
+// and the i18n namespace matches the kind so a boss name never gets looked up
+// as a skill.
+const metricKind = computed(() => selectedType.value?.metricKind ?? null);
+
+const metricOptions = computed(() => {
+    const kind = metricKind.value;
+    if (!kind) return [];
+
+    return (usePage().props?.site?.metricsByKind?.[kind] ?? []).map((m) => ({
         value: m,
-        label: trans(`skills.${m}`),
-    })),
-);
+        label: trans(`${kind === 'boss' ? 'bosses' : 'skills'}.${m}`),
+    }));
+});
 
 const form = useForm(blankForm());
+
+// A boss name is not a valid skill race and vice versa, so switching type
+// drops a metric that no longer belongs to the list on offer. Left alone it
+// would submit and be rejected by a validation rule the user cannot see.
+watch(() => form.type, () => {
+    if (form.metric && !metricOptions.value.some((option) => option.value === form.metric)) {
+        form.metric = null;
+    }
+});
 
 // Mirrors form.author_ids, but carrying display data (username/avatar) the
 // form itself has no use for — kept in sync by addAuthor()/removeAuthor().

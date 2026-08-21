@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\BingoCard;
 use App\Models\Board;
 use App\Models\Event;
 use App\Models\EventStanding;
@@ -10,6 +11,7 @@ use App\Models\BoardAuthor;
 use App\Models\BoardTeam;
 use App\Models\Team;
 use App\Models\UserGuild;
+use App\Services\BingoService;
 use App\Services\BoardAccessService;
 use App\Services\EventStandingsService;
 use App\Services\PlayerBoardService;
@@ -33,7 +35,7 @@ class BoardController extends Controller
 
     private const BOARD_FIELDS = ['size', 'dice_roll_limit'];
 
-    private const EVENT_WITH = ['authors.user', 'eventTeams.team', 'board'];
+    private const EVENT_WITH = ['authors.user', 'eventTeams.team', 'board', 'bingoCard'];
 
     /**
      * Flattens an event and its board into the shape the cards render.
@@ -50,6 +52,9 @@ class BoardController extends Controller
             ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date']),
             'size' => $event->board?->size,
             'dice_roll_limit' => $event->board?->dice_roll_limit,
+            // Bingo's grid is a side length, not a size enum — a separate
+            // field so a card never has to guess which kind of grid it holds.
+            'bingo_size' => $event->bingoCard?->size,
             'authors' => $event->authors,
         ];
     }
@@ -232,8 +237,15 @@ class BoardController extends Controller
         // Each event type renders its own thing. A skill race has no grid, so
         // sending it to BoardShow would draw an empty board — the split exists
         // precisely so the page can differ with the type.
-        if ($event->type === 'SKILL_RACE') {
-            return $this->showSkillRace($event, app(EventStandingsService::class));
+        // Every metric event renders the same standings page — a drop race is
+        // a boss killcount race, so it differs from a skill race only in which
+        // number is being counted.
+        if ($event->needsMetric()) {
+            return $this->showMetricRace($event, app(EventStandingsService::class));
+        }
+
+        if ($event->type === 'BINGO') {
+            return $this->showBingo($event, app(BingoService::class));
         }
 
         // Ported from the old PlayersService.findPlayerBoard(): once access is
@@ -298,7 +310,56 @@ class BoardController extends Controller
      * fetched per request, so the page is cheap and the live channel has one
      * source to push from.
      */
-    private function showSkillRace(Event $event, EventStandingsService $standings): Response
+    /**
+     * The bingo card, plus this viewer's own progress on it.
+     *
+     * `competitor` is null for a TEAM event where the viewer is on no
+     * assigned team — they can look but not tick, and the page says so
+     * rather than offering squares that would silently score against nobody.
+     */
+    private function showBingo(Event $event, BingoService $bingo): Response
+    {
+        $card = $event->bingoCard;
+
+        // A BINGO event with no card is only reachable through direct data
+        // manipulation, but rendering a hole is worse than making one.
+        if ($card === null) {
+            $card = $event->bingoCard()->create(['id' => (string) str()->uuid()]);
+            $bingo->ensureSquares($card);
+        }
+
+        $card->load('squares.task:id,title,icon_url');
+
+        $user = Auth::user();
+        $competitor = $bingo->competitorFor($event, $user);
+        $completed = $competitor === null ? [] : $bingo->completedPositions($card, $competitor);
+
+        return Inertia::render('Events/Bingo', [
+            'event' => $this->cardData($event),
+            'card' => [
+                'size' => $card->size,
+                'winCondition' => $card->win_condition,
+                'squares' => $card->squares->sortBy('position')->values()->map(fn ($square) => [
+                    'id' => $square->id,
+                    'position' => $square->position,
+                    'label' => $square->label(),
+                    'iconUrl' => $square->task?->icon_url,
+                    // For the editor: what is currently set, so opening a
+                    // square shows its state rather than a blank form.
+                    'titleOverride' => $square->title_override,
+                    'task' => $square->task,
+                ]),
+            ],
+            'completed' => $completed,
+            'completedLines' => $bingo->completedLines($card->size, $completed),
+            'hasWon' => $bingo->hasWon($card, $completed),
+            'canPlay' => $competitor !== null,
+            'standings' => $bingo->standings($event, $card),
+            'canEdit' => $user->canEditEvent($event),
+        ]);
+    }
+
+    private function showMetricRace(Event $event, EventStandingsService $standings): Response
     {
         $user = Auth::user();
 
@@ -306,6 +367,9 @@ class BoardController extends Controller
             'event' => [
                 ...$this->cardData($event),
                 'metric' => $event->metric,
+                // 'skill' or 'boss' — decides whether the page counts XP or
+                // kills, and which i18n namespace the metric name comes from.
+                'metricKind' => $event->metricKind(),
             ],
             // The initial paint. From here the SSE stream owns the table, so
             // this is a snapshot rather than the only delivery — and it means
@@ -378,8 +442,13 @@ class BoardController extends Controller
             // Required only for the types that race on one, and rejected
             // for the ones that don't — a Snakes & Ladders event carrying a
             // metric would be a value nothing ever reads.
-            'metric' => ['nullable', 'required_if:type,SKILL_RACE', Rule::in(Event::SKILL_METRICS)],
+            // Required for the types that race on one, and checked against
+            // that type's own list: a boss name is not a valid skill race and
+            // vice versa.
+            'metric' => ['nullable', 'required_if:type,SKILL_RACE,DROP_RACE', Rule::in(Event::allMetrics())],
             'size' => ['required_if:type,SNAKES_LADDERS', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
+            'bingo_size' => ['nullable', 'integer', Rule::in(BingoCard::SIZES)],
+            'win_condition' => ['nullable', Rule::in(BingoCard::WIN_CONDITIONS)],
             'mode' => ['nullable', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['nullable', 'boolean'],
@@ -402,13 +471,27 @@ class BoardController extends Controller
                 'access_mode' => $data['access_mode'] ?? 'OPEN',
             ]);
 
-            // Only the Snakes & Ladders type carries a board; a skill race
-            // has no grid, which is the whole reason the two were split.
+            // Each type creates its own payload, or none. This is the seam
+            // the event/board split exists for: a race has no grid, and a
+            // bingo card is a different grid from a Snakes & Ladders board.
             if ($event->type === 'SNAKES_LADDERS') {
                 $event->board()->create([
                     'id' => (string) str()->uuid(),
                     ...collect($data)->only(self::BOARD_FIELDS)->toArray(),
                 ]);
+            }
+
+            if ($event->type === 'BINGO') {
+                $card = $event->bingoCard()->create([
+                    'id' => (string) str()->uuid(),
+                    'size' => $data['bingo_size'] ?? 5,
+                    'win_condition' => $data['win_condition'] ?? 'LINE',
+                ]);
+
+                // Filled out immediately, unlike S&L tiles which appear on
+                // first edit: a bingo card has to be clickable the moment it
+                // exists, and a missing row renders as a hole in the grid.
+                app(BingoService::class)->ensureSquares($card);
             }
 
             $extraAuthorIds = collect($data['author_ids'] ?? [])
@@ -457,7 +540,7 @@ class BoardController extends Controller
                     ? null
                     : $fail(trans('validation.event_type_immutable')),
             ],
-            'metric' => ['nullable', Rule::in(Event::SKILL_METRICS)],
+            'metric' => ['nullable', Rule::in(Event::allMetrics())],
             'size' => ['sometimes', 'in:SIZE_5X5,SIZE_7X7,SIZE_9X9'],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],

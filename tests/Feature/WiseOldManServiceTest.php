@@ -107,7 +107,7 @@ class WiseOldManServiceTest extends TestCase
 
         $this->assertSame(
             ['gained' => 2360640, 'start' => 32899804, 'end' => 35260444],
-            $this->service()->gainedXp('Pondake', 'mining', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
+            $this->service()->gained('Pondake', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
         );
     }
 
@@ -126,7 +126,7 @@ class WiseOldManServiceTest extends TestCase
             ]]]],
         ])]);
 
-        $delta = $this->service()->gainedXp('Pondake', 'mining', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20'));
+        $delta = $this->service()->gained('Pondake', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20'));
 
         $this->assertSame(0, $delta['gained']);
     }
@@ -140,7 +140,7 @@ class WiseOldManServiceTest extends TestCase
         )]);
 
         $this->assertNull(
-            $this->service()->gainedXp('Zzqxwv Notreal', 'mining', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
+            $this->service()->gained('Zzqxwv Notreal', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
         );
     }
 
@@ -153,7 +153,7 @@ class WiseOldManServiceTest extends TestCase
         ])]);
 
         $this->assertNull(
-            $this->service()->gainedXp('Pondake', 'mining', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
+            $this->service()->gained('Pondake', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
         );
     }
 
@@ -163,7 +163,7 @@ class WiseOldManServiceTest extends TestCase
         Http::fake(['api.wiseoldman.net/*' => Http::response(['data' => ['skills' => []]])]);
         config(['services.wom.user_agent' => 'osrs-events (contact: someone@example.com)']);
 
-        $this->service()->gainedXp('Pondake', 'mining', Carbon::parse('2026-08-01 12:00:00'), Carbon::parse('2026-08-20 12:00:00'));
+        $this->service()->gained('Pondake', 'mining', 'skill', Carbon::parse('2026-08-01 12:00:00'), Carbon::parse('2026-08-20 12:00:00'));
 
         Http::assertSent(function ($request) {
             return $request->hasHeader('User-Agent', 'osrs-events (contact: someone@example.com)')

@@ -45,7 +45,13 @@
                          size would otherwise occupy. -->
                     <div v-else-if="board.metric" class="flex items-center gap-2 text-sm text-muted">
                         <u-icon name="i-lucide-trophy" class="size-4" />
-                        <span>{{ $t('events.ranked_by', { skill: $t(`skills.${board.metric}`) }) }}</span>
+                        <span>{{ rankedBy }}</span>
+                    </div>
+
+                    <!-- Bingo has a grid too, just not the same one. -->
+                    <div v-else-if="board.bingo_size" class="flex items-center gap-2 text-sm text-muted">
+                        <u-icon name="i-lucide-grid-3x3" class="size-4" />
+                        <span>{{ $t('boards.bingo_card', { size: board.bingo_size }) }}</span>
                     </div>
 
                     <div v-if="board.dice_roll_limit" class="flex items-center gap-2 text-sm text-muted">
@@ -99,12 +105,15 @@
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { formatBoardSize, formatDate, boardEventStatus, BOARD_ACCESS_META, BOARD_STATUS_STYLE } from '@/Support/board';
+import { metricKindFor, rankedByLabel } from '@/Support/metrics';
 
 const props = defineProps({
     board: { type: Object, required: true },
     // { current, total, pct } — omitted on the public index.
     progress: { type: Object, default: null },
 });
+
+const rankedBy = computed(() => rankedByLabel(props.board.metric, metricKindFor(props.board.type)));
 
 const status = computed(() => BOARD_STATUS_STYLE[boardEventStatus(props.board.start_date, props.board.end_date)]);
 const access = computed(() => (props.board.access_mode ? BOARD_ACCESS_META[props.board.access_mode] : undefined));

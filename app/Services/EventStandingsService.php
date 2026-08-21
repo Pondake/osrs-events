@@ -246,9 +246,10 @@ class EventStandingsService
         // Never ask past "now": a still-running event's end_date is in the
         // future, and their API answers a future window with whatever the
         // latest snapshot happens to be.
-        $delta = $this->wom->gainedXp(
+        $delta = $this->wom->gained(
             $standing->username,
             $event->metric,
+            $event->metricKind() ?? 'skill',
             $start,
             $end->isFuture() ? Carbon::now() : $end,
         );
