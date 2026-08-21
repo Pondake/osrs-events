@@ -1156,6 +1156,7 @@
     "profile.editor_badge": "Editor",
     "profile.email_address": "Email address",
     "profile.email_needed_desc": "Add an email address so you can set a password and recover your account.",
+    "profile.email_needs_password": "Changing your email address needs your password, because reset links go there.",
     "profile.email_updated": "Email address saved!",
     "profile.filter_all": "All",
     "profile.filter_created": "Created by you",

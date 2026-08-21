@@ -2124,6 +2124,35 @@ what it discloses.
 377 backend tests, 100 frontend.
 
 
+### Fourth pass, 2026-08-22 — account settings
+
+**Changing your email took no password.** Once an account has one, the email
+address is the recovery path: a reset link goes there and nowhere else. So a
+session on its own was enough to take an account permanently — change the
+address, then ask for a reset link. It now takes the password, the same as
+changing the password does, with a field on the form to match. A Discord
+login still sets its first email freely; it has no password to give, and
+this endpoint is the only way it ever gets an address.
+
+`AccountSettingsTest` covers both account shapes through both endpoints,
+including that a password cannot be set on an account with no email to
+recover it with.
+
+### Needs a decision: sessions outlive a password change
+
+- [ ] Changing a password does not sign out anywhere else. Laravel's
+  `Auth::logoutOtherDevices()` is the tool, but it only bites with
+  `AuthenticateSession` in the web middleware group, and that is not enabled
+  here.
+
+  Turning it on is a site-wide behaviour change, not a local fix: it signs
+  people out whenever the stored password hash changes, and it puts another
+  middleware in front of a stack that already has the site lock and the OSRS
+  username gate in it. Worth doing before launch — changing a password is
+  precisely what somebody does when they think a session is not theirs, and
+  right now it does not end that session — but not worth doing quietly.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,

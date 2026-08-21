@@ -37,9 +37,23 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        $data = $request->validate([
+        $rules = [
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-        ]);
+        ];
+
+        // Once an account has a password, its email address IS the recovery
+        // path — a reset link goes there and nowhere else. Changing it from a
+        // session alone would turn any borrowed session into a permanent
+        // takeover: point the address elsewhere, then ask for a reset link.
+        // So it takes the password, exactly as changing the password does.
+        //
+        // Not asked of a Discord login, which has no password to give and
+        // needs this endpoint to get an email in the first place.
+        if ($user->password !== null) {
+            $rules['current_password'] = ['required', 'current_password'];
+        }
+
+        $data = $request->validate($rules);
 
         $user->update(['email' => $data['email']]);
 

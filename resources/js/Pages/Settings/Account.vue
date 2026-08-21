@@ -32,10 +32,26 @@
 
             <p v-if="!email" class="text-sm text-muted mb-3">{{ $t('profile.email_needed_desc') }}</p>
 
-            <form class="flex gap-2 items-start max-w-sm" @submit.prevent="submitEmail">
-                <u-form-field :error="emailForm.errors.email" class="flex-1">
+            <form class="max-w-sm space-y-3" @submit.prevent="submitEmail">
+                <u-form-field :error="emailForm.errors.email">
                     <u-input v-model="emailForm.email" type="email" autocomplete="email" class="w-full" />
                 </u-form-field>
+
+                <!-- Once there is a password, this address is what a reset
+                     link goes to — so changing it is as sensitive as changing
+                     the password, and takes the same proof. A Discord login
+                     has no password to give and does not see this.
+                     AccountController enforces the same rule server-side. -->
+                <u-form-field
+                    v-if="hasPassword"
+                    :label="$t('profile.current_password')"
+                    :description="$t('profile.email_needs_password')"
+                    :error="emailForm.errors.current_password"
+                    required
+                >
+                    <u-input v-model="emailForm.current_password" type="password" autocomplete="current-password" class="w-full" />
+                </u-form-field>
+
                 <u-button type="submit" color="primary" size="sm" :loading="emailForm.processing" :label="$t('profile.save_email')" />
             </form>
         </u-card>
@@ -95,10 +111,15 @@ const props = defineProps({
 
 const { user } = useAuth();
 
-const emailForm = useForm({ email: props.email ?? '' });
+const emailForm = useForm({ email: props.email ?? '', current_password: '' });
 
 function submitEmail() {
-    emailForm.put('/settings/account/email', { preserveScroll: true });
+    emailForm.put('/settings/account/email', {
+        preserveScroll: true,
+        // Never leave a password sitting in a form field after the round
+        // trip, whichever way it went.
+        onFinish: () => (emailForm.current_password = ''),
+    });
 }
 
 const passwordForm = useForm({ current_password: '', password: '', password_confirmation: '' });
