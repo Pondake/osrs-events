@@ -2180,6 +2180,29 @@ serverless team would fail validation, so it is worth a test rather than an
 assumption.
 
 
+### Sixth pass, 2026-08-22 — public pages and the first-run flow
+
+No bugs found here, which is worth writing down as plainly as the bugs: both
+controllers were already careful, and the tests exist now to keep them that
+way.
+
+Two guards worth knowing about:
+
+- **A page cannot shadow a real route.** The CMS sits on a catch-all
+  `/{page}` at the very bottom of the route file, so a row slugged `events`
+  would be a silent, total swap of the events list if that ordering ever
+  changed. There is a test for it now rather than a convention.
+
+- **`joinableBoards` asserts the VALUE of `size`, not just that the key is
+  there.** That endpoint shipped a production-only 500 once: it selected a
+  column that had moved to another table, and SQLite reads an unknown
+  identifier in a SELECT list as a string literal instead of raising — so dev
+  looked fine and PostgreSQL 500'd. Checking the value catches it under
+  SQLite, because the literal comes back as the word "size".
+
+399 backend tests, 100 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
