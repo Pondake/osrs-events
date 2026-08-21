@@ -1924,9 +1924,11 @@ credentials.
   state says so and nothing confirms it, so an accidental second click
   quietly undoes a claim. Should open the claim in a dialog with a delete
   button, matching how everything else destructive works here.
-- [ ] **Review notes on an APPROVED claim go nowhere.** The field is offered
+  **Done 2026-08-22** — see the claim dialog below.
+- [x] **Review notes on an APPROVED claim go nowhere.** The field is offered
   whatever the verdict, and only a rejection shows it. Either surface it on
   the approved square too, or stop asking for it when approving.
+  **Done 2026-08-22** — shown whatever the verdict.
 - [ ] **Accept `7d` / `1w` / `1m` in the default event length**, with a month
   meaning a calendar month rather than a fixed 30 — which means storing the
   unit, not just the number.
@@ -1936,15 +1938,41 @@ credentials.
 - [ ] **Board layout blueprints** (round three) — still the biggest
   remaining feature.
 
-### Correction: the "single-threaded dev server" claim
+### Settled: the dev server really is the local slowness
 
-I said local slowness was `php artisan serve` serialising requests behind
-the SSE stream. **That is not supported by measurement** — with a stream
-open, repeated requests returned in ~2.3s each rather than queueing behind
-it. The 25-second waits I saw were real, but the cause is not established
-and the explanation above should not be trusted. Worth a proper look before
-anybody optimises against it; the session lock is already released early in
-`EventStreamController` (line ~72), so that is not it either.
+Twice wrong before it was right, so here is the measurement rather than the
+argument.
+
+I first said `php artisan serve` serialises requests behind the SSE stream,
+then retracted it after a test that showed ~2.3s per request. **The
+retraction was the mistake** — that test never established its own premise.
+Its "open streams" were PowerShell background jobs that take seconds to
+start, so at the moment of measuring, nothing was connected.
+
+Redone from the browser, waiting for each `EventSource` to actually fire
+`open` before measuring:
+
+- One stream connects. A **second** EventSource to the same origin never
+  fires `open` at all while the first is held.
+- With one stream open, a plain asset request from that tab took **23
+  seconds** — the wait until the first stream hit its 45-second cap.
+- `PHP_CLI_SERVER_WORKERS=8` on a second server changed neither number.
+  The variable forks, and Windows has no fork.
+
+So on Windows, any page with a live channel makes the rest of the site feel
+broken in that tab, and none of it is the app's doing. It is also why a
+dialog took seven seconds to open — its chunk is lazily loaded, and the
+fetch queued behind the stream.
+
+**What to do about it locally:** serve through Herd (nginx + php-fpm) rather
+than `php artisan serve` when working on bingo, board or skill-race pages.
+A localhost port with real concurrency would need Octane/FrankenPHP, which
+is a dependency decision, not a fix to make unasked.
+
+**What it means for production:** php-fpm gives a worker per connection, so
+this does not serialise — but each viewer still holds one worker for 45
+seconds at a time. Sustained concurrent viewers is roughly `pm.max_children`.
+That number needs choosing on purpose before launch, not discovering.
 
 
 ## Test round, 2026-08-22
@@ -2014,6 +2042,41 @@ mistake: they walk every row the seeder writes and check it against
 offering a boss on a skill race would hand the user a validation error they
 did not cause, and that is exactly the kind of thing that gets added in a
 hurry.
+
+
+### Second pass, 2026-08-22 — the claim dialog and the live channel
+
+**The claim dialog.** A claimed square now opens rather than acts. It shows
+the verdict, what the host wrote back (whatever the verdict — that note was
+being typed on approvals and then discarded), your own note, the proof link,
+and either a withdraw button or the reason there isn't one. Withdrawing a
+claim a host has already ruled on is refused server-side too; the dialog
+doesn't offer a disabled red button for it, because a button that silently
+does nothing reads as broken and its explanation was living in a `title`
+attribute no touchscreen ever shows.
+
+Caught while verifying in the browser: the submit button was a `v-else` on
+the withdraw button. Once withdrawal became conditional on more than "is
+there a claim", that else-branch started offering **Submit claim** on a
+square that already had one. Only visible by opening the thing and looking.
+
+**Backgrounded tabs let go of the stream.** `useEventStream` now drops its
+connection on `visibilitychange` and reopens on return. Nothing is missed —
+the channel sends a full snapshot, not a diff, and a reconnect with no
+`Last-Event-ID` gets current state first thing.
+
+This is worth more than it looks. A connection costs a PHP worker for its
+whole life at one end and a connection slot at the other, and a tab nobody
+is looking at was paying both. Measured on the dev server: with the stream
+released, a request from that tab returned in 536ms; with it held, the same
+request stalled past 6 seconds.
+
+`tests/js/useEventStream.test.js` covers both directions, plus the thing
+that is easy to get wrong: a deliberate disconnect must not light up the
+staleness indicator, or every backgrounded tab greets its owner with a
+warning about a problem that never happened.
+
+349 backend tests, 100 frontend.
 
 
 ## Content review before launch (step 8)

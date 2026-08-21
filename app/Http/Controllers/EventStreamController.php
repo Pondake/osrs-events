@@ -33,6 +33,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * **`php artisan serve` cannot serve this and anything else at once.** PHP's
  * built-in server is single-threaded; PHP_CLI_SERVER_WORKERS forks, so it does
  * nothing on Windows. Use Herd/Valet/nginx+fpm when working on these pages.
+ *
+ * Measured, because it is the kind of claim that gets doubted and it explains
+ * symptoms that look like something else entirely: with one stream open, a
+ * second EventSource to the same origin never fires `open` at all, and a plain
+ * asset request from that tab took 23 seconds — the time until the first
+ * stream hit its 45-second cap and let go. Setting PHP_CLI_SERVER_WORKERS=8
+ * and restarting changed neither number. So on Windows every page with a live
+ * channel makes the rest of the site feel broken in that tab, and none of it
+ * is the app's doing.
  */
 class EventStreamController extends Controller
 {
