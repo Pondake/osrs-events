@@ -172,6 +172,28 @@ and Services under `app/Services/` for anything with real business logic (e.g.
   A bare `firstOrCreate(['name' => …])` skips `guard_name`, and a row without
   one is invisible to every check.
 
+### Live updates — one SSE channel per event type
+- Every event type has an `App\Events\Channels\EventChannel`, resolved from the
+  type by `EventChannelResolver`. `EventStreamController` knows nothing about
+  standings or bingo cards — **adding an event type means writing a channel,
+  not touching the controller.**
+- A channel answers two questions, and the split matters: `fingerprint()` runs
+  every few seconds per connected viewer so it must be cheap, `payload()` only
+  runs when something actually changed.
+- **A fingerprint must be built from what the client displays**, not from every
+  column. A sync that rewrites `synced_at` without changing a score, or a host
+  re-approving to the same verdict, must not wake every open browser. There
+  are tests for both directions in `EventStreamTest`.
+- The channel is **public** — one stream is shared by every viewer, so it can
+  never carry per-viewer state. Host-only data (the bingo review queue) is
+  refreshed with a partial `router.reload({ only: [...] })` when the stream
+  says something changed.
+- Client side, use `useEventStream()` — it owns reconnect and staleness. The
+  server closes every stream after ~45s by design, so a disconnect is normal;
+  the indicator only reports trouble after a reconnect fails to land in ~6s.
+- SSE, not WebSockets: the data only flows one way. See EventStreamController
+  for the full reasoning and what it costs (a PHP worker per viewer).
+
 ### Auth
 - Discord OAuth via `laravel/socialite` + `socialiteproviders/discord` — not a first-party
   Socialite driver. Use `->setScopes([...])`, never `->scopes([...])` (the latter merges

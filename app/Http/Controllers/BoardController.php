@@ -331,31 +331,50 @@ class BoardController extends Controller
         $card->load('squares.task:id,title,icon_url');
 
         $user = Auth::user();
+        $canEdit = $user->canEditEvent($event);
         $competitor = $bingo->competitorFor($event, $user);
-        $completed = $competitor === null ? [] : $bingo->completedPositions($card, $competitor);
+
+        // Every claim this viewer has made, whatever its state — they need to
+        // see their own pending square sitting in the queue, or they will
+        // claim it again.
+        $claims = $competitor === null ? collect() : $bingo->claimsFor($card, $competitor);
+        $approved = $claims->filter->isApproved()->keys()->map(fn ($p) => (int) $p)->all();
 
         return Inertia::render('Events/Bingo', [
             'event' => $this->cardData($event),
             'card' => [
                 'size' => $card->size,
                 'winCondition' => $card->win_condition,
+                'lineBonus' => $card->line_bonus,
+                'requiresApproval' => $card->requires_approval,
                 'squares' => $card->squares->sortBy('position')->values()->map(fn ($square) => [
                     'id' => $square->id,
                     'position' => $square->position,
                     'label' => $square->label(),
                     'iconUrl' => $square->task?->icon_url,
+                    'points' => $square->points,
                     // For the editor: what is currently set, so opening a
                     // square shows its state rather than a blank form.
                     'titleOverride' => $square->title_override,
                     'task' => $square->task,
                 ]),
             ],
-            'completed' => $completed,
-            'completedLines' => $bingo->completedLines($card->size, $completed),
-            'hasWon' => $bingo->hasWon($card, $completed),
+            // Keyed by position so the grid can colour a square by its state
+            // without searching a list per cell.
+            'claims' => $claims->map(fn ($claim) => [
+                'status' => $claim->status,
+                'reviewNote' => $claim->review_note,
+            ]),
+            'completed' => $approved,
+            'completedLines' => $bingo->completedLines($card->size, $approved),
+            'hasWon' => $bingo->hasWon($card, $approved),
             'canPlay' => $competitor !== null,
             'standings' => $bingo->standings($event, $card),
-            'canEdit' => $user->canEditEvent($event),
+            // Hosts get the review queue on the same page as the card — a
+            // separate screen for it would mean leaving the thing you are
+            // judging to judge it.
+            'pending' => $canEdit ? $bingo->pendingQueue($card) : [],
+            'canEdit' => $canEdit,
         ]);
     }
 

@@ -121,8 +121,12 @@ class SkillRaceControllerTest extends TestCase
 
     // ------------------------------------------------------------- stream
 
+    /**
+     * Every type has a channel now, so a board streams too — it pushes player
+     * positions rather than standings.
+     */
     #[Test]
-    public function the_stream_is_refused_for_a_non_metric_event(): void
+    public function a_board_event_streams_its_own_channel(): void
     {
         $board = Event::create([
             'title' => 'Winter Clan Grind',
@@ -132,9 +136,14 @@ class SkillRaceControllerTest extends TestCase
             'is_listed' => true,
         ]);
 
-        $this->actingAs($this->player())
-            ->get("/events/{$board->id}/standings/stream")
-            ->assertNotFound();
+        $response = $this->actingAs($this->player())->get("/events/{$board->id}/stream");
+
+        $response->assertOk();
+        // Laravel appends "; charset=utf-8", so the prefix is what to assert.
+        $this->assertStringStartsWith('text/event-stream', $response->headers->get('Content-Type'));
+        // nginx buffers proxied responses by default, which would hold every
+        // event until the connection closed.
+        $this->assertSame('no', $response->headers->get('X-Accel-Buffering'));
     }
 
     #[Test]
@@ -143,7 +152,7 @@ class SkillRaceControllerTest extends TestCase
         $event = $this->race(['access_mode' => 'INVITE']);
 
         $this->actingAs($this->player())
-            ->get("/events/{$event->id}/standings/stream")
+            ->get("/events/{$event->id}/stream")
             ->assertForbidden();
     }
 
@@ -152,7 +161,7 @@ class SkillRaceControllerTest extends TestCase
     {
         $event = $this->race();
 
-        $this->get("/events/{$event->id}/standings/stream")->assertRedirect();
+        $this->get("/events/{$event->id}/stream")->assertRedirect();
     }
 
     // --------------------------------------------------------------- page

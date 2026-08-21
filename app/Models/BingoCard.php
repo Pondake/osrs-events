@@ -18,12 +18,22 @@ class BingoCard extends Model
     /** How a card is won. */
     public const WIN_CONDITIONS = ['LINE', 'FULL_HOUSE'];
 
-    /** Square grids; the value is the side length. */
-    public const SIZES = [3, 4, 5, 6, 7];
+    /**
+     * Square grids; the value is the side length.
+     *
+     * Up to 10 because that is what competitive clan events actually run —
+     * the guides put 5x5 at two to three days, 7x7 at a week and 10x10 at a
+     * fortnight (docs/bingo-research.md).
+     */
+    public const SIZES = [3, 4, 5, 6, 7, 8, 9, 10];
 
-    protected $fillable = ['event_id', 'size', 'win_condition'];
+    protected $fillable = ['event_id', 'size', 'win_condition', 'line_bonus', 'requires_approval'];
 
-    protected $casts = ['size' => 'integer'];
+    protected $casts = [
+        'size' => 'integer',
+        'line_bonus' => 'integer',
+        'requires_approval' => 'boolean',
+    ];
 
     public function event(): BelongsTo
     {

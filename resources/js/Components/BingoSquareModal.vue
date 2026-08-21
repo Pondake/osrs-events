@@ -44,6 +44,13 @@
                 <u-form-field :label="$t('tile_editor.title_override')" :description="$t('tile_editor.title_override_desc')">
                     <u-input v-model="form.title_override" class="w-full" />
                 </u-form-field>
+
+                <!-- Tile weighting. Counting squares treats a Zulrah pet and
+                     a bucket of sand as equal, which is not how these events
+                     are actually scored. -->
+                <u-form-field :label="$t('bingo.points_field')" :description="$t('bingo.points_desc')">
+                    <u-input v-model.number="form.points" type="number" min="0" max="1000" class="w-full" />
+                </u-form-field>
             </div>
         </template>
 
@@ -78,7 +85,7 @@ const emit = defineEmits(['update:open']);
 
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
-const form = useForm({ title_override: '' });
+const form = useForm({ title_override: '', points: 1 });
 const selectedTask = ref(null);
 const taskSearch = ref('');
 const taskResults = ref([]);
@@ -87,6 +94,7 @@ watch(
     () => props.square,
     (square) => {
         form.title_override = square?.titleOverride ?? '';
+        form.points = square?.points ?? 1;
         selectedTask.value = square?.task ?? null;
         taskSearch.value = '';
         taskResults.value = [];

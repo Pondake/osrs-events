@@ -172,12 +172,13 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
 import { boardEventStatus, formatDate } from '@/Support/board';
 import { metricLabel, rankedByLabel } from '@/Support/metrics';
+import { useEventStream } from '@/Composables/useEventStream';
 
 const props = defineProps({
     event: { type: Object, required: true },
@@ -211,11 +212,6 @@ function leaveRace() {
 // JavaScript runs; the stream takes over from here.
 const rows = ref([...props.standings]);
 
-// Whether a live channel was opened at all (it isn't for a finished event, or
-// where EventSource doesn't exist), and whether it has stopped keeping up.
-const streaming = ref(false);
-const stale = ref(false);
-
 // A drop race counts boss kills, a skill race counts XP. Same table, same
 // ranking, different noun — so the copy is chosen from the kind rather than
 // the page assuming everything is a skill.
@@ -246,68 +242,15 @@ function goToProfile() {
     router.visit('/settings/profile');
 }
 
-// EventSource rather than a WebSocket: nothing on this page sends anything
-// back, so a return channel would be a second service to run for no gain.
-// The browser reconnects on its own, including after the server closes the
-// stream on its own timer — see SkillRaceController.
-let source = null;
-let staleTimer = null;
-
-// The server ends every stream after ~45 seconds by design, so a disconnect
-// is the normal case, not a fault. Flipping the indicator the instant one
-// happens would report a problem roughly every 45 seconds while the page is
-// working perfectly — so a disconnect only counts once a reconnect has failed
-// to land within this window.
-const STALE_AFTER_MS = 6000;
-
-function markLive() {
-    clearTimeout(staleTimer);
-    staleTimer = null;
-    stale.value = false;
-}
-
-onMounted(() => {
-    // Guarded: SSR has no EventSource, and neither do a few old browsers. The
-    // page is already fully rendered without it, so there is nothing to fall
-    // back to — it just stops updating by itself, and the indicator stays
-    // hidden rather than claiming to be live.
-    if (typeof window === 'undefined' || !('EventSource' in window)) return;
-
-    // A finished event's numbers cannot change. Holding a PHP worker open to
+// One shared channel per event; this page listens for 'standings'. The
+// connection handling lives in the composable because bingo and the board
+// need exactly the same thing.
+const { streaming, stale } = useEventStream({
+    // A finished race's numbers cannot change. Holding a PHP worker open to
     // watch them not change is the one cost this feature has, so don't.
-    if (status.value === 'ended') return;
-
-    streaming.value = true;
-    source = new EventSource(`/events/${props.event.id}/standings/stream`);
-
-    source.addEventListener('open', markLive);
-
-    source.addEventListener('standings', (message) => {
-        try {
-            rows.value = JSON.parse(message.data).standings;
-            markLive();
-        } catch (error) {
-            console.error(error);
-        }
-    });
-
-    // Fires on every disconnect, the scheduled one included. EventSource
-    // reconnects by itself, so this starts a grace period rather than tearing
-    // anything down.
-    source.addEventListener('error', (error) => {
-        console.error(error);
-
-        if (staleTimer === null) {
-            staleTimer = setTimeout(() => (stale.value = true), STALE_AFTER_MS);
-        }
-    });
+    url: () => (status.value === 'ended' ? null : `/events/${props.event.id}/stream`),
+    event: 'standings',
+    onMessage: (payload) => (rows.value = payload.standings),
 });
 
-onBeforeUnmount(() => {
-    // Without this the browser keeps reconnecting to a page nobody is on,
-    // and every reconnect takes a PHP worker for 45 seconds.
-    clearTimeout(staleTimer);
-    source?.close();
-    source = null;
-});
 </script>

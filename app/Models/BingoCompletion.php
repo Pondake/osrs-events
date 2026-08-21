@@ -17,7 +17,26 @@ class BingoCompletion extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['bingo_square_id', 'team_id', 'user_id', 'marked_by'];
+    /**
+     * A claim under review, not a fact.
+     *
+     * PENDING is the default for a card that requires approval; APPROVED is
+     * what the leaderboard counts. REJECTED is kept rather than deleted so a
+     * player can see why, and so a host can see a pattern of re-submissions.
+     */
+    public const STATUSES = ['PENDING', 'APPROVED', 'REJECTED'];
+
+    protected $fillable = [
+        'bingo_square_id', 'team_id', 'user_id', 'marked_by',
+        'status', 'proof_url', 'note', 'reviewed_by', 'reviewed_at', 'review_note',
+    ];
+
+    protected $casts = ['reviewed_at' => 'datetime'];
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'APPROVED';
+    }
 
     public function square(): BelongsTo
     {

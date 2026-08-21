@@ -10,11 +10,18 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 
 /**
- * Bingo's rules: who has ticked what, and what counts as winning.
+ * Bingo's rules: who has claimed what, what has been approved, and what
+ * counts as winning.
  *
- * The line detection is the only real logic in the event type, so it lives
- * here rather than in a controller or — worse — in the Vue page, where the
- * server would have no way to agree with what a player was shown.
+ * All of it server-side, because the server has to be able to agree with what
+ * a player was shown — a line drawn only in the browser is a line the
+ * leaderboard cannot verify.
+ *
+ * **Only APPROVED completions score.** A pending claim is visible to the
+ * person who made it so they can see it is in the queue, and invisible to the
+ * standings until a host has looked at it. That distinction is the difference
+ * between a bingo tracker and a shared checklist — see
+ * docs/bingo-research.md.
  */
 class BingoService
 {
@@ -23,7 +30,7 @@ class BingoService
      *
      * A TEAM event scores per team and a SOLO event per user, so the same
      * click writes a different column. Returns null when a TEAM event's
-     * player is on no assigned team — they cannot tick anything, and saying
+     * player is on no assigned team — they cannot claim anything, and saying
      * so is better than silently scoring it against nobody.
      *
      * @return array{team_id: string|null, user_id: string|null}|null
@@ -42,21 +49,38 @@ class BingoService
     }
 
     /**
-     * Positions this competitor has completed.
+     * This competitor's claims on this card, keyed by square position.
+     *
+     * Returns every status, not just approved: a player needs to see their
+     * own pending claim sitting in the queue, or they will submit it again.
+     *
+     * @return Collection<int, BingoCompletion>
+     */
+    public function claimsFor(BingoCard $card, array $competitor): Collection
+    {
+        return BingoCompletion::query()
+            ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
+            ->where('bingo_squares.bingo_card_id', $card->id)
+            ->where('bingo_completions.team_id', $competitor['team_id'])
+            ->where('bingo_completions.user_id', $competitor['user_id'])
+            ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
+            ->keyBy(fn (BingoCompletion $c) => (int) $c->square_position);
+    }
+
+    /**
+     * Positions this competitor has had **approved** — the only ones that
+     * count toward a line or a score.
      *
      * @return array<int, int>
      */
-    public function completedPositions(BingoCard $card, array $competitor): array
+    public function approvedPositions(BingoCard $card, array $competitor): array
     {
-        return BingoCompletion::query()
-            ->whereIn('bingo_square_id', $card->squares()->select('id'))
-            ->where(fn ($q) => $q
-                ->where('team_id', $competitor['team_id'])
-                ->where('user_id', $competitor['user_id']))
-            ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
-            ->orderBy('bingo_squares.position')
-            ->pluck('bingo_squares.position')
+        return $this->claimsFor($card, $competitor)
+            ->filter(fn (BingoCompletion $c) => $c->isApproved())
+            ->keys()
             ->map(fn ($p) => (int) $p)
+            ->sort()
+            ->values()
             ->all();
     }
 
@@ -105,6 +129,26 @@ class BingoService
     }
 
     /**
+     * Points for a set of approved positions: each square's own weight, plus
+     * the card's line bonus for every completed row, column or diagonal.
+     *
+     * This is how clan events are actually scored — counting squares treats a
+     * Zulrah pet and a bucket of sand as equal.
+     *
+     * @param  array<int, int>  $completed
+     * @param  array<int, int>  $pointsByPosition
+     */
+    public function score(BingoCard $card, array $completed, array $pointsByPosition): int
+    {
+        $tilePoints = array_sum(array_map(
+            fn (int $position) => $pointsByPosition[$position] ?? 1,
+            $completed,
+        ));
+
+        return $tilePoints + count($this->completedLines($card->size, $completed)) * $card->line_bonus;
+    }
+
+    /**
      * Has this competitor won, under the card's own condition?
      *
      * @param  array<int, int>  $completed
@@ -123,24 +167,29 @@ class BingoService
     }
 
     /**
-     * The standings for a bingo event: every competitor with a completion,
-     * ranked by squares completed then by lines.
+     * The standings for a bingo event, ranked by points then lines.
      *
-     * Built from completions rather than from a roster, because a bingo
-     * event's roster is whoever has actually done something — an entrant who
-     * has ticked nothing has no position to hold.
+     * Built from **approved** completions only. A competitor whose claims are
+     * all pending has nothing on the board yet, which is the honest position
+     * — showing them ahead of someone whose work was checked would make
+     * review meaningless.
      */
     public function standings(Event $event, BingoCard $card): Collection
     {
+        $points = $card->squares()->pluck('points', 'position')
+            ->map(fn ($p) => (int) $p)
+            ->all();
+
         $rows = BingoCompletion::query()
             ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
             ->where('bingo_squares.bingo_card_id', $card->id)
+            ->where('bingo_completions.status', 'APPROVED')
             ->with(['team:id,name,icon_url', 'user:id,discord_username,nickname,avatar_url'])
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position']);
 
         return $rows
             ->groupBy(fn (BingoCompletion $c) => $c->team_id ?? $c->user_id)
-            ->map(function (Collection $group) use ($card) {
+            ->map(function (Collection $group) use ($card, $points) {
                 $first = $group->first();
                 $positions = $group->pluck('square_position')->map(fn ($p) => (int) $p)->all();
 
@@ -149,12 +198,46 @@ class BingoService
                     'name' => $first->team?->name ?? ($first->user?->nickname ?: $first->user?->discord_username),
                     'avatarUrl' => $first->team?->icon_url ?? $first->user?->avatar_url,
                     'squares' => count($positions),
+                    'points' => $this->score($card, $positions, $points),
                     'lines' => count($this->completedLines($card->size, $positions)),
                     'won' => $this->hasWon($card, $positions),
                 ];
             })
-            ->sortByDesc(fn ($row) => [$row['lines'], $row['squares']])
+            ->sortByDesc(fn ($row) => [$row['points'], $row['lines'], $row['squares']])
             ->values();
+    }
+
+    /**
+     * Claims waiting on a host, oldest first.
+     *
+     * Oldest first because a review queue is a queue: someone who submitted
+     * an hour ago should not sit behind a claim made a minute ago.
+     */
+    public function pendingQueue(BingoCard $card): Collection
+    {
+        return BingoCompletion::query()
+            ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
+            ->where('bingo_squares.bingo_card_id', $card->id)
+            ->where('bingo_completions.status', 'PENDING')
+            ->with([
+                'team:id,name',
+                'user:id,discord_username,nickname',
+                'markedBy:id,discord_username,nickname',
+                'square:id,position,title_override,task_id',
+                'square.task:id,title',
+            ])
+            ->orderBy('bingo_completions.created_at')
+            ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
+            ->map(fn (BingoCompletion $c) => [
+                'id' => $c->id,
+                'position' => (int) $c->square_position,
+                'label' => $c->square?->label(),
+                'competitor' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username),
+                'submittedBy' => $c->markedBy?->nickname ?: $c->markedBy?->discord_username,
+                'proofUrl' => $c->proof_url,
+                'note' => $c->note,
+                'submittedAt' => $c->created_at?->toIso8601String(),
+            ]);
     }
 
     /**
