@@ -1304,6 +1304,61 @@ Worth keeping as a habit:
   an empty `#app`, so scanning it proves nothing. That mistake was made
   twice in one day before it was spotted.
 
+## SEO reality check, 2026-08-21
+
+Asked for by the owner: is the site set up to rank for "OSRS events", "OSRS
+event", "OSRS clan event", "runescape events", "old school runescape event"?
+
+**The honest answer is no, and the biggest reasons are not on-page ones.**
+
+- [ ] **The live site is running old code.** `osrs-events.com` resolves and is
+  indexed, but the copy Google has quotes "No passwords needed" and the
+  pre-rewrite feature list — everything from this session is unshipped.
+  `robots.txt` 404s in production despite being tracked in the repo, which
+  says the deployment predates it. **Nothing else on this list matters until a
+  deploy happens.**
+
+- [x] ~~No sitemap at all~~ — `/sitemap.xml` 404'd; now generated from the
+  routes and CMS rows, with everything behind auth excluded and `robots.txt`
+  pointing at it.
+
+- [ ] **The head terms are unwinnable, and not because of the site.** Checked
+  the live SERPs rather than guessing:
+  * **"OSRS events"** returns the OSRS Wiki's *Events* article (in-game random
+    and holiday events), Jagex's own pages and YouTube seasonal guides. The
+    query means "what events are running in the game", not "a tool for running
+    clan events". **The product's own name collides with an informational term
+    the official wiki owns.** Ranking would mean outranking the wiki and Jagex
+    on their own subject, and the traffic would not convert if it arrived.
+  * **"runescape events" / "old school runescape event"** are the same
+    problem, with RS3 and Jagex marketing added.
+  * Conclusion: treat these as **brand terms to be found by**, not terms to
+    compete for. Winning "osrs-events" as a *navigational* query is realistic
+    and worth the Organization/WebSite schema below; winning "OSRS events" as
+    a *head* query is not.
+
+- [ ] **The winnable terms are the specific ones.** "OSRS clan event ideas"
+  returns forum threads, Fandom wikis and clan sites — a weak SERP with no
+  strong commercial page in it, and `/osrs-event-ideas` targets it directly
+  with ~630 words and ItemList schema. That page is the most likely first win.
+
+- [ ] **The real competitive set is the bingo tools**, not the wiki:
+  `osrsbingohub.com`, `aiobingo.com`, `rune-bingo.com`, `osrs-tracker.com`,
+  `praynr.com`. All established, all ranking for "OSRS bingo" — a term with
+  unambiguous *tool* intent and real volume. **Bingo is the one event type
+  still marked `available: false`.** The clearest SEO opportunity and the
+  biggest product gap are the same thing.
+
+- [ ] **Missing on-page work, in order of value:**
+  1. `Organization` + `WebSite` JSON-LD on the home page — nothing identifies
+     the site as an entity, which is what a navigational brand query needs.
+  2. `/events` has **no schema and no SeoHead meta** despite being a public,
+     crawlable index. It is the natural landing page for "OSRS clan events".
+  3. Landing pages are ~600 words each. Adequate, not commanding, for
+     anything contested.
+  4. No `ItemList`/`Event` schema on the public events index, which is the
+     one page whose content genuinely is a list of events.
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
