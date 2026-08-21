@@ -62,7 +62,10 @@ class LandingController extends Controller
             ['icon' => 'i-lucide-grid-3x3', 'title' => '9x9 board', 'description' => 'An 81-tile marathon board for large, long-running clan events.'],
         ];
 
-        $faqs = [
+        // Editable when a row exists; the array below is the seeded default
+        // and the fallback for a fresh install. Whichever wins feeds BOTH the
+        // rendered page and the FAQPage JSON-LD below — see Page::faqItems().
+        $faqs = $this->faqsFor('osrs-snakes-and-ladders') ?: [
             ['question' => 'What is an OSRS Snakes and Ladders board?', 'answer' => 'A clan event board inspired by the classic board game — tiles are OSRS tasks instead of squares, and snakes send you back down the board.'],
             ['question' => 'Do I need Discord to play?', 'answer' => 'You need a Discord account to log in, since board membership and progress are tied to your Discord identity.'],
             ['question' => 'Can I customise the tiles?', 'answer' => 'Yes — board owners can set a custom task, boss or drop requirement for every tile.'],
@@ -133,6 +136,8 @@ class LandingController extends Controller
             ['question' => 'Is any of this paid?', 'answer' => 'No. Every feature is free, with no ads and no paid tier. Donations cover hosting.'],
         ];
 
+        $faqs = $this->faqsFor('osrs-clan-events') ?: $faqs;
+
         $this->shareFaqJsonLd($faqs);
 
         return Inertia::render('OsrsClanEvents', ['faqs' => $faqs]);
@@ -167,6 +172,23 @@ class LandingController extends Controller
         ])]);
 
         return Inertia::render('OsrsEventIdeas');
+    }
+
+    /**
+     * FAQ entries stored for a landing page, or an empty array if that page
+     * has no row yet.
+     *
+     * These pages are only PARTLY editable: the FAQ is content an admin
+     * should be able to change, while the step and format lists stay in code
+     * because they drive HowTo and ItemList schema whose shape the block
+     * vocabulary cannot express. Returning [] rather than null so callers can
+     * write `?: $default` and keep the fallback readable.
+     *
+     * @return array<int, array{question: string, answer: string}>
+     */
+    private function faqsFor(string $slug): array
+    {
+        return Page::where('slug', $slug)->where('is_published', true)->first()?->faqItems() ?? [];
     }
 
     /** @param array<int, array{question: string, answer: string}> $faqs */

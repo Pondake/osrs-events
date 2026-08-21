@@ -92,8 +92,10 @@ class HomePageContentTest extends TestCase
             ->get('/admin/content')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('pages', 0)
-                ->has('partialPages', 1)
-                ->where('partialPages.0.slug', 'home'));
+                // Absent from the fully-editable list, present in the partial
+                // one. Asserted by membership rather than by count, so adding
+                // another partial page does not fail this.
+                ->where('pages', fn ($pages) => collect($pages)->doesntContain('slug', 'home'))
+                ->where('partialPages', fn ($partial) => collect($partial)->contains('slug', 'home')));
     }
 }
