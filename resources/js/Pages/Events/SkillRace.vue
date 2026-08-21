@@ -52,6 +52,21 @@
                             :loading="entering"
                             @click="leaveRace"
                         />
+
+                        <!-- The page has always been handed `canEdit` and
+                             never rendered anything with it, so an owner had
+                             no way into their own race's settings — the same
+                             account can edit a snakes & ladders board from
+                             its page, which is where the inconsistency shows.
+                             -->
+                        <u-button
+                            v-if="canEdit"
+                            color="neutral"
+                            variant="outline"
+                            icon="i-lucide-settings"
+                            :label="$t('board.edit_board')"
+                            @click="showSettingsModal = true"
+                        />
                     </div>
                 </div>
 
@@ -176,17 +191,30 @@
             </u-container>
         </u-page>
     </u-main>
+
+        <!-- Async + client-only for the same reason BoardShow does it: the
+             modal reaches @nuxt/ui composables that break the SSR build. -->
+        <client-only>
+            <board-settings-modal v-if="canEdit" v-model:open="showSettingsModal" :board="event" />
+        </client-only>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
+import ClientOnly from '@/Components/ClientOnly.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
 import { boardEventStatus, formatDate } from '@/Support/board';
 import { metricLabel, rankedByLabel } from '@/Support/metrics';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import { useEventStream } from '@/Composables/useEventStream';
+
+// Async, exactly as BoardShow loads it: the modal reaches @nuxt/ui
+// composables that break the SSR build if they enter the module graph.
+const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
+
+const showSettingsModal = ref(false);
 
 const props = defineProps({
     event: { type: Object, required: true },

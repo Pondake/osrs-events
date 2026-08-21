@@ -150,21 +150,42 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::patch('/events/{event}', [BoardController::class, 'update'])->name('events.update');
     Route::delete('/events/{event}', [BoardController::class, 'destroy'])->name('events.destroy');
 
-    Route::post('/events/{event}/roll', [PlayerBoardController::class, 'roll'])->name('events.roll');
-    Route::post('/events/{event}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])->name('events.tiles.toggle');
-    Route::post('/events/{event}/join', [BoardController::class, 'join'])->name('events.join');
+    // Participation is rate limited per user. Not because a player can win
+    // by spamming — the game rules already bound what a roll or a claim can
+    // do — but because each of these writes changes what the event's live
+    // channel fingerprints, so a held-down button pushes a fresh payload to
+    // every browser watching that event. One person can make the server work
+    // for all of them, which is the part worth capping.
+    Route::post('/events/{event}/roll', [PlayerBoardController::class, 'roll'])
+        ->middleware('throttle:30,1')
+        ->name('events.roll');
+    Route::post('/events/{event}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])
+        ->middleware('throttle:60,1')
+        ->name('events.tiles.toggle');
+    Route::post('/events/{event}/join', [BoardController::class, 'join'])
+        ->middleware('throttle:10,1')
+        ->name('events.join');
 
     // Bingo. Toggling is a player action gated on access; editing a square
     // or the card is an author action — the same split TileController makes.
-    Route::post('/events/{event}/bingo/squares/{square}/claim', [BingoController::class, 'claim'])->name('events.bingo.claim');
+    Route::post('/events/{event}/bingo/squares/{square}/claim', [BingoController::class, 'claim'])
+        ->middleware('throttle:20,1')
+        ->name('events.bingo.claim');
     Route::patch('/events/{event}/bingo/claims/{completion}', [BingoController::class, 'review'])->name('events.bingo.review');
     Route::patch('/events/{event}/bingo/squares/{square}', [BingoController::class, 'updateSquare'])->name('events.bingo.square');
     Route::patch('/events/{event}/bingo', [BingoController::class, 'updateCard'])->name('events.bingo.card');
 
     // Entering a race is a separate decision from being allowed to look at
     // one — see SkillRaceController::enter.
-    Route::post('/events/{event}/enter', [SkillRaceController::class, 'enter'])->name('events.enter');
-    Route::delete('/events/{event}/enter', [SkillRaceController::class, 'leave'])->name('events.leave');
+    // Tightest of the lot: these two are a pure toggle, so they are the
+    // easiest to hold down, and entering now costs an outbound Wise Old Man
+    // lookup as well — someone else's rate limit, not just ours.
+    Route::post('/events/{event}/enter', [SkillRaceController::class, 'enter'])
+        ->middleware('throttle:10,1')
+        ->name('events.enter');
+    Route::delete('/events/{event}/enter', [SkillRaceController::class, 'leave'])
+        ->middleware('throttle:10,1')
+        ->name('events.leave');
 
     Route::get('/events/{event}/invites', [BoardInviteController::class, 'index'])->name('events.invites.index');
     Route::post('/events/{event}/invites', [BoardInviteController::class, 'store'])->name('events.invites.store');
@@ -178,6 +199,7 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::delete('/events/{event}/teams/{team}', [BoardController::class, 'removeTeam'])->name('events.teams.remove');
     Route::get('/tasks/search', [TileController::class, 'searchTasks'])->name('tasks.search');
     Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
+    Route::get('/my-guilds', [BoardController::class, 'myGuilds'])->name('guilds.mine');
 
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
     Route::post('/onboarding/reset', [OnboardingController::class, 'reset'])->name('onboarding.reset');
