@@ -183,6 +183,12 @@ php artisan events:sync-standings
 Laravel's scheduler running (`php artisan schedule:work`, or the usual
 one-line cron entry). Without it, standings never move.
 
+The same schedule prunes admin audit rows nightly, keeping
+`AUDIT_RETENTION_DAYS` (90 by default) — so without the scheduler that table
+also grows without limit. Those rows keep a user's display name after the
+account is deleted, which makes the window a privacy answer, not just
+housekeeping.
+
 ---
 
 ## Mail
