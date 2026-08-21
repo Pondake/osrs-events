@@ -15,7 +15,9 @@ class BoardController extends Controller
     {
         abort_unless(Auth::user()->isAdmin(), 403);
 
-        $boards = Event::with(['authors.user', 'eventTeams.team', 'board'])
+        // By column — see BoardController::EVENT_WITH. The admin list
+        // renders the same author names and nothing more.
+        $boards = Event::with(['authors.user:id,discord_username,nickname,avatar_url', 'eventTeams.team', 'board'])
             ->orderByDesc('start_date')
             ->get();
 

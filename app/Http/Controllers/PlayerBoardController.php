@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Board;
-use App\Models\Event;
 use App\Models\CompletedTile;
+use App\Models\Event;
 use App\Models\Tile;
 use App\Services\BoardAccessService;
 use App\Services\PlayerBoardService;
@@ -28,7 +28,11 @@ class PlayerBoardController extends Controller
         // Tiles hang off the board, not the event — an event type without a
         // board has none.
         $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();
-        $maxPosition = $tiles->count() - 1;
+
+        // Floored at zero: on a board whose grid has not been filled in yet,
+        // `count() - 1` is -1, and min() then walked the player to position
+        // -1 — off the front of a board they had not started.
+        $maxPosition = max($tiles->count() - 1, 0);
 
         $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
         if ($playerBoard === null) {
@@ -89,13 +93,22 @@ class PlayerBoardController extends Controller
         // raw number to pick which face to render, not a pre-formatted
         // sentence to parse back apart.
         return back()
-            ->with('board-save', "Rolled a {$rolled}" . ($jump ? " and hit a {$jump}!" : '.'))
+            ->with('board-save', "Rolled a {$rolled}".($jump ? " and hit a {$jump}!" : '.'))
             ->with('last-roll', $rolled);
     }
 
     public function toggleTile(Event $event, Tile $tile, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
     {
         abort_unless($access->hasAccess(Auth::user(), $event), 403);
+
+        // The tile is bound by id alone, so nothing about the route says it
+        // belongs to the board being played. Without this, a tile id from
+        // any other board ticked off here — and counted towards progress
+        // here, which on a competitive board is a way to win without
+        // playing. Written with an explicit null check rather than
+        // `$event->board?->id`, because null === null is true and a
+        // board-less event would match every board-less tile.
+        abort_unless($event->board !== null && $tile->board_id === $event->board->id, 404);
 
         $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
         if ($playerBoard === null) {

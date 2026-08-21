@@ -2079,6 +2079,51 @@ warning about a problem that never happened.
 349 backend tests, 100 frontend.
 
 
+### Third pass, 2026-08-22 — the game loop, and who gets to read your email
+
+Two areas that had no tests at all: the Snakes & Ladders game loop, and what
+the app publishes about a player. Four bugs, one of them the worst thing
+found in any of these sweeps.
+
+**Every host's email address was on every event page.** `User` marks only
+`password` and `remember_token` hidden, so anything handing over a whole
+model hands over the email with it. `EVENT_WITH` eager-loaded a bare
+`authors.user`, and `cardData()` passes `authors` straight to the browser —
+so the host's email shipped with every event card, every event page, and the
+admin event list. The leaderboard did the same with `->with(['user','team'])`
+for players: any account can open the leaderboard of any open event, and
+signing up costs nothing.
+
+Both now name their columns, the way the board page and the live channel
+already did. `tests/Feature/PlayerIdentityTest.php` asserts the absence of a
+specific address across all three surfaces, so a payload that stops naming
+its fields fails there rather than in somebody's inbox.
+
+Worth saying plainly: the three places that publish player identities each
+build their own payload, and two of the three were wrong. The pattern to keep
+is naming columns at the eager load — a `$hidden` list would help, but it
+fails open, and this is a class of bug that should fail closed.
+
+**A tile from another board could be ticked off here.** `toggleTile` binds
+the tile by id alone and never checked whose board it belonged to, so a tile
+id from any other event counted towards your progress on this one — a way to
+win without playing. Same shape as the `TileController::destroy` bug from
+yesterday, and written with the same trap avoided: `$event->board?->id`
+compares null to null as equal.
+
+**Rolling on an empty grid walked the player to position −1.** `count() - 1`
+with no tiles. The leaderboard had the same arithmetic and reported negative
+tiles remaining.
+
+`PlayerBoardTest` covers rolling, the daily limit (including that yesterday's
+rolls do not count against today — the cast that caused a real 500 once),
+snakes un-completing the ground they slide past, and that teammates share one
+piece rather than getting one each. `LeaderboardTest` covers the ranking and
+what it discloses.
+
+377 backend tests, 100 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
