@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Ported from the old NestJS AuthService::handleDiscordCallback() /
@@ -25,15 +27,29 @@ use Laravel\Socialite\Facades\Socialite;
  */
 class DiscordController extends Controller
 {
-    public function redirect(): RedirectResponse
+    public function redirect(): SymfonyResponse
     {
         // setScopes(), not scopes() — the latter MERGES with the discord
         // driver's own default scope list (which includes `email`, unwanted
         // here) rather than replacing it. Confirmed by curling this route:
         // ->scopes() produced "identify email guilds" in the redirect URL.
-        return Socialite::driver('discord')
-            ->setScopes(['identify', 'guilds'])
-            ->redirect();
+        //
+        // Wrapped in Inertia::location() rather than returned bare. Every
+        // button that starts this flow is rendered by @nuxt/ui, which routes
+        // its links through Inertia — so this arrives as an XHR, and a bare
+        // 302 makes the BROWSER follow it to discord.com from within that
+        // XHR. That is a cross-origin request carrying Inertia's own
+        // X-Inertia and X-XSRF-TOKEN headers, so it preflights, and Discord
+        // (correctly) does not allow those headers: the whole login dies in
+        // CORS with a network error and no server-side trace at all.
+        // Inertia::location() answers an XHR with 409 + X-Inertia-Location,
+        // which the client turns into a real navigation, and still returns a
+        // plain 302 for a normal request.
+        return Inertia::location(
+            Socialite::driver('discord')
+                ->setScopes(['identify', 'guilds'])
+                ->redirect()
+        );
     }
 
     /**
@@ -42,13 +58,18 @@ class DiscordController extends Controller
      * account rather than logging in. The only difference is this one
      * session value — callback() checks it to decide which path to take.
      */
-    public function connect(Request $request): RedirectResponse
+    public function connect(Request $request): SymfonyResponse
     {
         $request->session()->put('discord_link_user_id', $request->user()->id);
 
-        return Socialite::driver('discord')
-            ->setScopes(['identify', 'guilds'])
-            ->redirect();
+        // Same Inertia::location() reasoning as redirect() above — this one
+        // is triggered from a button in account settings, which is every bit
+        // as much an Inertia visit.
+        return Inertia::location(
+            Socialite::driver('discord')
+                ->setScopes(['identify', 'guilds'])
+                ->redirect()
+        );
     }
 
     public function disconnect(Request $request): RedirectResponse
