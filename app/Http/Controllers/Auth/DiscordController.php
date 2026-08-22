@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserGuild;
 use Illuminate\Http\RedirectResponse;
@@ -170,6 +171,15 @@ class DiscordController extends Controller
             return $this->linkToExistingUser($linkingUserId, $discordId, $discordUsername, $avatarUrl, $discordUser->token);
         }
 
+        // Discord is two things at once: a way to sign in and a way to get an
+        // account without ever seeing a registration form. While the site is
+        // locked only the first is on offer — a shut door that hands out keys
+        // is not shut. An account that already exists signs in as normal, so
+        // whoever is building the site is not locked out of their own login.
+        if ($this->registrationClosed() && ! User::where('discord_id', $discordId)->exists()) {
+            return redirect('/login')->with('board-save-error', trans('lock.registration_closed'));
+        }
+
         $user = $this->upsertFromDiscord(
             discordId: $discordId,
             discordUsername: $discordUsername,
@@ -223,6 +233,19 @@ class DiscordController extends Controller
         }
 
         return redirect('/settings/account')->with('board-save', trans('profile.discord_connected'));
+    }
+
+    /**
+     * Whether the site is shut to newcomers.
+     *
+     * Not `EnsureSiteUnlocked`'s own check: that one asks whether THIS
+     * request may pass, and a request arriving here has already been let
+     * through as a sign-in route. This asks the narrower question the lock is
+     * actually for.
+     */
+    private function registrationClosed(): bool
+    {
+        return (bool) Setting::get('site_lock_enabled');
     }
 
     private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl, ?string $globalName): User

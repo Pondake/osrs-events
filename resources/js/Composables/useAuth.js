@@ -1,5 +1,6 @@
 import { computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+
+import { useCurrentPage } from '@/Support/pageState';
 
 /**
  * Replaces the old stores/auth.ts + composables/usePermissions.ts. The
@@ -9,7 +10,10 @@ import { usePage } from '@inertiajs/vue3';
  * resolved server-side.
  */
 export function useAuth() {
-    const page = usePage();
+    // Not usePage() directly: AppHeader calls this from ABOVE the page
+    // component, where the shared store still holds the last request. See
+    // Support/pageState.js.
+    const page = useCurrentPage();
 
     // Optional-chained on `props` itself, not just `auth` — a bare
     // page.props.auth.user threw "Cannot read properties of undefined
@@ -20,7 +24,7 @@ export function useAuth() {
     // unconditionally, so this is cheap, harmless defensive chaining either
     // way — matches the same pattern already applied to AppRoot.vue's flash
     // watchers for a confirmed-understood version of the same class of bug.
-    const user = computed(() => page.props?.auth?.user ?? null);
+    const user = computed(() => page.value.props?.auth?.user ?? null);
     const isAuthenticated = computed(() => user.value !== null);
     const isAdmin = computed(() => user.value?.isAdmin ?? false);
     const canCreateBoards = computed(() => user.value?.canCreateBoards ?? false);

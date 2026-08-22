@@ -5,7 +5,19 @@
         <u-page>
             <u-page-hero :title="$t('landing.clan_events.title')" :description="$t('landing.clan_events.lead')">
                 <template #links>
-                    <u-button v-if="isAuthenticated" href="/events" size="xl" color="primary" icon="i-simple-icons-discord" :label="$t('landing.cta_create')" />
+                    <!-- Behind the door while the site is locked. A button
+                         that lands on a password box reads as broken; a
+                         sentence saying "not yet" reads as not yet. -->
+                    <u-alert
+                        v-if="locked"
+                        color="neutral"
+                        variant="subtle"
+                        icon="i-lucide-lock"
+                        class="max-w-lg"
+                        :description="$t('lock.app_not_open')"
+                    />
+                    <template v-else>
+                        <u-button v-if="isAuthenticated" href="/events" size="xl" color="primary" icon="i-simple-icons-discord" :label="$t('landing.cta_create')" />
                     <!-- route() called directly in the template, not from script —
                          it's only bound on Vue's globalProperties (template-only
                          access) by the ZiggyVue plugin. A raw `import { route }
@@ -15,7 +27,11 @@
                          to a global `Ziggy` variable that doesn't exist in Node —
                          reintroducing the exact SSR crash fixed in
                          HandleInertiaRequests, just for this one page. -->
-                    <u-button v-else to="/login" size="xl" color="primary" icon="i-lucide-log-in" :label="$t('landing.cta_login')" />
+                        <u-button v-else to="/login" size="xl" color="primary" icon="i-lucide-log-in" :label="$t('landing.cta_login')" />
+                    </template>
+
+                    <!-- Stays either way: another page to read is exactly what
+                         a locked site has to offer. -->
                     <u-button href="/osrs-snakes-and-ladders" size="xl" color="neutral" variant="outline" trailing-icon="i-lucide-arrow-right" :label="$t('landing.event_ideas.supported_cta')" />
                 </template>
             </u-page-hero>
@@ -59,12 +75,16 @@
 import { trans } from 'laravel-vue-i18n';
 import SeoHead from '@/Components/SeoHead.vue';
 import { useAuth } from '@/Composables/useAuth';
+import { useSiteLock } from '@/Composables/useSiteLock';
 
 defineProps({
     faqs: { type: Array, required: true },
 });
 
 const { isAuthenticated } = useAuth();
+
+// Everything this page invites you to do is behind the pre-launch door.
+const { locked } = useSiteLock();
 
 const seo = {
     title: trans('landing.clan_events.meta_title'),

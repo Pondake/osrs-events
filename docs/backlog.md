@@ -2387,6 +2387,59 @@ again.
 444 backend tests, 122 frontend.
 
 
+### Lock on means nothing interactive — 2026-08-22
+
+Reported: "sinds het slot erop zit, waarom mag ik nou alsnog een account
+aanmaken?" Fair. The lock let the public pages through but left every hook
+into the app on them.
+
+- **Registration is closed while the site is locked.** `/register` was in the
+  always-allowed list next to `/login`; it is not the same thing. Signing in
+  stays open because whoever is building the site has to get in. Password
+  reset stays too — recovery for an account that already exists, not a way to
+  acquire one.
+- **The Discord back door is shut with it.** Discord is a sign-in route AND a
+  way to get an account without ever seeing a registration form, and the OAuth
+  routes have to stay open for the admin. So the callback refuses an unknown
+  `discord_id` while locked and signs an existing one in as normal. Worth its
+  own test file: from the route list the door looks shut while
+  `auth/discord/callback` quietly makes users.
+- **The public pages drop their calls to action.** Every landing hero had an
+  `isAuthenticated ? /events : /login` pair, and while locked both are dead
+  ends. They are replaced by one line saying the app is not open yet — a
+  button that lands on a password box reads as broken; a sentence reads as
+  not-yet.
+
+The hero copy still says "log in with Discord to get started". That sentence
+is CMS content (`page.subtitle`, falling back to `home.description`), so it is
+editable in admin → content rather than something to branch on in code.
+
+### The header was serving the previous visitor's menu
+
+Found while checking the above, and the reason it looked like the trimming was
+not working: a signed-out visitor's HTML arrived carrying a signed-in
+visitor's nav — links to /events, /my-events and /teams on a page that was
+meant to show none.
+
+Same root cause as the SSR lag fixed earlier, one level down. `useAuth()`
+reads `usePage()`, and AppHeader calls it from ABOVE the page component, where
+the shared store still holds the last request. Fixing AppRoot alone had not
+fixed the header.
+
+Now `Support/pageState.js` provides the corrected page from AppRoot and
+`useAuth()`/`useSiteLock()`/AppHeader read through it. Verified by alternating
+a signed-in and a signed-out request against `/` — six interleaved requests,
+every one correct.
+
+**One test was deleted for being worthless.** A feature test asserting the
+served HTML contains no `/events` link passes whatever the header does: the
+suite runs with `INERTIA_SSR_ENABLED=false` (phpunit.xml), so that HTML never
+contains a rendered nav at all. Replaced with an assertion about the props the
+nav is built from, plus `tests/js/pageState.test.js` on the composable itself.
+
+452 backend tests, 125 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,

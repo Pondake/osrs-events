@@ -55,16 +55,28 @@
                          Guests get the login page, which offers Discord and
                          email side by side — neither is required to make a
                          board. -->
-                    <u-button v-if="isAuthenticated" to="/events" size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" />
-                    <u-button v-else href="/login" size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" />
-                    <u-button
-                        to="/events"
-                        size="xl"
+                    <!-- Both of these go into the app, so both go while the
+                         site is locked. -->
+                    <u-alert
+                        v-if="locked"
                         color="neutral"
-                        variant="outline"
-                        trailing-icon="i-lucide-arrow-right"
-                        :label="$t('landing.cta_browse')"
+                        variant="subtle"
+                        icon="i-lucide-lock"
+                        class="max-w-lg"
+                        :description="$t('lock.app_not_open')"
                     />
+                    <template v-else>
+                        <u-button v-if="isAuthenticated" to="/events" size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" />
+                        <u-button v-else href="/login" size="xl" color="primary" icon="i-lucide-plus" :label="$t('landing.cta_create')" />
+                        <u-button
+                            to="/events"
+                            size="xl"
+                            color="neutral"
+                            variant="outline"
+                            trailing-icon="i-lucide-arrow-right"
+                            :label="$t('landing.cta_browse')"
+                        />
+                    </template>
                 </template>
             </u-page-hero>
 
@@ -110,8 +122,12 @@
 import { trans } from 'laravel-vue-i18n';
 import { useSeoData } from '@/Composables/useSeo';
 import { useAuth } from '@/Composables/useAuth';
+import { useSiteLock } from '@/Composables/useSiteLock';
 
 const { isAuthenticated } = useAuth();
+
+// Everything this page invites you to do is behind the pre-launch door.
+const { locked } = useSiteLock();
 
 const props = defineProps({
     steps: { type: Array, required: true },
