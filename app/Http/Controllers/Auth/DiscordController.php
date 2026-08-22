@@ -236,16 +236,20 @@ class DiscordController extends Controller
     }
 
     /**
-     * Whether the site is shut to newcomers.
+     * Whether the site is shut to newcomers, for either of the two reasons.
      *
-     * Not `EnsureSiteUnlocked`'s own check: that one asks whether THIS
-     * request may pass, and a request arriving here has already been let
-     * through as a sign-in route. This asks the narrower question the lock is
-     * actually for.
+     * The lock is one. `registration_open` is the other — an admin switch
+     * that has always gated the email/password form and, until this method,
+     * nothing else: turning it off closed the front door and left Discord
+     * wide open, which is not what a switch labelled "registration" says.
+     *
+     * Not `EnsureSiteUnlocked`'s own check for the first half: that asks
+     * whether THIS request may pass, and a request arriving here has already
+     * been let through as a sign-in route.
      */
     private function registrationClosed(): bool
     {
-        return (bool) Setting::get('site_lock_enabled');
+        return Setting::get('site_lock_enabled') || ! Setting::get('registration_open');
     }
 
     private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl, ?string $globalName): User

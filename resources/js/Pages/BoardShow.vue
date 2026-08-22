@@ -477,6 +477,16 @@ const props = defineProps({
 const sizeLabel = computed(() => formatBoardSize(props.board.size));
 
 const livePlayers = ref([...props.players]);
+/**
+ * A copy of a prop only stays right if something copies it again.
+ *
+ * The channel was the only thing that did, which made your OWN actions the
+ * slowest ones on the page: the server sends fresh props straight back, and
+ * this list kept the numbers from before until the stream got round to
+ * saying so. Found on the bingo card — approving a claim left the standings
+ * reading "nobody has marked a square yet" next to a counter saying 1 of 16.
+ */
+watch(() => props.players, (value) => (livePlayers.value = [...value]));
 
 useEventStream({
     url: () => `/events/${props.board.id}/stream`,

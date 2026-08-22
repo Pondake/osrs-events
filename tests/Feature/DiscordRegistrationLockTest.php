@@ -103,6 +103,22 @@ class DiscordRegistrationLockTest extends TestCase
         $this->assertSame($existing->id, Auth::id());
     }
 
+    /**
+     * The other reason to be shut. `registration_open` is an admin switch
+     * that has always gated the email/password form; it gated nothing else,
+     * so turning it off closed the front door and left this one open.
+     */
+    #[Test]
+    public function closing_registration_closes_the_discord_route_too(): void
+    {
+        Setting::set('registration_open', false);
+        $this->discordAnswers('777666555');
+
+        $this->get('/auth/discord/callback?code=whatever')->assertRedirect('/login');
+
+        $this->assertNull(User::where('discord_id', '777666555')->first());
+    }
+
     #[Test]
     public function an_open_site_still_makes_accounts_as_normal(): void
     {
