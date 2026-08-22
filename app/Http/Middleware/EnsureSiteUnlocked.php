@@ -17,11 +17,16 @@ use Symfony\Component\HttpFoundation\Response;
  * shape: the app runs normally, the door is just shut, and anyone with the
  * password or an admin login walks through it.
  *
- * Two things stay reachable while it is on, and only two:
+ * What stays reachable while it is on:
  *
  *   - the lock screen itself, or there is nowhere to type the password;
  *   - the auth routes, so an admin can sign in and bypass it properly
- *     rather than everyone sharing one secret.
+ *     rather than everyone sharing one secret;
+ *   - the public pages — the landing pages, the guides and the CMS pages.
+ *     The lock exists to keep the APP unannounced, not to hide the shop
+ *     window. Those pages are the ones a search engine indexes and the ones
+ *     somebody lands on from a Discord post; serving them a password box
+ *     costs the launch the audience it is being built for.
  *
  * Health checks are exempt too — a locked site that reports itself down to
  * its own monitoring is a false alarm every minute.
@@ -53,6 +58,24 @@ class EnsureSiteUnlocked
         'up',
     ];
 
+    /**
+     * The public pages, by ROUTE NAME rather than by path.
+     *
+     * `pages.show` is the CMS catch-all `/{page}`, which matches any single
+     * segment — as a path pattern it would let `/events` and `/teams` through
+     * with it. Matching on the name the router actually resolved says exactly
+     * what is meant, and it keeps working when an admin adds a page nobody
+     * listed here.
+     */
+    private const PUBLIC_ROUTES = [
+        'home',
+        'landing.snakes',
+        'landing.clan-events',
+        'landing.event-ideas',
+        'pages.show',
+        'sitemap',
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         if (! Setting::get('site_lock_enabled')) {
@@ -60,6 +83,10 @@ class EnsureSiteUnlocked
         }
 
         if ($request->is(...self::ALWAYS_ALLOWED)) {
+            return $next($request);
+        }
+
+        if (in_array($request->route()?->getName(), self::PUBLIC_ROUTES, true)) {
             return $next($request);
         }
 

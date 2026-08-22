@@ -258,13 +258,22 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import AppLogo from '@/Components/AppLogo.vue';
+import { isPublicPath } from '@/Support/landing';
 import UserMenu from '@/Components/UserMenu.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
 const { isAuthenticated, isAdmin } = useAuth();
+
+// Shared by HandleInertiaRequests, and it already means "the door is shut for
+// THIS visitor" — false for an admin and false for anyone who has typed the
+// shared password. Re-checking isAdmin here would only get the second of
+// those wrong.
+const page = usePage();
+const locked = computed(() => Boolean(page.props?.site?.locked));
 
 // Which groups are expanded in the mobile drawer. A Set rather than a single
 // value so opening one does not close another — the drawer is a list you
@@ -321,7 +330,23 @@ const guideChildren = () => [
  * reachable from the settings sidebar and the user menu. This nav is for
  * playing, not administering.
  */
+/**
+ * While the site is locked, everything that is not a public page bounces
+ * straight back to the lock screen — so a nav offering those links is a menu
+ * of dead ends on the one page a stranger is meant to reach.
+ *
+ * Trimmed rather than hidden: the guides and About are open (see
+ * EnsureSiteUnlocked), and they are the whole reason the public pages were
+ * let through in the first place.
+ */
 const navigation = computed(() => {
+    if (locked.value) {
+        return [
+            { label: trans('nav.guides'), icon: 'i-lucide-book-open', children: guideChildren().filter((c) => isPublicPath(c.to)) },
+            { label: trans('nav.about'), to: '/about', icon: 'i-lucide-info' },
+        ];
+    }
+
     if (!isAuthenticated.value) {
         return [
             { label: trans('nav.boards'), to: '/events', icon: 'i-lucide-layout-grid' },
