@@ -8,6 +8,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\AuthenticateSession;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,6 +18,20 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
+            // Changing a password signs you out everywhere else.
+            //
+            // This is the middleware that does it: it keeps the password hash
+            // in the session and logs out any session whose copy no longer
+            // matches the stored one. Without it `logoutOtherDevices()` cycles
+            // the remember token and nothing else — other sessions carry on.
+            //
+            // Safe for Discord logins: it returns early for a user with no
+            // password at all, which is every account that has never set one.
+            //
+            // Before HandleInertiaRequests, so a session being invalidated is
+            // turned away rather than having a page's worth of props built for
+            // it first.
+            AuthenticateSession::class,
             HandleInertiaRequests::class,
             // Last in the group, so a locked site still gets a session and
             // its shared Inertia props — the lock screen is an Inertia page

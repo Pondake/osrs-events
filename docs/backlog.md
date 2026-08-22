@@ -1730,10 +1730,20 @@ That last one deserves its own note:
   Snakes & Ladders and bingo; a race has almost no layout to speak of, so it
   can keep the title-only blueprints it has.
 
-  Open questions: does a blueprint store a whole tile set (a snapshot) or a
-  generator (a size plus rules for how many snakes/ladders)? And are layout
-  blueprints global like the current ones, or per-clan once hosts can create
-  them from an event they have already built?
+  **Decided 2026-08-22: a whole tile set, not a generator.** A blueprint
+  stores the actual squares — positions, snakes, ladders, targets — so
+  applying one gives exactly the board that was designed, every time. No
+  randomisation: "start from a template" has to mean the same thing twice, or
+  a host cannot recommend one to anybody.
+
+  Consequence worth planning for: a snapshot is tied to a grid size, so a
+  5x5 layout cannot be applied to a 7x7. The picker has to filter by size
+  rather than offer every layout and fail late.
+
+  Still open: are layout blueprints global like the current ones, or
+  per-clan once hosts can create them from an event they have already built?
+  That is the same question as the one under "Let event hosts manage
+  blueprints from the event side" and should be answered once for both.
 
 ### Icons and metrics
 
@@ -2140,11 +2150,30 @@ this endpoint is the only way it ever gets an address.
 including that a password cannot be set on an account with no email to
 recover it with.
 
-### Decided: sessions outlive a password change, and the page says so
+### Done: a password change signs you out everywhere else
 
-**Decided 2026-08-22: leave `AuthenticateSession` off.** The account page now
-says what a password change does and does not do, rather than leaving it to
-be discovered — that is the half that was actually missing.
+**Decided 2026-08-22: yes, sign out everywhere. Built the same day.** (I had
+first read the answer the other way round and written the opposite; the copy
+on the account page said so for about an hour.)
+
+`AuthenticateSession` is now in the web group and `updatePassword` calls
+`Auth::logoutOtherDevices()`. Two things worth knowing about how that works,
+because neither is what the name suggests:
+
+- The middleware is what actually ends the other sessions. It keeps a copy of
+  the password hash in each session and turns away any session whose copy has
+  gone stale. Without it, `logoutOtherDevices()` on its own ends nothing.
+- `logoutOtherDevices()` does **not** cycle the remember token. It forces a
+  re-hash of the password, and both a stale session and a "keep me signed in"
+  cookie carry their own copy of the old hash — so changing it stops all of
+  them matching at once. One mechanism, both routes back in. (I wrote a test
+  asserting the remember token changed. It does not, and the test was wrong,
+  not the framework.)
+
+**It leaves Discord logins alone**, which is most of the user base: the
+middleware returns early for a user with no password at all. There is a test
+for that specifically, because a middleware that got it wrong would sign
+everybody out on every request.
 
 Kept for the record:
 
@@ -2298,12 +2327,30 @@ not alongside it — the copy depends on what the app actually ends up doing.
   From address has to be at a domain verified with whichever provider wins.
 
   Two things deliberately left undecided rather than assumed:
-  - **Queueing.** Laravel's `ResetPassword` notification is not `ShouldQueue`,
-    so the SMTP round trip happens inside the web request. Fine at
-    reset-only volume; not fine if mail ever becomes a feature.
-  - **Email verification.** `User` does not implement `MustVerifyEmail`, so
-    an email/password account is usable with an address nobody proved they
-    own. That is a product decision, not an oversight to quietly fix.
+  - **Queueing — decided 2026-08-22: no queue.** Laravel's `ResetPassword`
+    notification stays synchronous, so the SMTP round trip happens inside the
+    web request. Fine at reset-only volume, and it avoids running a worker
+    for one email. Revisit only if mail becomes a feature rather than a
+    recovery path.
+  - **Email verification — decided 2026-08-22: manual registrations must
+    confirm their address.** `User` does not implement `MustVerifyEmail`
+    today, so an email/password account is usable with an address nobody
+    proved they own. Not yet built.
+
+    **The Discord half does not apply as asked.** The question was whether a
+    Discord login hands us an email we could take as already verified. It
+    does not: the scopes are `identify` and `guilds`, and `email` was left
+    out on purpose (see DiscordController::redirect). A Discord account here
+    has no email address at all until the person sets one on the account
+    page — and one they typed is exactly the kind that needs confirming.
+
+    So there is a question behind the question: **add the `email` scope?**
+    Discord does tell us whether the address is verified on their side, so
+    adding it would let a Discord login arrive with a trusted address and
+    skip the whole flow. Against it: it asks for more than the app needs,
+    on a consent screen people read, for a field the app has lived without.
+    Awaiting an answer; the manual-registration flow can be built either way
+    and is not blocked on it.
 
   Also worth noting: the reset mail is Laravel's stock template, zinc button
   and all, with none of the OSRS branding the rest of the app has.
@@ -2318,3 +2365,9 @@ not alongside it — the copy depends on what the app actually ends up doing.
   display name, which is exactly the kind of retention a privacy policy has
   to state rather than imply.
   Check `/terms` at the same time; it has had no review at all on this stack.
+
+  **Re-flagged 2026-08-22 at your request: both pages need a fresh read-
+  through before launch, not a patch.** Since the text above was written the
+  app has also gained an admin section that edits other people's events, a
+  team-to-Discord-server link, and sessions that end on a password change —
+  all of which are things a privacy policy is expected to describe.
