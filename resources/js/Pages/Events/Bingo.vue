@@ -47,6 +47,11 @@
                             :label="$t('participants.open')"
                         />
 
+                        <!-- Bingo had no way of saying you were playing at
+                             all: taking part was inferred from having claimed
+                             a square, so an empty card meant an empty event. -->
+                        <join-event-button :event-id="event.id" :joined="joined" size="sm" />
+
                         <template v-if="canEdit">
                             <!-- Three separate things, and they were one
                                  (a toggle) plus one that did not exist:
@@ -176,8 +181,17 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div class="lg:col-span-2">
-                        <p class="text-xs mb-2" :class="editing ? 'text-primary font-medium' : 'text-muted'">
-                            {{ editing ? $t('bingo.edit_hint') : $t('bingo.mark_hint') }}
+                        <!-- The "click a square" line moved into the
+                             Information card on the right, next to the rules
+                             it belongs with. It sat above the grid, which
+                             pushed the board a line out of alignment with the
+                             cards beside it for the sake of a sentence read
+                             once.
+                             The editing hint stays: that one is about a mode
+                             you are currently in, and belongs where the mode
+                             is. -->
+                        <p v-if="editing" class="text-xs mb-2 text-primary font-medium">
+                            {{ $t('bingo.edit_hint') }}
                         </p>
 
                         <!-- While editing, the card itself says so. The mode
@@ -387,6 +401,14 @@
                                     <u-icon name="i-lucide-plus" class="size-4 text-muted shrink-0" />
                                     <span>{{ $t('bingo.line_bonus') }}: {{ card.lineBonus }}</span>
                                 </div>
+                                <!-- How to play, beside the rules it plays
+                                     by. Hidden while editing, when clicking a
+                                     square does something else entirely. -->
+                                <div v-if="!editing && canPlay" class="flex items-center gap-2">
+                                    <u-icon name="i-lucide-mouse-pointer-click" class="size-4 text-muted shrink-0" />
+                                    <span>{{ $t('bingo.mark_hint') }}</span>
+                                </div>
+
                                 <div class="flex items-center gap-2">
                                     <u-icon :name="card.requiresApproval ? 'i-lucide-gavel' : 'i-lucide-zap'" class="size-4 text-muted shrink-0" />
                                     <span>{{ card.requiresApproval ? $t('bingo.info_reviewed') : $t('bingo.info_instant') }}</span>
@@ -456,6 +478,7 @@ import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import JoinEventButton from '@/Components/JoinEventButton.vue';
 
 const BingoSquareModal = defineAsyncComponent(() => import('@/Components/BingoSquareModal.vue'));
 const BingoClaimModal = defineAsyncComponent(() => import('@/Components/BingoClaimModal.vue'));
@@ -478,6 +501,7 @@ const props = defineProps({
     // in the standings.
     approvedBy: { type: Object, default: () => ({}) },
     canEdit: { type: Boolean, default: false },
+    joined: { type: Boolean, default: false },
 });
 
 // Still needed here, even though the heading renders its own copy: the live

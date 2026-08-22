@@ -37,14 +37,21 @@
                 </template>
 
                 <u-form-field :label="$t('admin.site_registration')" :description="$t('admin.site_registration_desc')" :error="form.errors.registration_open">
-                    <u-switch v-model="form.registration_open" :label="form.registration_open ? $t('admin.site_registration_on') : $t('admin.site_registration_off')" />
+                    <!-- Disabled while the lock is on, not merely annotated.
+                         A live switch under a note saying the note wins is a
+                         control that does nothing, and the only way to find
+                         that out was to flip it and try to register. It reads
+                         its own state either way, so turning the lock off
+                         hands it straight back. -->
+                    <u-switch
+                        v-model="form.registration_open"
+                        :disabled="form.site_lock_enabled"
+                        :label="form.registration_open ? $t('admin.site_registration_on') : $t('admin.site_registration_off')"
+                    />
 
-                    <!-- The lock overrules this, and saying so beats leaving
-                         somebody to work it out by trying to register.
-                         Reported as: the toggle says Open, registering does
-                         not work, so what is the toggle for? -->
-                    <p v-if="form.site_lock_enabled && form.registration_open" class="text-xs text-warning mt-2">
-                        {{ $t('admin.site_registration_locked_note') }}
+                    <p v-if="form.site_lock_enabled" class="text-xs text-warning mt-2 flex items-start gap-1.5">
+                        <u-icon name="i-lucide-lock" class="size-3.5 shrink-0 mt-0.5" />
+                        <span>{{ $t('admin.site_registration_locked_note') }}</span>
                     </p>
                 </u-form-field>
 

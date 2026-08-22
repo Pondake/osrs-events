@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BoardAccess;
 use App\Models\Event;
+use App\Models\EventParticipant;
 use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\Team;
@@ -35,13 +36,12 @@ class ParticipantController extends Controller
 
         $canEdit = $user->canEditEvent($event);
 
-        // Everyone who has a reason to be counted, from whichever table this
-        // event type records participation in — access rows for invite and
-        // guild events, player boards for Snakes & Ladders, standings for a
-        // race. An OPEN event stores no access row at all (see
-        // BoardAccessService::hasAccess), so the union is the only honest
-        // answer.
+        // Everyone who has a reason to be counted. Joining is its own record
+        // now and is the first source read, but the rest stay: an access row
+        // means somebody was let into a private event, and the play tables
+        // still hold anyone whose rows predate the join record.
         $userIds = collect()
+            ->merge(EventParticipant::where('event_id', $event->id)->pluck('user_id'))
             ->merge(BoardAccess::where('event_id', $event->id)->pluck('user_id'))
             ->merge(EventStanding::where('event_id', $event->id)->pluck('user_id'))
             ->merge($event->board ? PlayerBoard::where('board_id', $event->board->id)->pluck('user_id') : collect())

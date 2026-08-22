@@ -2,6 +2,7 @@
 
 namespace App\Events\Channels;
 
+use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\BingoCompletion;
 use App\Models\Event;
 use App\Services\BingoService;
@@ -21,6 +22,8 @@ use App\Services\BingoService;
  */
 class BingoChannel implements EventChannel
 {
+    use SignalsEventEdits;
+
     public function __construct(private readonly BingoService $bingo) {}
 
     public function name(): string
@@ -33,7 +36,11 @@ class BingoChannel implements EventChannel
         $card = $event->bingoCard;
 
         if ($card === null) {
-            return 'no-card';
+            // Still carries the event's own version: a bingo event without a
+            // card yet is a real state (the card is created on first view),
+            // and renaming or rescheduling one has to reach whoever is
+            // already looking at it.
+            return 'no-card#'.$this->eventVersion($event);
         }
 
         // Every claim's competitor, square and status. Deliberately not
@@ -75,6 +82,8 @@ class BingoChannel implements EventChannel
             .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->is_wildcard}")->implode('|')
             .'#'
             .$rules
+            .'#'
+            .$this->eventVersion($event)
         );
     }
 
@@ -83,12 +92,13 @@ class BingoChannel implements EventChannel
         $card = $event->bingoCard;
 
         if ($card === null) {
-            return ['standings' => [], 'squares' => [], 'approvedBy' => []];
+            return ['standings' => [], 'squares' => [], 'approvedBy' => [], 'event_version' => $this->eventVersion($event)];
         }
 
         $card->load('squares.task:id,title,icon_url');
 
         return [
+            'event_version' => $this->eventVersion($event),
             'standings' => $this->bingo->standings($event, $card)->all(),
             'winLines' => $card->winLines(),
             // Public by definition — an approved claim is already visible in

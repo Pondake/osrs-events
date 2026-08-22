@@ -131,6 +131,15 @@
                         </div>
 
                         <u-alert
+                            v-else-if="boardsFailed"
+                            color="warning"
+                            variant="subtle"
+                            icon="i-lucide-triangle-alert"
+                            :title="$t('onboarding.join_failed_title')"
+                            :description="$t('onboarding.join_failed_body')"
+                        />
+
+                        <u-alert
                             v-else
                             color="neutral"
                             variant="subtle"
@@ -351,6 +360,8 @@ const form = useForm({
 
 const joinableBoards = ref([]);
 const loadingBoards = ref(false);
+// Told apart from an empty list on purpose — see the fetch below.
+const boardsFailed = ref(false);
 
 // Fetched when the step opens rather than up front — most accounts reaching
 // this modal are admins in practice and never see the join step at all.
@@ -358,12 +369,23 @@ watch(step, async (value) => {
     if (value !== 'join' || joinableBoards.value.length || loadingBoards.value) return;
 
     loadingBoards.value = true;
+    boardsFailed.value = false;
+
     try {
         const response = await fetch('/onboarding/joinable-boards', { headers: { Accept: 'application/json' } });
-        const data = await response.json();
-        joinableBoards.value = data.boards ?? [];
+
+        // A refused request is not an empty result. This used to swallow the
+        // status and fall through to "no events to join" — reported while
+        // fourteen open events existed, because the site lock answers this
+        // endpoint with 423 for anyone who has not typed the shared
+        // password. Saying "there are none" when the answer was "you may not
+        // ask" sends somebody looking for a bug in the wrong place.
+        if (!response.ok) throw new Error(`joinable boards refused: ${response.status}`);
+
+        joinableBoards.value = (await response.json()).boards ?? [];
     } catch (error) {
         console.error(error);
+        boardsFailed.value = true;
     } finally {
         loadingBoards.value = false;
     }
@@ -411,7 +433,38 @@ function next() {
     stepIndex.value++;
 }
 
+/**
+ * Leaving the tour — by Skip, by Finish, or from any step.
+ *
+ * Saves a name that has been typed but not yet submitted. Only "Next" posted
+ * it, so somebody who filled the field and then pressed Skip, or pressed
+ * Finish from a later step, lost it without a word — and met the standalone
+ * name page the next time they tried to do anything, being asked for the one
+ * thing they had just given. Reported exactly that way.
+ *
+ * Not a validation gate: the tour stays skippable, and an empty field still
+ * skips. This only stops an answer being thrown away.
+ */
 function finish() {
+    const typed = osrsForm.osrs_username.trim();
+
+    if (!osrsUsername.value && typed) {
+        osrsForm.post('/welcome/osrs-username', {
+            preserveScroll: true,
+            preserveState: true,
+            // Complete either way. A name their hiscores do not know is still
+            // saved (see OsrsIdentityService), and a validation failure is not
+            // a reason to trap somebody in a tour they asked to leave.
+            onFinish: () => completeOnboarding(),
+        });
+
+        return;
+    }
+
+    completeOnboarding();
+}
+
+function completeOnboarding() {
     router.post('/onboarding/complete', {}, {
         preserveScroll: true,
         onFinish: () => (isOpen.value = false),

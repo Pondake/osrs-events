@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Board;
 use App\Models\CompletedTile;
 use App\Models\Event;
+use App\Models\EventParticipant;
 use App\Models\Tile;
 use App\Services\BoardAccessService;
 use App\Services\PlayerBoardService;
@@ -33,6 +34,12 @@ class PlayerBoardController extends Controller
         // `count() - 1` is -1, and min() then walked the player to position
         // -1 — off the front of a board they had not started.
         $maxPosition = max($tiles->count() - 1, 0);
+
+        // Playing is joining. The button is the deliberate way in, but
+        // somebody who rolls has said the same thing more plainly, and a
+        // player missing from the participant list because they never pressed
+        // it would be a worse kind of wrong than an unasked-for row.
+        EventParticipant::firstOrCreate(['event_id' => $event->id, 'user_id' => Auth::id()]);
 
         $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
         if ($playerBoard === null) {
@@ -109,6 +116,9 @@ class PlayerBoardController extends Controller
         // `$event->board?->id`, because null === null is true and a
         // board-less event would match every board-less tile.
         abort_unless($event->board !== null && $tile->board_id === $event->board->id, 404);
+
+        // Same as roll(): ticking a tile off is playing, so it joins.
+        EventParticipant::firstOrCreate(['event_id' => $event->id, 'user_id' => Auth::id()]);
 
         $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
         if ($playerBoard === null) {

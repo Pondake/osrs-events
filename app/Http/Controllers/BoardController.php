@@ -14,6 +14,7 @@ use App\Models\Team;
 use App\Models\UserGuild;
 use App\Services\BingoService;
 use App\Services\BoardAccessService;
+use App\Services\EventParticipationService;
 use App\Services\EventStandingsService;
 use App\Services\PlayerBoardService;
 use Illuminate\Http\JsonResponse;
@@ -318,15 +319,12 @@ class BoardController extends Controller
             return $this->showBingo($event, app(BingoService::class));
         }
 
-        // Ported from the old PlayersService.findPlayerBoard(): once access is
-        // confirmed (we're past the access-gate check above), the PlayerBoard
-        // is created here on page view, not lazily on the first roll/toggle.
-        // An earlier version of this method used a pure find() instead,
-        // reasoned as matching SOLO's cold-start behavior — it didn't: the old
-        // app always auto-creates on confirmed access, which is what makes a
-        // brand-new visitor immediately see "Your current task" (tile 1) and
-        // the completion-gated dice roller instead of an empty sidebar.
-        $playerBoard = $playerBoards->getOrCreate($event, $user)?->load('completedTiles:id,player_board_id,tile_id');
+        // A read, not a get-or-create. This used to hand a player board to
+        // anyone who opened the page, which made looking at a board the same
+        // thing as playing it: every passer-by turned up in the player list
+        // and on the leaderboard at square one. Joining is an explicit action
+        // now and it is what creates the row — see EventParticipationService.
+        $playerBoard = $playerBoards->find($event, $user)?->load('completedTiles:id,player_board_id,tile_id');
 
         // Every player/team on the board with their current position — feeds
         // BoardShow.vue's "show other players" avatar stacks on tiles and the
@@ -367,6 +365,7 @@ class BoardController extends Controller
             // play at all — BoardShow.vue renders a dedicated "no team on
             // this board" empty state instead of the grid for this case.
             'hasTeam' => $playerBoards->hasTeam($event, $user),
+            'joined' => app(EventParticipationService::class)->has($user, $event),
             'canEdit' => $user->canEditEvent($event),
         ]);
     }
@@ -394,7 +393,19 @@ class BoardController extends Controller
         // A BINGO event with no card is only reachable through direct data
         // manipulation, but rendering a hole is worse than making one.
         if ($card === null) {
-            $card = $event->bingoCard()->create(['id' => (string) str()->uuid()]);
+            // Every column named, not left to the table's defaults: a
+            // freshly created model carries what was passed to it and
+            // nothing else, so `$card->size` came back null and the page
+            // died on it a few lines further down. A database default only
+            // reaches PHP on a re-read.
+            $card = $event->bingoCard()->create([
+                'id' => (string) str()->uuid(),
+                'size' => 5,
+                'win_condition' => 'LINE',
+                'win_lines' => BingoCard::LINE_KINDS,
+                'line_bonus' => 0,
+                'requires_approval' => true,
+            ]);
             $bingo->ensureSquares($card);
         }
 
@@ -457,6 +468,7 @@ class BoardController extends Controller
             'completedLines' => $bingo->completedLines($card->size, $approved, $card->winLines()),
             'hasWon' => $bingo->hasWon($card, $approved),
             'canPlay' => $competitor !== null,
+            'joined' => app(EventParticipationService::class)->has($user, $event),
             'standings' => $bingo->standings($event, $card),
             // Hosts get the review queue on the same page as the card — a
             // separate screen for it would mean leaving the thing you are
@@ -487,25 +499,10 @@ class BoardController extends Controller
             // The page prompts for one instead of silently leaving someone off
             // a leaderboard they think they entered.
             'osrsUsername' => $user?->osrs_username,
-            'isParticipant' => $event->standings()->where('user_id', $user?->id)->exists(),
+            'isParticipant' => app(EventParticipationService::class)->has($user, $event)
+                || $event->standings()->where('user_id', $user?->id)->exists(),
             'canEdit' => $user?->canEditEvent($event) ?? false,
         ]);
-    }
-
-    /** Ported from AccessService::joinBoard() / InvitesService::useInvite(). */
-    // (The service method is joinEvent() since the Board→Event split; calling
-    // the old name here was a fatal error on every join.)
-    public function join(Request $request, Event $event, BoardAccessService $access): RedirectResponse
-    {
-        $data = $request->validate(['token_or_code' => ['nullable', 'string']]);
-
-        try {
-            $access->joinEvent($request->user(), $event, $data['token_or_code'] ?? null);
-        } catch (ValidationException $e) {
-            return back()->withErrors($e->errors());
-        }
-
-        return redirect()->route('events.show', $event)->with('board-save', trans('board.joined'));
     }
 
     /**
@@ -517,16 +514,19 @@ class BoardController extends Controller
      * hand-rolled localStorage flag like the old client-side version needed)
      * brings them right back here afterward.
      */
-    public function joinByLink(Request $request, Event $event, string $token, BoardAccessService $access): RedirectResponse
+    public function joinByLink(Request $request, Event $event, string $token, EventParticipationService $participation): RedirectResponse
     {
         if (! $request->user()) {
             return redirect()->guest(route('login'));
         }
 
         try {
-            $access->joinEvent($request->user(), $event, $token);
+            // The full join, not just the access row. Somebody who followed an
+            // invite link has said what they want plainly enough — asking them
+            // to press Join on arrival would be asking twice.
+            $participation->join($request->user(), $event, $token);
         } catch (ValidationException $e) {
-            return redirect()->route('events.show', $event)->with('board-save-error', $e->errors()['access'][0] ?? 'Could not join this board.');
+            return redirect()->route('events.show', $event)->with('board-save-error', collect($e->errors())->flatten()->first() ?? 'Could not join this board.');
         }
 
         return redirect()->route('events.show', $event)->with('board-save', trans('board.joined'));

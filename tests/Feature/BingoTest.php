@@ -311,4 +311,27 @@ class BingoTest extends TestCase
         $this->assertSame('FULL_HOUSE', $card->win_condition);
         $this->assertSame(16, $card->squares()->count());
     }
+
+    /**
+     * A BINGO event whose card has not been made yet renders one on the way
+     * in — and that path was a 500 for as long as it existed. The card was
+     * created with nothing but an id, so `size` was null on the instance in
+     * hand (the column default only reaches PHP on a re-read) and the line
+     * counter blew up on it a few statements later. Only reachable on an
+     * event created outside the normal flow, which is exactly the kind of
+     * row a migration or an import leaves behind.
+     */
+    #[Test]
+    public function a_bingo_event_with_no_card_yet_still_opens(): void
+    {
+        $event = $this->event();
+
+        $this->actingAs($this->player())->get("/events/{$event->id}")->assertOk();
+
+        $card = $event->fresh()->bingoCard;
+
+        $this->assertNotNull($card);
+        $this->assertSame(5, $card->size);
+        $this->assertSame(25, $card->squares()->count());
+    }
 }

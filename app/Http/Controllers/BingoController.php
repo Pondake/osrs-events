@@ -6,6 +6,7 @@ use App\Models\BingoCard;
 use App\Models\BingoCompletion;
 use App\Models\BingoSquare;
 use App\Models\Event;
+use App\Models\EventParticipant;
 use App\Services\BingoService;
 use App\Services\BoardAccessService;
 use Illuminate\Http\RedirectResponse;
@@ -55,6 +56,12 @@ class BingoController extends Controller
         if ($event->end_date !== null && $event->end_date->endOfDay()->isPast()) {
             return back()->with('board-save-error', trans('bingo.event_ended'));
         }
+
+        // Claiming a square is playing, so it joins. Bingo is the type where
+        // this mattered most: taking part was inferred from having claimed
+        // something, which meant an event nobody had scored in yet had, on
+        // paper, nobody in it.
+        EventParticipant::firstOrCreate(['event_id' => $event->id, 'user_id' => $request->user()->id]);
 
         // Nothing to claim: a wildcard already counts for everybody, so a
         // claim on one would be a row that changes no score and a queue

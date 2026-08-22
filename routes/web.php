@@ -19,6 +19,7 @@ use App\Http\Controllers\BingoController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\EventBlueprintController;
+use App\Http\Controllers\EventParticipationController;
 use App\Http\Controllers\EventStreamController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LeaderboardController;
@@ -176,9 +177,14 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/events/{event}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])
         ->middleware('throttle:60,1')
         ->name('events.tiles.toggle');
-    Route::post('/events/{event}/join', [BoardController::class, 'join'])
+    // Joining, for every type. Not the same as access: a public event lets
+    // anyone look, and this is the person saying they are playing.
+    Route::post('/events/{event}/join', [EventParticipationController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('events.join');
+    Route::delete('/events/{event}/join', [EventParticipationController::class, 'destroy'])
+        ->middleware('throttle:10,1')
+        ->name('events.leave-event');
 
     // Bingo. Toggling is a player action gated on access; editing a square
     // or the card is an author action — the same split TileController makes.

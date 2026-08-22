@@ -21,7 +21,7 @@ not. What is left before launch is deployment and content, not features:
 outbound mail pointed at a real provider, and the privacy policy and terms
 brought up to date.
 
-Roughly 500 backend tests and 145 frontend tests, run with `php artisan test`
+Roughly 520 backend tests and 150 frontend tests, run with `php artisan test`
 and `pnpm test`.
 
 ---
@@ -64,11 +64,15 @@ type means writing a channel, not touching the stream controller.
 
 ### Playing
 
+- Join any event with one button, whatever its type — which is also what
+  puts it on your list. Playing counts as joining, so nobody presses it twice.
 - Roll a d6, move, hit snakes and ladders, tick tiles off.
 - Claim bingo squares with a screenshot; a host approves or rejects with a
   note that the claimant sees either way.
 - Enter and leave a race; standings sync from Wise Old Man.
-- Live standings on every type, pushed rather than polled.
+- Live standings on every type, pushed rather than polled — and the board or
+  card itself, so a host editing a tile mid-event reaches everyone looking at
+  it. Editing the event's own details reaches them too.
 
 ### Around it
 
@@ -109,8 +113,6 @@ reading the code.
   is no way around it — `PHP_CLI_SERVER_WORKERS` forks. Use Herd or
   nginx+fpm when working on anything live, or the rest of the site will feel
   broken while a stream is open.
-- **Bingo has no join step.** Participation is implied by claiming a square.
-  This has to be settled before the RuneLite plugin.
 - **Boss races have no icons.** The icon set is built from wiki item images
   and there is no "Zulrah icon"; pets are the intended answer.
 - **Mail is configured but not pointed anywhere.** Works against Mailpit
