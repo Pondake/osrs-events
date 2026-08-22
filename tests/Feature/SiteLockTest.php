@@ -6,9 +6,11 @@ use App\Models\Page;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -142,6 +144,49 @@ class SiteLockTest extends TestCase
 
         $this->get('/login')->assertOk();
         $this->get('/forgot-password')->assertOk();
+    }
+
+    /**
+     * The whole reset, not just the pages it starts on.
+     *
+     * The allow-list had `reset-password/*` — the link from the email, which
+     * carries a token — and not `reset-password`, which is where that page
+     * POSTs to. So a locked site let somebody open the link, type a new
+     * password and then answered 423 when they saved it. The recovery path
+     * was dead in exactly the state that needs it most, and nothing caught it
+     * because every test stopped at the GET.
+     */
+    #[Test]
+    public function a_password_can_actually_be_reset_while_the_site_is_locked(): void
+    {
+        Notification::fake();
+        $this->lock();
+
+        $user = User::factory()->create([
+            'osrs_username' => 'LockedOut',
+            'email' => 'lockedout@example.com',
+            'password' => Hash::make('Original-pass-1'),
+        ]);
+
+        $this->post('/forgot-password', ['email' => $user->email])->assertSessionHasNoErrors();
+
+        $token = null;
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use (&$token) {
+            $token = $notification->token;
+
+            return true;
+        });
+
+        $this->get("/reset-password/{$token}?email={$user->email}")->assertOk();
+
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'Brand-new-pass-9',
+            'password_confirmation' => 'Brand-new-pass-9',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('Brand-new-pass-9', $user->fresh()->password));
     }
 
     #[Test]

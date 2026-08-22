@@ -2483,6 +2483,47 @@ sweep does not chase them:
 453 backend tests, 125 frontend.
 
 
+### Mail, actually sent — 2026-08-22
+
+Mailpit locally (SMTP 1025, inbox on 8025), and the whole reset walked over
+real HTTP with its own cookie jar: ask for a link, read the mail out of
+Mailpit, open the link, save a new password, sign in with it, and confirm the
+old one is refused. Every step passed — after one fix.
+
+**`POST /reset-password` was blocked by the site lock.** The allow-list had
+`reset-password/*`, which matches the link from the email because that
+carries a token, and NOT `reset-password`, which is where that page posts to.
+So a locked site let somebody open the link, type a new password, and
+answered 423 when they saved it. The recovery path was dead in exactly the
+state that needs it most — and every existing test stopped at the GET, so
+nothing caught it. Both spellings are allowed now, with a test that walks the
+whole flow rather than its first step.
+
+**The mail wears the app's colours.** `resources/views/vendor/mail/html/
+themes/osrs.css` re-skins Laravel's default rather than replacing it — the
+structure is what makes a markdown mailable render and it is well tested
+against the clients that matter, so only the palette and the type change.
+
+Deliberately a LIGHT theme, unlike the app. A dark email is a coin toss:
+Outlook and several webmail clients override backgrounds and leave pale text
+on white, and this is the one message somebody has to be able to read.
+Parchment and ink, with the gold on the button and the rules. Georgia rather
+than Cinzel, because webfonts do not load in most mail clients and Georgia is
+the closest widely-present face.
+
+There is a test asserting the rendered HTML carries the brand colours and
+none of Laravel's zinc. Not decoration: the theme is chosen by one line in
+`config/mail.php`, and losing it fails nothing — the mail just quietly goes
+back to looking like scaffolding.
+
+**Worth knowing for next time:** `php artisan serve` reads `.env` once, at
+startup, and an already-set environment variable wins over the file. A mail
+change needs the dev server restarted; `config:clear` alone does nothing.
+`.env.example` says so now.
+
+462 backend tests, 125 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
@@ -2517,8 +2558,11 @@ not alongside it — the copy depends on what the app actually ends up doing.
   showing a live skill race is worth adding, and would let the preview
   section carry the same "more than one format" message the features do.
 
-- [ ] **Outbound mail has never been configured, and password reset is dead
-  without it.** `/forgot-password` works end to end — the broker returns
+- [x] ~~**Outbound mail has never been configured, and password reset is dead
+  without it.**~~ — **walked end to end against Mailpit on 2026-08-22**, see
+  "Mail, actually sent" below. What remains is a deployment step, not code:
+  point MAIL_* at Brevo and verify the From domain.
+  `/forgot-password` works end to end — the broker returns
   `passwords.sent`, the notification renders, the link points at the right
   route — and then `MAIL_MAILER=log` writes all 13KB of it to
   `storage/logs/laravel.log`. The user is told the mail is on its way. There
@@ -2560,8 +2604,9 @@ not alongside it — the copy depends on what the app actually ends up doing.
     a Discord account ever has an address to verify, and that decides what
     the manual-registration flow has to handle.
 
-  Also worth noting: the reset mail is Laravel's stock template, zinc button
-  and all, with none of the OSRS branding the rest of the app has.
+  ~~Also worth noting: the reset mail is Laravel's stock template, zinc button
+  and all, with none of the OSRS branding the rest of the app has.~~ **Done
+  2026-08-22** — see the theme note below.
 
 - [ ] **Privacy policy needs an update.** `/privacy` was written for the
   Discord-only version of the app and no longer describes what is collected.
