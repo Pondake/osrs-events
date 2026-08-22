@@ -98,6 +98,34 @@ class EventStreamTest extends TestCase
         $this->get("/events/{$this->event('BINGO')->id}/stream")->assertRedirect();
     }
 
+    /**
+     * The headers, which are the difference between a live stream and one
+     * long delivery at the end.
+     *
+     * `X-Accel-Buffering: no` is the one that matters in production and
+     * cannot be caught locally: nginx buffers a proxied response by default,
+     * which holds every event until the connection closes — so the page
+     * would sit silent for 45 seconds and then receive everything at once,
+     * looking exactly like a stream that does not work. Nothing else in the
+     * suite would notice it going missing.
+     *
+     * Asserted without reading the body: consuming it would block for the
+     * stream's full 45 seconds.
+     */
+    #[Test]
+    public function the_stream_announces_itself_as_one(): void
+    {
+        $event = $this->event('BINGO');
+        $event->bingoCard()->create(['size' => 3]);
+
+        $response = $this->actingAs($this->player())->get("/events/{$event->id}/stream");
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'text/event-stream; charset=utf-8');
+        $response->assertHeader('cache-control', 'no-cache, no-transform, private');
+        $response->assertHeader('x-accel-buffering', 'no');
+    }
+
     #[Test]
     public function the_stream_is_refused_without_access(): void
     {
@@ -166,6 +194,70 @@ class EventStreamTest extends TestCase
     }
 
     /**
+     * The card's own settings are part of what everybody is looking at.
+     *
+     * Bingo.vue takes `winLines` off the payload so "a host changing which
+     * shapes count mid-event reaches every open card" — but the fingerprint
+     * only watched the claims and the squares, so that change woke nobody and
+     * the comment was describing something that did not happen. The win
+     * condition is worse: it decides the standings, so an open card would
+     * have gone on scoring by a rule that had been switched off.
+     */
+    #[Test]
+    public function a_bingo_fingerprint_changes_when_the_rules_do(): void
+    {
+        $event = $this->event('BINGO');
+        $card = $event->bingoCard()->create([
+            'size' => 3,
+            'win_condition' => 'LINE',
+            'win_lines' => ['ROW', 'COLUMN', 'DIAGONAL'],
+            'line_bonus' => 0,
+        ]);
+        app(BingoService::class)->ensureSquares($card);
+        $channel = $this->resolver()->for($event);
+
+        foreach ([
+            'win_lines' => ['ROW'],
+            'win_condition' => 'FULL_HOUSE',
+            'line_bonus' => 5,
+        ] as $field => $value) {
+            $before = $channel->fingerprint($event->fresh());
+
+            $card->update([$field => $value]);
+
+            $this->assertNotSame($before, $channel->fingerprint($event->fresh()), $field);
+        }
+    }
+
+    /** And the payload carries them, or there would be nothing to send. */
+    #[Test]
+    public function a_bingo_payload_carries_the_rules_and_the_standings(): void
+    {
+        $event = $this->event('BINGO');
+        $card = $event->bingoCard()->create(['size' => 3, 'win_lines' => ['ROW']]);
+        app(BingoService::class)->ensureSquares($card);
+
+        BingoCompletion::create([
+            'bingo_square_id' => $card->squares()->first()->id,
+            'user_id' => $this->player()->id,
+            'status' => 'APPROVED',
+        ]);
+
+        $payload = $this->resolver()->for($event)->payload($event->fresh());
+
+        $this->assertSame(['ROW'], $payload['winLines']);
+        $this->assertCount(1, $payload['standings']);
+        $this->assertCount(9, $payload['squares']);
+        // Who holds which square is public — an approved claim is already in
+        // the standings.
+        $this->assertArrayHasKey('approvedBy', $payload);
+    }
+
+    /**
+     * The other half of the contract. A host re-reviewing a claim to the same
+     * verdict rewrites updated_at without changing anything anyone can see,
+     * and must not wake every open browser.
+     */ /**
      * The other half of the contract. A host re-reviewing a claim to the same
      * verdict rewrites updated_at without changing anything anyone can see,
      * and must not wake every open browser.
