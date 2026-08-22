@@ -158,6 +158,31 @@ describe('letting go', () => {
         expect(FakeEventSource.live).toHaveLength(0);
     });
 
+    /**
+     * And the page stops claiming to be live while it is not.
+     *
+     * The indicator reads "Updating live" off this ref. A backgrounded tab
+     * kept showing it for as long as the visibility handling existed — which
+     * is the one state where it is definitely wrong, and the state a tab
+     * spends most of its life in. Caught by watching a real page in a pane
+     * that reported itself hidden.
+     */
+    it('stops saying it is live while the connection is let go', async () => {
+        const { wrapper } = mountStream();
+        await nextTick();
+        expect(wrapper.text()).toBe('true/false');
+
+        setVisibility('hidden');
+        await nextTick();
+
+        expect(wrapper.text()).toBe('false/false');
+
+        setVisibility('visible');
+        await nextTick();
+
+        expect(wrapper.text()).toBe('true/false');
+    });
+
     it('picks it up again on return', async () => {
         mountStream();
 
@@ -252,6 +277,9 @@ describe('the staleness indicator', () => {
         vi.advanceTimersByTime(30000);
         await nextTick();
 
-        expect(wrapper.text()).toBe('true/false');
+        // Not live, because the connection was let go on purpose — and not
+        // STALE either, which is the half this test is about. A deliberate
+        // disconnect is not a fault to report.
+        expect(wrapper.text()).toBe('false/false');
     });
 });

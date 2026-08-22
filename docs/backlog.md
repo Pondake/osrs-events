@@ -2659,6 +2659,51 @@ both yours and on your server shows as yours.
 492 backend tests, 145 frontend.
 
 
+### The live channel, checked properly — 2026-08-22
+
+Asked whether the SSE side has enough tests and whether it holds up with
+several people in an event. Two real bugs came out of looking.
+
+**A bingo card's own rules were not in its fingerprint.** The payload carries
+`winLines` so that "a host changing which shapes count mid-event reaches every
+open card" — except the fingerprint watched only the claims and the squares,
+so that change woke nobody and the comment described something that did not
+happen. The win condition was worse than cosmetic: it decides the standings,
+so an open card went on scoring by a rule that had been switched off. All
+three of `win_condition`, `line_bonus` and `win_lines` are in it now.
+
+**A backgrounded tab still said "Updating live".** The tab drops its
+connection on purpose when hidden — that is the optimisation from earlier —
+but `streaming` stayed true, so the indicator claimed to be live in the one
+state where it definitely is not, and the state a tab spends most of its life
+in. It now goes quiet while suspended and comes back on return.
+
+That second one was found the hard way: a two-tab live test kept showing
+nothing arriving, and the reason was that the Browser pane reports its tab as
+`hidden`, so the channel was suspending itself. I was measuring my own feature
+rather than the app's liveness.
+
+**What the live push does do**, verified against a change made entirely
+outside the browser (tinker, no HTTP): the stream opens, sends a snapshot, and
+sends a second message once the fingerprint moves, carrying standings that
+match the database exactly.
+
+**What could not be verified locally: several watchers at once.** `php artisan
+serve` serves one stream at a time, so a second tab's `EventSource` never
+connects — 53 aborted attempts in 85 seconds while another held the worker.
+Even my own diagnostic requests stole it. Multi-viewer behaviour needs
+nginx+fpm to test, which is the same conclusion the dev-server note reached
+earlier.
+
+Also added: a test that the stream announces itself with the right headers.
+`X-Accel-Buffering: no` is the one that cannot be caught locally — nginx
+buffers a proxied response by default, which holds every event until the
+connection closes, so the page would sit silent and then receive everything at
+once. Nothing else in the suite would notice it going missing.
+
+495 backend tests, 146 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,

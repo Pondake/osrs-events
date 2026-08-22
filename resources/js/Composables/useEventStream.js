@@ -44,6 +44,7 @@ export function useEventStream({ url, event, onMessage }) {
     function connect() {
         if (source || !target) return;
 
+        streaming.value = true;
         source = new EventSource(target);
 
         source.addEventListener('open', markLive);
@@ -88,6 +89,12 @@ export function useEventStream({ url, event, onMessage }) {
         staleTimer = null;
         source?.close();
         source = null;
+
+        // And the page stops claiming to be live, because it is not. The
+        // indicator said "Updating live" on a backgrounded tab for as long
+        // as this method existed — which is the one state where it is
+        // definitely wrong, and the state a tab spends most of its life in.
+        streaming.value = false;
     }
 
     /**
@@ -129,7 +136,6 @@ export function useEventStream({ url, event, onMessage }) {
         target = url();
         if (!target) return;
 
-        streaming.value = true;
         document.addEventListener('visibilitychange', onVisibilityChange);
 
         // A tab restored from the background starts hidden, so this is not

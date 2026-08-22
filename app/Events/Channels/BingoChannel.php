@@ -57,10 +57,24 @@ class BingoChannel implements EventChannel
             ->orderBy('position')
             ->get(['position', 'task_id', 'title_override', 'points', 'is_wildcard']);
 
+        // The card's own rules are part of what everybody is looking at, and
+        // they were missing. The payload carries winLines so that "a host
+        // changing which shapes count mid-event reaches every open card" —
+        // except the fingerprint never noticed, so it reached nobody. The win
+        // condition is worse than cosmetic: it decides the standings, so an
+        // open card went on scoring by a rule that had been switched off.
+        $rules = implode(':', [
+            $card->win_condition,
+            $card->line_bonus,
+            implode(',', $card->winLines()),
+        ]);
+
         return md5(
             $rows->map(fn ($r) => "{$r->position}:{$r->team_id}{$r->user_id}:{$r->status}")->implode('|')
             .'#'
             .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->is_wildcard}")->implode('|')
+            .'#'
+            .$rules
         );
     }
 
