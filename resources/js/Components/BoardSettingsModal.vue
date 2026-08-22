@@ -41,6 +41,20 @@
                     <basics-fields :form="form" is-edit />
                 </template>
                 <template #format>
+                    <!-- The size can still be changed after a template is
+                         applied, and a layout is a snapshot of one grid. The
+                         server drops what does not fit rather than stacking
+                         it on the last square — this is so that is a choice
+                         rather than a surprise. -->
+                    <u-alert
+                        v-if="layoutWillBeTrimmed"
+                        color="warning"
+                        variant="subtle"
+                        icon="i-lucide-scissors"
+                        class="mb-4"
+                        :description="$t('blueprints.layout_resized')"
+                    />
+
                     <format-fields :form="form" />
                 </template>
                 <template #access>
@@ -233,7 +247,7 @@ import InviteFields from '@/Components/BoardSettings/InviteFields.vue';
 import TeamFields from '@/Components/BoardSettings/TeamFields.vue';
 import TemplateFields from '@/Components/BoardSettings/TemplateFields.vue';
 import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
-import { blueprintPatch, decidesType } from '@/Support/blueprint';
+import { blueprintPatch, decidesType, layoutFits } from '@/Support/blueprint';
 
 const { user: currentUser } = useAuth();
 
@@ -323,6 +337,12 @@ function blankForm() {
         // removed one at a time against their own endpoints, because those
         // writes have to land immediately rather than wait for a save.
         team_ids: [],
+        // Which template this started from. The settings it carries are
+        // applied here in the browser and arrive as ordinary fields; the
+        // BOARD cannot work that way — it is up to 81 rows written after the
+        // event exists — so the server is told which template to read it
+        // from.
+        blueprint_id: null,
     };
 }
 
@@ -694,14 +714,30 @@ function applyBlueprint(blueprint) {
     }
 
     appliedBlueprintId.value = blueprint.id;
+    form.blueprint_id = blueprint.id;
 
     // Straight on to whichever question the template did not answer.
     currentStep.value = decidesType(blueprint) ? 'basics' : 'type';
 }
 
+/**
+ * Whether the applied template's board no longer matches the chosen grid.
+ *
+ * Only while creating: an edit never applies a layout, and the warning would
+ * be about something that already happened.
+ */
+const layoutWillBeTrimmed = computed(() => {
+    if (isEdit.value || !appliedBlueprintId.value) return false;
+
+    const applied = blueprintResults.value.find((b) => b.id === appliedBlueprintId.value);
+
+    return !layoutFits(applied, form.size, form.bingo_size);
+});
+
 /** "From scratch" is a choice, so it clears one rather than doing nothing. */
 function skipBlueprint() {
     appliedBlueprintId.value = null;
+    form.blueprint_id = null;
     currentStep.value = 'type';
 }
 

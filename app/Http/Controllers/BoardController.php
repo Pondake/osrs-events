@@ -8,6 +8,7 @@ use App\Models\Board;
 use App\Models\BoardAuthor;
 use App\Models\BoardTeam;
 use App\Models\Event;
+use App\Models\EventBlueprint;
 use App\Models\EventStanding;
 use App\Models\Team;
 use App\Models\UserGuild;
@@ -590,6 +591,12 @@ class BoardController extends Controller
             // against yet, so they ride along with the form that creates it.
             'team_ids' => ['nullable', 'array'],
             'team_ids.*' => ['uuid', 'exists:teams,id'],
+            // Which template this started from, if any. Only its BOARD is
+            // read here — the settings the form shows were applied in the
+            // browser and arrive as ordinary fields, already validated above.
+            // The layout cannot work that way: it is up to 81 rows written
+            // after the event exists.
+            'blueprint_id' => ['nullable', 'uuid', 'exists:event_blueprints,id'],
         ]);
 
         // One submission, two rows: the competition and its Snakes &
@@ -655,6 +662,17 @@ class BoardController extends Controller
                     'id' => (string) str()->uuid(), 'event_id' => $event->id, 'team_id' => $id,
                 ])->all());
             }
+
+            // The board the template brought with it, if it brought one.
+            // After the payload rows exist, because a tile needs a board and
+            // a square needs a card — and scoped to what this person may
+            // actually start from, or a guessed id would be a way to read
+            // another clan's layout.
+            $blueprint = $data['blueprint_id'] ?? null
+                ? EventBlueprint::whereKey($data['blueprint_id'])->visibleTo($request->user())->first()
+                : null;
+
+            $blueprint?->applyLayoutTo($event->fresh());
 
             return $event;
         });

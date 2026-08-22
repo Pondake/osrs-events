@@ -37,8 +37,18 @@ class EventBlueprintController extends Controller
             ->visibleTo($request->user())
             ->when($search !== '', fn ($q) => $q->where('title', 'like', '%'.$search.'%'))
             ->with('creator:id,discord_username,nickname')
-            ->limit(20)
-            ->get(['id', 'title', 'type', 'metric', 'description', 'settings', 'created_by', 'guild_id'])
+            // Yours first, then your clan's, then the set that ships with the
+            // app. A gallery is read top-down, and the formats somebody saved
+            // themselves are the ones they are looking for.
+            //
+            // The order matters more than it looks: this was 20 rows sorted
+            // by title, which is fine for an autocomplete and wrong for a
+            // gallery — a template called "Weekend format" simply never
+            // appeared once the seeded set filled the first twenty.
+            ->orderByRaw('CASE WHEN created_by = ? THEN 0 WHEN guild_id IS NOT NULL THEN 1 ELSE 2 END', [$request->user()->id])
+            ->orderBy('title')
+            ->limit(60)
+            ->get(['id', 'title', 'type', 'metric', 'description', 'settings', 'layout', 'created_by', 'guild_id'])
             ->map(fn (EventBlueprint $blueprint) => [
                 'id' => $blueprint->id,
                 'title' => $blueprint->title,
@@ -46,6 +56,12 @@ class EventBlueprintController extends Controller
                 'metric' => $blueprint->metric,
                 'description' => $blueprint->description,
                 'settings' => $blueprint->applicableSettings(),
+                // Whether it brings a board with it, and how much of one.
+                // The layout itself is not sent: it is applied server-side
+                // after the event exists, and shipping 81 rows to a picker
+                // that only needs to say "includes a board" is 81 rows the
+                // browser never reads.
+                'layoutCount' => $blueprint->hasLayout() ? count($blueprint->layout) : 0,
                 // Where this one came from, so a host can tell the set that
                 // ships with the app from one of their clan's own.
                 'source' => $blueprint->created_by === null ? 'global' : 'clan',
@@ -88,6 +104,10 @@ class EventBlueprintController extends Controller
             'metric' => $event->metric,
             'is_active' => true,
             'settings' => EventBlueprint::settingsFrom($event),
+            // The board as well as its settings. Reusing a format without the
+            // tiles is reusing the easy half — the evening a host spends is
+            // deciding which task sits where, not picking a grid size.
+            'layout' => EventBlueprint::layoutFrom($event),
             'created_by' => $request->user()->id,
             'guild_id' => $data['guild_id'] ?? null,
         ]);
