@@ -1,11 +1,11 @@
 <template>
-    <Head :title="event.title" />
+    <Head :title="liveEvent.title" />
 
     <u-main>
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="event" :can-edit="canEdit">
+                    <event-type-heading :event="liveEvent" :can-edit="canEdit">
                         <template #meta>
                             <span class="inline-flex items-center gap-1.5">
                                 <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
@@ -39,7 +39,7 @@
                         </span>
 
                         <u-button
-                            :href="`/events/${event.id}/participants`"
+                            :href="`/events/${liveEvent.id}/participants`"
                             color="neutral"
                             variant="outline"
                             size="sm"
@@ -50,7 +50,7 @@
                         <!-- Bingo had no way of saying you were playing at
                              all: taking part was inferred from having claimed
                              a square, so an empty card meant an empty event. -->
-                        <join-event-button :event-id="event.id" :joined="joined" size="sm" />
+                        <join-event-button :event-id="liveEvent.id" :joined="joined" size="sm" />
 
                         <template v-if="canEdit">
                             <!-- Three separate things, and they were one
@@ -444,26 +444,26 @@
             <bingo-square-modal
                 v-if="editingSquare"
                 v-model:open="squareModalOpen"
-                :event-id="event.id"
+                :event-id="liveEvent.id"
                 :square="editingSquare"
             />
             <bingo-claim-modal
                 v-if="claimingSquare"
                 v-model:open="claimModalOpen"
-                :event-id="event.id"
+                :event-id="liveEvent.id"
                 :square="claimingSquare"
                 :claim="claims[claimingSquare.position] ?? null"
             />
             <template v-if="canEdit">
-                <board-settings-modal v-model:open="showSettingsModal" :board="event" />
+                <board-settings-modal v-model:open="showSettingsModal" :board="liveEvent" />
                 <tile-list-editor
                     v-model:open="showTileList"
-                    :event-id="event.id"
+                    :event-id="liveEvent.id"
                     type="BINGO"
                     :items="squares"
                     :total="card.size * card.size"
                 />
-                <bingo-review-modal v-model:open="showReviewModal" :event-id="event.id" :claims="pending" />
+                <bingo-review-modal v-model:open="showReviewModal" :event-id="liveEvent.id" :claims="pending" />
             </template>
         </client-only>
     </u-main>
@@ -507,7 +507,15 @@ const props = defineProps({
 // Still needed here, even though the heading renders its own copy: the live
 // channel closes on an ended event rather than holding a PHP worker open to
 // watch a card that cannot change.
-const status = computed(() => boardEventStatus(props.event.start_date, props.event.end_date));
+/**
+ * The event as it is now: the prop for the first paint, then whatever the
+ * channel sends. Built from one place on the server (App\Support\EventCard)
+ * so the page cannot tell which one it is looking at.
+ */
+const liveEvent = ref({ ...props.event });
+watch(() => props.event, (value) => (liveEvent.value = { ...value }));
+
+const status = computed(() => boardEventStatus(liveEvent.value.start_date, liveEvent.value.end_date));
 
 // Seeded from the server render, then kept current by the channel. The
 // squares are streamed too, so an author's edit lands on every open card
@@ -570,10 +578,13 @@ function extraHolders(square) {
 const { streaming, stale } = useEventStream({
     // A finished card cannot change. Holding a PHP worker open to watch it
     // not change is the one cost this feature has.
-    url: () => (status.value === 'ended' ? null : `/events/${props.event.id}/stream`),
+    url: () => (status.value === 'ended' ? null : `/events/${liveEvent.value.id}/stream`),
     event: 'bingo',
     onMessage: (payload) => {
         rows.value = payload.standings;
+        // Merged, not replaced, so a field the channel does not know about
+        // survives the first push.
+        if (payload.event) liveEvent.value = { ...liveEvent.value, ...payload.event };
         if (payload.squares) squares.value = payload.squares;
         if (payload.approvedBy) holders.value = payload.approvedBy;
         // A host changing which shapes count mid-event reaches every open
@@ -774,7 +785,7 @@ function onSquareClick(square) {
     // A card that trusts its players marks straight away; one that reviews
     // asks for the screenshot at the only moment the player still has it.
     if (!props.card.requiresApproval) {
-        router.post(`/events/${props.event.id}/bingo/squares/${square.id}/claim`, {}, {
+        router.post(`/events/${liveEvent.value.id}/bingo/squares/${square.id}/claim`, {}, {
             preserveScroll: true,
             onError: (errors) => console.error(errors),
         });

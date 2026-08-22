@@ -2966,13 +2966,12 @@ event itself rather than only what is played on it.
 
 - [x] ~~**Event changes reach other viewers.**~~ Moving a skill race's dates
   updated nothing, on any type: every channel streamed its payload and none
-  of them streamed the event. Each one now carries a version of the event's
-  own details — title, description, dates, access, listing — and the page
-  asks Inertia for fresh props when it changes. A version rather than the
-  fields themselves, because the pages render those in a dozen places and
-  streaming a partial copy would mean each page picking the changed value
-  out by hand; an edit happens once or twice in an event's life, against a
-  channel that polls every few seconds.
+  of them streamed the event. **Shipped wrong the first time and fixed the
+  same day — see "the fingerprint that could not change" below.** Each
+  channel now sends the event itself, built by `App\Support\EventCard`, the
+  same object the page was rendered with; the page swaps one for the other.
+  Measured at 0.5–3.0 seconds from a write to the screen, on title, dates and
+  the browser tab, on all three page types.
 
 - [x] ~~**The OSRS name typed during setup is kept.**~~ It was discarded on
   Skip and on Finish, which is why the standalone page asked for it again.
@@ -3017,3 +3016,50 @@ pets, per-user WOM key, scoping the task library, retiring `TEAM_MANAGER`,
 the privacy and terms rewrite, and pointing mail at Brevo.
 
 518 backend tests, 151 frontend.
+## The fingerprint that could not change — 2026-08-22
+
+Reported the same day it shipped: *"I still don't see a date update via SSE
+in a viewer session."* Correct, and my own verification had said otherwise.
+Two separate mistakes, both worth writing down.
+
+**The model was 45 seconds old.** The stream loads the event when the
+connection opens and then asks the channel the same question every three
+seconds for the next forty-five. The fingerprint's queries — players, tiles,
+claims — re-read every time, but the event's own attributes are just the
+instance's, frozen at whenever that viewer connected. So an edit could only
+surface when the connection turned over. Same for `$event->bingoCard` and
+`$event->board`: a cached relation is as stale as an attribute, which means
+**last round's "a host changing which shapes count reaches every open card"
+was never true either**. Channels re-read now.
+
+**Every test missed it, by construction.** One handed the channel
+`$event->fresh()` on each call; another edited through the very instance the
+channel was holding. Both make the model current in a way the stream never
+does. The rule that came out of it: **a channel test uses one instance for
+its whole life and writes past it**, because that is the only way an edit
+ever reaches an open stream — the host saving is a different request with a
+different copy of the row. With the fix reverted, five tests fail; before it,
+none did.
+
+**And my browser check measured the wrong thing.** I watched a date change
+arrive, saw ~30 seconds, and blamed the dev server's single worker. The delay
+was real and the explanation was half right — but it was covering for the
+staleness, and I recorded "verified" for something a user could not use. The
+number that mattered was the one I never took: time from write to screen,
+stamped on both sides. It was 29.3 seconds.
+
+**Which then turned out to be the second bug.** With the fingerprint fixed
+the *notice* was immediate, but the page still asked Inertia for fresh props
+— and that request queues behind the very stream that triggered it, so the
+screen still changed 29 seconds later. A version was the wrong design for
+something that has to arrive over a connection that is already open. The
+event rides along in the payload now: 0.5–3.0 seconds, and no second request
+at all.
+
+`EventCard` exists for that — the shape the pages render, extracted from
+`BoardController::cardData()` so the channel and the controller cannot drift.
+`metricKind` moved onto it for the same reason: the race page reads it to
+know whether it is counting XP or kills, and a card without it would have
+gone blank on the first push.
+
+521 backend tests, 151 frontend.

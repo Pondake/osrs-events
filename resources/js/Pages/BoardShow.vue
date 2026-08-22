@@ -1,5 +1,5 @@
 <template>
-    <Head :title="board.title">
+    <Head :title="liveBoard.title">
         <meta name="robots" content="noindex, nofollow" />
     </Head>
 
@@ -13,15 +13,15 @@
                      bingo and race pages so all three announce themselves the
                      same way. -->
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="board" :can-edit="canEdit">
+                    <event-type-heading :event="liveBoard" :can-edit="canEdit">
                             <template #meta>
                                 <span class="inline-flex items-center gap-1.5">
                                     <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
                                     {{ sizeLabel }}
                                 </span>
                                 <span class="inline-flex items-center gap-1.5">
-                                    <u-icon :name="board.mode === 'TEAM' ? 'i-lucide-users' : 'i-lucide-user'" class="size-4 shrink-0" />
-                                    {{ board.mode === 'TEAM' ? $t('admin.board_mode_team') : $t('admin.board_mode_solo') }}
+                                    <u-icon :name="liveBoard.mode === 'TEAM' ? 'i-lucide-users' : 'i-lucide-user'" class="size-4 shrink-0" />
+                                    {{ liveBoard.mode === 'TEAM' ? $t('admin.board_mode_team') : $t('admin.board_mode_solo') }}
                                 </span>
                             </template>
                     </event-type-heading>
@@ -48,7 +48,7 @@
                                 @click="showOtherPlayers = !showOtherPlayers"
                             />
                             <u-button
-                                :href="`/events/${board.id}/participants`"
+                                :href="`/events/${liveBoard.id}/participants`"
                                 color="neutral"
                                 variant="outline"
                                 size="sm"
@@ -60,7 +60,7 @@
                                  which put every passer-by on the leaderboard
                                  at square one. Joining is a decision now, and
                                  this is where it is made. -->
-                            <join-event-button :event-id="board.id" :joined="joined" size="sm" />
+                            <join-event-button :event-id="liveBoard.id" :joined="joined" size="sm" />
                             <template v-if="canEdit">
                                 <!-- Named for what they change — the tiles
                                      versus the event — rather than
@@ -93,7 +93,7 @@
                                 />
                             </template>
                             <u-button
-                                :href="`/events/${board.id}/leaderboard`"
+                                :href="`/events/${liveBoard.id}/leaderboard`"
                                 color="neutral"
                                 variant="outline"
                                 size="sm"
@@ -255,7 +255,7 @@
                                 :rolling="rolling"
                                 :last-roll="lastRoll"
                                 :rolls-today="playerBoard?.dice_rolls_today ?? 0"
-                                :roll-limit="board.dice_roll_limit"
+                                :roll-limit="liveBoard.dice_roll_limit"
                                 @roll="roll"
                             />
 
@@ -268,8 +268,8 @@
                         <u-card v-if="!playerBoard">
                             <p class="text-sm text-muted">{{ joined ? $t('board.get_started_desc') : $t('events.join_hint') }}</p>
                             <div class="mt-3 flex flex-col gap-3">
-                                <join-event-button v-if="!joined" :event-id="board.id" :joined="false" />
-                                <dice-roller :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="board.dice_roll_limit" @roll="roll" />
+                                <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
+                                <dice-roller :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
                             </div>
                         </u-card>
 
@@ -356,7 +356,7 @@
                                 <span class="font-semibold">{{ $t('admin.editors') }}</span>
                             </template>
                             <div class="flex flex-wrap gap-2">
-                                <div v-for="author in board.authors" :key="author.id" class="flex items-center gap-1.5">
+                                <div v-for="author in liveBoard.authors" :key="author.id" class="flex items-center gap-1.5">
                                     <u-avatar :src="author.user.avatar_url ?? undefined" :alt="author.user.nickname || author.user.discord_username" size="xs" />
                                     <span class="text-xs">{{ author.user.nickname || author.user.discord_username }}</span>
                                 </div>
@@ -369,19 +369,19 @@
                             </template>
                             <div class="flex flex-wrap gap-2">
                                 <u-badge color="neutral" variant="subtle" icon="i-lucide-calendar">
-                                    {{ formatDate(board.start_date) }} – {{ formatDate(board.end_date) }}
+                                    {{ formatDate(liveBoard.start_date) }} – {{ formatDate(liveBoard.end_date) }}
                                 </u-badge>
                                 <u-badge color="neutral" variant="subtle" icon="i-lucide-grid-3x3">
-                                    {{ formatBoardSize(board.size) }}
+                                    {{ formatBoardSize(liveBoard.size) }}
                                 </u-badge>
-                                <u-badge v-if="board.dice_roll_limit" color="neutral" variant="subtle" icon="i-lucide-dice-6">
-                                    {{ $t('boards.roll_limit', { limit: board.dice_roll_limit }) }}
+                                <u-badge v-if="liveBoard.dice_roll_limit" color="neutral" variant="subtle" icon="i-lucide-dice-6">
+                                    {{ $t('boards.roll_limit', { limit: liveBoard.dice_roll_limit }) }}
                                 </u-badge>
                                 <u-badge v-else color="neutral" variant="subtle" icon="i-lucide-dice-6">
                                     {{ $t('dice.unlimited') }}
                                 </u-badge>
-                                <u-badge :color="board.mode === 'TEAM' ? 'warning' : 'neutral'" variant="subtle" icon="i-lucide-users-round">
-                                    {{ board.mode === 'TEAM' ? $t('board.mode_team') : $t('board.mode_solo') }}
+                                <u-badge :color="liveBoard.mode === 'TEAM' ? 'warning' : 'neutral'" variant="subtle" icon="i-lucide-users-round">
+                                    {{ liveBoard.mode === 'TEAM' ? $t('board.mode_team') : $t('board.mode_solo') }}
                                 </u-badge>
                             </div>
                         </u-card>
@@ -390,7 +390,7 @@
                             <template #header>
                                 <div class="flex items-center justify-between">
                                     <span class="font-semibold">{{ $t('leaderboard.title') }}</span>
-                                    <u-button :href="`/events/${board.id}/leaderboard`" variant="ghost" size="xs" color="neutral" trailing-icon="i-lucide-external-link" />
+                                    <u-button :href="`/events/${liveBoard.id}/leaderboard`" variant="ghost" size="xs" color="neutral" trailing-icon="i-lucide-external-link" />
                                 </div>
                             </template>
                             <div class="flex flex-col gap-1">
@@ -427,7 +427,7 @@
                             </div>
                             <div v-if="livePlayers.length > 5" class="mt-1 text-center">
                                 <u-button
-                                    :href="`/events/${board.id}/leaderboard`"
+                                    :href="`/events/${liveBoard.id}/leaderboard`"
                                     variant="ghost"
                                     size="xs"
                                     color="neutral"
@@ -453,10 +453,10 @@
         </u-modal>
 
         <client-only>
-            <board-settings-modal v-model:open="showSettingsModal" :board="board" />
+            <board-settings-modal v-model:open="showSettingsModal" :board="liveBoard" />
             <tile-list-editor
                 v-model:open="showTileList"
-                :event-id="board.id"
+                :event-id="liveBoard.id"
                 type="SNAKES_LADDERS"
                 :items="tiles"
                 :total="tileCount"
@@ -464,7 +464,7 @@
             <tile-edit-modal
                 v-if="editingTile"
                 :open="editingTile !== null"
-                :event-id="board.id"
+                :event-id="liveBoard.id"
                 :position="editingTile.position"
                 :tile="editingTile.id ? editingTile : null"
                 @update:open="(v) => !v && (editingTile = null)"
@@ -498,13 +498,22 @@ const props = defineProps({
     joined: { type: Boolean, default: false },
 });
 
+/**
+ * The event as it is now: the prop for the first paint, then whatever the
+ * channel sends. Built from one place on the server (App\Support\EventCard)
+ * so the page cannot tell which one it is looking at — a host moving the end
+ * date or renaming the event has to reach everyone playing on it.
+ */
+const liveBoard = ref({ ...props.board });
+watch(() => props.board, (value) => (liveBoard.value = { ...value }));
+
+// The grid's own shape, for the heading's meta line. Via the shared helper
+// rather than a second copy of the same lookup.
+const sizeLabel = computed(() => formatBoardSize(liveBoard.value.size));
+
 // Everyone's positions, seeded from the render and then kept current by the
 // board's own channel — a roll moves one player and everybody watching should
 // see it, the same as a bingo square being ticked.
-// The grid's own shape, for the heading's meta line. Via the shared helper
-// rather than a second copy of the same lookup.
-const sizeLabel = computed(() => formatBoardSize(props.board.size));
-
 const livePlayers = ref([...props.players]);
 const liveTiles = ref([...props.tiles]);
 /**
@@ -520,10 +529,14 @@ watch(() => props.players, (value) => (livePlayers.value = [...value]));
 watch(() => props.tiles, (value) => (liveTiles.value = [...value]));
 
 useEventStream({
-    url: () => `/events/${props.board.id}/stream`,
+    url: () => `/events/${liveBoard.value.id}/stream`,
     event: 'players',
     onMessage: (payload) => {
         livePlayers.value = payload.players;
+
+        // Merged, not replaced, so a field the channel does not know about
+        // survives the first push.
+        if (payload.event) liveBoard.value = { ...liveBoard.value, ...payload.event };
 
         // The board itself, so a host putting a task on a tile or moving a
         // ladder reaches everyone looking at it — the same way a bingo card's
@@ -570,11 +583,11 @@ watch(
 );
 
 const GRID_CLASSES = { SIZE_5X5: 'grid-cols-5', SIZE_7X7: 'grid-cols-7', SIZE_9X9: 'grid-cols-9' };
-const gridClass = computed(() => GRID_CLASSES[props.board.size] ?? GRID_CLASSES.SIZE_7X7);
-const minWidthClass = computed(() => BOARD_MIN_WIDTH[props.board.size] ?? BOARD_MIN_WIDTH.SIZE_7X7);
+const gridClass = computed(() => GRID_CLASSES[liveBoard.value.size] ?? GRID_CLASSES.SIZE_7X7);
+const minWidthClass = computed(() => BOARD_MIN_WIDTH[liveBoard.value.size] ?? BOARD_MIN_WIDTH.SIZE_7X7);
 
-const cols = computed(() => ({ SIZE_5X5: 5, SIZE_7X7: 7, SIZE_9X9: 9 }[props.board.size] ?? 7));
-const tileCount = computed(() => BOARD_TILE_COUNT[props.board.size] ?? 49);
+const cols = computed(() => ({ SIZE_5X5: 5, SIZE_7X7: 7, SIZE_9X9: 9 }[liveBoard.value.size] ?? 7));
+const tileCount = computed(() => BOARD_TILE_COUNT[liveBoard.value.size] ?? 49);
 
 // Ported from the old Sidebar.vue's "your task" panel — shows the task
 // (icon/title/description) for whichever real tile the player is currently
@@ -616,7 +629,7 @@ const clickedTileTitle = computed(() => clickedTile.value?.title_override ?? cli
 // is whichever row matches my user (SOLO) or my team (TEAM); everyone else
 // only renders on the grid once the "show other players" toggle is on.
 const authUser = computed(() => inertiaPage.props.auth?.user ?? null);
-const isMyPlayerRow = (p) => (props.board.mode === 'TEAM' ? p.team_id === props.playerBoard?.team_id : p.user_id === authUser.value?.id);
+const isMyPlayerRow = (p) => (liveBoard.value.mode === 'TEAM' ? p.team_id === props.playerBoard?.team_id : p.user_id === authUser.value?.id);
 const otherPlayers = computed(() => livePlayers.value.filter((p) => !isMyPlayerRow(p)));
 // Reads the live list, so a roll by anyone moves their avatar on every
 // open board rather than only after a refresh.
@@ -745,7 +758,7 @@ function handleTileClick(tile) {
 
 function roll() {
     rolling.value = true;
-    router.post(`/events/${props.board.id}/roll`, {}, { preserveScroll: true, onFinish: () => (rolling.value = false) });
+    router.post(`/events/${liveBoard.value.id}/roll`, {}, { preserveScroll: true, onFinish: () => (rolling.value = false) });
 }
 
 // Ported from the old useBoardPage's onCompleteTile: completing the tile at
@@ -758,7 +771,7 @@ function toggleTile(tile) {
     const wasCompleted = props.playerBoard?.completedTileIds.includes(tile.id) ?? false;
     const finishesBoard = !wasCompleted && tile.position === tileCount.value - 1;
 
-    router.post(`/events/${props.board.id}/tiles/${tile.id}/toggle`, {}, {
+    router.post(`/events/${liveBoard.value.id}/tiles/${tile.id}/toggle`, {}, {
         preserveScroll: true,
         onSuccess: () => {
             if (finishesBoard) showCompleted.value = true;

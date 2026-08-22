@@ -6,6 +6,7 @@ use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\BingoCompletion;
 use App\Models\Event;
 use App\Services\BingoService;
+use App\Support\EventCard;
 
 /**
  * Bingo.
@@ -33,7 +34,11 @@ class BingoChannel implements EventChannel
 
     public function fingerprint(Event $event): string
     {
-        $card = $event->bingoCard;
+        // A fresh read, not the cached relation: this instance was loaded
+        // when the stream opened and is asked the same question for the next
+        // 45 seconds, so `$event->bingoCard` would answer with the card as it
+        // was when that viewer connected — rules included.
+        $card = $event->bingoCard()->first();
 
         if ($card === null) {
             // Still carries the event's own version: a bingo event without a
@@ -89,16 +94,28 @@ class BingoChannel implements EventChannel
 
     public function payload(Event $event): array
     {
-        $card = $event->bingoCard;
+        $card = $event->bingoCard()->first();
 
         if ($card === null) {
-            return ['standings' => [], 'squares' => [], 'approvedBy' => [], 'event_version' => $this->eventVersion($event)];
+            return [
+                'standings' => [],
+                'squares' => [],
+                'approvedBy' => [],
+                'event_version' => $this->eventVersion($event),
+                'event' => EventCard::fresh($event),
+            ];
         }
 
         $card->load('squares.task:id,title,icon_url');
 
         return [
             'event_version' => $this->eventVersion($event),
+            // The event itself, so an edit arrives on the connection that is
+            // already open. Sending a version and letting the page re-ask
+            // cost a second request, which on a single-worker dev server
+            // queues behind this very stream — the edit showed up thirty
+            // seconds late, and the delay looked like the feature.
+            'event' => EventCard::fresh($event),
             'standings' => $this->bingo->standings($event, $card)->all(),
             'winLines' => $card->winLines(),
             // Public by definition — an approved claim is already visible in

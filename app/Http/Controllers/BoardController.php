@@ -17,6 +17,7 @@ use App\Services\BoardAccessService;
 use App\Services\EventParticipationService;
 use App\Services\EventStandingsService;
 use App\Services\PlayerBoardService;
+use App\Support\EventCard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,46 +41,13 @@ class BoardController extends Controller
     /**
      * The author's user is loaded by column, not whole.
      *
-     * `authors` goes to the browser as-is from cardData(), and `User` marks
+     * `authors` goes to the browser as-is from EventCard, and `User` marks
      * only password and remember_token hidden — so a bare `authors.user`
      * published every host's email address on every event page and every
      * board card. Naming the columns here fixes it for every caller at once;
      * the pages only ever read the name and the avatar.
      */
     private const EVENT_WITH = ['authors.user:id,discord_username,nickname,avatar_url', 'eventTeams.team', 'board', 'bingoCard'];
-
-    /**
-     * Flattens an event and its board into the shape the cards render.
-     *
-     * A view model rather than the raw models: the split put size and the
-     * dice limit on the board and everything else on the event, and pushing
-     * that seam into every template would mean the UI has to know which half
-     * a field lives in just to display it. `id` is deliberately the EVENT's —
-     * that is what the URLs address.
-     */
-    private function cardData(Event $event): array
-    {
-        return [
-            ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date']),
-            'size' => $event->board?->size,
-            'dice_roll_limit' => $event->board?->dice_roll_limit,
-            // Bingo's grid is a side length, not a size enum — a separate
-            // field so a card never has to guess which kind of grid it holds.
-            'bingo_size' => $event->bingoCard?->size,
-            // The whole card, for the settings modal's Format tab. Nested
-            // rather than flattened alongside bingo_size because everything
-            // in here belongs to the card and nothing else reads it — the
-            // modal picks it apart in cardFields().
-            'card' => $event->bingoCard ? [
-                'size' => $event->bingoCard->size,
-                'winCondition' => $event->bingoCard->win_condition,
-                'lineBonus' => $event->bingoCard->line_bonus,
-                'requiresApproval' => $event->bingoCard->requires_approval,
-                'winLines' => $event->bingoCard->winLines(),
-            ] : null,
-            'authors' => $event->authors,
-        ];
-    }
 
     /**
      * Public board list — only listed boards, matching the old
@@ -93,7 +61,7 @@ class BoardController extends Controller
             ->with(self::EVENT_WITH)
             ->orderByDesc('start_date')
             ->get()
-            ->map(fn (Event $event) => $this->cardData($event));
+            ->map(fn (Event $event) => EventCard::for($event));
 
         // Three separate rows rather than one "yours" bucket: what you run,
         // what you play, and what anyone can join are different questions,
@@ -110,7 +78,7 @@ class BoardController extends Controller
             ->orderByDesc('start_date')
             ->take(self::HUB_SLICE)
             ->get()
-            ->map(fn (Event $event) => $this->cardData($event))
+            ->map(fn (Event $event) => EventCard::for($event))
             ->values();
 
         // Anything you host is already in the row above, so it is left out
@@ -139,7 +107,7 @@ class BoardController extends Controller
             ->with(self::EVENT_WITH)
             ->orderByDesc('start_date')
             ->get()
-            ->map(fn (Event $event) => $this->cardData($event));
+            ->map(fn (Event $event) => EventCard::for($event));
 
         return Inertia::render('Boards/Index', [
             'boards' => $events,
@@ -205,7 +173,7 @@ class BoardController extends Controller
                     'BINGO' => 'bingo',
                     default => 'race',
                 },
-                'board' => $this->cardData($event),
+                'board' => EventCard::for($event),
                 'isHost' => $event->authors->contains(fn ($a) => $a->user_id === $user->id),
                 'progress' => null,
                 'standing' => null,
@@ -353,8 +321,8 @@ class BoardController extends Controller
             });
 
         return Inertia::render('BoardShow', [
-            // Flattened for the same reason the cards are — see cardData().
-            'board' => $this->cardData($event),
+            // Flattened for the same reason the cards are — see EventCard.
+            'board' => EventCard::for($event),
             'tiles' => $tiles,
             'playerBoard' => $playerBoard === null ? null : [
                 ...$playerBoard->only(['id', 'current_position', 'dice_rolls_today']),
@@ -422,7 +390,7 @@ class BoardController extends Controller
         $approved = $claims->filter->isApproved()->keys()->map(fn ($p) => (int) $p)->all();
 
         return Inertia::render('Events/Bingo', [
-            'event' => $this->cardData($event),
+            'event' => EventCard::for($event),
             'card' => [
                 'size' => $card->size,
                 'winCondition' => $card->win_condition,
@@ -483,13 +451,7 @@ class BoardController extends Controller
         $user = Auth::user();
 
         return Inertia::render('Events/SkillRace', [
-            'event' => [
-                ...$this->cardData($event),
-                'metric' => $event->metric,
-                // 'skill' or 'boss' — decides whether the page counts XP or
-                // kills, and which i18n namespace the metric name comes from.
-                'metricKind' => $event->metricKind(),
-            ],
+            'event' => EventCard::for($event),
             // The initial paint. From here the SSE stream owns the table, so
             // this is a snapshot rather than the only delivery — and it means
             // the page is complete before any JavaScript runs, which matters

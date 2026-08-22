@@ -25,12 +25,28 @@ trait SignalsEventEdits
     /**
      * Changes exactly when something a viewer reads about the event changes.
      *
+     * **Read from the database, not from the model handed in.** The stream
+     * loads the event once when the connection opens and then calls this
+     * every few seconds for the next 45 — so an instance's own attributes are
+     * a snapshot of whenever that viewer connected, and a date changed after
+     * that would not show up until the connection turned over. Which is
+     * exactly what shipped: the edit appeared to arrive, three quarters of a
+     * minute late, and the delay looked like the dev server being slow.
+     *
+     * One row read per poll, which is the same order of cost as the rest of a
+     * fingerprint.
+     *
      * `updated_at` would be simpler and wrong: a write that touches the row
      * without changing anything on screen would reload every open browser for
      * nothing, which is the one thing a fingerprint must not do.
      */
-    protected function eventVersion(Event $event): string
+    protected function eventVersion(Event $stale): string
     {
+        // Falls back to the instance when the event has been deleted out from
+        // under an open stream: the connection ends on its own timer anyway,
+        // and a channel is not the place to decide what a missing event means.
+        $event = Event::query()->whereKey($stale->getKey())->first() ?? $stale;
+
         return md5(implode('|', [
             $event->title,
             $event->description,
