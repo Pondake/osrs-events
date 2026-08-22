@@ -109,7 +109,7 @@ class BingoController extends Controller
     public function review(Request $request, Event $event, BingoCompletion $completion): RedirectResponse
     {
         abort_unless($event->type === 'BINGO', 404);
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event);
 
         $card = $event->bingoCard;
         abort_unless(
@@ -138,7 +138,7 @@ class BingoController extends Controller
     public function updateSquare(Request $request, Event $event, BingoSquare $square): RedirectResponse
     {
         abort_unless($event->type === 'BINGO', 404);
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event);
         abort_unless($square->bingo_card_id === $event->bingoCard?->id, 404);
 
         $data = $request->validate([
@@ -177,7 +177,7 @@ class BingoController extends Controller
     public function updateCard(Request $request, Event $event, BingoService $bingo): RedirectResponse
     {
         abort_unless($event->type === 'BINGO', 404);
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event);
 
         $card = $event->bingoCard;
         abort_unless($card !== null, 404);

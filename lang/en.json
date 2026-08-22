@@ -1181,6 +1181,7 @@
     "profile.osrs_username_saved": "OSRS username saved",
     "profile.owner_badge": "Owner",
     "profile.password": "Password",
+    "profile.password_change_keeps_you_signed_in": "You stay signed in here, and anywhere else you are already signed in.",
     "profile.password_needs_email": "Add an email address first — without one you could never reset this password.",
     "profile.password_updated": "Password updated!",
     "profile.progress": "Progress",

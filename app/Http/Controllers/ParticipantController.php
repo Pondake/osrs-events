@@ -50,7 +50,13 @@ class ParticipantController extends Controller
             ->unique()
             ->values();
 
-        $named = $canEdit || $this->isParticipant($user, $userIds, $event);
+        // Admins keep seeing names, even though they no longer count as
+        // editors here. Whether a page will SHOW you something is a reading
+        // question, and reading is the half of the admin split that did not
+        // change — BoardAccessService::canBypass() already lets an admin open
+        // any event, so hiding the names on the way in would protect nothing
+        // and stop a moderator answering "who is actually in this".
+        $named = $canEdit || $user->isAdmin() || $this->isParticipant($user, $userIds, $event);
 
         return Inertia::render('Events/Participants', [
             'event' => $event->only(['id', 'title', 'type', 'mode', 'access_mode', 'start_date', 'end_date']),

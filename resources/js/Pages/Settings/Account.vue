@@ -92,6 +92,12 @@
                         :loading="passwordForm.processing"
                         :label="hasPassword ? $t('profile.change_password') : $t('profile.set_password')"
                     />
+
+                    <!-- Said out loud rather than left to be discovered.
+                         Changing a password is what somebody does when they
+                         think a session is not theirs, so what it does and
+                         does not end is the thing they need to know. -->
+                    <p v-if="hasPassword" class="text-xs text-muted">{{ $t('profile.password_change_keeps_you_signed_in') }}</p>
                 </form>
             </template>
         </u-card>

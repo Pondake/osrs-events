@@ -298,6 +298,21 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::get('/events', [AdminBoardController::class, 'index'])->name('events');
         Route::redirect('/boards', '/admin/events');
 
+        // The only way a site admin edits an event they did not author.
+        // Deliberately a separate set of routes rather than an extra
+        // permission on the public ones: on the public side an admin is an
+        // ordinary user, so reaching for the power means coming in here. The
+        // work is not duplicated — each of these asserts admin and hands off
+        // to the same controller the public routes use.
+        Route::patch('/events/{event}', [AdminBoardController::class, 'update'])->name('events.update');
+        Route::delete('/events/{event}', [AdminBoardController::class, 'destroy'])->name('events.destroy');
+        Route::get('/events/{event}/teams', [AdminBoardController::class, 'teamsIndex'])->name('events.teams.index');
+        Route::post('/events/{event}/teams', [AdminBoardController::class, 'addTeam'])->name('events.teams.add');
+        Route::delete('/events/{event}/teams/{team}', [AdminBoardController::class, 'removeTeam'])->name('events.teams.remove');
+        Route::get('/events/{event}/invites', [AdminBoardController::class, 'invitesIndex'])->name('events.invites.index');
+        Route::post('/events/{event}/invites', [AdminBoardController::class, 'storeInvite'])->name('events.invites.store');
+        Route::delete('/events/{event}/invites/{invite}', [AdminBoardController::class, 'destroyInvite'])->name('events.invites.destroy');
+
         // Tasks is gated on canCreateTiles, not isAdmin (see
         // Admin\TaskController) — an EDITOR reaches this without being an
         // admin, which is why the sidebar filters per item rather than

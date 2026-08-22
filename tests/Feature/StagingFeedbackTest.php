@@ -445,7 +445,24 @@ class StagingFeedbackTest extends TestCase
      * it. Covered on the props here; EventEditFlowTest covers both pages.
      */
     #[Test]
-    public function an_admin_can_edit_an_event_they_did_not_create(): void
+    public function an_owner_can_edit_their_own_race(): void
+    {
+        $owner = $this->player('Owner');
+        $event = $this->race();
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $this->assertTrue(
+            $this->actingAs($owner)->get("/events/{$event->id}")->viewData('page')['props']['canEdit'],
+        );
+    }
+
+    /**
+     * Decided 2026-08-22: an admin may edit any event, but only from the
+     * admin section. Out here they are an ordinary user — no edit button on
+     * somebody else's event, and the public endpoint refuses them.
+     */
+    #[Test]
+    public function an_admin_is_an_ordinary_user_on_the_public_side(): void
     {
         $owner = $this->player('Owner');
         $event = $this->race();
@@ -454,9 +471,50 @@ class StagingFeedbackTest extends TestCase
         $admin = $this->player('TheAdmin');
         $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
-        $this->assertTrue(
+        $this->assertFalse(
             $this->actingAs($admin)->get("/events/{$event->id}")->viewData('page')['props']['canEdit'],
         );
+
+        $this->actingAs($admin)
+            ->patch("/events/{$event->id}", ['title' => 'Renamed from the front'])
+            ->assertForbidden();
+
+        $this->assertStringStartsWith('Skill of the Month', $event->fresh()->title);
+    }
+
+    /** The same admin, through the door built for it. */
+    #[Test]
+    public function an_admin_can_edit_any_event_from_the_admin_section(): void
+    {
+        $owner = $this->player('Owner');
+        $event = $this->race();
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $admin = $this->player('TheAdmin');
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+
+        $this->actingAs($admin)
+            ->patch("/admin/events/{$event->id}", ['title' => 'Renamed by an admin'])
+            ->assertRedirect();
+
+        $this->assertSame('Renamed by an admin', $event->fresh()->title);
+    }
+
+    /** And nobody else gets in through that door. */
+    #[Test]
+    public function the_admin_event_routes_are_closed_to_everyone_else(): void
+    {
+        $owner = $this->player('Owner');
+        $event = $this->race();
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        // Not even to the event's own owner: this is the admin section, not
+        // a second way to do what they can already do.
+        $this->actingAs($owner)
+            ->patch("/admin/events/{$event->id}", ['title' => 'Sneaky'])
+            ->assertForbidden();
+
+        $this->assertStringStartsWith('Skill of the Month', $event->fresh()->title);
     }
 
     /** EDITOR grants board creation; it granted nothing at all before. */

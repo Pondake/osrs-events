@@ -96,14 +96,32 @@ class User extends Authenticatable
         return $this->isAdmin() || $this->checkPermissionTo($key);
     }
 
+    /**
+     * Authorship, and nothing else — an admin is an ordinary user here.
+     *
+     * Admins may edit any event, but only from the admin section, on routes
+     * of its own (see Admin\BoardController). On the public side of the app
+     * an admin has exactly the rights their authorship gives them. The point
+     * is that using the power is a deliberate act in a place built for it,
+     * rather than an invisible extra permission attached to every page an
+     * admin happens to open.
+     *
+     * Reading is a separate question and deliberately unchanged:
+     * BoardAccessService::canBypass() still lets an admin OPEN any event,
+     * because you cannot moderate what you cannot see.
+     */
     public function canEditEvent(Event $event): bool
     {
-        return $this->isAdmin() || $event->authors()->where('user_id', $this->id)->exists();
+        return $event->authors()->where('user_id', $this->id)->exists();
     }
 
-    /** Ported from InvitesService::assertOwnerOrAdmin() — owner (not just any co-author) or admin. */
-    public function isEventOwnerOrAdmin(Event $event): bool
+    /**
+     * Ported from InvitesService::assertOwnerOrAdmin() — the owner, not just
+     * any co-author. Same rule as canEditEvent() on the admin question: an
+     * admin gets this through the admin section or not at all.
+     */
+    public function isEventOwner(Event $event): bool
     {
-        return $this->isAdmin() || $event->authors()->where(['user_id' => $this->id, 'is_owner' => true])->exists();
+        return $event->authors()->where(['user_id' => $this->id, 'is_owner' => true])->exists();
     }
 }
