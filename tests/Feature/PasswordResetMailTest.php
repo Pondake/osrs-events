@@ -179,6 +179,27 @@ class PasswordResetMailTest extends TestCase
         $this->assertStringNotContainsString('#18181b', $html);
     }
 
+    /**
+     * The mark, as a raster image at an exact scale.
+     *
+     * A PNG rather than the SVG the site uses, because Gmail strips `<svg>`
+     * and several clients will not fetch one at all. 64px from a 192px
+     * source is an exact 3:1 downscale — the mark is a pixel grid, and a
+     * fractional scale turns it to mush.
+     */
+    #[Test]
+    public function the_mail_carries_the_logo(): void
+    {
+        $user = $this->user();
+
+        $html = (string) (new ResetPassword('a-token'))->toMail($user)->render();
+
+        $this->assertStringContainsString('android-chrome-192x192.png', $html);
+        $this->assertStringContainsString('width="64"', $html);
+        // Absolute, or it resolves against the mail client and loads nothing.
+        $this->assertStringContainsString(config('app.url').'/android-chrome-192x192.png', $html);
+    }
+
     #[Test]
     public function the_mail_carries_a_link_that_actually_works(): void
     {

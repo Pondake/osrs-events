@@ -21,9 +21,14 @@
                 <u-container class="max-w-3xl">
                     <div class="divide-y divide-default">
                         <div v-for="idea in ideas" :key="idea.title" class="py-6 first:pt-0 last:pb-0">
-                            <div class="flex items-center justify-between gap-3 mb-2">
+                            <!-- Stacks on a phone. The badge carries a whole
+                                 phrase ("Newer and returning players · 2–4
+                                 weeks"), which a u-badge will not break — so
+                                 beside the title it pushed the page six
+                                 pixels wider than the screen. -->
+                            <div class="flex flex-col items-start gap-2 mb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                                 <h3 class="text-lg font-semibold">{{ idea.title }}</h3>
-                                <u-badge :label="idea.meta" color="neutral" variant="subtle" size="sm" />
+                                <u-badge :label="idea.meta" color="neutral" variant="subtle" size="sm" class="shrink-0" />
                             </div>
                             <p class="text-muted leading-relaxed">{{ idea.desc }}</p>
                         </div>

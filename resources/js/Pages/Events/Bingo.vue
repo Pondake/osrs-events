@@ -18,7 +18,12 @@
                         </template>
                     </event-type-heading>
 
-                    <div class="flex items-center gap-3 shrink-0">
+                    <!-- Wraps on a phone. `shrink-0` kept this bar at its full
+                         natural width, so it never wrapped and simply ran
+                         off the side — 772px of controls on a 375px screen
+                         on the bingo card. It only needs to hold its ground
+                         once there is room for it to. -->
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 sm:shrink-0">
                         <!-- Reports the live channel rather than offering a
                              refresh: a card updates itself when anyone claims
                              or a host reviews. -->
@@ -235,7 +240,7 @@
                                 v-for="square in squares"
                                 :key="square.id"
                                 type="button"
-                                class="relative aspect-square rounded-lg ring p-2 flex flex-col items-center justify-center text-center gap-2 transition-all duration-150"
+                                class="relative aspect-square overflow-hidden min-w-0 rounded-lg ring p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-150"
                                 :class="squareClass(square)"
                                 :disabled="(!canPlay && !editing) || (square.isWildcard && !editing)"
                                 :title="squareTitle(square)"
@@ -270,12 +275,29 @@
                                     :src="square.iconUrl"
                                     alt=""
                                     class="object-contain shrink-0"
-                                    :class="square.label ? 'size-7' : 'size-10'"
+                                    :class="square.label ? 'size-8 sm:size-7' : 'size-10'"
                                 />
 
+                                <!-- On a phone a square stops being a label
+                                     and becomes a token.
+                                     A 5x5 grid leaves about 65px a side, and
+                                     four things were competing for it: the
+                                     points, the icon, two lines of 11px text
+                                     and a face. The text is the one that
+                                     cannot work at that size — "Complete
+                                     a..." carries nothing — so it goes, and
+                                     the icon grows into the room.
+                                     Nothing becomes unreachable: tapping the
+                                     square opens the claim dialog with the
+                                     full title on it, and "Fill in tiles"
+                                     lists every square in words.
+                                     Only when an icon is there to carry the
+                                     meaning. A square with a task and no icon
+                                     would otherwise be blank. -->
                                 <span
                                     v-if="square.label"
                                     class="text-[11px] leading-tight line-clamp-2"
+                                    :class="square.iconUrl ? 'hidden sm:line-clamp-2' : ''"
                                 >{{ square.label }}</span>
                                 <span
                                     v-else-if="!square.iconUrl && !square.isWildcard"
@@ -298,14 +320,20 @@
                                          crowd steps down so three still fit
                                          across a square. `xs` was still too
                                          small to register as a person at a
-                                         glance, which was the whole point. -->
+                                         glance on a desktop — but on a phone
+                                         a square is 65px and an `md` avatar
+                                         plus a label was taller than that, so
+                                         one tile stood proud of its row.
+                                         The square cannot grow any more
+                                         (overflow-hidden above), and this
+                                         stops the face being clipped by it. -->
                                     <u-avatar
                                         v-for="(holder, i) in holdersOf(square)"
                                         :key="i"
                                         :src="holder.avatarUrl ?? undefined"
                                         :alt="holder.name ?? ''"
                                         :title="holder.name ?? ''"
-                                        :size="holdersOf(square).length === 1 ? 'md' : 'sm'"
+                                        :size="avatarSize(holdersOf(square).length)"
                                         class="ring-2 ring-default"
                                     />
                                     <span
@@ -481,6 +509,28 @@ watch(() => props.approvedBy, (value) => (holders.value = { ...value }));
 watch(() => props.card.winLines, (value) => {
     if (value) winLines.value = value;
 });
+
+/**
+ * How big a face can be without breaking the square it sits in.
+ *
+ * A tile is 65px a side on a phone and about 110px on a desktop, and an `md`
+ * avatar is 32px — fine in the second, too tall in the first once a label or
+ * a second face joins it. Reported as one tile standing proud of its row.
+ */
+const narrow = ref(false);
+
+onMounted(() => {
+    const query = window.matchMedia('(max-width: 639px)');
+
+    narrow.value = query.matches;
+    query.addEventListener('change', (event) => (narrow.value = event.matches));
+});
+
+function avatarSize(holders) {
+    if (narrow.value) return holders === 1 ? 'xs' : '2xs';
+
+    return holders === 1 ? 'md' : 'sm';
+}
 
 function holdersOf(square) {
     return holders.value[square.position]?.holders ?? [];

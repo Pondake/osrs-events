@@ -26,7 +26,12 @@
                             </template>
                     </event-type-heading>
 
-                    <div class="flex gap-2 flex-wrap shrink-0">
+                    <!-- Wraps on a phone. `shrink-0` kept this bar at its full
+                         natural width, so it never wrapped and simply ran
+                         off the side — 772px of controls on a 375px screen
+                         on the bingo card. It only needs to hold its ground
+                         once there is room for it to. -->
+                    <div class="flex flex-wrap gap-2 sm:shrink-0">
                             <!-- Two buttons that both sound like "see who
                                  else is here", so they say what they
                                  actually do: this one draws everyone's

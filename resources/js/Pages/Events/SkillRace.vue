@@ -14,7 +14,12 @@
                         </template>
                     </event-type-heading>
 
-                    <div class="flex items-center gap-3 shrink-0">
+                    <!-- Wraps on a phone. `shrink-0` kept this bar at its full
+                         natural width, so it never wrapped and simply ran
+                         off the side — 772px of controls on a 375px screen
+                         on the bingo card. It only needs to hold its ground
+                         once there is room for it to. -->
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 sm:shrink-0">
                         <!-- Reports the live channel rather than offering a
                              refresh: the table updates itself, and a refresh
                              button would imply it can't be trusted to. -->
