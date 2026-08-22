@@ -1816,15 +1816,17 @@ Three of those were real bugs rather than polish:
   rejected. Dismissals are held per position rather than removing rows, so a
   claim rejected AGAIN after a re-submission comes back — the point is that
   you find out, and "I closed it once" is not the same as "I know".
-- [ ] **Clicking a claimed square withdraws it, with no warning.** No hover
-  state says so and nothing confirms it, so an accidental second click
+- [x] ~~**Clicking a claimed square withdraws it, with no warning.**~~ No
+  hover state says so and nothing confirms it, so an accidental second click
   quietly undoes a claim. Should open the claim in a dialog with a delete
   button, matching how everything else destructive works here.
-- [ ] **Review notes on an APPROVED claim go nowhere.** The field is offered
-  whatever the verdict, and only a rejection shows it. Either surface it on
-  the approved square too ("host said: nice one") or stop asking for it when
-  approving. Currently it is quietly discarded, which is the one option that
-  is definitely wrong.
+  **Done 2026-08-22** — this entry was a duplicate of the one under round
+  five and was left unticked when that one was closed.
+- [x] ~~**Review notes on an APPROVED claim go nowhere.**~~ The field is
+  offered whatever the verdict, and only a rejection shows it. Either surface
+  it on the approved square too ("host said: nice one") or stop asking for it
+  when approving. Currently it is quietly discarded, which is the one option
+  that is definitely wrong. **Done 2026-08-22** — same duplicate.
 - [ ] **Say WHY an admin can see a team.** Team visibility is now scoped, but
   an admin still sees everything with no indication which teams are theirs,
   which come from a shared Discord server, and which they can only see
