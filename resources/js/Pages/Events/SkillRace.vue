@@ -201,7 +201,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
@@ -248,6 +248,16 @@ function leaveRace() {
 // Seeded from the server render so the table is complete before any
 // JavaScript runs; the stream takes over from here.
 const rows = ref([...props.standings]);
+/**
+ * A copy of a prop only stays right if something copies it again.
+ *
+ * The channel was the only thing that did, which made your OWN actions the
+ * slowest ones on the page: the server sends fresh props straight back, and
+ * this list kept the numbers from before until the stream got round to
+ * saying so. Found on the bingo card — approving a claim left the standings
+ * reading "nobody has marked a square yet" next to a counter saying 1 of 16.
+ */
+watch(() => props.standings, (value) => (rows.value = [...value]));
 
 // A drop race counts boss kills, a skill race counts XP. Same table, same
 // ranking, different noun — so the copy is chosen from the kind rather than

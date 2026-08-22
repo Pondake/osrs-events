@@ -2440,6 +2440,47 @@ nav is built from, plus `tests/js/pageState.test.js` on the composable itself.
 452 backend tests, 125 frontend.
 
 
+### Walkthrough, 2026-08-22
+
+Every route, every event type, and the main flows clicked through in a
+browser. Four things found, all fixed.
+
+**A copy of a prop only stays right if something copies it again.** The bingo
+page seeded `rows` from `props.standings` and then only ever updated it from
+the live channel. So your OWN actions were the slowest thing on the page:
+approving a claim returned fresh props, and the standings kept the old numbers
+until the stream got round to saying so. Seen as approving a square and being
+told "nobody has marked a square yet" next to a counter reading 1 of 16. The
+same pattern was in `BoardShow` (`livePlayers`) and `SkillRace` (`rows`); all
+three now watch the prop.
+
+**`registration_open` gated the front door and left the back one open.** It is
+an admin switch labelled "registration", and it only ever checked the
+email/password form — a Discord login sailed past it. It now covers both.
+
+**Two settings descriptions had become false**, both by today's own changes:
+"Discord login always stays available" (no longer true of the registration
+switch) and "the lock screen and the login pages stay reachable" (the public
+pages are reachable now too). Rewritten.
+
+**Nothing else broke.** All 33 parameterless routes 200; all four event types
+render, plus their leaderboard and participants pages. Created an event from a
+template, claimed a bingo square, approved it, rolled a die (3 → 9 on a six),
+marked a tile complete, entered and left a race, created and deleted a team,
+saved profile and site settings, and read every admin page.
+
+Two things that looked like bugs and were not, worth writing down so the next
+sweep does not chase them:
+
+- **No dice on a Snakes & Ladders board** until the tile you are standing on
+  is marked complete. That is deliberate — rolling is the reward for finishing
+  what you are on — and the guard is in BoardShow.
+- **Deleting a team from the UI did nothing** under automation. It is behind
+  `window.confirm`, which an automated click dismisses. The endpoint works.
+
+453 backend tests, 125 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,

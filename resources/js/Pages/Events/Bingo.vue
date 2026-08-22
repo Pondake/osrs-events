@@ -420,7 +420,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { boardEventStatus } from '@/Support/board';
@@ -464,6 +464,23 @@ const rows = ref([...props.standings]);
 const squares = ref([...props.card.squares]);
 const holders = ref({ ...props.approvedBy });
 const winLines = ref(props.card.winLines ?? ['ROW', 'COLUMN', 'DIAGONAL']);
+
+/**
+ * A copy of a prop only stays right if something copies it again.
+ *
+ * The channel was the only thing that did, which made your OWN actions the
+ * slowest ones on the page: approving a claim returns fresh props from the
+ * server, but the standings on screen kept the numbers from before the
+ * approval until the stream got round to saying so. Reported as approving a
+ * square and being told "nobody has marked a square yet" with the counter
+ * beside it reading 1 of 16.
+ */
+watch(() => props.standings, (value) => (rows.value = [...value]));
+watch(() => props.card.squares, (value) => (squares.value = [...value]));
+watch(() => props.approvedBy, (value) => (holders.value = { ...value }));
+watch(() => props.card.winLines, (value) => {
+    if (value) winLines.value = value;
+});
 
 function holdersOf(square) {
     return holders.value[square.position]?.holders ?? [];
