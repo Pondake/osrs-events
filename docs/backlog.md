@@ -1881,7 +1881,9 @@ credentials.
 
 ### Needs your call before I touch it
 
-- [ ] **Should an admin be able to edit every event?** You wrote
+- [x] ~~**Should an admin be able to edit every event?**~~ — **decided
+  2026-08-22: yes, but only from the admin section.** See "The admin split"
+  below. You wrote
   "canEditEvent mag idd niet alle events bewerken", which I read as agreeing
   that a site admin editing anybody's event is too much — but it is also the
   power that makes moderation possible, and `BoardAccessService::canBypass()`
@@ -1897,9 +1899,9 @@ credentials.
   3. Full separation: admins get neither, and moderation happens only through
      purpose-built admin screens.
 
-  My preference is (2): it keeps the "cannot open the thing you are allowed
-  to change" bug from coming back, without a general write over other
-  people's events. Say which and I will do it.
+  My preference was (2). Your answer went further and is better: admins may
+  edit **every** event, but only in the admin section and its own event CRUD.
+  On the public side an admin is an ordinary user. Built 2026-08-22.
 
 ### New
 
@@ -2138,9 +2140,15 @@ this endpoint is the only way it ever gets an address.
 including that a password cannot be set on an account with no email to
 recover it with.
 
-### Needs a decision: sessions outlive a password change
+### Decided: sessions outlive a password change, and the page says so
 
-- [ ] Changing a password does not sign out anywhere else. Laravel's
+**Decided 2026-08-22: leave `AuthenticateSession` off.** The account page now
+says what a password change does and does not do, rather than leaving it to
+be discovered — that is the half that was actually missing.
+
+Kept for the record:
+
+- [x] ~~Changing a password does not sign out anywhere else.~~ Laravel's
   `Auth::logoutOtherDevices()` is the tool, but it only bites with
   `AuthenticateSession` in the web middleware group, and that is not enabled
   here.
@@ -2201,6 +2209,45 @@ Two guards worth knowing about:
   SQLite, because the literal comes back as the word "size".
 
 399 backend tests, 100 frontend.
+
+
+### The admin split, 2026-08-22
+
+Decided: **an admin may edit any event, but only from the admin section. On
+the public side of the app an admin is an ordinary user.**
+
+`User::canEditEvent()` and `isEventOwnerOrAdmin()` both used to start with
+`isAdmin()`. That made the power invisible: an admin browsing the site had
+edit buttons on everybody's events and could write to any of them without
+ever having decided to. Now `canEditEvent()` answers on authorship alone, and
+`isEventOwnerOrAdmin()` is simply `isEventOwner()`.
+
+**Reading did not change, deliberately.** `BoardAccessService::canBypass()`
+still lets an admin open any event, and the participants list still shows
+them names — you cannot moderate what you cannot see, and hiding a list on
+the way in protects nothing when the same person can read the event itself.
+The split is about writing.
+
+**The admin section got its own routes** — update, destroy, teams and invites
+under `/admin/events/{event}`. They are not a copy: each asserts `isAdmin()`
+and then hands off to the same controller method the public route uses,
+passing `asAdmin: true`. One implementation, one set of validation rules, one
+audit trail; the only thing that differs is who is allowed to arrive. The
+flag is not something a caller can grant itself — nothing reachable from the
+public side passes it.
+
+`BoardSettingsModal` takes a `basePath` prop so the admin page points the
+same modal at the admin endpoints. Creating still posts to `/events` on both
+sides: a new event has an author by definition, so there is nothing to split.
+
+Eleven tests broke, which was the point — they had encoded the old rule.
+Three of them were named `an_author_can_...` while acting as a site admin,
+which only ever worked because of the bypass. They say what they meant now.
+
+**Known gap, deliberately not filled:** tile and bingo-square editing are
+public-side host actions, so an admin who is not an author cannot fix a
+single offensive tile — only delete the whole event. If that turns out to
+matter, the fix is an admin-side route for it, not a hole in the rule.
 
 
 ## Content review before launch (step 8)

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\BingoCard;
 use App\Models\BingoCompletion;
+use App\Models\BoardAuthor;
 use App\Models\Event;
 use App\Models\Role;
 use App\Models\Team;
@@ -46,6 +47,23 @@ class BingoTest extends TestCase
         $this->bingo()->ensureSquares($card);
 
         return $card->fresh();
+    }
+
+    /**
+     * Somebody who runs this event.
+     *
+     * These three tests used a site admin, which worked only because
+     * canEditEvent() used to let any admin edit any event. It no longer does
+     * — on the public side an admin is an ordinary user — so the fixture now
+     * says what the test names always claimed.
+     */
+    private function author(Event $event): User
+    {
+        $author = User::factory()->create(['osrs_username' => 'Author']);
+
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $author->id, 'is_owner' => true]);
+
+        return $author;
     }
 
     private function player(): User
@@ -227,9 +245,9 @@ class BingoTest extends TestCase
     {
         $event = $this->event();
         $square = $this->card($event, 3)->squares()->first();
-        $admin = tap($this->player())->assignRole(Role::findOrCreate('ADMIN', 'web'));
+        $author = $this->author($event);
 
-        $this->actingAs($admin)
+        $this->actingAs($author)
             ->patch("/events/{$event->id}/bingo/squares/{$square->id}", ['title_override' => 'Kill 50 cows']);
 
         $this->assertSame('Kill 50 cows', $square->fresh()->title_override);
@@ -244,16 +262,16 @@ class BingoTest extends TestCase
     {
         $event = $this->event();
         $card = $this->card($event, 5);
-        $admin = tap($this->player())->assignRole(Role::findOrCreate('ADMIN', 'web'));
+        $author = $this->author($event);
 
         $last = $card->squares()->orderByDesc('position')->first();
         BingoCompletion::create([
             'bingo_square_id' => $last->id,
-            'user_id' => $admin->id,
-            'marked_by' => $admin->id,
+            'user_id' => $author->id,
+            'marked_by' => $author->id,
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($author)
             ->patch("/events/{$event->id}/bingo", ['size' => 3])
             ->assertSessionHas('board-save-error');
 
@@ -266,9 +284,8 @@ class BingoTest extends TestCase
     {
         $event = $this->event();
         $card = $this->card($event, 3);
-        $admin = tap($this->player())->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
-        $this->actingAs($admin)->patch("/events/{$event->id}/bingo", ['size' => 5]);
+        $this->actingAs($this->author($event))->patch("/events/{$event->id}/bingo", ['size' => 5]);
 
         $this->assertSame(25, $card->fresh()->squares()->count());
     }

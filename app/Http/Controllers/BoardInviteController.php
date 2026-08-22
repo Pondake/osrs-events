@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Board;
-use App\Models\Event;
 use App\Models\BoardInvite;
+use App\Models\Event;
 use App\Services\BoardAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,9 +34,9 @@ class BoardInviteController extends Controller
      */
     private const MAX_OPEN = 3;
 
-    public function index(Event $event): JsonResponse
+    public function index(Event $event, bool $asAdmin = false): JsonResponse
     {
-        abort_unless(Auth::user()->isEventOwnerOrAdmin($event), 403);
+        $this->assertOwnsEvent(Auth::user(), $event, $asAdmin);
 
         return $this->list($event);
     }
@@ -53,9 +53,9 @@ class BoardInviteController extends Controller
         ]);
     }
 
-    public function store(Request $request, Event $event, BoardAccessService $access): JsonResponse
+    public function store(Request $request, Event $event, BoardAccessService $access, bool $asAdmin = false): JsonResponse
     {
-        abort_unless(Auth::user()->isEventOwnerOrAdmin($event), 403);
+        $this->assertOwnsEvent(Auth::user(), $event, $asAdmin);
 
         // Checked before validation so the message is about the limit rather
         // than about a field the caller never sent.
@@ -92,9 +92,9 @@ class BoardInviteController extends Controller
         return $this->list($event);
     }
 
-    public function destroy(Event $event, BoardInvite $invite): JsonResponse
+    public function destroy(Event $event, BoardInvite $invite, bool $asAdmin = false): JsonResponse
     {
-        abort_unless(Auth::user()->isEventOwnerOrAdmin($event), 403);
+        $this->assertOwnsEvent(Auth::user(), $event, $asAdmin);
         abort_unless($invite->event_id === $event->id, 404);
 
         AuditLog::record('invite.revoked', $invite, [

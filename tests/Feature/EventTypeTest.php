@@ -58,13 +58,27 @@ class EventTypeTest extends TestCase
         ]);
     }
 
+    /**
+     * The person who runs the event. Was a site admin until 2026-08-22, when
+     * canEditEvent() stopped granting admins a write on the public side —
+     * these tests are about the type being immutable, not about who is
+     * allowed to try.
+     */
+    private function hostOf(Event $event): User
+    {
+        $host = User::factory()->create(['osrs_username' => 'Host']);
+
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $host->id, 'is_owner' => true]);
+
+        return $host;
+    }
+
     #[Test]
     public function a_board_event_cannot_become_a_race_and_orphan_its_board(): void
     {
-        $admin = $this->admin();
         $event = $this->boardEvent();
 
-        $this->actingAs($admin)
+        $this->actingAs($this->hostOf($event))
             ->patch("/events/{$event->id}", ['type' => 'SKILL_RACE', 'metric' => 'mining'])
             ->assertSessionHasErrors('type');
 
@@ -75,10 +89,9 @@ class EventTypeTest extends TestCase
     #[Test]
     public function a_race_cannot_become_a_board_event_it_has_no_board_for(): void
     {
-        $admin = $this->admin();
         $event = $this->race();
 
-        $this->actingAs($admin)
+        $this->actingAs($this->hostOf($event))
             ->patch("/events/{$event->id}", ['type' => 'SNAKES_LADDERS', 'size' => 'SIZE_7X7'])
             ->assertSessionHasErrors('type');
 

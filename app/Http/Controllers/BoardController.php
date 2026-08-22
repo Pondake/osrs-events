@@ -676,9 +676,9 @@ class BoardController extends Controller
      * original transaction: delete all non-owner authors, recreate the
      * submitted set minus anyone who's already an owner.
      */
-    public function update(Request $request, Event $event): RedirectResponse
+    public function update(Request $request, Event $event, bool $asAdmin = false): RedirectResponse
     {
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event, $asAdmin);
 
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
@@ -779,9 +779,9 @@ class BoardController extends Controller
         return back()->with('board-save', trans('admin.board_updated'));
     }
 
-    public function destroy(Event $event): RedirectResponse
+    public function destroy(Event $event, bool $asAdmin = false): RedirectResponse
     {
-        abort_unless(Auth::user()->isAdmin() || $event->authors()->where(['user_id' => Auth::id(), 'is_owner' => true])->exists(), 403);
+        $this->assertOwnsEvent(Auth::user(), $event, $asAdmin);
 
         $event->delete();
 
@@ -795,9 +795,9 @@ class BoardController extends Controller
      * current user could add, using the same guild-based visibility rule as
      * TeamController::index().
      */
-    public function teamsIndex(Request $request, Event $event): JsonResponse
+    public function teamsIndex(Request $request, Event $event, bool $asAdmin = false): JsonResponse
     {
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event, $asAdmin);
 
         $assignedTeamIds = $event->eventTeams()->pluck('team_id');
 
@@ -815,9 +815,9 @@ class BoardController extends Controller
     }
 
     /** Ported from BoardsService::addTeamToBoard() — idempotent (upsert). */
-    public function addTeam(Request $request, Event $event): RedirectResponse
+    public function addTeam(Request $request, Event $event, bool $asAdmin = false): RedirectResponse
     {
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event, $asAdmin);
 
         $data = $request->validate(['team_id' => ['required', 'uuid', 'exists:teams,id']]);
 
@@ -834,9 +834,9 @@ class BoardController extends Controller
     }
 
     /** Ported from BoardsService::removeTeamFromBoard(). */
-    public function removeTeam(Event $event, Team $team): RedirectResponse
+    public function removeTeam(Event $event, Team $team, bool $asAdmin = false): RedirectResponse
     {
-        abort_unless(Auth::user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent(Auth::user(), $event, $asAdmin);
 
         BoardTeam::where('event_id', $event->id)->where('team_id', $team->id)->delete();
 

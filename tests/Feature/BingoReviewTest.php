@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\BingoCard;
 use App\Models\BingoCompletion;
+use App\Models\BoardAuthor;
 use App\Models\Event;
-use App\Models\Role;
 use App\Models\User;
 use App\Services\BingoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,10 +54,22 @@ class BingoReviewTest extends TestCase
         return User::factory()->create(['osrs_username' => 'Pondake']);
     }
 
-    private function host(): User
+    /**
+     * The person who runs this event — an author of it, not a site admin.
+     *
+     * These were admins until 2026-08-22, which happened to work because
+     * canEditEvent() let any admin edit any event. It no longer does: on the
+     * public side of the app an admin is an ordinary user, and reviewing a
+     * claim is a public-side host action. So the fixture now says what it
+     * always meant.
+     */
+    private function host(Event $event): User
     {
-        return tap(User::factory()->create(['osrs_username' => 'Host']))
-            ->assignRole(Role::findOrCreate('ADMIN', 'web'));
+        $host = User::factory()->create(['osrs_username' => 'Host']);
+
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $host->id, 'is_owner' => true]);
+
+        return $host;
     }
 
     // -------------------------------------------------------------- claims
@@ -197,7 +209,7 @@ class BingoReviewTest extends TestCase
     {
         $event = $this->event();
         $card = $this->card($event);
-        $host = $this->host();
+        $host = $this->host($event);
 
         $claim = BingoCompletion::create([
             'bingo_square_id' => $card->squares()->first()->id,
@@ -226,7 +238,7 @@ class BingoReviewTest extends TestCase
             'status' => 'PENDING',
         ]);
 
-        $this->actingAs($this->host())->patch("/events/{$event->id}/bingo/claims/{$claim->id}", [
+        $this->actingAs($this->host($event))->patch("/events/{$event->id}/bingo/claims/{$claim->id}", [
             'status' => 'REJECTED',
             'review_note' => 'Chatbox is cropped out',
         ]);
@@ -269,7 +281,7 @@ class BingoReviewTest extends TestCase
             'status' => 'PENDING',
         ]);
 
-        $this->actingAs($this->host())
+        $this->actingAs($this->host($mine))
             ->patch("/events/{$mine->id}/bingo/claims/{$claim->id}", ['status' => 'APPROVED'])
             ->assertNotFound();
     }
@@ -310,7 +322,7 @@ class BingoReviewTest extends TestCase
             'status' => 'PENDING',
         ]);
 
-        $this->actingAs($this->host())
+        $this->actingAs($this->host($event))
             ->get("/events/{$event->id}")
             ->assertInertia(fn ($page) => $page->has('pending', 1));
 

@@ -25,7 +25,12 @@
         </div>
 
         <client-only>
-            <board-settings-modal :open="editingBoard !== null" :board="editingBoard" @update:open="(v) => !v && (editingBoard = null)" />
+            <board-settings-modal
+                :open="editingBoard !== null"
+                :board="editingBoard"
+                base-path="/admin/events"
+                @update:open="(v) => !v && (editingBoard = null)"
+            />
         </client-only>
     </admin-layout>
 </template>
@@ -45,6 +50,8 @@ defineProps({
 const editingBoard = ref(null);
 
 function destroyBoard(board) {
-    router.delete(`/events/${board.id}`, { preserveScroll: true });
+    // The admin route, not the public one — an admin deleting somebody
+    // else's event is exactly the power that no longer exists out there.
+    router.delete(`/admin/events/${board.id}`, { preserveScroll: true });
 }
 </script>

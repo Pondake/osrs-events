@@ -23,7 +23,7 @@ class TileController extends Controller
 {
     public function upsert(Request $request, Event $event): RedirectResponse
     {
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event);
 
         // A bingo card and a race have no board, so there is no tile here to
         // upsert. Without this the identifying pair below is (null,
@@ -66,7 +66,7 @@ class TileController extends Controller
 
     public function destroy(Event $event, Tile $tile): RedirectResponse
     {
-        abort_unless(Auth::user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent(Auth::user(), $event);
 
         // Against the BOARD's id, not the event's. Those coincide for rows
         // the split migration created, which is exactly why this needed

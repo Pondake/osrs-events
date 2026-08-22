@@ -217,6 +217,13 @@ const { user: currentUser } = useAuth();
 const props = defineProps({
     open: { type: Boolean, default: false },
     board: { type: Object, default: null },
+    // Where this modal's writes go. The admin section passes '/admin/events'
+    // because an admin editing somebody else's event is a different route
+    // with a different check behind it — on the public side an admin is an
+    // ordinary user and these endpoints answer on authorship alone.
+    // Creating is not part of that split: a new event has an author by
+    // definition, so it always posts to /events.
+    basePath: { type: String, default: '/events' },
 });
 
 const emit = defineEmits(['update:open']);
@@ -227,6 +234,9 @@ const isOpen = computed({
 });
 
 const isEdit = computed(() => props.board !== null);
+
+/** This event's endpoints, on whichever side of the app the modal is open. */
+const eventPath = computed(() => `${props.basePath}/${props.board?.id}`);
 
 const site = () => usePage().props?.site ?? {};
 
@@ -745,7 +755,7 @@ function submit() {
         }
 
         return payload;
-    }).patch(`/events/${props.board.id}`, {
+    }).patch(eventPath.value, {
         preserveScroll: true,
         onSuccess: () => (isOpen.value = false),
         // Reported as "I hit save, it jumped back to Basics and saved
@@ -845,14 +855,14 @@ async function inviteRequest(url, options = {}) {
 }
 
 async function fetchInvites() {
-    await inviteRequest(`/events/${props.board.id}/invites`);
+    await inviteRequest(`${eventPath.value}/invites`);
 }
 
 async function createInvite() {
     creatingInvite.value = true;
 
     try {
-        const data = await inviteRequest(`/events/${props.board.id}/invites`, {
+        const data = await inviteRequest(`${eventPath.value}/invites`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
@@ -867,7 +877,7 @@ async function createInvite() {
 }
 
 async function revokeInvite(invite) {
-    const data = await inviteRequest(`/events/${props.board.id}/invites/${invite.id}`, { method: 'DELETE' });
+    const data = await inviteRequest(`${eventPath.value}/invites/${invite.id}`, { method: 'DELETE' });
 
     if (data) toast?.add({ id: 'invite-revoked', title: trans('admin.invite_revoked'), color: 'success' });
 }
@@ -888,7 +898,7 @@ async function loadTeams() {
     loadingTeams.value = true;
 
     try {
-        const url = isEdit.value ? `/events/${props.board.id}/teams` : '/teams/options';
+        const url = isEdit.value ? `${eventPath.value}/teams` : '/teams/options';
         const response = await fetch(url, { headers: { Accept: 'application/json' } });
 
         if (!response.ok) throw new Error(`teams request failed: ${response.status}`);
@@ -941,7 +951,7 @@ async function addTeam() {
     addingTeam.value = true;
 
     try {
-        const response = await fetch(`/events/${props.board.id}/teams`, {
+        const response = await fetch(`${eventPath.value}/teams`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...xsrfHeader() },
             body: JSON.stringify({ team_id: teamToAdd.value }),
@@ -969,7 +979,7 @@ async function removeTeam(team) {
     }
 
     try {
-        const response = await fetch(`/events/${props.board.id}/teams/${team.id}`, {
+        const response = await fetch(`${eventPath.value}/teams/${team.id}`, {
             method: 'DELETE',
             headers: { Accept: 'application/json', ...xsrfHeader() },
         });

@@ -25,7 +25,7 @@ class WikiController extends Controller
 {
     public function search(Request $request, Event $event, Wiki $wiki): JsonResponse
     {
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event);
 
         return response()->json([
             'results' => $wiki->search($request->string('search')->toString()),
@@ -46,7 +46,7 @@ class WikiController extends Controller
      */
     public function importTask(Request $request, Event $event, Wiki $wiki): JsonResponse
     {
-        abort_unless($request->user()->canEditEvent($event), 403);
+        $this->assertCanEditEvent($request->user(), $event);
 
         $data = $request->validate([
             'page_id' => ['required', 'integer', 'min:1'],
