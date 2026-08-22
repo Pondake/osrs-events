@@ -54,7 +54,29 @@ class BoardInviteTest extends TestCase
         $response->assertSessionMissing('board-save');
     }
 
-    /** The exact sequence that corrupted the list. */
+    /**
+     * An OPEN event can still hand out links.
+     *
+     * Every other test here uses an INVITE event, and the one reported as
+     * broken was OPEN — a host wanting a link to paste into Discord for an
+     * event anybody could have joined anyway. Nothing in the endpoint cares
+     * about the access mode, and this says so rather than leaving the case
+     * untested because it looked redundant.
+     */
+    #[Test]
+    public function an_open_event_can_still_be_given_a_link(): void
+    {
+        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $event = $this->ownedEvent($owner);
+        $event->update(['access_mode' => 'OPEN', 'is_listed' => true]);
+
+        $this->actingAs($owner)
+            ->postJson("/events/{$event->id}/invites")
+            ->assertOk()
+            ->assertJsonCount(1, 'invites');
+    }
+
+    /** The exact sequence that corrupted the list. */ /** The exact sequence that corrupted the list. */
     #[Test]
     public function creating_two_and_revoking_one_leaves_exactly_one(): void
     {

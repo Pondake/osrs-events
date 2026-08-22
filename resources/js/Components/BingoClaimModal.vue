@@ -133,7 +133,13 @@ const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open',
 const form = useForm({ proof_url: '', note: '' });
 const withdrawing = ref(false);
 
-watch(() => props.square, () => form.reset());
+// Reset on every OPENING, not only when the square changes.
+//
+// Watching the square alone left the previous note in the field when the
+// dialog was reopened — reported after filling one square and opening the
+// next. A note belongs to the claim being made, and carrying it over is how
+// somebody submits the wrong one without noticing.
+watch(() => [props.open, props.square], () => form.reset());
 
 const STATUS_ICON = {
     PENDING: 'i-lucide-clock',

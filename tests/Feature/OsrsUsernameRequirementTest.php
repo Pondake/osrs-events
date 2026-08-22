@@ -272,4 +272,58 @@ class OsrsUsernameRequirementTest extends TestCase
             ? $response->assertSessionHasNoErrors()
             : $response->assertSessionHasErrors('osrs_username');
     }
+
+    // ------------------------------------------- coming back where you were
+
+    /**
+     * The gate sends you to the name page and then back to what you were
+     * doing.
+     *
+     * Nothing was storing the destination, so `redirect()->intended()` in
+     * OsrsUsernameController had nothing to read and always fell back to
+     * /events. Reported as: gave the name during setup, went to claim a
+     * bingo square, was asked for the name again, and then landed somewhere
+     * else entirely.
+     */
+    #[Test]
+    public function it_returns_you_to_the_page_you_were_on(): void
+    {
+        $this->fakeFound();
+
+        $user = User::factory()->create(['osrs_username' => null, 'onboarding_completed_at' => now()]);
+
+        $this->actingAs($user)->get('/teams')->assertRedirect('/welcome/osrs-username');
+
+        $this->actingAs($user)
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->assertRedirect('/teams');
+    }
+
+    /**
+     * A write cannot be replayed by a redirect, so the page it was made from
+     * is the honest destination.
+     */
+    #[Test]
+    public function a_blocked_write_returns_you_to_the_page_it_came_from(): void
+    {
+        $this->fakeFound();
+
+        $user = User::factory()->create(['osrs_username' => null, 'onboarding_completed_at' => now()]);
+        $event = Event::create([
+            'title' => 'Clan Bingo',
+            'type' => 'BINGO',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->from("/events/{$event->id}")
+            ->post("/events/{$event->id}/join")
+            ->assertRedirect('/welcome/osrs-username');
+
+        $this->actingAs($user)
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->assertRedirect("/events/{$event->id}");
+    }
 }

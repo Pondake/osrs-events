@@ -231,17 +231,29 @@
                              it's the reward for finishing what you're standing on. This isn't
                              enforced server-side either (old or new backend) — it's a UI pace,
                              not a hard rule — but the UI gate itself was missing entirely here. -->
-                        <u-card v-if="playerBoard && currentTileCompleted">
+                        <!-- Shown whether or not you may roll yet, and saying
+                             which. Hiding the card until the current tile was
+                             ticked off made the board look like it was
+                             missing its main control — reported as "where is
+                             the dice, snakes and ladders does not work at
+                             all", which is the correct reading of a page with
+                             no way to play on it. The gate is a pace, not a
+                             secret. -->
+                        <u-card v-if="playerBoard">
                             <template #header>
                                 <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
                             </template>
+
                             <dice-roller
+                                v-if="currentTileCompleted"
                                 :rolling="rolling"
                                 :last-roll="lastRoll"
                                 :rolls-today="playerBoard?.dice_rolls_today ?? 0"
                                 :roll-limit="board.dice_roll_limit"
                                 @roll="roll"
                             />
+
+                            <p v-else class="text-sm text-muted">{{ $t('board.roll_needs_current_tile') }}</p>
                         </u-card>
 
                         <u-card v-if="!playerBoard">

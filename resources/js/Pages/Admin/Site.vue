@@ -38,6 +38,14 @@
 
                 <u-form-field :label="$t('admin.site_registration')" :description="$t('admin.site_registration_desc')" :error="form.errors.registration_open">
                     <u-switch v-model="form.registration_open" :label="form.registration_open ? $t('admin.site_registration_on') : $t('admin.site_registration_off')" />
+
+                    <!-- The lock overrules this, and saying so beats leaving
+                         somebody to work it out by trying to register.
+                         Reported as: the toggle says Open, registering does
+                         not work, so what is the toggle for? -->
+                    <p v-if="form.site_lock_enabled && form.registration_open" class="text-xs text-warning mt-2">
+                        {{ $t('admin.site_registration_locked_note') }}
+                    </p>
                 </u-form-field>
 
                 <u-separator class="my-6" />

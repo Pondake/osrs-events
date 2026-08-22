@@ -203,6 +203,29 @@ It ships as `MAIL_MAILER=log`. That writes the message to
 so the failure looks like success from every side. Deploy without changing it
 and password reset is dead with nothing in the logs saying so.
 
+**Locally, use [Mailpit](https://mailpit.axllent.org)** — SMTP on 1025, an
+inbox at <http://localhost:8025>, so the whole flow can be walked without
+sending anything to a real address:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+```
+
+`php artisan serve` reads `.env` once, at startup, and an already-set
+environment variable wins over the file — so **a mail change needs the dev
+server restarted**, not just `config:clear`.
+
+The mail itself is themed
+(`resources/views/vendor/mail/html/themes/osrs.css`) and carries the app
+icon. It is a light theme on purpose: several clients override dark
+backgrounds and leave pale text on white, and this is the one message
+somebody has to be able to read.
+
 **Brevo** is the intended provider — 300 mails/day free with no expiry,
 EU-hosted, and it speaks plain SMTP, so Laravel's built-in `smtp` mailer
 covers it with no package and no code:
@@ -243,12 +266,19 @@ and read the tail of `storage/logs/laravel.log` after requesting a reset.
 
 ## Before you change anything
 
-Read **`CLAUDE.md`** for the conventions this codebase actually follows, and
-**`docs/backlog.md`** for the current state of play. The backlog is not a
+Read **`CLAUDE.md`** for the conventions this codebase actually follows,
+**`docs/PROGRESS.md`** for what is built, and **`docs/backlog.md`** for the
+current state of play. The backlog is not a
 changelog — it records decisions and the traps behind them, including a list
 of SSR gotchas that have each cost real debugging time at least once.
 
-Two that catch people immediately:
+Three that catch people immediately:
+
+- **`php artisan serve` serves one SSE stream at a time.** Every event page
+  opens one, so while a board is open in a tab the rest of the site queues
+  behind it — measured at 23 seconds for a plain asset request. It is not the
+  app: use Herd, Valet or nginx+fpm for anything live. `PHP_CLI_SERVER_WORKERS`
+  forks and does nothing on Windows.
 
 - `route()` and `$t()` are **template-only** globals. From `<script setup>`
   use `trans()` for i18n, and keep `route()` calls in the template.

@@ -1,190 +1,119 @@
-# ⚔️ OSRS Events — Progress Tracker
+# OSRS Events — what is built
 
-## Phase 1 — Core Features
+Where the app actually stands, as of **2026-08-22**.
 
-### ✅ Completed
+This file used to track the NestJS + Nuxt + GraphQL build. That stack was
+deleted on 2026-08-20 once the Laravel + Inertia migration was verified, so
+everything it described is gone — kept in git history, not here. Rewritten
+from scratch rather than edited, because a progress file that half-describes
+a stack nobody runs is worse than no progress file.
 
-## Phase 2 — Teams & Permissions
-
-### ✅ Completed
-
-#### Foundation
-- [x] **GraphQL codegen** (frontend only — backend is code-first and is already the source of truth)
-  - [x] `codegen.ts` config, `"generate"` script in `package.json`, `app/types/graphql.ts` generated from `backend/schema.gql`
-- [x] **Composables for GraphQL endpoints & state management**
-  - [x] `useBoards.ts`, `useTasks.ts`, `useTiles.ts`, `usePlayers.ts`, `useUsers.ts`, `useTeams.ts`
-- [x] **Centralised board utilities** (`app/utils/board.ts`)
-  - [x] `BOARD_SIZE_LABEL`, `BOARD_TILE_COUNT`, `BOARD_MIN_WIDTH` — replaces inline `SIZE_DISPLAY` Records scattered across files
-  - [x] `formatBoardSize()`, `formatDate()` helpers — shared across all pages/components
-- [x] **Composable-first page refactor** — all pages now import composables rather than inlining GraphQL
-  - [x] `pages/boards/index.vue` — uses `useBoards()`
-  - [x] `pages/boards/[id]/index.vue` — uses `useBoard()`, `usePlayerBoard()`, `useBoardPlayerStates()`, `usePermissions()`
-  - [x] `pages/boards/[id]/leaderboard.vue` — uses `useLeaderboard()` (SSR, replaces `onMounted` pattern)
-  - [x] `pages/admin/boards/index.vue` — uses `useBoards()`
-  - [x] `pages/admin/tasks/index.vue` — uses `useTasks()`
-  - [x] `pages/admin/users/index.vue` — uses `useUsers()`
-  - [x] All local `interface` declarations replaced with generated types from `~/types/graphql`
-- [x] **Nav menu hierarchy** — grouped nav with dropdown support
-  - [x] Boards: dropdown (All Boards + Manage Boards) for admin/editor; direct link otherwise
-  - [x] Teams: direct link (TEAM_MANAGER / ADMIN only)
-  - [x] Tasks: direct link (ADMIN / EDITOR only)
-  - [x] Admin: dropdown → Users (ADMIN only)
-- [x] **Seed rewrite** — richer dev data for all features
-  - [x] 8 fake users: 5 regular players + `BoardBuilder` (EDITOR), `TeamCaptain` (TEAM_MANAGER), `ClanLeader` (EDITOR + TEAM_MANAGER + `canCreateBoards` permission)
-  - [x] 3 teams: Dragon Slayers, Iron Maidens, Barrows Brothers
-  - [x] 4 boards distributed across teams with realistic tile counts and player states
-
-#### Leaderboard
-- [x] **Leaderboard per board/event**
-  - [x] Tile-position-based ranking — `boardLeaderboard` query on backend
-  - [x] Default view: top 5 in sidebar panel (`Board/Leaderboard.vue`); full leaderboard at `/boards/[id]/leaderboard`
-  - [x] Columns: rank, avatar, name, current tile, tiles remaining
-  - [x] "Tiles remaining" coloured 🟢 green (ladder ahead) / 🔴 red (snake ahead)
-  - [x] Leaderboard refreshes after each dice roll
-  - [x] Fixed Nuxt routing conflict: `pages/boards/[id].vue` → `pages/boards/[id]/index.vue`
-
-#### Teams
-- [x] **Teams system — backend**
-  - [x] `Team` + `TeamMember` Prisma models, `TeamsModule`, `TeamsService`, `TeamsResolver`
-  - [x] Mutations: `createTeam`, `updateTeam`, `deleteTeam`, `addTeamMember`, `removeTeamMember`
-  - [x] Queries: `teams` (admin), `team`, `myTeams`
-- [x] **Teams system — frontend**
-  - [x] `useTeams.ts` composable (`useMyTeams`, `useAllTeams`)
-  - [x] `Team/Form.vue` — name input + OSRS Wiki icon picker (icon-only, does not auto-fill name)
-  - [x] `pages/teams/index.vue` — list, create, edit, delete teams; add/remove members; permission-gated actions
-  - [x] Teams navigation link in header (visible for TEAM_MANAGER and ADMIN)
-
-#### Roles & Permissions
-- [x] **Backend permissions infrastructure**
-  - [x] `UserPermission` Prisma model (`id, userId, permissionKey` — `@@unique([userId, permissionKey])`)
-  - [x] `PermissionsModule`, `PermissionsService`, `PermissionsResolver`
-  - [x] Queries: `myPermissions`, `userPermissions`; Mutations: `grantPermission`, `revokePermission`
-- [x] `BoardAuthor.isOwner` boolean — creator can never be removed
-- [x] `usePermissions()` composable — centralises all role + permission checks; `canEditBoard()`, `canManageTeam()`, `canCreateBoards`, `canCreateTiles`
-- [x] **Admin user management view** (`pages/admin/users/index.vue`) — searchable table (cols: User, Joined, Roles, Actions); separate modals for editing roles (per-role toggles, ADMIN protected) and permissions (lazy-loaded per user, per-key toggles)
-- [x] **EDITOR per-board assignment** — `isOwner` field on `BoardAuthorEntity`; `create()` sets creator as owner; `update()` preserves owners; `addBoardAuthor` / `removeBoardAuthor` mutations; `updateBoard` open to EDITOR role with ownership check; edit board page at `/admin/boards/[id]/edit` with inline author add/remove
-
-#### Board TEAM mode
-- [x] `BoardMode` enum (`SOLO` | `TEAM`) on `Board` model
-- [x] `BoardTeam` pivot table (`id, boardId, teamId`) — links a team to a TEAM-mode board
-- [x] `addTeamToBoard` / `removeTeamFromBoard` mutations (ADMIN / board-owner EDITOR)
-- [x] `BoardTeamEntity` + `BoardTeamTeamSummary` GraphQL entities; `PlayerBoard` TEAM mode: shared board state per team
-- [x] Prisma migration `add-teams-permissions-isowner` — creates `UserPermission`, `Team`, `TeamMember` tables and `BoardAuthor.isOwner` column
-- [x] Prisma `output` path fix in `schema.prisma` → `generator.output = "../src/generated/prisma"` (was writing to pnpm store)
-
-#### Code quality & UX (polish pass)
-- [x] **Props cleanup** — all `interface Props { ... }` declarations removed across components; always inline `defineProps<{...}>()`
-- [x] **`Task` → `TaskEntity`** type fix in `Tile/EditModal.vue` (was `Task` which was undefined; now correctly imports `TaskEntity` from `~/types/graphql`)
-- [x] **Admin users page** — replaced `u-toggle` → `u-switch`; replaced raw `<table>` HTML with `<u-table :data :columns>` and named cell slots (Nuxt UI v3 table API)
-- [x] **Sidebar dice section** — hidden until current tile is completed (`currentTileCompleted`); removed "complete first" blocking alert (section simply absent until rollable)
-- [x] **Sidebar section animations** — `<transition name="sidebar-section">` with CSS fade + slide-up on dice, current tile, and clicked tile cards
-- [x] **Clicked tile dismiss** — `×` button on the clicked-tile info card emits `clear-tile`; board page clears `clickedTile`
-- [x] **Board page skeleton** — replaced generic `h-96` skeleton with a full `7×7` `board-grid board-grid-7` skeleton (49 `<u-skeleton>` tiles) + sidebar skeleton blocks; condition covers SSR idle state (`pending || (!board && !error)`)
-- [x] **Board content fade-in** — `<Transition name="board-fade" appear>` on the game board + sidebar flex container; 0.3s ease opacity + translateY
-- [x] **`useGql` SSR fix** — switched from plain `$fetch` + `ref()` to `useAsyncData` with `lazy: true`; SSR data is embedded in the Nuxt HTML payload and restored on the client (no re-fetch, `pending = false` immediately on hard reload); `lazy: true` prevents Suspense blocking on client-side navigation so skeleton shows instantly instead of an empty page
-
-### 🔄 Pending
-
-> Nothing remaining in Phase 2.
-
-> 💡 **Deferred to Phase 3**: Team shareable invite links — single-use link a TEAM_MANAGER generates; one player accepts it to join the team.
-
-> See [ROADMAP.md](./ROADMAP.md) for Phase 3 onwards.
+For decisions and the traps behind them, read **`docs/backlog.md`** — that is
+the long-form record, and this is the summary.
 
 ---
 
-## Phase 3 — Board Access Control & Invites
+## Where it is
 
-### ✅ Completed
+**Feature-complete enough to run a real event, not yet launched.** The site
+sits behind a shared-password lock; the public pages are readable, the app is
+not. What is left before launch is deployment and content, not features:
+outbound mail pointed at a real provider, and the privacy policy and terms
+brought up to date.
 
-#### Schema & Backend
-
-- [x] **`BoardAccessMode` enum**: `OPEN` | `GUILD` | `INVITE`
-- [x] **`isListed` boolean** on `Board` (default `true`) — toggle board visibility on public list
-- [x] **`accessMode` + `requiredGuildId`** on `Board` — controls who can join
-- [x] **`UserGuild` model**: `id, userId, guildId, guildName, guildIcon?, syncedAt` — Discord server membership cache; `@@unique([userId, guildId])`
-- [x] **`BoardInvite` model**: `id, boardId, token (uuid unique), shortCode (6-char), createdBy, expiresAt?, maxUses?, useCount, createdAt`; `@@unique([boardId, shortCode])`
-- [x] **`BoardAccess` model**: `id, boardId, userId, inviteId?, accessMode, joinedAt`; `@@unique([boardId, userId])`
-- [x] **`Team.guildId` + `Team.guildName`** — teams scoped to Discord guilds
-- [x] Prisma migration `phase3_access_control`
-- [x] **Auth guilds scope**: `identify guilds` scope; guild list fetched after login; synced into `UserGuild` via `syncGuilds()` transaction
-- [x] **`InvitesModule`**: `createInvite`, `useInvite` (idempotent, validates expiry/maxUses, increments count), `revokeInvite`, `getInvitesByBoard`, unique 6-char `shortCode` generation
-- [x] **`AccessModule`**: `canJoin` (OPEN / GUILD / INVITE checks), `hasAccess`, `joinBoard` (creates `BoardAccess`, idempotent), `getMyBoardAccess`; returns `BoardAccessEntity`
-- [x] **`PlayersService` fix**: `myBoardState` resolver now calls `findPlayerBoard` (pure read, gated on `hasAccess`) instead of auto-creating — access control can no longer be bypassed
-- [x] **Boards module**: `isListed`, `accessMode`, `requiredGuildId` on entity, inputs, service; `findAll()` filters to `isListed: true`; `findAllAdmin()` bypasses filter; `allBoards` query for ADMIN/EDITOR
-- [x] **Teams guild scope**: `TeamsService.findAll()` filters by user's guilds when non-admin; `guildId`/`guildName` fields pass through create/update
-
-#### Frontend
-
-- [x] **Codegen** — `app/types/graphql.ts` regenerated: `BoardAccessMode`, `BoardAccessEntity`, `BoardInviteEntity`, `isListed`, `accessMode`, `requiredGuildId`, `guildId`, `guildName`
-- [x] **`useAccess.ts`** — `useMyBoardAccess(boardId)` reactive lookup; `joinBoard(boardId, tokenOrCode?)` imperative mutation
-- [x] **`useInvites.ts`** — `useBoardInvites(boardId)` reactive list; `createInvite`, `revokeInvite`
-- [x] **`useBoards.ts`** — `isListed accessMode requiredGuildId` in field selection; `useAllBoards()` for admin pages
-- [x] **`useTeams.ts`** — `guildId guildName` in `TEAM_FIELDS` and `TeamData` interface
-- [x] **`auth.ts` store** — `UserGuild` interface; `guilds` field on `User`
-- [x] **`SettingsForm.vue`** — `isListed` switch, `accessMode` selector, `requiredGuildId` guild picker (from logged-in user's guilds)
-- [x] **`SettingsModal.vue`** — `buildDefaultForm` + save input include `isListed`, `accessMode`, `requiredGuildId`; `InviteManager` shown inline when `accessMode === 'INVITE'` and editing existing board
-- [x] **`InviteManager.vue`** — lists active invites (shortCode, label, use count, expiry); create invite form (label, maxUses); revoke + copy-link per invite
-- [x] **`AccessGate.vue`** — shown when user has no `PlayerBoard`; adapts to OPEN / GUILD / INVITE access modes; handles code input for INVITE, relink-Discord prompt for blocked GUILD
-- [x] **`useBoardPage.ts`** — exposes `boardAccess`, `joiningBoard`, `doJoinBoard`; loads access on mount; `boardSettingsData` includes `isListed`, `accessMode`, `requiredGuildId`
-- [x] **Board detail page** (`boards/[id]/index.vue`) — shows `AccessGate` when `showAccessGate`; full game board only rendered after joining
-- [x] **Magic link page** (`boards/[id]/join/[token].vue`) — calls `joinBoard` on mount; stores redirect in `localStorage` if unauthenticated and retries after Discord OAuth
-- [x] **`auth/callback.vue`** — honours `post_auth_redirect` in `localStorage` before defaulting to `/boards`
-- [x] **Board list badges** (`boards/index.vue`) — GUILD badge (blue shield) and INVITE badge (orange lock) per board card
-- [x] **Admin board pages** — `create.vue` and `admin/boards/index.vue` `openSettings()` include `isListed`, `accessMode`, `requiredGuildId`
-- [x] **i18n** — all new keys added to `locales/en.json`
-
-### 🔄 Pending
-
-> 💡 **Deferred to later**: Team shareable invite links, guild-grouped team display in admin, per-guild member search filter for TEAM_MANAGERs.
+Roughly 500 backend tests and 145 frontend tests, run with `php artisan test`
+and `pnpm test`.
 
 ---
 
-## Database Schema (Prisma v7)
+## The four event types
 
-### Enums
-- `BoardSize`: SIZE_5X5 | SIZE_7X7 | SIZE_9X9
-- `TileType`: NORMAL | SNAKE | LADDER
-- `CompletionSource`: MANUAL | RUNELITE
-- `BoardMode`: SOLO | TEAM
+The model separates an **event** from the thing it is played on, because only
+some types have one.
 
-### Models
-- **Role**: id, name (unique), description, createdAt, updatedAt
-- **User**: id, discordId (unique), discordUsername, nickname?, avatarUrl?, createdAt, updatedAt
-- **UserRole** (pivot): id, userId, roleId ← `@@unique([userId, roleId])`
-- **Task**: id, title, iconUrl?, description?, createdAt, updatedAt
-- **Board**: id, title, startDate?, endDate?, size (BoardSize), mode (BoardMode), diceRollLimit?, createdAt, updatedAt
-- **BoardAuthor** (pivot): id, boardId, userId, isOwner (bool) ← `@@unique([boardId, userId])`
-- **BoardTeam** (pivot): id, boardId, teamId ← `@@unique([boardId, teamId])` — links a team to a TEAM-mode board
-- **Tile**: id, boardId, position, taskId?, titleOverride?, type (TileType), targetPosition? ← `@@unique([boardId, position])`
-- **PlayerBoard**: id, userId, boardId, currentPosition, diceRollsToday, lastRollDate? ← `@@unique([userId, boardId])`
-- **CompletedTile**: id, playerBoardId, tileId, completedAt, completedVia ← `@@unique([playerBoardId, tileId])`
+| Type | Payload | Scored on |
+|---|---|---|
+| Snakes & Ladders | a `Board` of tiles | position on the board |
+| Bingo | a `BingoCard` of squares | approved claims, lines, bonuses |
+| Skill race | none | XP gained, from Wise Old Man |
+| Drop race | none | boss kill counts, from Wise Old Man |
 
-### Phase 2 additions
-- **UserPermission**: id, userId, permissionKey ← `@@unique([userId, permissionKey])` — granular per-user permissions independent of roles
-- **Team**: id, name, iconUrl?, guildId?, guildName?, createdAt, updatedAt
-- **TeamMember** (pivot): id, teamId, userId ← `@@unique([teamId, userId])`
-
-### Phase 3 additions
-- `BoardAccessMode` enum: `OPEN` | `GUILD` | `INVITE`
-- **Board** additions: `isListed Boolean @default(true)`, `accessMode BoardAccessMode @default(OPEN)`, `requiredGuildId String?`
-- **UserGuild**: id, userId, guildId, guildName, guildIcon?, syncedAt ← `@@unique([userId, guildId])` — Discord server membership cache
-- **BoardInvite**: id, boardId, token (uuid unique), shortCode (6-char), createdBy, label?, expiresAt?, maxUses?, useCount, createdAt ← `@@unique([boardId, shortCode])`
-- **BoardAccess**: id, boardId, userId, inviteId?, accessMode, joinedAt ← `@@unique([boardId, userId])` — authoritative join record
+Each has a **live channel** (`app/Events/Channels/`) answering two questions:
+`fingerprint()`, which runs every few seconds per viewer and must be cheap,
+and `payload()`, which only runs when something actually changed. Adding a
+type means writing a channel, not touching the stream controller.
 
 ---
 
-## Infrastructure Notes
-- Project renamed from `osrs-snakes` → `osrs-events` (working directory is now `i:/osrs-events`)
-- `dotenv` added as a devDependency — required by `prisma.config.ts` for `prisma generate` to work
-- After any rename or fresh clone, run `pnpm prisma generate` in `/backend` before starting
+## What works
 
-## Notes
-- Board position order: row 0 at bottom-left, even rows left→right, odd rows right→left (snaking)
-- SVG overlay uses quadratic bezier curves with arrowheads for snake/ladder connections
-- OSRS Wiki search uses MediaWiki API (opensearch endpoint) for task icon lookup
-- Board size enum values: `SIZE_5X5`, `SIZE_7X7`, `SIZE_9X9` (displayed as `5×5`, `7×7`, `9×9`)
-- Prisma v7: datasource URL via `prisma.config.ts`, seed command also in `prisma.config.ts`
-- Prisma v7: runtime client uses `PrismaPg` driver adapter (`@prisma/adapter-pg`)
-- `tsconfig.seed.json` exists to override module to CommonJS for ts-node seed execution
-- Auth flash fix: `hydrated` state in auth store; `USkeleton` shown until `auth.client.ts` completes
+### Running an event
+
+- Create from a **template** or from scratch, through a stepper. A template
+  carries the settings *and* the board — every tile with its snakes, ladders
+  and tasks, or every filled bingo square. A copy, not a link.
+- Save any event you host **as a template**, while editing or once it has
+  finished.
+- Templates come in three sets: the ones that ship with the app, your own,
+  and your Discord server's.
+- Edit through one modal — a stepper while creating, tabs while editing.
+- Tiles: a grid editor and a list editor, with tasks pulled from the OSRS
+  Wiki and cached.
+- Invite links and short codes for events that are not open.
+- Teams, scoped to the Discord servers you are actually in.
+
+### Playing
+
+- Roll a d6, move, hit snakes and ladders, tick tiles off.
+- Claim bingo squares with a screenshot; a host approves or rejects with a
+  note that the claimant sees either way.
+- Enter and leave a race; standings sync from Wise Old Man.
+- Live standings on every type, pushed rather than polled.
+
+### Around it
+
+- Discord OAuth and email/password side by side, with password reset.
+- An admin section: users and roles, events, tasks, templates, site
+  settings, CMS pages, invites, and an audit log.
+- A first-run wizard.
+- Landing pages and CMS-editable content, with SEO metadata and a sitemap.
+
+---
+
+## Decisions worth knowing
+
+These are the ones that shape the code. Each has its reasoning in the
+backlog.
+
+- **Admins are ordinary users on the public side.** Editing somebody else's
+  event happens in the admin section, on its own routes. Reading is not
+  restricted — you cannot moderate what you cannot see.
+- **The lock keeps the app unannounced, not the shop window.** Public pages,
+  guides and CMS pages stay readable while it is on. New accounts do not.
+- **The branding is on the pages people read, not the ones they work in.**
+- **A copy, never a link.** Templates snapshot; editing the event afterwards
+  leaves the template alone.
+- **Claims are the unit of truth in bingo**, and only approved ones score.
+- **SSE, not WebSockets.** The data only flows one way. It costs a PHP worker
+  per viewer, which is why every stream is capped at 45 seconds and a
+  backgrounded tab drops its connection.
+
+---
+
+## Known gaps
+
+The backlog holds the full list; these are the ones worth knowing before
+reading the code.
+
+- **`php artisan serve` serves one SSE stream at a time.** On Windows there
+  is no way around it — `PHP_CLI_SERVER_WORKERS` forks. Use Herd or
+  nginx+fpm when working on anything live, or the rest of the site will feel
+  broken while a stream is open.
+- **Bingo has no join step.** Participation is implied by claiming a square.
+  This has to be settled before the RuneLite plugin.
+- **Boss races have no icons.** The icon set is built from wiki item images
+  and there is no "Zulrah icon"; pets are the intended answer.
+- **Mail is configured but not pointed anywhere.** Works against Mailpit
+  locally; production needs Brevo and a verified From domain.
+- **No email verification.** An email account is usable with an address
+  nobody proved they own. A product decision, not an oversight.

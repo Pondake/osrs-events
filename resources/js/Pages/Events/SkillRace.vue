@@ -7,8 +7,24 @@
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
                     <event-type-heading :event="event" :can-edit="canEdit">
                         <template #meta>
+                            <!-- The skill's own icon, beside the line that
+                                 names it. A race is chosen by its skill and
+                                 then never showed one anywhere — and this is
+                                 the one line already saying "ranked by
+                                 Mining", so the icon belongs to it rather
+                                 than needing a place of its own.
+                                 A boss race falls back to the trophy: the
+                                 icon set is built from wiki item images and
+                                 there is no Zulrah icon (see
+                                 Support/metrics.js). -->
                             <span class="inline-flex items-center gap-1.5">
-                                <u-icon name="i-lucide-trophy" class="size-4 shrink-0" />
+                                <img
+                                    v-if="metricIcon"
+                                    :src="metricIcon"
+                                    alt=""
+                                    class="size-4 shrink-0 object-contain"
+                                >
+                                <u-icon v-else name="i-lucide-trophy" class="size-4 shrink-0" />
                                 {{ rankedBy }}
                             </span>
                         </template>
@@ -213,7 +229,7 @@ import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
 import { boardEventStatus, formatDate } from '@/Support/board';
-import { metricLabel, rankedByLabel } from '@/Support/metrics';
+import { metricIconUrl, metricLabel, rankedByLabel } from '@/Support/metrics';
 import { useEventStream } from '@/Composables/useEventStream';
 
 // Async, exactly as BoardShow loads it: the modal reaches @nuxt/ui
@@ -273,6 +289,9 @@ const isBossRace = computed(() => props.event.metricKind === 'boss');
 const metricName = computed(() => metricLabel(props.event.metric, props.event.metricKind));
 
 const rankedBy = computed(() => rankedByLabel(props.event.metric, props.event.metricKind));
+
+// Null for a boss race, which has no icon to draw — see Support/metrics.js.
+const metricIcon = computed(() => metricIconUrl(props.event.metric, props.event.metricKind));
 
 const status = computed(() => boardEventStatus(props.event.start_date, props.event.end_date));
 
