@@ -1560,14 +1560,10 @@ Reported from staging in one pass. Tests live in
   `isAdmin` — the people running events are the people who know which
   formats get reused. 22 starters in `EventBlueprintSeeder`, safe to re-run
   on its own (`php artisan db:seed --class=EventBlueprintSeeder`).
-- [ ] **Let event hosts manage blueprints from the event side.** Right now
-  blueprints only exist as global reference data behind `/admin/blueprints`.
-  The ask is to also reach them from board/event settings, so a host can
-  save the event they just configured as a format, or tweak one, without
-  going to the admin area. Open questions worth settling first: are
-  blueprints global or per-clan/per-guild once they can be created from
-  anywhere, and does "save this event as a blueprint" copy the settings or
-  stay linked to it?
+- [x] ~~**Let event hosts manage blueprints from the event side.**~~ — built
+  2026-08-22. See "Templates, from both ends" below. Both open questions are
+  answered: **per-clan** visibility (the same rule teams use), and a **copy**
+  rather than a link.
 
 ## Staging feedback, round two — 2026-08-21
 
@@ -1740,10 +1736,11 @@ That last one deserves its own note:
   5x5 layout cannot be applied to a 7x7. The picker has to filter by size
   rather than offer every layout and fail late.
 
-  Still open: are layout blueprints global like the current ones, or
-  per-clan once hosts can create them from an event they have already built?
-  That is the same question as the one under "Let event hosts manage
-  blueprints from the event side" and should be answered once for both.
+  **Decided 2026-08-22: a copy, not a link.** Saving an event as a template
+  takes a snapshot. Editing the event afterwards leaves the template alone,
+  and editing the template leaves the event alone. The alternative would let
+  somebody's template change under another host's hands without either of
+  them noticing.
 
 ### Icons and metrics
 
@@ -2279,6 +2276,55 @@ single offensive tile — only delete the whole event. If that turns out to
 matter, the fix is an admin-side route for it, not a hole in the rule.
 
 
+### Templates, from both ends — 2026-08-22
+
+A blueprint used to be a name. It is now the shape of an event, and it can be
+written from an event as well as read into one.
+
+**What changed underneath.** `event_blueprints` gained a `settings` JSON
+column, plus `created_by` and `guild_id`. JSON rather than thirty nullable
+columns because the fields a blueprint carries differ per event type — a card
+has a win condition and no dice, a board has a roll limit and no card — so
+columns would put every type's fields on every row and leave most of them
+null forever. The shape is enforced by `EventBlueprint::APPLICABLE`, an
+allow-list, because these settings end up in a form that posts to the create
+endpoint: a stored key nobody vetted would be a stored field nobody vetted.
+There is a test for a tampered row.
+
+**Creating an event starts with a gallery.** "Template" is the first step of
+the stepper, ahead of Type, and each card says what you are about to get —
+"Teams · 5×5 card · First line wins · Host checks claims" — rather than just
+naming a format. Picking one fills in what it carries and jumps to whichever
+question it did not answer; "Start from scratch" is a card of its own, so
+somebody who knows what they want is one click past it. The old autocomplete
+under the title is gone: a one-line suggestion cannot show a grid size, and
+picking a format you cannot see is picking a name.
+
+**Saving one is offered twice, deliberately.** In the edit modal, because
+that is when a host is thinking about the settings, and again on the event
+page once the event has ended, because that is when they know whether the
+format was worth keeping. The finished-event prompt lives in
+`EventTypeHeading` — the one component all three event pages share, and it
+already works out whether an event has ended.
+
+**Visibility mirrors teams**: the set that ships with the app (no owner, no
+server), your own, and your clan's. A format somebody wrote for their clan
+carries their event's settings and their clan's name in the title as often as
+not, so it is not obviously public. The server a template is filed under is
+checked against the person's own guilds, the same as a team's — it decides
+who else sees it, so it is a claim rather than a label.
+
+**The dates are the one thing a template must not carry.** A format that
+starts every event in July is a format nobody can use in August.
+
+**The seeded set now carries real settings.** Where a description used to
+tell the host what to set — "give it a roll limit", "set the win condition" —
+the settings do it, and the wording says what the format IS rather than what
+is left to do.
+
+438 backend tests, 112 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
@@ -2349,8 +2395,12 @@ not alongside it — the copy depends on what the app actually ends up doing.
     adding it would let a Discord login arrive with a trusted address and
     skip the whole flow. Against it: it asks for more than the app needs,
     on a consent screen people read, for a field the app has lived without.
-    Awaiting an answer; the manual-registration flow can be built either way
-    and is not blocked on it.
+
+    **Parked 2026-08-22 at your request — both halves decided later.** Not
+    started, and nothing else depends on it. When it comes back round, the
+    order that matters is: decide the scope first, because it decides whether
+    a Discord account ever has an address to verify, and that decides what
+    the manual-registration flow has to handle.
 
   Also worth noting: the reset mail is Laravel's stock template, zinc button
   and all, with none of the OSRS branding the rest of the app has.

@@ -38,7 +38,7 @@
                  the mode decides whether teams do). -->
             <u-tabs v-if="isEdit" v-model="activeTab" :items="tabs" class="w-full">
                 <template #basics>
-                    <basics-fields :form="form" is-edit :blueprints="[]" />
+                    <basics-fields :form="form" is-edit />
                 </template>
                 <template #format>
                     <format-fields :form="form" />
@@ -84,6 +84,18 @@
             </u-tabs>
 
             <u-stepper v-else ref="stepper" v-model="currentStep" :items="steps" size="sm" class="w-full">
+                <template #template>
+                    <template-fields
+                        :blueprints="blueprintResults"
+                        :loading="loadingBlueprints"
+                        :search="blueprintSearch"
+                        :selected-id="appliedBlueprintId"
+                        @search="onBlueprintSearch"
+                        @apply="applyBlueprint"
+                        @skip="skipBlueprint"
+                    />
+                </template>
+
                 <template #type>
                     <div class="space-y-3 py-2">
                         <p class="text-sm text-muted">{{ $t('events.type_desc') }}</p>
@@ -117,12 +129,7 @@
                 </template>
 
                 <template #basics>
-                    <basics-fields
-                        :form="form"
-                        :blueprints="blueprintResults"
-                        @search-blueprints="onTitleInput"
-                        @apply-blueprint="applyBlueprint"
-                    />
+                    <basics-fields :form="form" />
                 </template>
 
                 <template #format>
@@ -166,7 +173,20 @@
                 <span v-if="!isEdit" class="text-xs text-muted tabular-nums">
                     {{ $t('admin.step_counter', { current: stepIndex + 1, total: steps.length }) }}
                 </span>
-                <span v-else />
+
+                <!-- Left of the save button and visually separate from it,
+                     because it is not part of saving: it writes a second
+                     thing that outlives this event. Offered while editing
+                     because that is when a host is thinking about the
+                     settings; the event page offers it again once the event
+                     has finished, which is when they know whether the format
+                     was worth keeping. -->
+                <blueprint-save-modal
+                    v-else-if="board"
+                    :event-id="board.id"
+                    :event-title="board.title"
+                    variant="ghost"
+                />
 
                 <div class="flex items-center gap-2">
                     <u-button color="neutral" variant="ghost" :label="$t('common.cancel')" @click="isOpen = false" />
@@ -211,6 +231,9 @@ import BasicsFields from '@/Components/BoardSettings/BasicsFields.vue';
 import FormatFields from '@/Components/BoardSettings/FormatFields.vue';
 import InviteFields from '@/Components/BoardSettings/InviteFields.vue';
 import TeamFields from '@/Components/BoardSettings/TeamFields.vue';
+import TemplateFields from '@/Components/BoardSettings/TemplateFields.vue';
+import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
+import { blueprintPatch, decidesType } from '@/Support/blueprint';
 
 const { user: currentUser } = useAuth();
 
@@ -342,6 +365,9 @@ const metricsForKind = computed(() => site().metricsByKind?.[metricKind.value] ?
  * only exists once you have said the event has teams at all.
  */
 const steps = computed(() => [
+    // First, because it is the step that can answer several of the others.
+    // Skippable in one click — see TemplateFields' "start from scratch".
+    { value: 'template', slot: 'template', title: trans('blueprints.step_title'), icon: 'i-lucide-layout-template' },
     { value: 'type', slot: 'type', title: trans('admin.step_type'), icon: 'i-lucide-shapes' },
     { value: 'basics', slot: 'basics', title: trans('admin.step_basics'), icon: 'i-lucide-text' },
     { value: 'format', slot: 'format', title: trans('admin.step_format'), icon: 'i-lucide-settings-2' },
@@ -351,7 +377,7 @@ const steps = computed(() => [
         : []),
 ]);
 
-const currentStep = ref('type');
+const currentStep = ref('template');
 const stepper = ref(null);
 const stepIndex = computed(() => Math.max(0, steps.value.findIndex((s) => s.value === currentStep.value)));
 
@@ -375,7 +401,18 @@ const activeTab = ref('basics');
 // Back to the first tab whenever the dialog is opened, rather than whenever
 // the board prop changes — see the note in the watch on `props.board`.
 watch(() => props.open, (open) => {
-    if (open) activeTab.value = 'basics';
+    if (! open) return;
+
+    activeTab.value = 'basics';
+
+    // Loaded when the modal opens rather than when the step is reached: the
+    // template step IS the first thing on screen, so waiting for a keystroke
+    // would show an empty gallery to everyone who never types in the search
+    // box — which is most people.
+    if (! isEdit.value) {
+        blueprintSearch.value = '';
+        loadBlueprints();
+    }
 });
 
 // Flattened for the summary above. useForm keeps errors as
@@ -398,6 +435,10 @@ const errorList = computed(() => Object.entries(form.errors ?? {})
  */
 function validateStep(step) {
     form.clearErrors();
+
+    // The template step has nothing to get wrong: picking one is optional and
+    // "from scratch" is a valid answer, so it never holds anybody up.
+    if (step === 'template') return true;
 
     if (step === 'type' && !selectedType.value?.available) {
         form.setError('type', trans('validation.event_type_required'));
@@ -481,6 +522,11 @@ const addingTeam = ref(false);
 const loadingTeams = ref(false);
 
 const blueprintResults = ref([]);
+const blueprintSearch = ref('');
+const loadingBlueprints = ref(false);
+// Which template is applied, so the gallery can show the choice back. null is
+// "from scratch", which is a choice too.
+const appliedBlueprintId = ref(null);
 let blueprintSearchTimeout = null;
 
 const selectedAuthors = ref([]);
@@ -552,7 +598,8 @@ watch(
         form.reset();
         form.clearErrors();
 
-        currentStep.value = 'type';
+        currentStep.value = 'template';
+        appliedBlueprintId.value = null;
 
         // NOT reset while the modal is open. A successful save updates the
         // `board` prop, which re-runs this watch — and resetting the tab
@@ -589,62 +636,73 @@ watch(
 // ------------------------------------------------------------- blueprints
 
 /**
- * Debounced the same way the author search is, and for the same reason: this
- * fires on every keystroke of a field people type a full sentence into.
+ * Loads the gallery. Debounced the same way the author search is, and for the
+ * same reason: it fires on every keystroke.
  *
- * No minimum length, unlike the author search — an empty title is exactly
- * when the suggestions are worth the most, so focusing the field with nothing
- * in it lists the formats rather than waiting for two characters nobody knows
- * to type.
+ * No minimum length, unlike the author search — an empty box is exactly when
+ * the list is worth the most, so opening the step with nothing typed shows
+ * the formats rather than waiting for two characters nobody knows to type.
  */
-function onTitleInput(value) {
-    if (isEdit.value) return;
+async function loadBlueprints(value = '') {
+    loadingBlueprints.value = true;
+
+    try {
+        const response = await fetch(`/event-blueprints?search=${encodeURIComponent(value)}`, {
+            headers: { Accept: 'application/json' },
+        });
+
+        if (!response.ok) throw new Error(`blueprint lookup failed: ${response.status}`);
+
+        blueprintResults.value = (await response.json()).blueprints ?? [];
+    } catch (error) {
+        // Silent: creating an event works without templates, and a toast over
+        // a form someone is part-way through would be worse than an empty
+        // gallery that says so.
+        console.error(error);
+        blueprintResults.value = [];
+    } finally {
+        loadingBlueprints.value = false;
+    }
+}
+
+function onBlueprintSearch(value) {
+    blueprintSearch.value = value ?? '';
 
     if (blueprintSearchTimeout) clearTimeout(blueprintSearchTimeout);
-
-    blueprintSearchTimeout = setTimeout(async () => {
-        try {
-            const response = await fetch(`/event-blueprints?search=${encodeURIComponent(value ?? '')}`, {
-                headers: { Accept: 'application/json' },
-            });
-
-            if (!response.ok) throw new Error(`blueprint lookup failed: ${response.status}`);
-
-            const data = await response.json();
-
-            // Anything typed out in full is not a suggestion any more —
-            // leaving the exact match on screen makes the list look stuck.
-            blueprintResults.value = (data.blueprints ?? []).filter(
-                (b) => b.title.toLowerCase() !== (value ?? '').trim().toLowerCase(),
-            );
-        } catch (error) {
-            // Silent: this is a convenience on a field that works without it,
-            // and a toast over a form someone is mid-way through typing would
-            // be worse than no suggestions.
-            console.error(error);
-            blueprintResults.value = [];
-        }
-    }, 250);
+    blueprintSearchTimeout = setTimeout(() => loadBlueprints(blueprintSearch.value), 250);
 }
 
 /**
- * Fills in what the blueprint carries and nothing else — a title-only
- * blueprint sets a title and leaves a half-configured form alone, which is
- * the whole reason those exist.
+ * Fills in what the blueprint carries and nothing else.
+ *
+ * A title-only template sets a title and leaves a half-configured form alone,
+ * which is what makes it safe to click one out of curiosity. Applied through
+ * a patch object rather than field by field so the rule lives in
+ * Support/blueprint.js, where it is testable.
  */
 function applyBlueprint(blueprint) {
-    form.title = blueprint.title;
+    const patch = blueprintPatch(blueprint);
 
-    if (blueprint.type) form.type = blueprint.type;
-    // After the type. The watch on form.type drops a metric that isn't on the
-    // new type's list, and it runs after both of these have landed — so
-    // written in this order the new metric is checked against the new type and
-    // survives. Written the other way round it would be checked against the
-    // old one and silently thrown away.
-    if (blueprint.metric) form.metric = blueprint.metric;
-    if (blueprint.description) form.description = blueprint.description;
+    // Type first. The watch on form.type drops a metric that is not on the
+    // new type's list, and it runs after both have landed — so in this order
+    // the new metric is checked against the new type and survives. The other
+    // way round it would be checked against the old one and thrown away.
+    if (patch.type) form.type = patch.type;
 
-    blueprintResults.value = [];
+    for (const [key, value] of Object.entries(patch)) {
+        if (key !== 'type' && key in form) form[key] = value;
+    }
+
+    appliedBlueprintId.value = blueprint.id;
+
+    // Straight on to whichever question the template did not answer.
+    currentStep.value = decidesType(blueprint) ? 'basics' : 'type';
+}
+
+/** "From scratch" is a choice, so it clears one rather than doing nothing. */
+function skipBlueprint() {
+    appliedBlueprintId.value = null;
+    currentStep.value = 'type';
 }
 
 // ---------------------------------------------------------------- authors

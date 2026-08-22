@@ -1,42 +1,14 @@
 <template>
     <div class="space-y-4 py-2">
-        <!-- Blueprints (Admin > Blueprints) are the formats a clan reuses —
-             "Skill of the Week", "Boss of the Month". Suggested on the title
-             field rather than made into a picker step of their own, because
-             the thing being reused IS the title; picking one fills in the
-             type, metric and description it carries and leaves the rest
-             alone, and typing straight past it is still an ordinary text
-             field.
+        <!-- Templates used to be suggested here, as a dropdown under the
+             title. They moved to a step of their own (TemplateFields) once a
+             template started carrying the whole shape of an event: a one-line
+             suggestion cannot show a grid size or a win condition, and
+             picking a format you cannot see is picking a name.
 
-             Create only: an existing event's type is locked, so a suggestion
-             that changes it would offer something the form refuses to
-             apply. -->
+             So this is an ordinary title field again. -->
         <u-form-field :label="$t('admin.board_title')" :error="form.errors.title" required>
-            <div class="space-y-2">
-                <u-input
-                    :model-value="form.title"
-                    class="w-full"
-                    :placeholder="$t('admin.board_title_placeholder')"
-                    @update:model-value="onTitle"
-                    @focus="emit('search-blueprints', form.title)"
-                />
-
-                <div v-if="!isEdit && blueprints.length" class="rounded-md ring ring-default divide-y divide-default max-h-52 overflow-y-auto">
-                    <button
-                        v-for="blueprint in blueprints"
-                        :key="blueprint.id"
-                        type="button"
-                        class="w-full flex items-start gap-3 px-3 py-2 hover:bg-elevated transition-colors text-left"
-                        @click="emit('apply-blueprint', blueprint)"
-                    >
-                        <u-icon name="i-lucide-shapes" class="size-4 text-primary shrink-0 mt-0.5" />
-                        <span class="min-w-0">
-                            <span class="block text-sm font-medium truncate">{{ blueprint.title }}</span>
-                            <span v-if="blueprint.description" class="block text-xs text-muted line-clamp-1">{{ blueprint.description }}</span>
-                        </span>
-                    </button>
-                </div>
-            </div>
+            <u-input v-model="form.title" class="w-full" :placeholder="$t('admin.board_title_placeholder')" />
         </u-form-field>
 
         <u-form-field :label="$t('admin.board_description')" :description="$t('admin.board_description_desc')">
@@ -74,23 +46,14 @@
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
     // The parent's useForm instance. Passed as a shared store rather than
     // decomposed into a dozen value props with matching emits — every field
     // here writes to it, and threading each one back up would be more
     // plumbing than markup.
     form: { type: Object, required: true },
+    // Unused here now that templates have their own step, but still passed by
+    // the edit tabs and worth declaring rather than warning about.
     isEdit: { type: Boolean, default: false },
-    blueprints: { type: Array, default: () => [] },
 });
-
-const emit = defineEmits(['search-blueprints', 'apply-blueprint']);
-
-// Title is the one field the parent needs to react to (it drives the
-// blueprint lookup), so it goes through an explicit handler rather than
-// v-model.
-function onTitle(value) {
-    props.form.title = value;
-    emit('search-blueprints', value);
-}
 </script>

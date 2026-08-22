@@ -5,7 +5,7 @@
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="event">
+                    <event-type-heading :event="event" :can-edit="canEdit">
                         <template #meta>
                             <span class="inline-flex items-center gap-1.5">
                                 <u-icon name="i-lucide-trophy" class="size-4 shrink-0" />
