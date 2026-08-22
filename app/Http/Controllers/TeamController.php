@@ -37,6 +37,10 @@ class TeamController extends Controller
 
         $query = Team::with(['members.user'])->visibleTo($user)->orderBy('name');
 
+        // Read once rather than per team — the reason for each row is decided
+        // below and would otherwise be a query apiece.
+        $guildIds = UserGuild::where('user_id', $user->id)->pluck('guild_id')->all();
+
         // The page used to gate its buttons on isAdmin alone, with a comment
         // conceding that a real per-team check "isn't available client-side
         // without shipping every user's role set down". It is available: the
@@ -52,9 +56,40 @@ class TeamController extends Controller
             'viewerRole' => $team->roleFor($user),
             'canManage' => $team->isManagedBy($user),
             'canDelete' => $team->isOwnedBy($user),
+            // WHY this team is on the page. Visibility is scoped, but the
+            // list said nothing about which rule let each team through — so
+            // an admin saw everything with no way to tell their own teams
+            // from a clan mate's from one they can only see because they are
+            // an admin. Useful to everyone, not only admins: "yours" and
+            // "your Discord server's" are different kinds of team.
+            'reason' => $this->visibilityReason($team, $user, $guildIds),
         ]);
 
         return Inertia::render('Teams/Index', ['teams' => $teams]);
+    }
+
+    /**
+     * Which rule put this team in front of this person.
+     *
+     * The order matters: a team can qualify under more than one rule at once
+     * — your own team on your own Discord server — and the strongest claim is
+     * the one worth showing. Membership beats the server, and the server
+     * beats "you are an admin", which is the one that should feel like a
+     * borrowed key rather than a normal reason to be looking.
+     *
+     * @param  array<int, string>  $guildIds
+     */
+    private function visibilityReason(Team $team, User $user, array $guildIds): string
+    {
+        if ($team->roleFor($user) !== null) {
+            return 'member';
+        }
+
+        if ($team->guild_id !== null && in_array($team->guild_id, $guildIds, true)) {
+            return 'guild';
+        }
+
+        return 'admin';
     }
 
     /**

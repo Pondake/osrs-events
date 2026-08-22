@@ -94,7 +94,7 @@ class HandleInertiaRequests extends Middleware
                 'announcementType' => Setting::get('announcement_type'),
                 'defaultBoardSize' => Setting::get('default_board_size'),
                 'defaultDiceRollLimit' => Setting::get('default_dice_roll_limit'),
-                'defaultEventDurationDays' => Setting::get('default_event_duration_days'),
+                'defaultEventDuration' => Setting::get('default_event_duration'),
             ],
             'auth' => [
                 'user' => $user ? [
