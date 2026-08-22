@@ -56,7 +56,15 @@ class EnsureSiteUnlocked
         'logout',
         // Recovery for an account that already exists, which is the one way
         // back in for whoever is building the site. Not a way to acquire one.
+        //
+        // BOTH spellings of the reset path. `reset-password/*` is the link
+        // from the email, which carries a token; `reset-password` is where
+        // that page POSTs to, and it has no segment after it. With only the
+        // first, a locked site let somebody open the link, type a new
+        // password, and then answered 423 when they saved it — the recovery
+        // path was dead in exactly the state that needs it most.
         'forgot-password',
+        'reset-password',
         'reset-password/*',
         'auth/discord/*',
         'up',

@@ -115,4 +115,24 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | The theme applied to every markdown mailable. `osrs` re-skins Laravel's
+    | default with the app's own palette — see
+    | resources/views/vendor/mail/html/themes/osrs.css for why it is a light
+    | theme when the app is dark.
+    |
+    */
+
+    'markdown' => [
+        'theme' => 'osrs',
+
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+    ],
+
 ];
