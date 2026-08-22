@@ -89,6 +89,16 @@ class AccountController extends Controller
 
         $user->update(['password' => $data['password']]);
 
+        // Every other session goes. Changing a password is what somebody does
+        // when they think a session is not theirs, so leaving those signed in
+        // would be answering the wrong question — and it takes the remember
+        // cookies with it, which the middleware alone would not.
+        //
+        // This session survives: AuthenticateSession re-stores the new hash
+        // after the response, so the person doing it is not thrown out by
+        // their own action.
+        Auth::logoutOtherDevices($data['password']);
+
         return back()->with('board-save', trans('profile.password_updated'));
     }
 }
