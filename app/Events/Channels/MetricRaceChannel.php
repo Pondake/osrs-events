@@ -5,6 +5,7 @@ namespace App\Events\Channels;
 use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\Event;
 use App\Services\EventStandingsService;
+use App\Support\EventCard;
 
 /**
  * Skill races and drop races.
@@ -33,6 +34,12 @@ class MetricRaceChannel implements EventChannel
         return [
             'standings' => $this->standings->forEvent($event)->all(),
             'event_version' => $this->eventVersion($event),
+            // The event itself, so an edit arrives on the connection that is
+            // already open. Sending a version and letting the page re-ask
+            // cost a second request, which on a single-worker dev server
+            // queues behind this very stream — the edit showed up thirty
+            // seconds late, and the delay looked like the feature.
+            'event' => EventCard::fresh($event),
         ];
     }
 }

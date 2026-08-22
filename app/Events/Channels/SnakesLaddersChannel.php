@@ -4,6 +4,7 @@ namespace App\Events\Channels;
 
 use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\Event;
+use App\Support\EventCard;
 
 /**
  * Snakes & Ladders.
@@ -36,7 +37,10 @@ class SnakesLaddersChannel implements EventChannel
         // nobody: the second browser kept the old board until it was
         // reloaded, snakes and ladders included. The bingo card streamed its
         // squares from the start; this is the same thing for the same reason.
-        $tiles = $event->board?->tiles()
+        // Queried through the relation rather than read off the cached one,
+        // for the same reason the tiles are listed at all: this instance is
+        // 45 seconds old by the end of a connection.
+        $tiles = $event->board()->first()?->tiles()
             ->orderBy('position')
             ->get(['position', 'task_id', 'title_override', 'type', 'target_position'])
             ?? collect();
@@ -64,6 +68,12 @@ class SnakesLaddersChannel implements EventChannel
 
         return [
             'event_version' => $this->eventVersion($event),
+            // The event itself, so an edit arrives on the connection that is
+            // already open. Sending a version and letting the page re-ask
+            // cost a second request, which on a single-worker dev server
+            // queues behind this very stream — the edit showed up thirty
+            // seconds late, and the delay looked like the feature.
+            'event' => EventCard::fresh($event),
             'players' => $players->map(fn ($pb) => [
                 ...$pb->only(['id', 'user_id', 'team_id', 'current_position']),
                 'user' => $pb->user,
@@ -72,7 +82,7 @@ class SnakesLaddersChannel implements EventChannel
             // Shaped exactly as BoardController::show sends them, so the page
             // can swap one list for the other without knowing where it came
             // from.
-            'tiles' => $event->board?->tiles()
+            'tiles' => $event->board()->first()?->tiles()
                 ->with('task:id,title,icon_url')
                 ->orderBy('position')
                 ->get()

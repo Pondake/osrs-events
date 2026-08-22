@@ -6,6 +6,7 @@ use App\Events\Channels\BingoChannel;
 use App\Events\Channels\EventChannelResolver;
 use App\Events\Channels\MetricRaceChannel;
 use App\Events\Channels\SnakesLaddersChannel;
+use App\Models\BingoCard;
 use App\Models\BingoCompletion;
 use App\Models\Board;
 use App\Models\Event;
@@ -13,6 +14,7 @@ use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\Tile;
 use App\Models\User;
+use App\Support\EventCard;
 use App\Services\BingoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -217,16 +219,20 @@ class EventStreamTest extends TestCase
         app(BingoService::class)->ensureSquares($card);
         $channel = $this->resolver()->for($event);
 
+        // One instance throughout, deliberately. Handing the channel a fresh
+        // model on every call is not what the stream does — it loads the
+        // event once and asks the same object for 45 seconds — and a test
+        // that re-reads is a test that cannot fail on staleness.
         foreach ([
             'win_lines' => ['ROW'],
             'win_condition' => 'FULL_HOUSE',
             'line_bonus' => 5,
         ] as $field => $value) {
-            $before = $channel->fingerprint($event->fresh());
+            $before = $channel->fingerprint($event);
 
             $card->update([$field => $value]);
 
-            $this->assertNotSame($before, $channel->fingerprint($event->fresh()), $field);
+            $this->assertNotSame($before, $channel->fingerprint($event), $field);
         }
     }
 
@@ -446,23 +452,63 @@ class EventStreamTest extends TestCase
             $channel = $this->resolver()->for($event);
             $before = $channel->fingerprint($event);
 
-            $event->update(['end_date' => Carbon::now()->addWeeks(3)]);
+            // Written past the instance the channel is holding, because that
+            // is the only way an edit ever reaches an open stream: the host
+            // saving is a different request with a different copy of the row.
+            Event::where('id', $event->id)->update(['end_date' => Carbon::now()->addWeeks(3)]);
 
             $this->assertNotSame($before, $channel->fingerprint($event), "{$type} ignored an edit to its own dates");
         }
     }
 
-    /** And the version travels with the payload, which is what the page acts on. */
+    /**
+     * The event travels with the payload, not just a version to go and ask
+     * about.
+     *
+     * It was a version at first, on the reasoning that the pages render these
+     * details in too many places to patch by hand. That cost a second request
+     * — and a second request is exactly what a page watching a stream cannot
+     * get cheaply: on the single-worker dev server it queues behind the very
+     * stream that triggered it, measured at 29 seconds from edit to screen.
+     * The details ride along now, and the page swaps one card for the other.
+     */
     #[Test]
-    public function every_payload_carries_the_event_version(): void
+    public function every_payload_carries_the_event_itself(): void
     {
         foreach (['SNAKES_LADDERS', 'BINGO', 'SKILL_RACE'] as $type) {
             $event = $this->event($type, $type === 'SKILL_RACE' ? ['metric' => 'mining'] : []);
+            $channel = $this->resolver()->for($event);
 
-            $payload = $this->resolver()->for($event)->payload($event);
+            $this->assertArrayHasKey('event_version', $channel->payload($event), "{$type} sends no event version");
 
-            $this->assertArrayHasKey('event_version', $payload, "{$type} sends no event version");
+            // Behind the instance the channel is holding, the way a host's
+            // save always reaches an open stream.
+            Event::where('id', $event->id)->update(['title' => 'Renamed by the host']);
+
+            $card = $channel->payload($event)['event'] ?? null;
+
+            $this->assertNotNull($card, "{$type} sends no event card");
+            $this->assertSame('Renamed by the host', $card['title'], "{$type} sent a stale card");
         }
+    }
+
+    /**
+     * The card the channel sends and the card the page was rendered with have
+     * to be the same shape, or the page swaps in something with holes in it.
+     * `metricKind` is the one that bit: the race page reads it to decide
+     * whether it is counting XP or kills, and it used to be added by the
+     * controller alone.
+     */
+    #[Test]
+    public function the_streamed_card_matches_the_rendered_one(): void
+    {
+        $event = $this->event('SKILL_RACE', ['metric' => 'mining']);
+
+        $rendered = EventCard::for($event);
+        $streamed = $this->resolver()->for($event)->payload($event)['event'];
+
+        $this->assertSame(array_keys($rendered), array_keys($streamed));
+        $this->assertSame('skill', $streamed['metricKind']);
     }
 
     /**
@@ -477,12 +523,70 @@ class EventStreamTest extends TestCase
         $channel = $this->resolver()->for($event);
 
         $before = $channel->fingerprint($event);
-        $event->touch();
+        Event::where('id', $event->id)->update(['updated_at' => Carbon::now()->addHour()]);
 
         $this->assertSame($before, $channel->fingerprint($event));
 
-        $event->update(['title' => 'A different name entirely']);
+        Event::where('id', $event->id)->update(['title' => 'A different name entirely']);
 
         $this->assertNotSame($before, $channel->fingerprint($event));
+    }
+
+    /**
+     * The bug this whole rule exists for.
+     *
+     * The stream loads the event when the connection opens and then asks the
+     * channel the same question every few seconds for the next 45. Read the
+     * model's own attributes and the answer is frozen at whenever that viewer
+     * connected — so an edit only surfaced when the connection turned over,
+     * three quarters of a minute later, which looked like the dev server
+     * being slow rather than the fingerprint being wrong.
+     *
+     * Every earlier test missed it by handing the channel a fresh instance,
+     * or by editing through the instance the channel was holding. This one
+     * does neither.
+     */
+    #[Test]
+    public function a_channel_reads_the_event_as_it_is_now_not_as_it_was_loaded(): void
+    {
+        foreach (['SNAKES_LADDERS', 'BINGO', 'SKILL_RACE'] as $type) {
+            $event = $this->event($type, $type === 'SKILL_RACE' ? ['metric' => 'mining'] : []);
+            $channel = $this->resolver()->for($event);
+
+            // The instance is warmed first, the way one poll warms it for the
+            // next: whatever it caches now is what a stale channel keeps.
+            $before = $channel->fingerprint($event);
+
+            Event::where('id', $event->id)->update(['title' => 'Renamed by the host']);
+
+            $this->assertNotSame($before, $channel->fingerprint($event), "{$type} answered from a stale model");
+        }
+    }
+
+    /** The same staleness one level down: the card's rules and the board's tiles. */
+    #[Test]
+    public function a_channel_reads_the_payload_as_it_is_now_too(): void
+    {
+        $bingo = $this->event('BINGO');
+        $card = $bingo->bingoCard()->create(['size' => 3, 'win_condition' => 'LINE', 'win_lines' => ['ROW'], 'line_bonus' => 0]);
+        app(BingoService::class)->ensureSquares($card);
+
+        $bingoChannel = $this->resolver()->for($bingo);
+        $bingoBefore = $bingoChannel->fingerprint($bingo);
+
+        BingoCard::where('id', $card->id)->update(['win_condition' => 'FULL_HOUSE']);
+
+        $this->assertNotSame($bingoBefore, $bingoChannel->fingerprint($bingo), 'the card was read from a stale relation');
+
+        $board = $this->event('SNAKES_LADDERS');
+        $boardRow = Board::create(['event_id' => $board->id, 'size' => 'SIZE_5X5']);
+        $tile = Tile::create(['board_id' => $boardRow->id, 'position' => 2, 'type' => 'LADDER', 'target_position' => 9]);
+
+        $boardChannel = $this->resolver()->for($board);
+        $boardBefore = $boardChannel->fingerprint($board);
+
+        Tile::where('id', $tile->id)->update(['target_position' => 14]);
+
+        $this->assertNotSame($boardBefore, $boardChannel->fingerprint($board), 'the board was read from a stale relation');
     }
 }

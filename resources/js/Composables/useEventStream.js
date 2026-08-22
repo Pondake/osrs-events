@@ -29,12 +29,9 @@ export function useEventStream({ url, event, onMessage }) {
     let staleTimer = null;
     let target = null;
 
-    // The event's own details — title, dates, access — as a hash. Every
-    // channel sends one, and none of them send the details themselves: the
-    // pages render them in too many places to patch by hand, so a change asks
-    // Inertia for fresh props instead. Held from the first message rather than
-    // from the page, because that first message is the state the server has
-    // now. See App\Events\Channels\Concerns\SignalsEventEdits.
+    // The event's own details as a hash. Every channel sends one, and sends
+    // the details alongside it — see the note on applyEventVersion for why
+    // the page no longer asks the server for them.
     let eventVersion = null;
 
     // The server ends every stream after ~45 seconds by design, so a
@@ -95,12 +92,23 @@ export function useEventStream({ url, event, onMessage }) {
     }
 
     /**
-     * Pull fresh props when the event itself was edited.
+     * Pick up props the stream cannot carry, when the event was edited.
      *
-     * `preserveScroll` and `preserveState` because this fires while somebody
-     * is reading the page: the host moved the end date, and jumping the
-     * reader to the top or closing whatever they had open would be a far
-     * bigger interruption than the change itself.
+     * The event's own details ride along in the payload, so the page applies
+     * those itself and this is only for the rest — whether the viewer may
+     * edit it, whose team they are on, a host's review queue. Those are per
+     * viewer, and a public channel shared by everyone watching can never
+     * carry them.
+     *
+     * This costs a request, and on a single-worker dev server that request
+     * queues behind the very stream that triggered it — measured at 29
+     * seconds. Which is exactly why the details themselves are no longer
+     * fetched this way: what the page shows is already in hand by the time
+     * this fires.
+     *
+     * `preserveScroll` and `preserveState` because it fires while somebody is
+     * reading: jumping them to the top or closing what they had open would be
+     * a far bigger interruption than the change itself.
      */
     function applyEventVersion(version) {
         if (!version) return;

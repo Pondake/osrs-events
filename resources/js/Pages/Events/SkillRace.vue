@@ -1,11 +1,11 @@
 <template>
-    <Head :title="event.title" />
+    <Head :title="liveEvent.title" />
 
     <u-main>
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="event" :can-edit="canEdit">
+                    <event-type-heading :event="liveEvent" :can-edit="canEdit">
                         <template #meta>
                             <!-- The skill's own icon, beside the line that
                                  names it. A race is chosen by its skill and
@@ -54,7 +54,7 @@
                              sample rather than the roster. -->
                         <u-button
                             v-if="rows.length > PARTICIPANTS_WORTH_A_LINK"
-                            :href="`/events/${event.id}/participants`"
+                            :href="`/events/${liveEvent.id}/participants`"
                             color="neutral"
                             variant="outline"
                             size="sm"
@@ -68,7 +68,7 @@
                              race's own words on it. -->
                         <join-event-button
                             v-if="isParticipant || status !== 'ended'"
-                            :event-id="event.id"
+                            :event-id="liveEvent.id"
                             :joined="isParticipant"
                             icon="i-lucide-swords"
                             :join-label="$t('events.enter')"
@@ -226,7 +226,7 @@
         <!-- Async + client-only for the same reason BoardShow does it: the
              modal reaches @nuxt/ui composables that break the SSR build. -->
         <client-only>
-            <board-settings-modal v-if="canEdit" v-model:open="showSettingsModal" :board="event" />
+            <board-settings-modal v-if="canEdit" v-model:open="showSettingsModal" :board="liveEvent" />
         </client-only>
 </template>
 
@@ -256,6 +256,17 @@ const props = defineProps({
     canEdit: { type: Boolean, default: false },
 });
 
+/**
+ * The event as it is now.
+ *
+ * The prop for the first paint, then whatever the channel sends. The server
+ * builds both from one place (App\Support\EventCard) so the page cannot tell
+ * which one it is looking at — which is the point: a host moving the end date
+ * has to reach everyone watching, and it reached nobody.
+ */
+const liveEvent = ref({ ...props.event });
+watch(() => props.event, (value) => (liveEvent.value = { ...value }));
+
 // Seeded from the server render so the table is complete before any
 // JavaScript runs; the stream takes over from here.
 const rows = ref([...props.standings]);
@@ -273,27 +284,27 @@ watch(() => props.standings, (value) => (rows.value = [...value]));
 // A drop race counts boss kills, a skill race counts XP. Same table, same
 // ranking, different noun — so the copy is chosen from the kind rather than
 // the page assuming everything is a skill.
-const isBossRace = computed(() => props.event.metricKind === 'boss');
+const isBossRace = computed(() => liveEvent.value.metricKind === 'boss');
 
 
-const metricName = computed(() => metricLabel(props.event.metric, props.event.metricKind));
+const metricName = computed(() => metricLabel(liveEvent.value.metric, liveEvent.value.metricKind));
 
 // Above this many entrants the standings stop being the roster and the
 // participants page earns its link back.
 const PARTICIPANTS_WORTH_A_LINK = 10;
 
-const rankedBy = computed(() => rankedByLabel(props.event.metric, props.event.metricKind));
+const rankedBy = computed(() => rankedByLabel(liveEvent.value.metric, liveEvent.value.metricKind));
 
 // Null for a boss race, which has no icon to draw — see Support/metrics.js.
-const metricIcon = computed(() => metricIconUrl(props.event.metric, props.event.metricKind));
+const metricIcon = computed(() => metricIconUrl(liveEvent.value.metric, liveEvent.value.metricKind));
 
-const status = computed(() => boardEventStatus(props.event.start_date, props.event.end_date));
+const status = computed(() => boardEventStatus(liveEvent.value.start_date, liveEvent.value.end_date));
 
 
 const dateRange = computed(() => {
-    if (!props.event.start_date && !props.event.end_date) return trans('boards.no_dates');
+    if (!liveEvent.value.start_date && !liveEvent.value.end_date) return trans('boards.no_dates');
 
-    return `${formatDate(props.event.start_date)} – ${formatDate(props.event.end_date)}`;
+    return `${formatDate(liveEvent.value.start_date)} – ${formatDate(liveEvent.value.end_date)}`;
 });
 
 // Grouped thousands: XP gains run into the millions and an unbroken run of
@@ -312,9 +323,15 @@ function goToProfile() {
 const { streaming, stale } = useEventStream({
     // A finished race's numbers cannot change. Holding a PHP worker open to
     // watch them not change is the one cost this feature has, so don't.
-    url: () => (status.value === 'ended' ? null : `/events/${props.event.id}/stream`),
+    url: () => (status.value === 'ended' ? null : `/events/${liveEvent.value.id}/stream`),
     event: 'standings',
-    onMessage: (payload) => (rows.value = payload.standings),
+    onMessage: (payload) => {
+        rows.value = payload.standings;
+
+        // Merged, not replaced, so a field the channel does not know about
+        // survives the first push.
+        if (payload.event) liveEvent.value = { ...liveEvent.value, ...payload.event };
+    },
 });
 
 </script>
