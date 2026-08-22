@@ -103,15 +103,18 @@
                     <u-form-field
                         :label="$t('admin.site_event_duration')"
                         :description="$t('admin.site_event_duration_desc')"
-                        :error="form.errors.default_event_duration_days"
+                        :error="form.errors.default_event_duration"
                     >
                         <u-input
-                            v-model.number="form.default_event_duration_days"
-                            type="number"
-                            min="1"
-                            max="365"
-                            class="w-full"
+                            v-model="form.default_event_duration"
+                            class="w-full sm:max-w-xs"
+                            placeholder="2w"
                         />
+                        <!-- Says back what was typed, in words. A field that
+                             takes "1m" should show that it understood a
+                             month, not wait for somebody to create an event
+                             and count the days. -->
+                        <p v-if="durationReads" class="text-xs text-muted mt-1">{{ durationReads }}</p>
                     </u-form-field>
 
                     <u-form-field :label="$t('admin.dice_roll_limit')" :error="form.errors.default_dice_roll_limit">
@@ -208,6 +211,7 @@ import AdminLayout from '@/Components/AdminLayout.vue';
 import RichText from '@/Components/RichText.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
 import { announcementTypeOptions, styleFor } from '@/Support/announcement';
+import { describeDuration } from '@/Support/duration';
 
 const props = defineProps({
     settings: { type: Object, required: true },
@@ -217,7 +221,7 @@ const form = useForm({
     registration_open: props.settings.registration_open,
     default_board_size: props.settings.default_board_size,
     default_dice_roll_limit: props.settings.default_dice_roll_limit,
-    default_event_duration_days: props.settings.default_event_duration_days ?? 14,
+    default_event_duration: props.settings.default_event_duration ?? '2w',
     kofi_url: props.settings.kofi_url ?? '',
     announcement: props.settings.announcement ?? '',
     announcement_type: props.settings.announcement_type ?? 'info',
@@ -226,6 +230,10 @@ const form = useForm({
     // value is a bcrypt hash) and reads a blank submission as "unchanged".
     site_lock_password: '',
 });
+
+// Reads the short form back in words, so "1m" visibly means a month rather
+// than being taken on trust until somebody counts the days on a real event.
+const durationReads = computed(() => describeDuration(form.default_event_duration));
 
 const sections = computed(() => [
     { key: 'access', icon: 'i-lucide-door-open', label: trans('admin.site_section_access') },

@@ -1828,7 +1828,8 @@ Three of those were real bugs rather than polish:
   it on the approved square too ("host said: nice one") or stop asking for it
   when approving. Currently it is quietly discarded, which is the one option
   that is definitely wrong. **Done 2026-08-22** — same duplicate.
-- [ ] **Say WHY an admin can see a team.** Team visibility is now scoped, but
+- [x] ~~**Say WHY an admin can see a team.**~~ — done 2026-08-22. Team
+  visibility is now scoped, but
   an admin still sees everything with no indication which teams are theirs,
   which come from a shared Discord server, and which they can only see
   because they are an admin. Group the teams page under those three headings
@@ -1846,7 +1847,8 @@ Three of those were real bugs rather than polish:
   and no names, while anyone in the event (including via an assigned team)
   and anyone running it sees everything. Seven tests in
   `tests/Feature/ParticipantsTest.php`.
-- [ ] **Accept `7d` / `1w` / `1m` in the default event length.** It is a
+- [x] ~~**Accept `7d` / `1w` / `1m` in the default event length.**~~ — done
+  2026-08-22. It is a
   plain day count today. Parsing short forms would read better, and a month
   should mean a calendar month (28-31 days) rather than a fixed 30 — which
   means storing the unit, not just the number.
@@ -1941,7 +1943,8 @@ credentials.
   whatever the verdict, and only a rejection shows it. Either surface it on
   the approved square too, or stop asking for it when approving.
   **Done 2026-08-22** — shown whatever the verdict.
-- [ ] **Accept `7d` / `1w` / `1m` in the default event length**, with a month
+- [x] ~~**Accept `7d` / `1w` / `1m` in the default event length**~~ — done
+  2026-08-22, with a month
   meaning a calendar month rather than a fixed 30 — which means storing the
   unit, not just the number.
 - [ ] **Use Nuxt UI's date range picker for the event window**, and tone down
@@ -2619,6 +2622,41 @@ app. The `orderBy` also had to come out of `scopeSuggestable`: applied inside
 the scope it ran first and silently beat the caller's own ordering.
 
 478 backend tests, 131 frontend.
+
+
+### Two small ones — 2026-08-22
+
+**The event length takes `10d`, `2w`, `1m`.** A bare number still reads as
+days, so an existing setting keeps working — and the migration carries the old
+`default_event_duration_days` row across rather than quietly resetting
+somebody's deliberate 30 days to the default.
+
+The unit is stored, not converted. That is the whole point: an event starting
+31 January and running "1m" ends on 28 February, and only the unit can tell
+you that. Flattening it to 30 days at save time throws away the one thing that
+makes the answer right, and is wrong by up to three days depending on the
+month.
+
+`app/Support/EventDuration.php` and `resources/js/Support/duration.js` are the
+same calendar in two languages — the form computes the end date before
+anything is submitted and the server computes it from the same setting — so
+they are tested against the same awkward dates on purpose: 31 January, a leap
+year, and a year end. JavaScript needs the extra care: `setMonth` on 31
+January rolls into 3 March, which is not what anybody means by a month.
+
+Worth remembering: **a migration that writes a setting has to clear the
+settings cache itself.** `Setting::set()` does it; the query builder does not,
+so the row landed and the app kept serving the old value. Caught by reading it
+back and getting the default.
+
+**The teams page says why each team is on it.** Grouped under "Your teams",
+"From your Discord servers" and "Other teams" — the last one explaining that
+an admin sees them to moderate, not because they are part of them. The reason
+is decided server-side, because the client has no business knowing which
+Discord servers somebody is in, and the strongest claim wins: a team that is
+both yours and on your server shows as yours.
+
+492 backend tests, 145 frontend.
 
 
 ## Content review before launch (step 8)

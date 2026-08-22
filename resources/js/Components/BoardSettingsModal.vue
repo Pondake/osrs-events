@@ -248,6 +248,7 @@ import TeamFields from '@/Components/BoardSettings/TeamFields.vue';
 import TemplateFields from '@/Components/BoardSettings/TemplateFields.vue';
 import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
 import { blueprintPatch, decidesType, layoutFits } from '@/Support/blueprint';
+import { DEFAULT_DURATION, addDuration } from '@/Support/duration';
 
 const { user: currentUser } = useAuth();
 
@@ -293,13 +294,16 @@ function isoDate(date) {
 
 function defaultDates() {
     const start = new Date();
-    const end = new Date();
 
     // How long a new event is pre-filled to run for, from the admin site
     // settings — a clan that always runs weeklies should say so once rather
-    // than correct the same field on every event. Fourteen is the fallback
-    // for an older cached page with no such prop.
-    end.setDate(end.getDate() + (site().defaultEventDurationDays ?? 14));
+    // than correct the same field on every event.
+    //
+    // A duration, not a day count: "1m" from 31 January has to land on
+    // 28 February, and only the unit can tell you that. See
+    // Support/duration.js, and app/Support/EventDuration.php for the copy
+    // the server computes from.
+    const end = addDuration(start, site().defaultEventDuration ?? DEFAULT_DURATION);
 
     return { start_date: isoDate(start), end_date: isoDate(end) };
 }

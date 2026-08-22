@@ -223,6 +223,54 @@ class TeamOwnershipTest extends TestCase
         $this->assertCount(1, $this->actingAs($member)->get('/teams')->viewData('page')['props']['teams']);
     }
 
+    /**
+     * The list says WHY each team is on it.
+     *
+     * Visibility was scoped, but the page said nothing about which rule let
+     * each team through — so an admin saw everything with no way to tell
+     * their own teams from a clan mate's from one they can only see because
+     * they are an admin. Decided server-side, because the client has no
+     * business knowing which Discord servers somebody is in.
+     */
+    #[Test]
+    public function each_team_says_why_it_is_visible(): void
+    {
+        $admin = User::factory()->create(['osrs_username' => 'TheAdmin']);
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+        UserGuild::create(['user_id' => $admin->id, 'guild_id' => '111', 'guild_name' => 'My Clan']);
+
+        $mine = Team::create(['name' => 'Mine']);
+        TeamMember::create(['team_id' => $mine->id, 'user_id' => $admin->id, 'role' => TeamMember::OWNER]);
+
+        Team::create(['name' => 'From my server', 'guild_id' => '111', 'guild_name' => 'My Clan']);
+        Team::create(['name' => 'Somebody elses', 'guild_id' => '999', 'guild_name' => 'Other Clan']);
+
+        $teams = collect($this->actingAs($admin)->get('/teams')->viewData('page')['props']['teams'])
+            ->keyBy('name');
+
+        $this->assertSame('member', $teams['Mine']['reason']);
+        $this->assertSame('guild', $teams['From my server']['reason']);
+        $this->assertSame('admin', $teams['Somebody elses']['reason']);
+    }
+
+    /**
+     * A team can qualify under more than one rule at once — your own team on
+     * your own server — and the strongest claim is the one worth showing.
+     */
+    #[Test]
+    public function membership_outranks_the_server_it_belongs_to(): void
+    {
+        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        UserGuild::create(['user_id' => $user->id, 'guild_id' => '111', 'guild_name' => 'My Clan']);
+
+        $team = Team::create(['name' => 'Both', 'guild_id' => '111', 'guild_name' => 'My Clan']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $user->id, 'role' => TeamMember::MEMBER]);
+
+        $teams = $this->actingAs($user)->get('/teams')->viewData('page')['props']['teams'];
+
+        $this->assertSame('member', collect($teams)->firstWhere('name', 'Both')['reason']);
+    }
+
     #[Test]
     public function an_admin_still_manages_every_team(): void
     {

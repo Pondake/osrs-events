@@ -106,7 +106,7 @@ class SettingsCacheTest extends TestCase
             'registration_open',
             'default_board_size',
             'default_dice_roll_limit',
-            'default_event_duration_days',
+            'default_event_duration',
             'announcement_type',
             'kofi_url',
             'site_lock_enabled',

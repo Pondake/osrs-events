@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Setting;
+use App\Support\EventDuration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,10 +54,16 @@ class SiteSettingsController extends Controller
             // nullable = "unlimited", matching the boards table's own
             // dice_roll_limit convention rather than inventing a sentinel.
             'default_dice_roll_limit' => ['nullable', 'integer', 'min:1', 'max:99'],
-            // Capped at a year: this pre-fills a date field, and a default
-            // that lands an event's end date in 2031 is a typo nobody
-            // notices until the standings never close.
-            'default_event_duration_days' => ['required', 'integer', 'min:1', 'max:365'],
+            // A duration, not a day count: `10d`, `2w`, `1m`, or a bare
+            // number read as days. Capped inside the rule at a year in each
+            // unit — this pre-fills a date field, and a default that lands an
+            // event's end date in 2031 is a typo nobody notices until the
+            // standings never close.
+            'default_event_duration' => ['required', 'string', function ($attribute, $value, $fail) {
+                if (! EventDuration::isValid($value)) {
+                    $fail(trans('validation.event_duration'));
+                }
+            }],
             'announcement' => ['nullable', 'string', 'max:280'],
             'announcement_type' => ['required', Rule::in(Setting::ANNOUNCEMENT_TYPES)],
             // http/https only, matching what the page renderer's safeHref()

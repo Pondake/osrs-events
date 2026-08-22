@@ -23,8 +23,24 @@
                     <u-button color="primary" icon="i-lucide-plus" :label="$t('teams.create_team')" @click="openCreate" />
                 </div>
 
-                <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <u-card v-for="team in teams" :key="team.id">
+                <!-- Grouped by WHY each team is on the page. The list used
+                     to be one flat grid, which for an admin meant every team
+                     on the site with nothing saying which were theirs, which
+                     came from a shared Discord server, and which they could
+                     only see because they are an admin.
+                     Useful to everyone, not only admins — "yours" and "your
+                     server's" are different kinds of team, and most people
+                     only ever see the first two groups. -->
+                <div v-else class="space-y-10">
+                    <section v-for="group in groups" :key="group.reason">
+                        <div class="flex items-baseline gap-3 mb-4">
+                            <h2 class="text-lg font-semibold text-highlighted">{{ group.title }}</h2>
+                            <span class="text-sm text-muted">{{ group.teams.length }}</span>
+                        </div>
+                        <p class="text-sm text-muted -mt-3 mb-4">{{ group.description }}</p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <u-card v-for="team in group.teams" :key="team.id">
                         <template #header>
                             <div class="flex items-center gap-3">
                                 <u-avatar :src="team.icon_url ?? undefined" :alt="team.name" size="sm" />
@@ -77,7 +93,9 @@
                                 <u-button v-if="team.canDelete" size="xs" color="error" variant="outline" :label="$t('common.delete')" icon="i-lucide-trash-2" @click="destroyTeam(team)" />
                             </div>
                         </template>
-                    </u-card>
+                            </u-card>
+                        </div>
+                    </section>
                 </div>
             </u-container>
         </u-page>
@@ -110,6 +128,26 @@ const props = defineProps({
     // you could do nothing with.
     teams: { type: Array, required: true },
 });
+
+/**
+ * The three ways a team can end up on this page, in order of how strong the
+ * claim is.
+ *
+ * `reason` is decided server-side (TeamController::visibilityReason) because
+ * the client has no business knowing which Discord servers somebody is in.
+ * Empty groups are dropped: most people only ever have the first two, and a
+ * heading over nothing reads as a bug.
+ */
+const GROUP_ORDER = ['member', 'guild', 'admin'];
+
+const groups = computed(() => GROUP_ORDER
+    .map((reason) => ({
+        reason,
+        title: trans(`teams.group_${reason}`),
+        description: trans(`teams.group_${reason}_desc`),
+        teams: props.teams.filter((team) => team.reason === reason),
+    }))
+    .filter((group) => group.teams.length > 0));
 
 const showSettingsModal = ref(false);
 const editingTeam = ref(null);

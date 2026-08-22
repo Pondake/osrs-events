@@ -42,7 +42,12 @@ class Setting extends Model
         // only decides what they start at. Clans settle into a rhythm — a
         // week, a fortnight, a month — and this is where that gets said once
         // instead of being corrected on every event.
-        'default_event_duration_days' => 14,
+        //
+        // A short form — `10d`, `2w`, `1m` — parsed by Support\EventDuration.
+        // A bare number still reads as days, so a row left over from when
+        // this was an integer keeps working. The unit is kept rather than
+        // converted because a month has to mean a calendar month.
+        'default_event_duration' => '2w',
         'announcement' => null,
         'announcement_type' => 'info',
         // Every "support" button on the site points straight here. A default

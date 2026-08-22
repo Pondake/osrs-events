@@ -27,6 +27,9 @@ vi.mock('laravel-vue-i18n', () => ({
         (out, [name, value]) => out.replace(`:${name}`, String(value)),
         key,
     ))),
+    // Mirrors trans(), plus the count so a test can tell singular from
+    // plural without reproducing Laravel's pluralisation rules.
+    transChoice: vi.fn((key, count) => `t:${key}:${count}`),
     wTrans: vi.fn((key) => key),
     loadLanguageAsync: () => Promise.resolve(),
 }));
