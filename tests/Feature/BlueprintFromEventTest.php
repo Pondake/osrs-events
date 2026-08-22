@@ -241,6 +241,45 @@ class BlueprintFromEventTest extends TestCase
         $this->assertSame('Host', $mine['author']);
     }
 
+    /**
+     * Three sets, and this is the one an admin curates.
+     *
+     * A blueprint made in /admin/blueprints has no creator and no server, so
+     * it lands in the same bucket as the seeded formats: visible to everyone.
+     * That is what makes the admin page the way to publish a format for the
+     * whole site, as opposed to saving one from an event, which is yours.
+     */
+    #[Test]
+    public function a_format_made_in_the_admin_area_is_public_to_everyone(): void
+    {
+        $admin = User::factory()->create(['osrs_username' => 'TheAdmin']);
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+
+        $this->actingAs($admin)->post('/admin/blueprints', [
+            'title' => 'House format',
+            'type' => 'BINGO',
+            'is_active' => true,
+        ])->assertRedirect();
+
+        $blueprint = EventBlueprint::where('title', 'House format')->firstOrFail();
+
+        $this->assertNull($blueprint->created_by);
+        $this->assertNull($blueprint->guild_id);
+
+        // And a stranger, in no shared server, is offered it.
+        $stranger = User::factory()->create(['osrs_username' => 'Stranger']);
+        $role = Role::findOrCreate('EDITOR', 'web');
+        $role->givePermissionTo(Permission::findOrCreate('canCreateBoards', 'web'));
+        $stranger->assignRole($role);
+
+        $titles = array_column(
+            $this->actingAs($stranger)->getJson('/event-blueprints')->json('blueprints'),
+            'title',
+        );
+
+        $this->assertContains('House format', $titles);
+    }
+
     /** The set that ships with the app belongs to nobody and is marked so. */
     #[Test]
     public function the_seeded_formats_are_marked_as_global(): void

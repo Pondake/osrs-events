@@ -1,5 +1,11 @@
 <template>
     <u-app>
+        <!-- The torch-lit background, on the pages people read rather than
+             the ones they work in. One fixed layer behind everything (see
+             .landing-chrome in app.css) — no wrapper, no effect on layout,
+             and it cannot take a click. -->
+        <div v-if="isLanding" class="landing-chrome" aria-hidden="true" />
+
         <app-header v-if="showSiteChrome" />
 
         <!-- Site-wide announcement, set in admin site settings. Rendered
@@ -61,7 +67,12 @@
             </div>
         </div>
 
-        <component :is="page" v-bind="pageProps" />
+        <!-- display:contents, so the wrapper is a hook for the panel
+             styling and nothing else — it generates no box and the page
+             lays out exactly as it did without it. -->
+        <div :class="isLanding ? 'contents landing-page' : 'contents'">
+            <component :is="page" v-bind="pageProps" />
+        </div>
         <app-footer v-if="showSiteChrome" />
 
         <!-- Lives here rather than on any one page because it has to be able
@@ -83,6 +94,7 @@ import AppFooter from '@/Components/AppFooter.vue';
 import RichText from '@/Components/RichText.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import { styleFor } from '@/Support/announcement';
+import { isLandingPage } from '@/Support/landing';
 
 const OnboardingModal = defineAsyncComponent(() => import('@/Components/OnboardingModal.vue'));
 
@@ -98,7 +110,7 @@ const OnboardingModal = defineAsyncComponent(() => import('@/Components/Onboardi
 // Exactly this happened during development: confirmed by curling SSR output
 // (empty <div id="app">) and a "Vue received a Component that was made a
 // reactive object" warning in the SSR process's own log.
-defineProps({
+const rootProps = defineProps({
     page: Object,
     pageProps: Object,
 });
@@ -119,7 +131,36 @@ defineProps({
 // during SSR.
 let toast;
 
-const inertiaPage = usePage();
+const sharedPage = usePage();
+
+/**
+ * The page being rendered — this request's, not the last one's.
+ *
+ * `usePage()` reads a module-scoped store that Inertia's own App component
+ * fills in during ITS setup. AppRoot wraps App, so AppRoot's setup runs
+ * first — and on the server, where the app is built fresh per request but the
+ * store is module state that survives between them, that means AppRoot reads
+ * the PREVIOUS request's page.
+ *
+ * Measured rather than assumed: requesting `/` and `/events` alternately, the
+ * server-rendered chrome lagged exactly one request behind every time. Only
+ * what AppRoot itself renders server-side is affected — nothing user-specific
+ * is server-rendered (the header's menus are all client-only), so this was a
+ * wrong announcement or a missing background rather than one visitor's page
+ * served to another. Checked that too.
+ *
+ * `initialPage` is handed to setup() per request and is always this one. It
+ * is also correct on the client's first render, which keeps hydration
+ * matching; after that the store is authoritative, because AppRoot persists
+ * across client-side visits while initialPage never changes again.
+ */
+const hydrated = ref(false);
+
+onMounted(() => {
+    hydrated.value = true;
+});
+
+const inertiaPage = computed(() => (hydrated.value ? sharedPage : rootProps.pageProps?.initialPage ?? sharedPage));
 
 function raise(message, id, color) {
     if (message) toast?.add({ id, title: message, color });
@@ -141,8 +182,8 @@ onMounted(async () => {
     // login redirects to /login with an explanation, and the explanation was
     // silently dropped, leaving the user bounced to a login page for no
     // stated reason.
-    raise(inertiaPage.props?.flash?.boardSave, 'board-save', 'success');
-    raise(inertiaPage.props?.flash?.boardSaveError, 'board-save-error', 'error');
+    raise(inertiaPage.value.props?.flash?.boardSave, 'board-save', 'success');
+    raise(inertiaPage.value.props?.flash?.boardSaveError, 'board-save-error', 'error');
 });
 
 // Optional-chained on `props` itself, not just `flash` — props is briefly
@@ -151,12 +192,12 @@ onMounted(async () => {
 // "Roll dice" threw "Cannot read properties of undefined (reading 'flash')"
 // from exactly these two getters).
 watch(
-    () => inertiaPage.props?.flash?.boardSave,
+    () => inertiaPage.value.props?.flash?.boardSave,
     (message) => raise(message, 'board-save', 'success'),
 );
 
 watch(
-    () => inertiaPage.props?.flash?.boardSaveError,
+    () => inertiaPage.value.props?.flash?.boardSaveError,
     (message) => raise(message, 'board-save-error', 'error'),
 );
 
@@ -192,12 +233,14 @@ const CHROMELESS_PAGES = ['SiteLock'];
  */
 const AUTH_PAGES = ['Auth/Login', 'Auth/Register', 'Auth/ForgotPassword', 'Auth/ResetPassword'];
 
+const isLanding = computed(() => isLandingPage(inertiaPage.value.component));
+
 const showSiteChrome = computed(() => {
-    const component = String(inertiaPage.component ?? '');
+    const component = String(inertiaPage.value.component ?? '');
 
     if (component.startsWith('Admin/') || CHROMELESS_PAGES.includes(component)) return false;
 
-    return !(inertiaPage.props?.site?.locked && AUTH_PAGES.includes(component));
+    return !(inertiaPage.value.props?.site?.locked && AUTH_PAGES.includes(component));
 });
 
 // Pages that are themselves asking the user for something — the OSRS username
@@ -207,10 +250,10 @@ const showSiteChrome = computed(() => {
 // (so "Skip for now" and the join-a-board step bounced off it). The gate wins,
 // and the unverified-name notice stays quiet here too — it would be nagging
 // about the very field on screen.
-const onAuthPage = computed(() => String(inertiaPage.component ?? '').startsWith('Auth/'));
+const onAuthPage = computed(() => String(inertiaPage.value.component ?? '').startsWith('Auth/'));
 
-const announcement = computed(() => inertiaPage.props?.site?.announcement ?? null);
-const bannerStyle = computed(() => styleFor(inertiaPage.props?.site?.announcementType));
+const announcement = computed(() => inertiaPage.value.props?.site?.announcement ?? null);
+const bannerStyle = computed(() => styleFor(inertiaPage.value.props?.site?.announcementType));
 
 // Written out per colour rather than built as `bg-${color}/10`: Tailwind
 // scans source text for class names, so an interpolated one is never
@@ -238,12 +281,12 @@ const bannerIconClass = computed(() => BANNER_ICON[bannerStyle.value.color]);
 // confirm. Not dismissible: the consequence of ignoring it is scoring nothing
 // in every race, and a one-click dismiss makes that permanent and silent.
 // Hidden on the gate page itself, where the user is already being asked.
-const osrsUsername = computed(() => inertiaPage.props?.auth?.user?.osrsUsername ?? null);
+const osrsUsername = computed(() => inertiaPage.value.props?.auth?.user?.osrsUsername ?? null);
 const showOsrsNotice = computed(
     () => showSiteChrome.value
         && ! onAuthPage.value
         && !! osrsUsername.value
-        && inertiaPage.props?.auth?.user?.osrsVerified === false,
+        && inertiaPage.value.props?.auth?.user?.osrsVerified === false,
 );
 
 const rechecking = ref(false);
@@ -260,7 +303,7 @@ function recheckOsrs() {
 const showOnboarding = ref(false);
 
 const needsOnboarding = computed(
-    () => (inertiaPage.props?.auth?.user?.needsOnboarding ?? false) && ! onAuthPage.value,
+    () => (inertiaPage.value.props?.auth?.user?.needsOnboarding ?? false) && ! onAuthPage.value,
 );
 
 /**

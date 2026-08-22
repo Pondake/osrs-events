@@ -2325,6 +2325,68 @@ is left to do.
 438 backend tests, 112 frontend.
 
 
+### Branding on the pages, plainness in the app — 2026-08-22
+
+The coming-soon page's look, applied to the pages people READ and deliberately
+not to the ones they work in. Landing pages, the guides and every CMS page get
+it; events, teams, settings and admin stay flat. The list lives in
+`Support/landing.js` and is keyed on the Inertia component name.
+
+Two techniques, both lifted from that page rather than re-picked by eye: two
+soft pools of gold light behind the near-black base, and a 4px pixel grid over
+everything at the edge of visible. Cards on those pages get the OSRS interface
+panel — a tan bevel lit from the top-left, a hard dark seat under it — built
+from box-shadows, so it scales and costs no asset. Light mode gets the same
+lighting at a fraction of the strength; at dark-mode opacity on a pale
+background it reads as a stain.
+
+The whole thing is **one fixed layer at `z-index: -1`** plus a
+`display: contents` wrapper. No page component knows about it and nothing
+about the layout changes.
+
+### The lock lets the shop window stay lit
+
+`EnsureSiteUnlocked` now passes the public pages through: the landing pages,
+the guides, the CMS pages and the sitemap. The lock exists to keep the APP
+unannounced, not to hide what a search engine indexes.
+
+**Allowed by route name, not by path.** `pages.show` is the CMS catch-all
+`/{page}`, which matches any single segment — as a path pattern it would have
+let `/events` and `/teams` through with it. There is a test that says exactly
+that.
+
+The header trims itself while the door is shut, to the guides and About. It
+keys off the `site.locked` prop, which already means "shut for THIS visitor" —
+false for an admin and false for anyone who has typed the shared password. An
+extra `isAdmin` check there would have got the second of those wrong.
+
+### Found on the way: SSR rendered the page before last
+
+`usePage()` reads a module-scoped store that Inertia's own App component fills
+in during ITS setup. AppRoot wraps App, so AppRoot's setup runs first — and on
+the server, where the app is rebuilt per request but the store is module state
+that survives between them, **AppRoot was reading the previous request's
+page.**
+
+Measured, not guessed: requesting `/` and `/events` alternately, the
+server-rendered chrome lagged exactly one request behind, every time.
+
+It predates all of this and it affected the announcement banner and the
+chromeless-page rules as well as the new background. The obvious worry was
+worse — one visitor's page served to another — so that was checked
+specifically: nothing user-specific is server-rendered here (the header's
+menus are all `<client-only>`), so the damage was a wrong announcement and a
+missing background, not a leak.
+
+Fixed by reading `initialPage`, which setup() is handed per request, until the
+component has mounted. That is also correct on the client's first render, so
+hydration still matches; after that the store is authoritative, because
+AppRoot persists across client-side visits while `initialPage` never changes
+again.
+
+444 backend tests, 122 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,

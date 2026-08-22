@@ -185,3 +185,98 @@ h3 {
 html:not(.dark) .text-primary {
     color: var(--color-amber-700);
 }
+
+/* ---------------------------------------------------------------------------
+   Landing chrome — the torch-lit look from the coming-soon page, applied to
+   the pages people READ and not to the ones they work in.
+
+   The split is deliberate: the landing and content pages are where somebody
+   decides whether to bother, and atmosphere earns its place there. An event
+   page is a form somebody has opened forty times, and decoration is something
+   to look past on the way to it. Support/landing.js holds the list.
+
+   Two techniques, both lifted from that page rather than re-picked by eye:
+   soft pools of gold light behind a near-black base, and a 4px pixel grid
+   over everything at the edge of visible. The mark is a pixel face and the
+   game is a pixel game; the grid is the quietest possible nod to that.
+   --------------------------------------------------------------------------- */
+
+/* One fixed layer, painted above the canvas background and below every bit of
+   content — which is what `z-index: -1` inside the root stacking context
+   means. No wrapper, no effect on layout, and pointer-events:none so it can
+   never eat a click. */
+.landing-chrome {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+
+    /* The light a torch throws on a stone wall, not a flat gradient. Two
+       pools, off-centre and different sizes, so the eye reads it as lighting
+       rather than as a shape. */
+    background-image:
+        radial-gradient(60rem 40rem at 15% -10%, rgba(224, 118, 47, .13), transparent 60%),
+        radial-gradient(50rem 38rem at 88% 8%, rgba(212, 163, 62, .11), transparent 62%);
+}
+
+/* Light mode gets the same lighting at a fraction of the strength. The pools
+   are what makes the page feel lit; at dark-mode opacity on a pale background
+   they read as a stain instead. */
+html:not(.dark) .landing-chrome {
+    background-image:
+        radial-gradient(60rem 40rem at 15% -10%, rgba(224, 118, 47, .07), transparent 60%),
+        radial-gradient(50rem 38rem at 88% 8%, rgba(212, 163, 62, .06), transparent 62%);
+}
+
+.landing-chrome::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: .5;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, .022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .022) 1px, transparent 1px);
+    background-size: 4px 4px;
+}
+
+/* Dark lines on a light page, or the grid is invisible. */
+html:not(.dark) .landing-chrome::after {
+    opacity: .35;
+    background-image:
+        linear-gradient(rgba(28, 25, 25, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(28, 25, 25, .035) 1px, transparent 1px);
+}
+
+/* An OSRS interface panel: a tan bevel lit from the top-left, a hard dark
+   seat under it, and the faintest warm wash across the top. Box-shadows
+   rather than a border-image, so it scales with the panel and costs no asset.
+
+   Applied to the cards on landing pages only, and by descendant selector so
+   no page component has to know about it. `:where()` keeps the specificity at
+   zero, so anything a component sets on its own card still wins. */
+.landing-page :where(.rounded-xl, .rounded-lg):where([class*='ring-default'], [class*='border-default']) {
+    background-image: linear-gradient(180deg, rgba(255, 207, 92, .05), transparent 45%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 207, 92, .16),
+        inset 0 0 0 1px rgba(0, 0, 0, .35),
+        0 1px 0 rgba(255, 255, 255, .03),
+        0 24px 60px -20px rgba(0, 0, 0, .8);
+}
+
+/* The seat and the inner dark line are lighting for a dark panel; on a light
+   one they read as grime. Keep the warm wash and the lift, drop the rest. */
+html:not(.dark) .landing-page :where(.rounded-xl, .rounded-lg):where([class*='ring-default'], [class*='border-default']) {
+    background-image: linear-gradient(180deg, rgba(212, 163, 62, .06), transparent 45%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .7),
+        0 18px 40px -24px rgba(28, 25, 25, .35);
+}
+
+/* Somebody who would rather not have any of it. The grid is static and the
+   pools do not move, so there is nothing to stop — but a person who has asked
+   for less is asking for less than this too. */
+@media (prefers-reduced-motion: reduce) {
+    .landing-chrome::after {
+        opacity: .25;
+    }
+}

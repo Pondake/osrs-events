@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Page;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
@@ -37,15 +38,18 @@ class SiteLockTest extends TestCase
     }
 
     #[Test]
-    public function a_locked_site_sends_a_visitor_to_the_lock_screen(): void
+    public function a_locked_site_sends_a_visitor_to_the_app_lock_screen(): void
     {
         $this->lock();
 
-        $this->get('/')->assertRedirect('/locked');
+        // `/events` and not `/teams`: Laravel sorts the middleware stack by
+        // its own priority list and `auth` outranks anything appended to the
+        // web group, so an auth-gated route answers 302-to-login before this
+        // middleware ever runs. Both answers say "not for you", but only the
+        // public-but-app route proves THIS one.
         $this->get('/events')->assertRedirect('/locked');
     }
 
-    /** The two exceptions, and the reason there are exactly two. */
     #[Test]
     public function the_lock_screen_and_the_login_page_stay_reachable(): void
     {
@@ -55,6 +59,92 @@ class SiteLockTest extends TestCase
         $this->get('/login')->assertOk();
     }
 
+    /**
+     * The lock keeps the APP unannounced. It is not meant to hide the shop
+     * window: the landing pages and the guides are what a search engine
+     * indexes and what somebody lands on from a Discord post, and serving
+     * those a password box costs the launch the audience it is being built
+     * for.
+     */
+    #[Test]
+    public function the_public_pages_stay_open_while_the_app_is_locked(): void
+    {
+        $this->lock();
+
+        $this->get('/')->assertOk();
+        $this->get('/osrs-snakes-and-ladders')->assertOk();
+        $this->get('/osrs-clan-events')->assertOk();
+        $this->get('/osrs-event-ideas')->assertOk();
+        $this->get('/sitemap.xml')->assertOk();
+    }
+
+    /** Including the CMS pages, which is where About and Privacy live. */
+    #[Test]
+    public function a_published_cms_page_stays_open_too(): void
+    {
+        $this->lock();
+
+        Page::create([
+            'slug' => 'about',
+            'title' => 'About us',
+            'is_published' => true,
+            'blocks' => [['type' => 'paragraph', 'text' => 'We run clan events.']],
+        ]);
+
+        $this->get('/about')->assertOk();
+    }
+
+    /**
+     * The CMS route is the catch-all `/{page}`, which matches any single
+     * segment — so letting it through by PATH would have unlocked half the
+     * app with it. It is allowed by route name instead, and this is the test
+     * that says why.
+     */
+    #[Test]
+    public function letting_the_cms_through_does_not_let_the_app_through(): void
+    {
+        $this->lock();
+
+        $this->get('/events')->assertRedirect('/locked');
+    }
+
+    /**
+     * The header keys its trimmed nav off this prop, so it has to say the
+     * right thing on the pages a locked site still serves — otherwise a
+     * visitor gets a full menu of links that all bounce back to the door.
+     */
+    #[Test]
+    public function a_public_page_still_tells_the_client_the_door_is_shut(): void
+    {
+        $this->lock();
+
+        $site = $this->get('/')->viewData('page')['props']['site'];
+
+        $this->assertTrue($site['locked']);
+    }
+
+    /** And says so no longer, once the visitor has the password. */
+    #[Test]
+    public function typing_the_password_opens_the_nav_as_well_as_the_app(): void
+    {
+        $this->lock('clan-secret');
+
+        $this->post('/locked', ['password' => 'clan-secret']);
+
+        $this->assertFalse($this->get('/')->viewData('page')['props']['site']['locked']);
+    }
+
+    /** An unpublished page is still a 404, lock or no lock. */
+    #[Test]
+    public function an_unpublished_page_is_not_a_way_in(): void
+    {
+        $this->lock();
+
+        Page::create(['slug' => 'draft', 'title' => 'Draft', 'is_published' => false, 'blocks' => []]);
+
+        $this->get('/draft')->assertNotFound();
+    }
+
     #[Test]
     public function the_right_password_opens_the_door(): void
     {
@@ -62,7 +152,7 @@ class SiteLockTest extends TestCase
 
         $this->post('/locked', ['password' => 'clan-secret'])->assertRedirect();
 
-        $this->get('/')->assertOk();
+        $this->get('/events')->assertOk();
     }
 
     #[Test]
@@ -72,7 +162,7 @@ class SiteLockTest extends TestCase
 
         $this->post('/locked', ['password' => 'nope'])->assertSessionHasErrors('password');
 
-        $this->get('/')->assertRedirect('/locked');
+        $this->get('/events')->assertRedirect('/locked');
     }
 
     /** An admin should never need to be told the shared password. */
@@ -84,7 +174,7 @@ class SiteLockTest extends TestCase
         $admin = User::factory()->create(['osrs_username' => 'TheAdmin']);
         $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
-        $this->actingAs($admin)->get('/')->assertOk();
+        $this->actingAs($admin)->get('/events')->assertOk();
     }
 
     /** Being signed in is not the same as being allowed in. */
@@ -96,7 +186,7 @@ class SiteLockTest extends TestCase
         $player = User::factory()->create(['osrs_username' => 'Pondake']);
         $player->assignRole(Role::findOrCreate('PLAYER', 'web'));
 
-        $this->actingAs($player)->get('/')->assertRedirect('/locked');
+        $this->actingAs($player)->get('/events')->assertRedirect('/locked');
     }
 
     /**
@@ -104,19 +194,18 @@ class SiteLockTest extends TestCase
      * those to an HTML lock screen would have them parse a login page as a
      * failed API response, which is a worse failure than a status code.
      *
-     * Asserted against a public path on purpose. Laravel sorts the combined
-     * middleware stack by its own priority list, and `auth` outranks
-     * anything appended to the web group — so on an auth-gated route the 401
-     * lands first and this middleware never runs. That is the correct
-     * outcome there (both answers say "not for you"), but it makes such a
-     * route useless for proving THIS branch.
+     * Asserted against `/events`: a route that needs no login but is not a
+     * public page. Laravel sorts the combined middleware stack by its own
+     * priority list and `auth` outranks anything appended to the web group,
+     * so on an auth-gated route the redirect to login lands first and this
+     * middleware never runs.
      */
     #[Test]
     public function a_json_caller_gets_a_status_code_not_a_redirect(): void
     {
         $this->lock();
 
-        $this->getJson('/')->assertStatus(423);
+        $this->getJson('/events')->assertStatus(423);
     }
 
     /**
