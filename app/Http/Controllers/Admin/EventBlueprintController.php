@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Event;
 use App\Models\EventBlueprint;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,26 +37,6 @@ class EventBlueprintController extends Controller
             'blueprints' => $blueprints,
             'search' => $request->string('search')->toString(),
         ]);
-    }
-
-    /**
-     * The autocomplete list for BoardSettingsModal's title field.
-     *
-     * Not behind the admin gate — every board creator uses this, and it is
-     * the read side of the same data the admin page writes.
-     */
-    public function suggestions(Request $request): JsonResponse
-    {
-        abort_unless($request->user()->hasPermission('canCreateBoards'), 403);
-
-        $search = $request->string('search')->toString();
-
-        $blueprints = EventBlueprint::suggestable()
-            ->when($search !== '', fn ($q) => $q->where('title', 'like', '%'.$search.'%'))
-            ->limit(20)
-            ->get(['id', 'title', 'type', 'metric', 'description']);
-
-        return response()->json(['blueprints' => $blueprints]);
     }
 
     public function store(Request $request): RedirectResponse

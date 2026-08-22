@@ -19,8 +19,13 @@ use Illuminate\Database\Seeder;
  * updating the old one, which is the intended behaviour: a renamed format is
  * a different format.
  *
- * Deliberately mixed: some carry a type and metric, some carry only a title.
- * A blueprint is allowed to be nothing more than a name worth reusing.
+ * Deliberately mixed: some carry a whole event's settings, some only a type
+ * and metric, some only a title. A blueprint is allowed to be nothing more
+ * than a name worth reusing.
+ *
+ * Where a description used to tell the host what to set — "give it a roll
+ * limit", "set the win condition" — the settings now do it, and the wording
+ * says what the format IS rather than what is left to do.
  */
 class EventBlueprintSeeder extends Seeder
 {
@@ -36,7 +41,7 @@ class EventBlueprintSeeder extends Seeder
     }
 
     /**
-     * @return array<int, array{title: string, type: ?string, metric: ?string, description: ?string}>
+     * @return array<int, array{title: string, type: ?string, metric: ?string, description: ?string, settings?: array<string, mixed>}>
      */
     private function blueprints(): array
     {
@@ -138,18 +143,41 @@ class EventBlueprintSeeder extends Seeder
                 'type' => 'BINGO',
                 'metric' => null,
                 'description' => 'A single evening on one card. Keep the squares achievable — a card nobody finishes is a card nobody remembers.',
+                'settings' => [
+                    'mode' => 'SOLO',
+                    'bingo_size' => 3,
+                    'win_condition' => 'LINE',
+                    // Small card, one evening, people you know: checking every
+                    // claim would cost the host the whole event.
+                    'requires_approval' => false,
+                ],
             ],
             [
                 'title' => 'Drop Bingo',
                 'type' => 'BINGO',
                 'metric' => null,
                 'description' => 'Every square is a specific drop. Screenshots go to the host for approval.',
+                'settings' => [
+                    'mode' => 'TEAM',
+                    'bingo_size' => 5,
+                    'win_condition' => 'LINE',
+                    'line_bonus' => 5,
+                    // The one format where reviewing is the point — a drop
+                    // nobody saw is a drop that did not happen.
+                    'requires_approval' => true,
+                ],
             ],
             [
                 'title' => 'Weekend Bingo',
                 'type' => 'BINGO',
                 'metric' => null,
-                'description' => 'Two days, one card, full house wins. Set the win condition before you publish.',
+                'description' => 'Two days, one card, full house wins.',
+                'settings' => [
+                    'mode' => 'SOLO',
+                    'bingo_size' => 4,
+                    'win_condition' => 'FULL_HOUSE',
+                    'requires_approval' => true,
+                ],
             ],
 
             // Snakes & Ladders boards.
@@ -157,13 +185,27 @@ class EventBlueprintSeeder extends Seeder
                 'title' => 'Snakes & Ladders Season',
                 'type' => 'SNAKES_LADDERS',
                 'metric' => null,
-                'description' => 'A full board run over several weeks. Give it a roll limit so it paces itself instead of finishing on day one.',
+                'description' => 'A full board run over several weeks, paced by a daily roll limit.',
+                'settings' => [
+                    'mode' => 'TEAM',
+                    'size' => 'SIZE_9X9',
+                    // The setting that makes it a season rather than an
+                    // afternoon.
+                    'dice_roll_limit' => 1,
+                ],
             ],
             [
                 'title' => 'Clan Race to the Finish',
                 'type' => 'SNAKES_LADDERS',
                 'metric' => null,
-                'description' => 'First to the last tile. Unlimited rolls turns this into a sprint; a daily limit turns it into a month.',
+                'description' => 'First to the last tile, with unlimited rolls — a sprint rather than a season.',
+                'settings' => [
+                    'mode' => 'SOLO',
+                    'size' => 'SIZE_5X5',
+                    // Null is unlimited. Named rather than omitted, so the
+                    // contrast with the season above is deliberate.
+                    'dice_roll_limit' => null,
+                ],
             ],
 
             // Title-only, on purpose: recurring names a clan reuses whose

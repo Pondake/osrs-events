@@ -48,6 +48,23 @@
             </span>
             <slot name="meta" />
         </div>
+
+        <!-- The moment a host knows whether the format was worth keeping.
+             Here rather than on each event page because this component is
+             the one thing all three of them share, and it already works out
+             whether the event has ended. -->
+        <div v-if="canEdit && status === 'ended'" class="mt-3">
+            <u-alert color="neutral" variant="subtle" icon="i-lucide-layout-template">
+                <template #description>
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <span class="text-sm">{{ $t('blueprints.finished_prompt') }}</span>
+                        <client-only>
+                            <blueprint-save-modal :event-id="event.id" :event-title="event.title" />
+                        </client-only>
+                    </div>
+                </template>
+            </u-alert>
+        </div>
     </div>
 </template>
 
@@ -56,9 +73,14 @@ import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import { boardEventStatus, formatDate } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
+import ClientOnly from '@/Components/ClientOnly.vue';
+import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
 
 const props = defineProps({
     event: { type: Object, required: true },
+    // Whether this viewer runs the event. Only a host is offered the
+    // save-as-template prompt below.
+    canEdit: { type: Boolean, default: false },
 });
 
 const typeMeta = computed(() => eventTypeMeta(props.event.type));

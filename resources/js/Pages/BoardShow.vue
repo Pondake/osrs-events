@@ -13,7 +13,7 @@
                      bingo and race pages so all three announce themselves the
                      same way. -->
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="board">
+                    <event-type-heading :event="board" :can-edit="canEdit">
                             <template #meta>
                                 <span class="inline-flex items-center gap-1.5">
                                     <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />

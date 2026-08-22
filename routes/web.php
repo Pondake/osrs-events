@@ -18,6 +18,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BingoController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
+use App\Http\Controllers\EventBlueprintController;
 use App\Http\Controllers\EventStreamController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LeaderboardController;
@@ -231,7 +232,11 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
     // Read side of the admin blueprint list — the create-event form's
     // title autocomplete. Same reasoning as tasks/search above it.
-    Route::get('/event-blueprints', [AdminEventBlueprintController::class, 'suggestions'])->name('blueprints.suggestions');
+    // The host's side of blueprints — reading the list to start an event,
+    // and saving an event as a format. Not the admin controller: that one is
+    // the curator's view of the global list and sits behind its own gate.
+    Route::get('/event-blueprints', [EventBlueprintController::class, 'suggestions'])->name('blueprints.suggestions');
+    Route::post('/events/{event}/blueprint', [EventBlueprintController::class, 'storeFromEvent'])->name('events.blueprint.store');
     Route::get('/my-guilds', [BoardController::class, 'myGuilds'])->name('guilds.mine');
 
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
