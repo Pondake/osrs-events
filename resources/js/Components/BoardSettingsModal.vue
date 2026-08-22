@@ -932,17 +932,40 @@ function applyInvites(data) {
 }
 
 async function inviteRequest(url, options = {}) {
-    const response = await fetch(url, {
-        headers: { Accept: 'application/json', ...xsrfHeader(), ...(options.headers ?? {}) },
-        ...options,
-    });
+    let response;
 
-    const data = await response.json().catch(() => null);
+    try {
+        response = await fetch(url, {
+            headers: { Accept: 'application/json', ...xsrfHeader(), ...(options.headers ?? {}) },
+            ...options,
+        });
+    } catch (error) {
+        // The network never answered — a dropped connection or a server that
+        // is not there. Worth saying, because it is the one case where
+        // trying again really is the advice.
+        console.error('invite request could not be sent', url, error);
+        toast?.add({ id: 'invite-error', title: trans('errors.network'), color: 'error' });
+
+        return null;
+    }
+
+    const body = await response.text();
+    let data = null;
+
+    try {
+        data = JSON.parse(body);
+    } catch {
+        data = null;
+    }
 
     if (!response.ok) {
-        console.error('invite request failed', response.status, data);
+        // Everything the next person needs to work out what happened. This
+        // used to be one generic "something went wrong" for every failure —
+        // reported as "invite links do not work", with nothing to go on and
+        // no way to tell a stale session from a permission problem.
+        console.error('invite request failed', { url, status: response.status, body: body.slice(0, 500) });
 
-        toast?.add({ id: 'invite-error', title: data?.message ?? trans('errors.generic'), color: 'error' });
+        toast?.add({ id: 'invite-error', title: inviteError(response, data), color: 'error' });
 
         return null;
     }
@@ -950,6 +973,22 @@ async function inviteRequest(url, options = {}) {
     applyInvites(data);
 
     return data;
+}
+
+/**
+ * What actually went wrong, said out loud.
+ *
+ * `data.message` is empty on an `abort_unless`, and absent entirely when the
+ * server answered with HTML — a 419 page, a redirect to the lock screen, a
+ * 500. All three used to arrive as the same shrug.
+ */
+function inviteError(response, data) {
+    if (data?.message) return data.message;
+
+    if (response.status === 419) return trans('errors.session_expired');
+    if (response.status === 403) return trans('errors.forbidden');
+
+    return trans('errors.generic_with_status', { status: response.status });
 }
 
 async function fetchInvites() {

@@ -63,6 +63,20 @@ class RequireOsrsUsername
             return $next($request);
         }
 
+        // Where to come back to. Nothing was storing this, so
+        // `redirect()->intended()` in OsrsUsernameController had nothing to
+        // read and always fell back to /events — reported as being sent to
+        // the name page while claiming a bingo square and then not being
+        // returned to the card.
+        //
+        // A safe request comes back to itself. Anything else is a write, and
+        // its URL only answers that verb, so the page it was made from is the
+        // honest destination.
+        $request->session()->put(
+            'url.intended',
+            $request->isMethodSafe() ? $request->fullUrl() : url()->previous(),
+        );
+
         // Inertia follows a 302 as a client-side visit, so this lands as a
         // normal page change rather than the "all Inertia responses must be
         // Inertia responses" error a bare redirect can otherwise cause.

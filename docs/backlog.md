@@ -2704,6 +2704,115 @@ once. Nothing else in the suite would notice it going missing.
 495 backend tests, 146 frontend.
 
 
+## Staging feedback, round six — 2026-08-22
+
+Tested from a second account (MB Test) against a real second browser, which is
+why several of these are things no single-seat check would have found.
+
+### Broken
+
+- [ ] **Invite links cannot be created.** "Something went wrong. Please try
+  again." on event `01a025c8-7bc8-737c-ac4f-dea22237219c`. The Edit Board
+  dialog also showed "Event updated!" and the error toast at the same time.
+- [x] ~~**Snakes & Ladders has no dice.**~~ — fixed 2026-08-22. Reported as "totally broken". It is
+  the deliberate gate — rolling is the reward for marking the tile you are on
+  complete — but the gate is invisible, so the page reads as missing its main
+  control. Show it disabled with the reason instead of not at all.
+- [ ] **A tile's target does not match the board.** The editor said target
+  tile 9 while the arrow on screen pointed somewhere else.
+- [ ] **Tile edits do not reach other viewers.** The second browser kept the
+  old tile after a save. The Snakes & Ladders channel streams player
+  positions only; bingo streams its squares.
+- [x] ~~**The OSRS username is asked twice.**~~ — the returning half is
+  fixed 2026-08-22; why it was asked twice is still open, see below. Given during setup, then claiming
+  a bingo square redirects to the same question again — and answering it does
+  not return you to where you were.
+- [x] ~~**The claim note does not reset between squares.**~~ — fixed
+  2026-08-22. Open a second tile
+  and the previous note is still in the field.
+- [ ] **A reviewed card rendered half pending, half approved** after
+  approving one claim.
+
+### Wrong or missing
+
+- [x] ~~**The "New accounts" toggle is meaningless while the site is
+  locked**~~ — it now says so. It still reads "Open",
+  but still reads "Open". Say that the lock overrules it.
+- [x] ~~**Copy**~~ — fixed 2026-08-22. "You log in with Discord, so there's no email on this account
+  yet" should read "You logged in through Discord, ...".
+- [ ] **Onboarding said no events were joinable** while several public open
+  events exist. Are they filtered to Discord servers? If Discord events are
+  the more relevant ones, setup should ask which servers you are in so the
+  filter has something to work with.
+- [ ] **Bingo has no join.** A new player can click a square and start
+  scoring. It should take a deliberate join — and it has to, before the
+  RuneLite plugin exists.
+- [x] ~~**A skill race never shows its skill icon.**~~ — fixed 2026-08-22. The metric is chosen and
+  then never drawn. Find it a place.
+- [ ] **"Invite link or code"** — are those the same thing? If a code exists,
+  it should be visible and copyable in the host's own section.
+
+### Confirmed working
+
+- Enter/leave on a race updated the other browser live, both directions.
+- The review counter went up on the host's screen when the other browser
+  submitted a claim.
+- A player does not see another player's pending claim — noted as correct.
+
+
+### What was fixed straight away, and what is still open
+
+**Fixed**
+
+- **The dice is always on screen now**, disabled with the reason when the
+  tile you are standing on is not ticked off yet. The gate was deliberate —
+  rolling is the reward for finishing what you are on — but hiding the card
+  entirely made the page read as missing its main control, which is the
+  correct reading of a board with no way to play on it.
+- **The name page brings you back.** Nothing was storing the destination, so
+  `redirect()->intended()` had nothing to read and always fell back to
+  /events. A safe request comes back to itself; a write comes back to the
+  page it was made from, because its URL only answers that verb.
+- **The claim note resets on every opening**, not only when the square
+  changes. Carrying a note over is how somebody submits the wrong one.
+- **The skill icon** sits beside the line that already names the skill
+  ("Ranked by Mining XP gained") rather than needing a place of its own. A
+  boss race keeps the trophy — there is no Zulrah icon.
+- **The New accounts toggle says the lock overrules it.**
+- **The Discord copy.**
+
+**Invite links: the server is not the problem.** Creating one as the owner of
+an OPEN event works, and there is now a test for exactly that case — every
+existing invite test used an INVITE event, so the reported combination was
+the untested one. What was wrong is that the failure said nothing: any
+non-JSON response, any empty message, became "Something went wrong. Please
+try again." A 419 from a stale session, a 403, a 500 and a dropped connection
+were indistinguishable. Each says what it is now, with the status in the
+toast and the response body in the console, so the next occurrence carries
+information.
+
+**Still open, and why they need more than a fix**
+
+- **Why the name was asked twice.** The standalone page prefills from the
+  display name, so "MB Test" being in the box is the suggestion, not a
+  memory — meaning `osrs_username` really was empty after the wizard. Either
+  the wizard's step did not save or it was skipped. Needs reproducing from a
+  fresh account rather than guessing.
+- **Bingo has no join**, and a new player can score by clicking. This is a
+  product decision with a schema behind it (participation is currently
+  implied by a claim), and it has to be settled before the RuneLite plugin.
+- **Onboarding said nothing was joinable** while open events exist. Worth
+  checking whether the filter is too narrow before deciding whether setup
+  should ask which Discord servers somebody is in.
+- **Tile edits do not reach other viewers**, and **a tile's target did not
+  match the board**, and **a card rendered half pending, half approved.**
+  All three need reproducing before they are worth touching.
+- **"Invite link or code"** — whether those are one thing or two is a
+  question about the model, not a bug.
+
+498 backend tests, 146 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
