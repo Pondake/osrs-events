@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { blueprintPatch, decidesType, summariseBlueprint } from '@/Support/blueprint';
+import { blueprintPatch, decidesType, layoutFits, summariseBlueprint } from '@/Support/blueprint';
 
 /**
  * Reading a blueprint, and applying one.
@@ -69,6 +69,23 @@ describe('summariseBlueprint', () => {
             .toEqual(['t:blueprints.access_invite', 't:blueprints.unlisted']);
     });
 
+    /**
+     * The chip that changes the decision. A format carrying the board is a
+     * different proposition from one carrying a grid size — it is the evening
+     * a host would otherwise spend.
+     */
+    it('says when a format brings the board with it', () => {
+        expect(summariseBlueprint({ settings: { bingo_size: 5 }, layoutCount: 24 }))
+            .toEqual(['t:blueprints.card', 't:blueprints.includes_board']);
+    });
+
+    it('stays quiet about a board that is not there', () => {
+        expect(summariseBlueprint({ settings: { bingo_size: 5 }, layoutCount: 0 }))
+            .toEqual(['t:blueprints.card']);
+        expect(summariseBlueprint({ settings: { bingo_size: 5 } }))
+            .toEqual(['t:blueprints.card']);
+    });
+
     /** A title-only template is a real thing, and it has nothing to show. */
     it('returns nothing for a blueprint that carries nothing', () => {
         expect(summariseBlueprint({ title: 'Just a name' })).toEqual([]);
@@ -131,5 +148,37 @@ describe('blueprintPatch', () => {
 
     it('is empty for no blueprint at all', () => {
         expect(blueprintPatch(null)).toEqual({});
+    });
+});
+
+describe('layoutFits', () => {
+    /**
+     * A layout is a snapshot of one grid. Changing the size after picking a
+     * template means the server drops whatever falls off the end — worth
+     * saying before somebody finds a half-empty board.
+     */
+    it('knows when a board no longer matches the chosen size', () => {
+        const board = { layoutCount: 20, settings: { size: 'SIZE_7X7' } };
+
+        expect(layoutFits(board, 'SIZE_7X7', 5)).toBe(true);
+        expect(layoutFits(board, 'SIZE_5X5', 5)).toBe(false);
+    });
+
+    it('checks a bingo card against the card size', () => {
+        const card = { layoutCount: 12, settings: { bingo_size: 5 } };
+
+        expect(layoutFits(card, 'SIZE_5X5', 5)).toBe(true);
+        expect(layoutFits(card, 'SIZE_5X5', 3)).toBe(false);
+    });
+
+    /** Nothing to trim is nothing to warn about. */
+    it('is satisfied by a template that carries no board', () => {
+        expect(layoutFits({ layoutCount: 0, settings: { size: 'SIZE_9X9' } }, 'SIZE_5X5', 5)).toBe(true);
+        expect(layoutFits(null, 'SIZE_5X5', 5)).toBe(true);
+    });
+
+    /** A layout with no size recorded cannot be judged, so it is not judged. */
+    it('does not invent a mismatch it cannot know about', () => {
+        expect(layoutFits({ layoutCount: 4, settings: {} }, 'SIZE_5X5', 5)).toBe(true);
     });
 });

@@ -1713,7 +1713,8 @@ That last one deserves its own note:
 
 ### Blueprints for boards, not just titles
 
-- [ ] **Board layout blueprints.** Event blueprints currently carry a title,
+- [x] ~~**Board layout blueprints.**~~ — built 2026-08-22, see "Templates
+  that bring the board" below. Event blueprints currently carry a title,
   type, metric and description. What they cannot carry is the *board*: a
   Snakes & Ladders layout (where the snakes and ladders sit, which task is on
   which tile) or a bingo card (the squares, their points, where the free
@@ -1946,8 +1947,8 @@ credentials.
 - [ ] **Use Nuxt UI's date range picker for the event window**, and tone down
   its range styling: every day in the range renders as a filled primary
   swatch, where only the two ends should be solid.
-- [ ] **Board layout blueprints** (round three) — still the biggest
-  remaining feature.
+- [x] ~~**Board layout blueprints** (round three) — still the biggest
+  remaining feature.~~ **Done 2026-08-22.**
 
 ### Settled: the dev server really is the local slowness
 
@@ -2578,6 +2579,46 @@ a player who signs in while it is on lands on the lock screen. That is correct
 behaviour, and it means player-seat checks need the lock lifted and put back.
 
 463 backend tests, 125 frontend.
+
+
+### Templates that bring the board — 2026-08-22
+
+The biggest item on the list, and the half that was missing: a template
+carried a grid size and a win condition, which is three clicks, and threw away
+the evening a host actually spends deciding which task sits where.
+
+`event_blueprints.layout` now holds a snapshot of the board — every tile with
+its type, its jump target and its task, or every filled square with its
+points and whether it is the wildcard. A separate column from `settings`
+because they have different lives: settings is a flat map the create form
+applies field by field under an allow-list, a layout is up to 81 rows written
+by a different code path after the event exists.
+
+**Each entry carries the task id AND the title it had.** The id keeps the tile
+linked to the shared Task while that still exists; the title survives the Task
+being renamed or deleted, so a year-old template still describes itself
+instead of turning into a grid of blanks. There is a test that deletes the
+task and checks the tile still says what it asks for.
+
+**Positions that no longer fit are dropped, not clamped.** A layout belongs to
+one grid size. The picker warns before you change the size, and the server
+leaves out what falls off the end — stacking three tiles onto the last square
+would be worse than an honest gap. A jump pointing past the new last tile
+becomes a plain tile rather than a snake to nowhere.
+
+**The blueprint id is a claim, not a permission.** It arrives from the browser
+and is re-read through `visibleTo()`, or a guessed id would be a way to pull
+another clan's board into your own event. Tested.
+
+Found while verifying in the browser, and it would have made the feature look
+broken: **the gallery was 20 rows sorted by title.** Right for the
+autocomplete it used to be, wrong for a gallery — a format saved as "Weekend
+format" simply never appeared once the seeded set filled the first twenty. Now
+sixty rows, yours first, then your clan's, then the set that ships with the
+app. The `orderBy` also had to come out of `scopeSuggestable`: applied inside
+the scope it ran first and silently beat the caller's own ordering.
+
+478 backend tests, 131 frontend.
 
 
 ## Content review before launch (step 8)

@@ -502,6 +502,8 @@
     "blueprints.from_scratch": "Start from scratch",
     "blueprints.from_scratch_desc": "Set everything up yourself.",
     "blueprints.grid": ":size board (:tiles tiles)",
+    "blueprints.includes_board": "Board included (:n tiles)",
+    "blueprints.layout_resized": "This template was built for a different grid. Tiles that do not fit will be left out.",
     "blueprints.mode_solo": "Solo",
     "blueprints.mode_team": "Teams",
     "blueprints.name": "Template name",

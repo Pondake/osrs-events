@@ -60,6 +60,13 @@ export function summariseBlueprint(blueprint) {
 
     if (settings.is_listed === false) chips.push(trans('blueprints.unlisted'));
 
+    // Last, and the one worth reading: a format that brings the board is a
+    // different proposition from one that brings a grid size. It is the
+    // evening a host would otherwise spend.
+    if (blueprint?.layoutCount) {
+        chips.push(trans('blueprints.includes_board', { n: blueprint.layoutCount }));
+    }
+
     return chips;
 }
 
@@ -95,4 +102,23 @@ export function blueprintPatch(blueprint) {
     }
 
     return patch;
+}
+
+/**
+ * Whether a template's board still fits the size the form is set to.
+ *
+ * A layout is a snapshot of one grid. Applying a 7x7 board to a 5x5 event
+ * drops everything past the last square — the server does that rather than
+ * stacking tiles, but the person choosing deserves to know before they find
+ * a half-empty board.
+ */
+export function layoutFits(blueprint, size, bingoSize) {
+    if (!blueprint?.layoutCount) return true;
+
+    const saved = blueprint.settings ?? {};
+
+    if (saved.size) return saved.size === size;
+    if (saved.bingo_size) return saved.bingo_size === bingoSize;
+
+    return true;
 }
