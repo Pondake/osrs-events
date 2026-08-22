@@ -280,3 +280,20 @@ html:not(.dark) .landing-page :where(.rounded-xl, .rounded-lg):where([class*='ri
         opacity: .25;
     }
 }
+
+/* Left-aligned on a phone.
+   Nuxt UI centres a hero and a page section, which reads well on a wide
+   column and badly on a narrow one: at 375px a centred paragraph breaks into
+   ragged lines and the eye has to hunt for the start of each. Every line
+   starting in the same place is the whole reason left-aligned body copy is
+   the default in print.
+
+   Scoped to the landing pages, because that is where the centred sections
+   are, and applied to the wrapper rather than to each heading so a title and
+   its description stay together. Buttons and badge rows are flex containers
+   and are unaffected — they centre with justify-content, not text-align. */
+@media (max-width: 639px) {
+    .landing-page .text-center {
+        text-align: left;
+    }
+}

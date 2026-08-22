@@ -8,7 +8,7 @@
         </template>
 
         <template #right>
-            <nav class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-end">
+            <nav class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-center lg:justify-end">
                 <a
                     v-for="link in footerLinks"
                     :key="link.to"

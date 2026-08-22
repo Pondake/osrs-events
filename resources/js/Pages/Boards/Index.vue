@@ -8,7 +8,11 @@
     <u-main>
         <u-page>
             <u-container class="py-12">
-                <div class="flex items-center justify-between gap-4 mb-8">
+                <!-- Stacks on a phone. Side by side, the title block was left
+                     with a ~150px column and the description broke into
+                     four ragged lines beside a button that needed none of
+                     the room it was taking. -->
+                <div class="flex flex-col items-start gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 class="text-3xl font-bold text-highlighted">{{ $t('events.hub_title') }}</h1>
                         <p class="text-sm text-muted mt-1">{{ $t('events.hub_subtitle') }}</p>

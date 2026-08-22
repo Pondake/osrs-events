@@ -2524,6 +2524,62 @@ change needs the dev server restarted; `config:clear` alone does nothing.
 462 backend tests, 125 frontend.
 
 
+### Mobile sweep, 2026-08-22
+
+Reported: too many pages with controls running off the side and not wrapping.
+Measured on a 375px viewport by loading every page into an iframe at that
+width and reporting any element whose right edge passed it. Six real problems,
+all fixed; every page now reports `scrollWidth === 375`.
+
+- **The event toolbars ran off the screen.** `shrink-0` kept them at their full
+  natural width, so `flex-wrap` never got the chance to do anything. The bingo
+  card was the worst at **772px of controls on a 375px screen** — seven buttons
+  in a row that refused to shrink. Now `sm:shrink-0`: hold your ground once
+  there is room for it.
+- **Four page headers never stacked.** Title, description and an action button
+  side by side left the description a ~150px column and four ragged lines.
+  `flex-col` until `sm`.
+- **The footer links were `justify-end` at every width**, so on a phone the
+  shorter second row hugged the right edge.
+- **A badge on the ideas page** carried a whole phrase and pushed the page six
+  pixels wider than the screen.
+- **A bingo square could stop being square.** `aspect-square` is a floor, not
+  a ceiling — a tile holding an avatar grew taller than its neighbours and
+  stood proud of the row. `overflow-hidden` plus an avatar sized to the tile:
+  every square now measures 62×62, none excepted.
+- **Titles and body copy were centred.** Fine on a wide column, poor at 375px
+  where a centred paragraph breaks into ragged lines and the eye hunts for the
+  start of each. Left-aligned below `sm` on the landing pages.
+
+**A bingo square stops being a label on a phone and becomes a token.** A 5x5
+grid leaves about 62px a side, and four things were competing for it: points,
+icon, two lines of 11px text, and a face. The text is the one that cannot work
+at that size — "Complete a..." carries nothing — so it goes when an icon is
+there to carry the meaning, and the icon grows into the room. Nothing becomes
+unreachable: tapping opens the claim dialog with the full title, and "Fill in
+tiles" lists every square in words. A square with a task and no icon keeps its
+label, or it would be blank.
+
+### Checked from a player's seat, not just an admin's
+
+Fair criticism, and it had been true of every browser check so far: an admin
+sees a seven-button toolbar where a player sees one, plus a create button and
+admin nav nobody else has — so "it fits" from that seat proves less than it
+looks.
+
+There are now two dev logins to switch between, both on seeded accounts:
+`admin@osrs-events.test` and `player-seat@example.test`. The player's pages
+were swept the same way and came back clean, and their view turned out to
+carry something the admin's never does — the "we can't find your name on Wise
+Old Man" banner, with two more buttons in it.
+
+Worth keeping: the lock has to come off to walk the app as a player, because
+a player who signs in while it is on lands on the lock screen. That is correct
+behaviour, and it means player-seat checks need the lock lifted and put back.
+
+463 backend tests, 125 frontend.
+
+
 ## Content review before launch (step 8)
 
 Flagged 2026-08-20 by the owner: do this **after the build work is done**,
