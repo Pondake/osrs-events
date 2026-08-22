@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, provide, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AppHeader from '@/Components/AppHeader.vue';
 import AppFooter from '@/Components/AppFooter.vue';
@@ -95,6 +95,7 @@ import RichText from '@/Components/RichText.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import { styleFor } from '@/Support/announcement';
 import { isLandingPage } from '@/Support/landing';
+import { CURRENT_PAGE } from '@/Support/pageState';
 
 const OnboardingModal = defineAsyncComponent(() => import('@/Components/OnboardingModal.vue'));
 
@@ -161,6 +162,11 @@ onMounted(() => {
 });
 
 const inertiaPage = computed(() => (hydrated.value ? sharedPage : rootProps.pageProps?.initialPage ?? sharedPage));
+
+// Handed down to everything AppRoot renders beside the page — the header and
+// footer most of all, whose server-side markup is built from `isAuthenticated`
+// and so was carrying the previous visitor's nav. See Support/pageState.js.
+provide(CURRENT_PAGE, inertiaPage);
 
 function raise(message, id, color) {
     if (message) toast?.add({ id, title: message, color });

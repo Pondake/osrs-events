@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -106,6 +107,79 @@ class SiteLockTest extends TestCase
         $this->lock();
 
         $this->get('/events')->assertRedirect('/locked');
+    }
+
+    // ------------------------------------------------- no new accounts
+
+    /**
+     * A shut door that hands out keys is not shut.
+     *
+     * Sign-in stays open, because whoever is building the site has to get in.
+     * Registration does not: an account acquired now is an account that can
+     * read whatever the lock is there to keep unannounced.
+     */
+    #[Test]
+    public function registration_is_closed_while_the_site_is_locked(): void
+    {
+        $this->lock();
+
+        $this->get('/register')->assertRedirect('/locked');
+
+        $this->post('/register', [
+            'name' => 'Newcomer',
+            'email' => 'new@example.com',
+            'password' => 'Correct-horse-1',
+            'password_confirmation' => 'Correct-horse-1',
+        ])->assertRedirect('/locked');
+
+        $this->assertNull(User::where('email', 'new@example.com')->first());
+    }
+
+    #[Test]
+    public function signing_in_stays_open(): void
+    {
+        $this->lock();
+
+        $this->get('/login')->assertOk();
+        $this->get('/forgot-password')->assertOk();
+    }
+
+    #[Test]
+    public function registration_reopens_once_the_lock_comes_off(): void
+    {
+        $this->get('/register')->assertOk();
+    }
+
+    /**
+     * What a locked visitor is OFFERED is decided in the browser, from the
+     * props below — the header builds its nav from `auth.user` and
+     * `site.locked`. This suite runs with Inertia SSR off (see phpunit.xml),
+     * so it can assert the ingredients and not the rendered menu; the menu
+     * itself is covered by tests/js/pageState.test.js and was checked in a
+     * browser against interleaved signed-in and signed-out requests.
+     */
+    #[Test]
+    public function a_locked_visitor_gets_props_that_say_no_session_and_a_shut_door(): void
+    {
+        $this->lock();
+
+        $admin = User::factory()->create(['osrs_username' => 'TheAdmin']);
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+
+        // Interleaved on purpose: the bug this guards against only showed
+        // when a request that SHOULD carry app links was served immediately
+        // before one that should not.
+        $this->actingAs($admin)->get('/')->assertOk();
+
+        // actingAs() stays in force for the rest of the test, so the second
+        // visitor has to be made a stranger explicitly.
+        Auth::logout();
+        $this->flushSession();
+
+        $props = $this->get('/')->assertOk()->viewData('page')['props'];
+
+        $this->assertNull($props['auth']['user']);
+        $this->assertTrue($props['site']['locked']);
     }
 
     /**

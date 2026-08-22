@@ -258,11 +258,11 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import AppLogo from '@/Components/AppLogo.vue';
 import { isPublicPath } from '@/Support/landing';
+import { useCurrentPage } from '@/Support/pageState';
 import UserMenu from '@/Components/UserMenu.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
@@ -272,8 +272,8 @@ const { isAuthenticated, isAdmin } = useAuth();
 // THIS visitor" — false for an admin and false for anyone who has typed the
 // shared password. Re-checking isAdmin here would only get the second of
 // those wrong.
-const page = usePage();
-const locked = computed(() => Boolean(page.props?.site?.locked));
+const page = useCurrentPage();
+const locked = computed(() => Boolean(page.value.props?.site?.locked));
 
 // Which groups are expanded in the mobile drawer. A Set rather than a single
 // value so opening one does not close another — the drawer is a list you

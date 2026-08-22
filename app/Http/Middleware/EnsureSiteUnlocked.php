@@ -20,8 +20,11 @@ use Symfony\Component\HttpFoundation\Response;
  * What stays reachable while it is on:
  *
  *   - the lock screen itself, or there is nowhere to type the password;
- *   - the auth routes, so an admin can sign in and bypass it properly
- *     rather than everyone sharing one secret;
+ *   - the SIGN-IN routes, so an admin can get in and bypass the lock
+ *     properly rather than everyone sharing one secret. Registration is not
+ *     among them: a shut door that hands out keys is not shut. Discord is a
+ *     sign-in route AND a way to acquire an account, so the account-creating
+ *     half is refused separately — see DiscordController::callback;
  *   - the public pages — the landing pages, the guides and the CMS pages.
  *     The lock exists to keep the APP unannounced, not to hide the shop
  *     window. Those pages are the ones a search engine indexes and the ones
@@ -51,7 +54,8 @@ class EnsureSiteUnlocked
         'locked',
         'login',
         'logout',
-        'register',
+        // Recovery for an account that already exists, which is the one way
+        // back in for whoever is building the site. Not a way to acquire one.
         'forgot-password',
         'reset-password/*',
         'auth/discord/*',
