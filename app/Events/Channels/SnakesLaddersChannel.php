@@ -2,6 +2,7 @@
 
 namespace App\Events\Channels;
 
+use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\Event;
 
 /**
@@ -13,6 +14,8 @@ use App\Models\Event;
  */
 class SnakesLaddersChannel implements EventChannel
 {
+    use SignalsEventEdits;
+
     public function name(): string
     {
         return 'players';
@@ -27,7 +30,24 @@ class SnakesLaddersChannel implements EventChannel
             ->orderBy('player_boards.id')
             ->get(['player_boards.id', 'player_boards.current_position']);
 
-        return md5($rows->map(fn ($r) => "{$r->id}:{$r->current_position}")->implode('|'));
+        // The board itself, not only who is standing where. A host editing a
+        // tile mid-event — putting a task on it, moving a ladder — is as
+        // visible to everyone watching as a player moving, and it reached
+        // nobody: the second browser kept the old board until it was
+        // reloaded, snakes and ladders included. The bingo card streamed its
+        // squares from the start; this is the same thing for the same reason.
+        $tiles = $event->board?->tiles()
+            ->orderBy('position')
+            ->get(['position', 'task_id', 'title_override', 'type', 'target_position'])
+            ?? collect();
+
+        return md5(
+            $rows->map(fn ($r) => "{$r->id}:{$r->current_position}")->implode('|')
+            .'#'
+            .$tiles->map(fn ($t) => "{$t->position}:{$t->task_id}:{$t->title_override}:{$t->type}:{$t->target_position}")->implode('|')
+            .'#'
+            .$this->eventVersion($event)
+        );
     }
 
     public function payload(Event $event): array
@@ -43,11 +63,20 @@ class SnakesLaddersChannel implements EventChannel
             ]);
 
         return [
+            'event_version' => $this->eventVersion($event),
             'players' => $players->map(fn ($pb) => [
                 ...$pb->only(['id', 'user_id', 'team_id', 'current_position']),
                 'user' => $pb->user,
                 'team' => $pb->team,
             ])->all(),
+            // Shaped exactly as BoardController::show sends them, so the page
+            // can swap one list for the other without knowing where it came
+            // from.
+            'tiles' => $event->board?->tiles()
+                ->with('task:id,title,icon_url')
+                ->orderBy('position')
+                ->get()
+                ->all() ?? [],
         ];
     }
 }

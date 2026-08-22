@@ -11,6 +11,7 @@ use App\Models\Board;
 use App\Models\Event;
 use App\Models\EventStanding;
 use App\Models\PlayerBoard;
+use App\Models\Tile;
 use App\Models\User;
 use App\Services\BingoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -371,5 +372,117 @@ class EventStreamTest extends TestCase
         $standing->update(['synced_at' => Carbon::now()->addHour()]);
 
         $this->assertSame($before, $channel->fingerprint($event));
+    }
+    // -------------------------------------------------------- board tiles
+
+    /**
+     * A host editing the board mid-event is as visible as a player moving on
+     * it, and it reached nobody: the second browser kept the old board — old
+     * tasks, old ladders — until somebody reloaded. The bingo card streamed
+     * its squares from the first version; this is the same thing for the same
+     * reason.
+     */
+    #[Test]
+    public function a_board_fingerprint_changes_when_a_tile_is_edited(): void
+    {
+        $event = $this->event('SNAKES_LADDERS');
+        $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
+        $tile = Tile::create(['board_id' => $board->id, 'position' => 4, 'type' => 'NORMAL', 'title_override' => 'Kill a goblin']);
+
+        $channel = $this->resolver()->for($event);
+        $before = $channel->fingerprint($event);
+
+        $tile->update(['title_override' => 'Kill two goblins']);
+
+        $this->assertNotSame($before, $channel->fingerprint($event));
+    }
+
+    /** Specifically the arrows — a ladder that moved has to move everywhere. */
+    #[Test]
+    public function a_board_fingerprint_changes_when_a_ladder_moves(): void
+    {
+        $event = $this->event('SNAKES_LADDERS');
+        $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
+        $tile = Tile::create(['board_id' => $board->id, 'position' => 2, 'type' => 'LADDER', 'target_position' => 9]);
+
+        $channel = $this->resolver()->for($event);
+        $before = $channel->fingerprint($event);
+
+        $tile->update(['target_position' => 14]);
+
+        $this->assertNotSame($before, $channel->fingerprint($event));
+    }
+
+    #[Test]
+    public function a_board_payload_carries_the_tiles(): void
+    {
+        $event = $this->event('SNAKES_LADDERS');
+        $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
+        Tile::create(['board_id' => $board->id, 'position' => 2, 'type' => 'LADDER', 'target_position' => 9]);
+
+        $payload = $this->resolver()->for($event)->payload($event);
+
+        $this->assertCount(1, $payload['tiles']);
+        $this->assertSame(9, $payload['tiles'][0]['target_position']);
+    }
+
+    // ------------------------------------------------------- event edits
+
+    /**
+     * The event itself, on every channel. Moving a race's end date reached
+     * nobody watching it — reported as "event changes don't seem to come
+     * through at all", and they didn't.
+     */
+    #[Test]
+    public function every_channel_notices_the_event_being_edited(): void
+    {
+        foreach (['SNAKES_LADDERS', 'BINGO', 'SKILL_RACE'] as $type) {
+            $event = $this->event($type, $type === 'SKILL_RACE' ? [
+                'metric' => 'mining',
+                'start_date' => Carbon::now()->subWeek(),
+                'end_date' => Carbon::now()->addWeek(),
+            ] : ['end_date' => Carbon::now()->addWeek()]);
+
+            $channel = $this->resolver()->for($event);
+            $before = $channel->fingerprint($event);
+
+            $event->update(['end_date' => Carbon::now()->addWeeks(3)]);
+
+            $this->assertNotSame($before, $channel->fingerprint($event), "{$type} ignored an edit to its own dates");
+        }
+    }
+
+    /** And the version travels with the payload, which is what the page acts on. */
+    #[Test]
+    public function every_payload_carries_the_event_version(): void
+    {
+        foreach (['SNAKES_LADDERS', 'BINGO', 'SKILL_RACE'] as $type) {
+            $event = $this->event($type, $type === 'SKILL_RACE' ? ['metric' => 'mining'] : []);
+
+            $payload = $this->resolver()->for($event)->payload($event);
+
+            $this->assertArrayHasKey('event_version', $payload, "{$type} sends no event version");
+        }
+    }
+
+    /**
+     * A rename is an edit; a write that changes nothing on screen is not.
+     * Both directions, because a fingerprint that is too eager wakes every
+     * open browser for nothing.
+     */
+    #[Test]
+    public function an_event_fingerprint_is_stable_when_nothing_visible_changed(): void
+    {
+        $event = $this->event('BINGO');
+        $channel = $this->resolver()->for($event);
+
+        $before = $channel->fingerprint($event);
+        $event->touch();
+
+        $this->assertSame($before, $channel->fingerprint($event));
+
+        $event->update(['title' => 'A different name entirely']);
+
+        $this->assertNotSame($before, $channel->fingerprint($event));
     }
 }

@@ -2720,7 +2720,7 @@ why several of these are things no single-seat check would have found.
   control. Show it disabled with the reason instead of not at all.
 - [ ] **A tile's target does not match the board.** The editor said target
   tile 9 while the arrow on screen pointed somewhere else.
-- [ ] **Tile edits do not reach other viewers.** The second browser kept the
+- [x] ~~**Tile edits do not reach other viewers.**~~ — fixed 2026-08-22. The second browser kept the
   old tile after a save. The Snakes & Ladders channel streams player
   positions only; bingo streams its squares.
 - [x] ~~**The OSRS username is asked twice.**~~ — the returning half is
@@ -2736,15 +2736,15 @@ why several of these are things no single-seat check would have found.
 ### Wrong or missing
 
 - [x] ~~**The "New accounts" toggle is meaningless while the site is
-  locked**~~ — it now says so. It still reads "Open",
-  but still reads "Open". Say that the lock overrules it.
+  locked**~~ — it says so, and since 2026-08-22 it is disabled while the lock
+  is on rather than being a live switch under a note saying the note wins.
 - [x] ~~**Copy**~~ — fixed 2026-08-22. "You log in with Discord, so there's no email on this account
   yet" should read "You logged in through Discord, ...".
 - [ ] **Onboarding said no events were joinable** while several public open
   events exist. Are they filtered to Discord servers? If Discord events are
   the more relevant ones, setup should ask which servers you are in so the
   filter has something to work with.
-- [ ] **Bingo has no join.** A new player can click a square and start
+- [x] ~~**Bingo has no join.**~~ — fixed 2026-08-22, and so does every other type. A new player can click a square and start
   scoring. It should take a deliberate join — and it has to, before the
   RuneLite plugin exists.
 - [x] ~~**A skill race never shows its skill icon.**~~ — fixed 2026-08-22. The metric is chosen and
@@ -2913,3 +2913,107 @@ not alongside it — the copy depends on what the app actually ends up doing.
   app has also gained an admin section that edits other people's events, a
   team-to-Discord-server link, and sessions that end on a password change —
   all of which are things a privacy policy is expected to describe.
+## Staging feedback, round seven — 2026-08-22
+
+Ten items, most of them consequences of two things the model never had: an
+explicit way to say you are playing, and a live channel that carried the
+event itself rather than only what is played on it.
+
+### Fixed
+
+- [x] ~~**The dice disappears on an empty square.**~~ Not the gate that was
+  reported last round — a condition problem underneath it. Standing on a
+  square with no task left nothing to do: no dice, because the tile was not
+  ticked off, and no way to tick it off, because there was nothing to
+  complete. The board simply stopped. Rolling is now gated on the tile
+  *having* a task, so an empty square rolls straight on.
+
+- [x] ~~**A join button for every event type, not only races.**~~ Asked for
+  twice. Joining is now one record (`event_participants`) and one action,
+  whatever the type — the button says the same thing on a bingo card as on a
+  board, and what that means for the type is decided on the server: a race
+  still enters the standings and baselines them, a board hands out a player
+  board, bingo needed nothing beyond the row.
+
+  Two consequences worth knowing:
+
+  - **Opening a board no longer enrols you in it.** It used to create a
+    player board for whoever looked, so every passer-by turned up in the
+    player list and on the leaderboard at square one. Joining creates it now.
+  - **Playing is still joining.** Rolling, ticking a tile and claiming a
+    square each write the row themselves. Nobody should have to press a
+    button twice, and a player missing from the list because they never
+    pressed it would be worse than an unasked-for row.
+
+  Existing players were carried across by the migration, from all three play
+  tables, so events running right now did not empty out.
+
+- [x] ~~**The skill icon on every standings row.**~~ Plus the unit, because
+  a bare number stops saying what it counts once you have scrolled past the
+  heading.
+
+- [x] ~~**The "New accounts" toggle is now actually blocked**~~, not merely
+  annotated. A live switch under a note saying the note wins is a control
+  that does nothing, and the only way to find that out was to flip it and
+  try to register.
+
+- [x] ~~**Snakes & Ladders tile edits reach other viewers**~~, arrows
+  included. The channel fingerprinted player positions and nothing else, so
+  a host putting a task on a tile or moving a ladder mid-event reached
+  nobody — the second browser kept the old board until it was reloaded. The
+  bingo card streamed its squares from the start; this is the same thing for
+  the same reason.
+
+- [x] ~~**Event changes reach other viewers.**~~ Moving a skill race's dates
+  updated nothing, on any type: every channel streamed its payload and none
+  of them streamed the event. Each one now carries a version of the event's
+  own details — title, description, dates, access, listing — and the page
+  asks Inertia for fresh props when it changes. A version rather than the
+  fields themselves, because the pages render those in a dozen places and
+  streaming a partial copy would mean each page picking the changed value
+  out by hand; an edit happens once or twice in an event's life, against a
+  channel that polls every few seconds.
+
+- [x] ~~**The OSRS name typed during setup is kept.**~~ It was discarded on
+  Skip and on Finish, which is why the standalone page asked for it again.
+
+- [x] ~~**Onboarding's "nothing joinable" now tells a refusal apart from an
+  empty list.**~~ It reported both the same way.
+
+- [x] ~~**"Click a square when you have completed it" moved to the
+  Information card.**~~ It sat above the board, which is also what pushed
+  the grid out of line with the cards beside it.
+
+- [x] ~~**"Who is playing" is hidden on a small race.**~~ The standings
+  already list everyone; the button only earns its place once the table is
+  long enough to hide someone.
+
+### Found while working
+
+- [x] ~~**A bingo event with no card yet was a 500.**~~ The page creates one
+  on the way in, passing only an id — so `size` was null on the instance in
+  hand (a column default only reaches PHP on a re-read) and the line counter
+  died on it a few statements later. Only reachable on an event created
+  outside the normal flow, which is exactly the kind of row a migration or
+  an import leaves behind. Found by a test written for something else.
+
+### Verified in a browser
+
+- A ladder moved from outside the app redrew on an open board without a
+  reload.
+- An end date changed from outside the app updated the open page — after the
+  delay the dev server imposes: the reload request queues behind the SSE
+  connection holding the single worker. Not the feature.
+- Join and leave both flip the button and raise their toast; leaving an
+  event you have played in is refused with the message that says to ask a
+  host.
+
+### Still open from earlier rounds
+
+Invite links (the client now reports what actually failed, the model
+question remains), the tile-target mismatch, the half-pending/half-approved
+render, "invite link or code", the Nuxt UI date range picker, boss icons via
+pets, per-user WOM key, scoping the task library, retiring `TEAM_MANAGER`,
+the privacy and terms rewrite, and pointing mail at Brevo.
+
+518 backend tests, 151 frontend.

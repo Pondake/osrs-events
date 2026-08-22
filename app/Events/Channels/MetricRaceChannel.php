@@ -2,6 +2,7 @@
 
 namespace App\Events\Channels;
 
+use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\Event;
 use App\Services\EventStandingsService;
 
@@ -13,6 +14,8 @@ use App\Services\EventStandingsService;
  */
 class MetricRaceChannel implements EventChannel
 {
+    use SignalsEventEdits;
+
     public function __construct(private readonly EventStandingsService $standings) {}
 
     public function name(): string
@@ -22,11 +25,14 @@ class MetricRaceChannel implements EventChannel
 
     public function fingerprint(Event $event): string
     {
-        return $this->standings->fingerprint($event);
+        return $this->standings->fingerprint($event).'#'.$this->eventVersion($event);
     }
 
     public function payload(Event $event): array
     {
-        return ['standings' => $this->standings->forEvent($event)->all()];
+        return [
+            'standings' => $this->standings->forEvent($event)->all(),
+            'event_version' => $this->eventVersion($event),
+        ];
     }
 }

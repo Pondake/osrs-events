@@ -200,10 +200,12 @@ class Event extends Model
     }
 
     /**
-     * Events this user takes part in, by whichever record their type keeps:
-     * a standing for a race, a player board for Snakes & Ladders, a claim for
-     * bingo. Hosting is deliberately not participation — running a race you
-     * are not entered in is common.
+     * Events this user takes part in.
+     *
+     * Joining is its own record now (EventParticipant), which is what makes
+     * this one question with one answer instead of three tables to union.
+     * Hosting is deliberately not participation — running a race you are not
+     * entered in is common.
      */
     public function scopePlayedBy(Builder $query, ?User $user): Builder
     {
@@ -212,9 +214,21 @@ class Event extends Model
         }
 
         return $query->where(fn (Builder $q) => $q
-            ->whereHas('standings', fn (Builder $s) => $s->where('user_id', $user->id))
+            ->whereHas('participants', fn (Builder $p) => $p->where('user_id', $user->id))
+            // The play tables as well, for anyone who was already playing
+            // when joining became a record of its own. The migration carried
+            // those across, so this is a belt-and-braces read rather than the
+            // primary one — and it keeps a row written directly by a test or
+            // a fixture from vanishing off somebody's list.
+            ->orWhereHas('standings', fn (Builder $s) => $s->where('user_id', $user->id))
             ->orWhereHas('board.playerBoards', fn (Builder $p) => $p->where('user_id', $user->id))
             ->orWhereHas('bingoCard.squares.completions', fn (Builder $c) => $c->where('user_id', $user->id)));
+    }
+
+    /** Everybody who has explicitly joined, whatever the type plays on. */
+    public function participants(): HasMany
+    {
+        return $this->hasMany(EventParticipant::class);
     }
 
     public function board(): HasOne

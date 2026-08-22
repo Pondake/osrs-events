@@ -55,6 +55,12 @@
                                 icon="i-lucide-users-round"
                                 :label="$t('participants.open')"
                             />
+
+                            <!-- Opening the board used to enrol you in it,
+                                 which put every passer-by on the leaderboard
+                                 at square one. Joining is a decision now, and
+                                 this is where it is made. -->
+                            <join-event-button :event-id="board.id" :joined="joined" size="sm" />
                             <template v-if="canEdit">
                                 <!-- Named for what they change — the tiles
                                      versus the event — rather than
@@ -245,7 +251,7 @@
                             </template>
 
                             <dice-roller
-                                v-if="currentTileCompleted"
+                                v-if="canRoll"
                                 :rolling="rolling"
                                 :last-roll="lastRoll"
                                 :rolls-today="playerBoard?.dice_rolls_today ?? 0"
@@ -256,9 +262,13 @@
                             <p v-else class="text-sm text-muted">{{ $t('board.roll_needs_current_tile') }}</p>
                         </u-card>
 
+                        <!-- No board of your own yet. Rolling still creates
+                             one — playing is joining — so the dice stay, with
+                             the deliberate way in above them. -->
                         <u-card v-if="!playerBoard">
-                            <p class="text-sm text-muted">{{ $t('board.get_started_desc') }}</p>
-                            <div class="mt-3">
+                            <p class="text-sm text-muted">{{ joined ? $t('board.get_started_desc') : $t('events.join_hint') }}</p>
+                            <div class="mt-3 flex flex-col gap-3">
+                                <join-event-button v-if="!joined" :event-id="board.id" :joined="false" />
                                 <dice-roller :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="board.dice_roll_limit" @roll="roll" />
                             </div>
                         </u-card>
@@ -469,6 +479,7 @@ import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import JoinEventButton from '@/Components/JoinEventButton.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
@@ -484,6 +495,7 @@ const props = defineProps({
     players: { type: Array, default: () => [] },
     hasTeam: { type: Boolean, default: true },
     canEdit: { type: Boolean, default: false },
+    joined: { type: Boolean, default: false },
 });
 
 // Everyone's positions, seeded from the render and then kept current by the
@@ -494,6 +506,7 @@ const props = defineProps({
 const sizeLabel = computed(() => formatBoardSize(props.board.size));
 
 const livePlayers = ref([...props.players]);
+const liveTiles = ref([...props.tiles]);
 /**
  * A copy of a prop only stays right if something copies it again.
  *
@@ -504,11 +517,20 @@ const livePlayers = ref([...props.players]);
  * reading "nobody has marked a square yet" next to a counter saying 1 of 16.
  */
 watch(() => props.players, (value) => (livePlayers.value = [...value]));
+watch(() => props.tiles, (value) => (liveTiles.value = [...value]));
 
 useEventStream({
     url: () => `/events/${props.board.id}/stream`,
     event: 'players',
-    onMessage: (payload) => (livePlayers.value = payload.players),
+    onMessage: (payload) => {
+        livePlayers.value = payload.players;
+
+        // The board itself, so a host putting a task on a tile or moving a
+        // ladder reaches everyone looking at it — the same way a bingo card's
+        // squares always did. Guarded because an older SSR bundle may still
+        // be streaming payloads without them.
+        if (payload.tiles) liveTiles.value = payload.tiles;
+    },
 });
 
 
@@ -561,10 +583,32 @@ const tileCount = computed(() => BOARD_TILE_COUNT[props.board.size] ?? 49);
 // next" panel the old app had and this page was missing entirely.
 const currentTile = computed(() => {
     if (!props.playerBoard) return null;
-    return props.tiles.find((t) => t.position === props.playerBoard.current_position) ?? null;
+    return liveTiles.value.find((t) => t.position === props.playerBoard.current_position) ?? null;
 });
 const currentTileTitle = computed(() => currentTile.value?.title_override ?? currentTile.value?.task?.title ?? trans('tile_editor.no_task'));
 const currentTileCompleted = computed(() => !!currentTile.value && (props.playerBoard?.completedTileIds.includes(currentTile.value.id) ?? false));
+
+/**
+ * Whether the square you are standing on actually asks for anything.
+ *
+ * Tiles are created when somebody edits them, so most squares on a board have
+ * no row at all — and a square with no task has nothing to complete.
+ */
+const currentTileHasTask = computed(() => Boolean(
+    currentTile.value && (currentTile.value.task_id || currentTile.value.title_override),
+));
+
+/**
+ * Rolling is the reward for finishing what you are standing on — but only
+ * when there is something to finish.
+ *
+ * Gating on `currentTileCompleted` alone meant landing on an empty square
+ * left you with no dice, no "mark as complete" button, and no way forward:
+ * the board simply stopped. Reported as joining a board and seeing no way to
+ * begin, which is what happens on tile 1 of any board whose first square is
+ * empty — that is to say, nearly all of them.
+ */
+const canRoll = computed(() => !currentTileHasTask.value || currentTileCompleted.value);
 
 const clickedTileTitle = computed(() => clickedTile.value?.title_override ?? clickedTile.value?.task?.title ?? trans('tile_editor.no_task'));
 
@@ -598,7 +642,7 @@ function playersOnTile(position) {
 // plain reading order.
 const orderedTiles = computed(() => {
     const n = cols.value;
-    const tileMap = new Map(props.tiles.map((t) => [t.position, t]));
+    const tileMap = new Map(liveTiles.value.map((t) => [t.position, t]));
     const result = [];
 
     for (let row = n - 1; row >= 0; row--) {
@@ -617,7 +661,9 @@ const orderedTiles = computed(() => {
 // Ported from the old Board/SnakeLadder.vue, converted from pixel to
 // percentage coordinates — see the template's comment on why.
 const snakeLadderConnections = computed(() =>
-    props.tiles
+    // The live copy, so a ladder moved mid-event redraws on every open board
+    // rather than only after a reload.
+    liveTiles.value
         .filter((t) => (t.type === 'SNAKE' || t.type === 'LADDER') && t.target_position !== null)
         .map((t) => ({ from: t.position, to: t.target_position, type: t.type })),
 );

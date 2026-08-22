@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/vue3';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 /**
@@ -28,6 +29,14 @@ export function useEventStream({ url, event, onMessage }) {
     let staleTimer = null;
     let target = null;
 
+    // The event's own details — title, dates, access — as a hash. Every
+    // channel sends one, and none of them send the details themselves: the
+    // pages render them in too many places to patch by hand, so a change asks
+    // Inertia for fresh props instead. Held from the first message rather than
+    // from the page, because that first message is the state the server has
+    // now. See App\Events\Channels\Concerns\SignalsEventEdits.
+    let eventVersion = null;
+
     // The server ends every stream after ~45 seconds by design, so a
     // disconnect is the normal case rather than a fault. Flipping the
     // indicator the instant one happens would report a problem roughly every
@@ -51,7 +60,10 @@ export function useEventStream({ url, event, onMessage }) {
 
         source.addEventListener(event, (message) => {
             try {
-                onMessage(JSON.parse(message.data));
+                const payload = JSON.parse(message.data);
+
+                onMessage(payload);
+                applyEventVersion(payload.event_version);
                 markLive();
             } catch (error) {
                 console.error(error);
@@ -80,6 +92,29 @@ export function useEventStream({ url, event, onMessage }) {
                 }, STALE_AFTER_MS);
             }
         });
+    }
+
+    /**
+     * Pull fresh props when the event itself was edited.
+     *
+     * `preserveScroll` and `preserveState` because this fires while somebody
+     * is reading the page: the host moved the end date, and jumping the
+     * reader to the top or closing whatever they had open would be a far
+     * bigger interruption than the change itself.
+     */
+    function applyEventVersion(version) {
+        if (!version) return;
+
+        if (eventVersion === null) {
+            eventVersion = version;
+
+            return;
+        }
+
+        if (version === eventVersion) return;
+
+        eventVersion = version;
+        router.reload({ preserveScroll: true, preserveState: true });
     }
 
     function disconnect() {

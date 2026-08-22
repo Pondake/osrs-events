@@ -46,7 +46,14 @@
                             {{ stale ? $t('events.reconnecting') : $t('events.auto_updating') }}
                         </span>
 
+                        <!-- Only worth a button while the standings are not
+                             already the whole list. A race ranks every
+                             entrant on the page, so "who is playing" was a
+                             link to the same names one scroll down. It comes
+                             back once the table is long enough to be a
+                             sample rather than the roster. -->
                         <u-button
+                            v-if="rows.length > PARTICIPANTS_WORTH_A_LINK"
                             :href="`/events/${event.id}/participants`"
                             color="neutral"
                             variant="outline"
@@ -56,23 +63,16 @@
                         />
 
                         <!-- Entering is a decision, so it's a button. Looking
-                             at a public leaderboard must not enrol anyone. -->
-                        <u-button
-                            v-if="!isParticipant && status !== 'ended'"
-                            color="primary"
+                             at a public leaderboard must not enrol anyone.
+                             The same component every other type uses, with the
+                             race's own words on it. -->
+                        <join-event-button
+                            v-if="isParticipant || status !== 'ended'"
+                            :event-id="event.id"
+                            :joined="isParticipant"
                             icon="i-lucide-swords"
-                            :label="$t('events.enter')"
-                            :loading="entering"
-                            @click="enterRace"
-                        />
-                        <u-button
-                            v-else-if="isParticipant"
-                            color="neutral"
-                            variant="outline"
-                            icon="i-lucide-log-out"
-                            :label="$t('events.leave')"
-                            :loading="entering"
-                            @click="leaveRace"
+                            :join-label="$t('events.enter')"
+                            :leave-label="$t('events.leave')"
                         />
 
                         <!-- The page has always been handed `canEdit` and
@@ -153,8 +153,17 @@
                                         <u-icon name="i-lucide-circle-help" class="size-4" />
                                         {{ $t(`events.error_${entry.error}`) }}
                                     </span>
-                                    <span v-else-if="entry.syncedAt" class="text-sm font-medium text-highlighted tabular-nums">
+                                    <!-- The number says what it is. "+412K"
+                                         alone is a quantity of nothing in
+                                         particular; the skill's own icon
+                                         beside it keeps the race's subject in
+                                         view on every row, and the unit is
+                                         there for a boss race that has no
+                                         icon to lean on. -->
+                                    <span v-else-if="entry.syncedAt" class="text-sm font-medium text-highlighted tabular-nums inline-flex items-center gap-1.5 shrink-0">
                                         +{{ formatXp(entry.gained) }}
+                                        <img v-if="metricIcon" :src="metricIcon" alt="" class="size-4 object-contain">
+                                        <span v-else class="text-xs text-muted">{{ $t(isBossRace ? 'events.unit_kills' : 'events.unit_xp') }}</span>
                                     </span>
                                     <!-- An unstarted race has nothing to
                                          measure yet, which is a different
@@ -226,6 +235,7 @@ import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import JoinEventButton from '@/Components/JoinEventButton.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
 import { boardEventStatus, formatDate } from '@/Support/board';
@@ -245,26 +255,6 @@ const props = defineProps({
     isParticipant: { type: Boolean, default: false },
     canEdit: { type: Boolean, default: false },
 });
-
-const entering = ref(false);
-
-function enterRace() {
-    entering.value = true;
-    router.post(`/events/${props.event.id}/enter`, {}, {
-        preserveScroll: true,
-        onFinish: () => (entering.value = false),
-        onError: (errors) => console.error(errors),
-    });
-}
-
-function leaveRace() {
-    entering.value = true;
-    router.delete(`/events/${props.event.id}/enter`, {
-        preserveScroll: true,
-        onFinish: () => (entering.value = false),
-        onError: (errors) => console.error(errors),
-    });
-}
 
 // Seeded from the server render so the table is complete before any
 // JavaScript runs; the stream takes over from here.
@@ -287,6 +277,10 @@ const isBossRace = computed(() => props.event.metricKind === 'boss');
 
 
 const metricName = computed(() => metricLabel(props.event.metric, props.event.metricKind));
+
+// Above this many entrants the standings stop being the roster and the
+// participants page earns its link back.
+const PARTICIPANTS_WORTH_A_LINK = 10;
 
 const rankedBy = computed(() => rankedByLabel(props.event.metric, props.event.metricKind));
 

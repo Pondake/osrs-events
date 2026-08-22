@@ -2,7 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 
+import { router } from '@inertiajs/vue3';
+
 import { useEventStream } from '@/Composables/useEventStream';
+
+/**
+ * The composable asks Inertia for fresh props when the event itself was
+ * edited, so the router is the observable end of that.
+ */
+vi.mock('@inertiajs/vue3', () => ({ router: { reload: vi.fn() } }));
 
 /**
  * The live channel's connection handling.
@@ -85,6 +93,7 @@ function mountStream({ url = () => '/events/abc/stream' } = {}) {
 }
 
 beforeEach(() => {
+    router.reload.mockClear();
     FakeEventSource.instances = [];
     vi.stubGlobal('EventSource', FakeEventSource);
     setVisibility('visible');
@@ -281,5 +290,64 @@ describe('the staleness indicator', () => {
         // STALE either, which is the half this test is about. A deliberate
         // disconnect is not a fault to report.
         expect(wrapper.text()).toBe('false/false');
+    });
+});
+
+describe('event edits', () => {
+    const message = (version) => ({ data: JSON.stringify({ squares: 1, event_version: version }) });
+
+    /**
+     * The first message is a statement of what the server has now, not a
+     * change to it. Reloading on it would mean every connection — including
+     * the reconnect that happens every 45 seconds by design — costing an
+     * extra round trip for nothing.
+     */
+    it('does not reload on the first message it sees', () => {
+        mountStream();
+
+        FakeEventSource.live[0].emit('bingo', message('abc'));
+
+        expect(router.reload).not.toHaveBeenCalled();
+    });
+
+    it('reloads when the version changes', () => {
+        mountStream();
+
+        FakeEventSource.live[0].emit('bingo', message('abc'));
+        FakeEventSource.live[0].emit('bingo', message('def'));
+
+        expect(router.reload).toHaveBeenCalledTimes(1);
+    });
+
+    /** Somebody is reading the page. Moving them to the top would be worse
+     *  than the change they are being told about. */
+    it('keeps the scroll and the page state', () => {
+        mountStream();
+
+        FakeEventSource.live[0].emit('bingo', message('abc'));
+        FakeEventSource.live[0].emit('bingo', message('def'));
+
+        expect(router.reload).toHaveBeenCalledWith({ preserveScroll: true, preserveState: true });
+    });
+
+    /** The channel pushes every few seconds; only an edit is an edit. */
+    it('leaves the page alone while the version holds', () => {
+        mountStream();
+
+        FakeEventSource.live[0].emit('bingo', message('abc'));
+        FakeEventSource.live[0].emit('bingo', message('abc'));
+        FakeEventSource.live[0].emit('bingo', message('abc'));
+
+        expect(router.reload).not.toHaveBeenCalled();
+    });
+
+    /** An older bundle may still be streaming payloads without one. */
+    it('ignores a payload that carries no version', () => {
+        mountStream();
+
+        FakeEventSource.live[0].emit('bingo', { data: JSON.stringify({ squares: 1 }) });
+        FakeEventSource.live[0].emit('bingo', { data: JSON.stringify({ squares: 2 }) });
+
+        expect(router.reload).not.toHaveBeenCalled();
     });
 });
