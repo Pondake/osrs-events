@@ -14,8 +14,27 @@
                     <u-form-field :label="$t('tile_editor.tile_type')">
                         <u-select v-model="form.type" :items="typeOptions" class="w-full" />
                     </u-form-field>
-                    <u-form-field v-if="form.type !== 'NORMAL'" :label="$t('tile_editor.target_tile')">
-                        <u-input v-model.number="form.target_position" type="number" min="0" class="w-full" />
+                    <!-- The number printed on the tile, not the array index
+                         behind it. This field was bound straight to
+                         `target_position`, which is zero-based — so a host
+                         typing 9 got an arrow to tile 10, and the tile list
+                         editor two clicks away (which does speak in printed
+                         numbers) disagreed with it about the same snake.
+                         Reported as "the editor said target tile 9 while the
+                         arrow pointed somewhere else". It did. -->
+                    <u-form-field
+                        v-if="form.type !== 'NORMAL'"
+                        :label="$t('tile_editor.target_tile')"
+                        :description="$t('tile_editor.target_tile_desc', { max: tileCount })"
+                        :error="form.errors.target_position"
+                    >
+                        <u-input
+                            v-model.number="targetTileNumber"
+                            type="number"
+                            min="1"
+                            :max="tileCount"
+                            class="w-full"
+                        />
                     </u-form-field>
                 </div>
             </div>
@@ -49,6 +68,9 @@ const props = defineProps({
     eventId: { type: String, required: true },
     position: { type: Number, required: true },
     tile: { type: Object, default: null },
+    // How many tiles the board has, so the target can be bounded to one that
+    // exists rather than accepting any number and failing later.
+    tileCount: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['update:open']);
@@ -62,6 +84,21 @@ const typeOptions = [
 ];
 
 const selectedTask = ref(null);
+
+/**
+ * The board stores positions from zero and prints them from one. Everything
+ * a host reads — the tile they clicked, the badge on the list, the arrow's
+ * own label — is the printed number, so this field is too, and the
+ * conversion happens in one place instead of in the reader's head.
+ */
+const targetTileNumber = computed({
+    get: () => (form.target_position === null || form.target_position === undefined ? null : form.target_position + 1),
+    set: (value) => {
+        const n = Number(value);
+
+        form.target_position = Number.isFinite(n) && n >= 1 ? n - 1 : null;
+    },
+});
 
 function blankForm() {
     return { title_override: '', type: 'NORMAL', target_position: null, task_id: null };

@@ -473,6 +473,7 @@
                 :open="editingTile !== null"
                 :event-id="liveBoard.id"
                 :position="editingTile.position"
+                :tile-count="tiles.length"
                 :tile="editingTile.id ? editingTile : null"
                 @update:open="(v) => !v && (editingTile = null)"
             />
