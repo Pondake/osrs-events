@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Ported from InvitesService — every action requires board-owner-or-admin.
+ * Invite links for an event, for anyone who hosts it.
  *
  * These three are consumed by fetch() from the board settings modal, not by
  * Inertia, so they answer in JSON. They used to return back()->with(flash):
@@ -34,9 +34,22 @@ class BoardInviteController extends Controller
      */
     private const MAX_OPEN = 3;
 
+    /**
+     * Every action here is a HOST action, not an owner one.
+     *
+     * It used to be owner-only, while the tab it lives in renders for anyone
+     * who may edit the event — so a co-host opened Invite links and every
+     * button in it answered 403, which reaches them as "Something went
+     * wrong. Please try again." Reported exactly that way.
+     *
+     * Handing out and revoking links is day-to-day running of an event, the
+     * same as adding a team or pausing it. Deleting the event stays the
+     * owner's alone, because that is the one that destroys other people's
+     * work.
+     */
     public function index(Event $event, bool $asAdmin = false): JsonResponse
     {
-        $this->assertOwnsEvent(Auth::user(), $event, $asAdmin);
+        $this->assertCanEditEvent(Auth::user(), $event, $asAdmin);
 
         return $this->list($event);
     }
@@ -55,7 +68,7 @@ class BoardInviteController extends Controller
 
     public function store(Request $request, Event $event, BoardAccessService $access, bool $asAdmin = false): JsonResponse
     {
-        $this->assertOwnsEvent(Auth::user(), $event, $asAdmin);
+        $this->assertCanEditEvent(Auth::user(), $event, $asAdmin);
 
         // Checked before validation so the message is about the limit rather
         // than about a field the caller never sent.
@@ -94,7 +107,7 @@ class BoardInviteController extends Controller
 
     public function destroy(Event $event, BoardInvite $invite, bool $asAdmin = false): JsonResponse
     {
-        $this->assertOwnsEvent(Auth::user(), $event, $asAdmin);
+        $this->assertCanEditEvent(Auth::user(), $event, $asAdmin);
         abort_unless($invite->event_id === $event->id, 404);
 
         AuditLog::record('invite.revoked', $invite, [
