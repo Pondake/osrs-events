@@ -5,7 +5,13 @@
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="liveEvent" :can-edit="canEdit" :viewing-as-admin="viewingAsAdmin">
+                    <event-type-heading
+                        :event="liveEvent"
+                        :can-edit="canEdit"
+                        :viewing-as-admin="viewingAsAdmin"
+                        :streaming="streaming"
+                        :stale="stale"
+                    >
                         <template #meta>
                             <span class="inline-flex items-center gap-1.5">
                                 <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
@@ -24,16 +30,6 @@
                          on the bingo card. It only needs to hold its ground
                          once there is room for it to. -->
                     <div class="flex flex-wrap items-center gap-2 sm:gap-3 sm:shrink-0">
-                        <!-- Reports the live channel rather than offering a
-                             refresh: a card updates itself when anyone claims
-                             or a host reviews. -->
-                        <span v-if="streaming" class="inline-flex items-center gap-1.5 text-xs" :class="stale ? 'text-muted' : 'text-success'">
-                            <span class="relative flex size-2">
-                                <span class="relative inline-flex size-2 rounded-full" :class="stale ? 'bg-muted' : 'bg-success'" />
-                            </span>
-                            {{ stale ? $t('events.reconnecting') : $t('events.auto_updating') }}
-                        </span>
-
                         <span class="text-sm text-muted">
                             {{ $t('bingo.squares_done', { done: completed.length, total: squares.length }) }}
                         </span>
@@ -52,65 +48,7 @@
                              a square, so an empty card meant an empty event. -->
                         <join-event-button v-if="joined || !isPaused" :event-id="liveEvent.id" :joined="joined" size="sm" />
 
-                        <template v-if="canEdit">
-                            <!-- Three separate things, and they were one
-                                 (a toggle) plus one that did not exist:
-                                 quick edit changes what a SQUARE asks for,
-                                 settings change what the EVENT is, and
-                                 review is an admin job that belongs in its
-                                 own dialog rather than in the sidebar. -->
-                            <!-- "Edit tiles", not "Quick edit". The old
-                                 label read as a shortcut to something,
-                                 sitting next to a button called Edit board
-                                 that does not touch tiles at all — so the
-                                 two names described each other rather than
-                                 what they do. This one is a mode: while it
-                                 is on, clicking a square edits it. -->
-                            <u-button
-                                :color="editing ? 'primary' : 'neutral'"
-                                :variant="editing ? 'solid' : 'outline'"
-                                size="sm"
-                                :icon="editing ? 'i-lucide-check' : 'i-lucide-grid-2x2-plus'"
-                                :label="editing ? $t('bingo.editing_tiles') : $t('bingo.edit_tiles')"
-                                :title="$t('bingo.edit_tiles_desc')"
-                                @click="editing = !editing"
-                            />
-
-                            <u-button
-                                color="neutral"
-                                variant="outline"
-                                size="sm"
-                                icon="i-lucide-list-checks"
-                                :label="$t('tile_list.open')"
-                                @click="showTileList = true"
-                            />
-
-                            <u-button
-                                color="neutral"
-                                variant="outline"
-                                size="sm"
-                                icon="i-lucide-settings"
-                                :label="$t('board.event_settings')"
-                                @click="showSettingsModal = true"
-                            />
-
-                            <!-- The count lives on the button so the page
-                                 says how much is waiting without spending a
-                                 column on it. Colours up only when there is
-                                 something to do. -->
-                            <u-button
-                                :color="pending.length ? 'warning' : 'neutral'"
-                                variant="outline"
-                                size="sm"
-                                icon="i-lucide-gavel"
-                                :label="$t('bingo.review_queue')"
-                                @click="showReviewModal = true"
-                            >
-                                <template v-if="pending.length" #trailing>
-                                    <u-badge :label="String(pending.length)" color="warning" variant="solid" size="sm" />
-                                </template>
-                            </u-button>
-                        </template>
+                        <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
                     </div>
                 </div>
 
@@ -474,6 +412,7 @@ import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { eventStatus } from '@/Support/board';
+import EventManageMenu from '@/Components/EventManageMenu.vue';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
@@ -527,6 +466,25 @@ const status = computed(() => eventStatus(liveEvent.value));
 // every open card through the stream, which carries paused_at in its
 // fingerprint (see SignalsEventEdits).
 const isPaused = computed(() => Boolean(liveEvent.value.paused_at));
+
+/**
+ * The host's side of this page, in one menu — see EventManageMenu for why.
+ * Built here rather than inside it because every one of these is this page's
+ * own state: a mode it toggles, a dialog it owns, a queue it counts.
+ */
+const manageItems = computed(() => [
+    { key: 'edit', label: editing.value ? trans('bingo.editing_tiles') : trans('bingo.edit_tiles'), icon: 'i-lucide-grid-2x2-plus', active: editing.value },
+    { key: 'tiles', label: trans('tile_list.open'), icon: 'i-lucide-list-checks' },
+    { key: 'settings', label: trans('board.event_settings'), icon: 'i-lucide-settings' },
+    { key: 'review', label: trans('bingo.review_queue'), icon: 'i-lucide-gavel', badge: props.pending.length },
+]);
+
+function onManage(key) {
+    if (key === 'edit') editing.value = ! editing.value;
+    if (key === 'tiles') showTileList.value = true;
+    if (key === 'settings') showSettingsModal.value = true;
+    if (key === 'review') showReviewModal.value = true;
+}
 
 // Seeded from the server render, then kept current by the channel. The
 // squares are streamed too, so an author's edit lands on every open card

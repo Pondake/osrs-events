@@ -13,7 +13,13 @@
                      bingo and race pages so all three announce themselves the
                      same way. -->
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="liveBoard" :can-edit="canEdit" :viewing-as-admin="viewingAsAdmin">
+                    <event-type-heading
+                        :event="liveBoard"
+                        :can-edit="canEdit"
+                        :viewing-as-admin="viewingAsAdmin"
+                        :streaming="streaming"
+                        :stale="stale"
+                    >
                             <template #meta>
                                 <span class="inline-flex items-center gap-1.5">
                                     <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
@@ -61,37 +67,7 @@
                                  at square one. Joining is a decision now, and
                                  this is where it is made. -->
                             <join-event-button v-if="joined || !isPaused" :event-id="liveBoard.id" :joined="joined" size="sm" />
-                            <template v-if="canEdit">
-                                <!-- Named for what they change — the tiles
-                                     versus the event — rather than
-                                     "edit mode" versus "edit board", which
-                                     said nothing about which was which. -->
-                                <u-button
-                                    :color="editMode ? 'primary' : 'neutral'"
-                                    :variant="editMode ? 'solid' : 'outline'"
-                                    size="sm"
-                                    :icon="editMode ? 'i-lucide-check' : 'i-lucide-grid-2x2-plus'"
-                                    :label="editMode ? $t('bingo.editing_tiles') : $t('bingo.edit_tiles')"
-                                    :title="$t('board.edit_tiles_desc')"
-                                    @click="editMode = !editMode"
-                                />
-                                <u-button
-                                    color="neutral"
-                                    variant="outline"
-                                    size="sm"
-                                    icon="i-lucide-list-checks"
-                                    :label="$t('tile_list.open')"
-                                    @click="showTileList = true"
-                                />
-                                <u-button
-                                    color="neutral"
-                                    variant="outline"
-                                    size="sm"
-                                    icon="i-lucide-settings"
-                                    :label="$t('board.event_settings')"
-                                    @click="showSettingsModal = true"
-                                />
-                            </template>
+                            <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
                             <u-button
                                 :href="`/events/${liveBoard.id}/leaderboard`"
                                 color="neutral"
@@ -489,6 +465,7 @@ import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
+import EventManageMenu from '@/Components/EventManageMenu.vue';
 import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
 
@@ -542,7 +519,10 @@ const liveTiles = ref([...props.tiles]);
 watch(() => props.players, (value) => (livePlayers.value = [...value]));
 watch(() => props.tiles, (value) => (liveTiles.value = [...value]));
 
-useEventStream({
+// Destructured now, because the status dot in the heading reports the
+// connection — see EventTypeHeading. This page never showed a live indicator
+// at all, so a board quietly kept itself up to date and never said so.
+const { streaming, stale } = useEventStream({
     url: () => `/events/${liveBoard.value.id}/stream`,
     event: 'players',
     onMessage: (payload) => {
@@ -641,6 +621,19 @@ const canRoll = computed(() => !currentTileHasTask.value || currentTileCompleted
 // mid-game reaches an open board through the stream — the fingerprint carries
 // paused_at (see SignalsEventEdits) and this is what it lands on.
 const isPaused = computed(() => Boolean(liveBoard.value.paused_at));
+
+/** The host's tools, in one menu — see EventManageMenu. */
+const manageItems = computed(() => [
+    { key: 'edit', label: editMode.value ? trans('bingo.editing_tiles') : trans('bingo.edit_tiles'), icon: 'i-lucide-grid-2x2-plus', active: editMode.value },
+    { key: 'tiles', label: trans('tile_list.open'), icon: 'i-lucide-list-checks' },
+    { key: 'settings', label: trans('board.event_settings'), icon: 'i-lucide-settings' },
+]);
+
+function onManage(key) {
+    if (key === 'edit') editMode.value = ! editMode.value;
+    if (key === 'tiles') showTileList.value = true;
+    if (key === 'settings') showSettingsModal.value = true;
+}
 
 const clickedTileTitle = computed(() => clickedTile.value?.title_override ?? clickedTile.value?.task?.title ?? trans('tile_editor.no_task'));
 
