@@ -58,6 +58,12 @@ trait SignalsEventEdits
             $event->is_listed ? '1' : '0',
             $event->start_date?->toIso8601String(),
             $event->end_date?->toIso8601String(),
+            // The one field here that changes mid-event on purpose. A pause
+            // has to reach every open browser within seconds — that is the
+            // whole point of pausing rather than editing the end date — and
+            // this is the line that makes it.
+            $event->paused_at?->toIso8601String(),
+            $event->pause_reason,
         ]));
     }
 }

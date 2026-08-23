@@ -50,6 +50,15 @@ class Setting extends Model
         'default_event_duration' => '2w',
         'announcement' => null,
         'announcement_type' => 'info',
+        // Whether a host may wire an event up to a Discord channel at all.
+        //
+        // Off by default and deliberately so: it makes the app POST to a URL
+        // somebody typed in, into a room full of people who did not ask this
+        // app for anything. That is worth switching on knowingly, after
+        // somebody has watched it post to a real server — see the backlog.
+        // With it off the field is not offered and nothing is ever sent,
+        // whatever is stored on an event.
+        'discord_webhooks_enabled' => false,
         // Every "support" button on the site points straight here. A default
         // rather than a nullable: an empty value would render buttons that go
         // nowhere, and the profile is not something that changes often enough

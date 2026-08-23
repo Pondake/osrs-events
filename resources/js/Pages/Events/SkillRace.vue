@@ -5,7 +5,7 @@
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="liveEvent" :can-edit="canEdit">
+                    <event-type-heading :event="liveEvent" :can-edit="canEdit" :viewing-as-admin="viewingAsAdmin">
                         <template #meta>
                             <!-- The skill's own icon, beside the line that
                                  names it. A race is chosen by its skill and
@@ -67,7 +67,7 @@
                              The same component every other type uses, with the
                              race's own words on it. -->
                         <join-event-button
-                            v-if="isParticipant || status !== 'ended'"
+                            v-if="isParticipant || (status !== 'ended' && status !== 'paused')"
                             :event-id="liveEvent.id"
                             :joined="isParticipant"
                             icon="i-lucide-swords"
@@ -226,7 +226,7 @@
         <!-- Async + client-only for the same reason BoardShow does it: the
              modal reaches @nuxt/ui composables that break the SSR build. -->
         <client-only>
-            <board-settings-modal v-if="canEdit" v-model:open="showSettingsModal" :board="liveEvent" />
+            <board-settings-modal v-if="canEdit" v-model:open="showSettingsModal" :board="liveEvent" :webhook-url="webhookUrl" />
         </client-only>
 </template>
 
@@ -238,7 +238,7 @@ import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
-import { boardEventStatus, formatDate } from '@/Support/board';
+import { eventStatus, formatDate } from '@/Support/board';
 import { metricIconUrl, metricLabel, rankedByLabel } from '@/Support/metrics';
 import { useEventStream } from '@/Composables/useEventStream';
 
@@ -254,6 +254,12 @@ const props = defineProps({
     osrsUsername: { type: String, default: null },
     isParticipant: { type: Boolean, default: false },
     canEdit: { type: Boolean, default: false },
+    // True only when a site admin is reading a private event they were never
+    // invited to — the heading says so rather than letting it be silent.
+    viewingAsAdmin: { type: Boolean, default: false },
+    // Editors only — see BoardSettingsModal's own note on why this is not
+    // part of the event payload.
+    webhookUrl: { type: String, default: null },
 });
 
 /**
@@ -298,7 +304,7 @@ const rankedBy = computed(() => rankedByLabel(liveEvent.value.metric, liveEvent.
 // Null for a boss race, which has no icon to draw — see Support/metrics.js.
 const metricIcon = computed(() => metricIconUrl(liveEvent.value.metric, liveEvent.value.metricKind));
 
-const status = computed(() => boardEventStatus(liveEvent.value.start_date, liveEvent.value.end_date));
+const status = computed(() => eventStatus(liveEvent.value));
 
 
 const dateRange = computed(() => {

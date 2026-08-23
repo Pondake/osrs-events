@@ -57,6 +57,13 @@ class BingoController extends Controller
             return back()->with('board-save-error', trans('bingo.event_ended'));
         }
 
+        // A pause stops claims for the same reason but temporarily, and only
+        // for players: review() below stays open, because clearing the queue
+        // is often exactly why the host paused.
+        if ($event->isPaused()) {
+            return back()->with('board-save-error', trans('events.paused_notice'));
+        }
+
         // Claiming a square is playing, so it joins. Bingo is the type where
         // this mattered most: taking part was inferred from having claimed
         // something, which meant an event nobody had scored in yet had, on

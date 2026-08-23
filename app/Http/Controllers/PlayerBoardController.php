@@ -26,6 +26,14 @@ class PlayerBoardController extends Controller
     {
         abort_unless($access->hasAccess(Auth::user(), $event), 403);
 
+        // Paused is not ended: the board stays readable, the standings stay
+        // up, and nothing anyone did is lost — but nobody moves until the
+        // host says so. Checked here rather than in the service because the
+        // answer a player needs is a toast on the page they are already on.
+        if ($event->isPaused()) {
+            return back()->with('board-save-error', trans('events.paused_notice'));
+        }
+
         // Tiles hang off the board, not the event — an event type without a
         // board has none.
         $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();
@@ -43,7 +51,7 @@ class PlayerBoardController extends Controller
 
         $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
         if ($playerBoard === null) {
-            return back()->with('board-save-error', "You don't have a team on this board yet.");
+            return back()->with('board-save-error', trans('events.no_team_yet'));
         }
 
         // Roll limit is board mechanics, so it moved with the board.
@@ -54,7 +62,7 @@ class PlayerBoardController extends Controller
             $rollsToday = $isToday ? $playerBoard->dice_rolls_today : 0;
 
             if ($rollsToday >= $rollLimit) {
-                return back()->with('board-save-error', "You've reached today's roll limit ({$rollLimit}/day).");
+                return back()->with('board-save-error', trans('board.roll_limit_reached', ['limit' => $rollLimit]));
             }
         }
 
@@ -100,7 +108,9 @@ class PlayerBoardController extends Controller
         // raw number to pick which face to render, not a pre-formatted
         // sentence to parse back apart.
         return back()
-            ->with('board-save', "Rolled a {$rolled}".($jump ? " and hit a {$jump}!" : '.'))
+            ->with('board-save', $jump
+                ? trans('board.rolled_with_jump', ['n' => $rolled, 'jump' => $jump])
+                : trans('board.rolled', ['n' => $rolled]))
             ->with('last-roll', $rolled);
     }
 
@@ -117,12 +127,17 @@ class PlayerBoardController extends Controller
         // board-less event would match every board-less tile.
         abort_unless($event->board !== null && $tile->board_id === $event->board->id, 404);
 
+        // On hold, same as roll().
+        if ($event->isPaused()) {
+            return back()->with('board-save-error', trans('events.paused_notice'));
+        }
+
         // Same as roll(): ticking a tile off is playing, so it joins.
         EventParticipant::firstOrCreate(['event_id' => $event->id, 'user_id' => Auth::id()]);
 
         $playerBoard = $playerBoards->getOrCreate($event, Auth::user());
         if ($playerBoard === null) {
-            return back()->with('board-save-error', "You don't have a team on this board yet.");
+            return back()->with('board-save-error', trans('events.no_team_yet'));
         }
 
         $existing = CompletedTile::where('player_board_id', $playerBoard->id)

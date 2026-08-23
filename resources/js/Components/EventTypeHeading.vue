@@ -49,6 +49,53 @@
             <slot name="meta" />
         </div>
 
+        <!-- Reading somebody else's private event on an admin's pass.
+             The power is deliberate (BoardAccessService::canBypass) and
+             moderating is what it is for, but exercising it silently is a
+             different thing from having it. /teams has said this out loud
+             since it was built; an invite-only clan event is at least as
+             good a place to say it. -->
+        <div v-if="viewingAsAdmin" class="mt-3">
+            <u-alert
+                color="neutral"
+                variant="subtle"
+                icon="i-lucide-eye"
+                :description="$t('events.viewing_as_admin')"
+            />
+        </div>
+
+        <!-- On hold, said once and where everybody looks.
+             Here rather than on each event page for the same reason the
+             save-as-template prompt is: this component is the one thing all
+             three types share, and a pause means the same thing on a race as
+             on a bingo card. The dot above already says "paused"; this says
+             what that costs, because "can I still claim this?" is the next
+             question and a coloured word does not answer it. -->
+        <div v-if="status === 'paused'" class="mt-3">
+            <u-alert
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-pause"
+                :description="pausedDescription"
+            >
+                <!-- The host who paused it gets the way back on the banner
+                     itself. Resuming lived four clicks deep in a settings tab
+                     called "Danger zone", which is where you go to end an
+                     event, not to un-pause one you paused ten minutes ago. -->
+                <template v-if="canEdit" #actions>
+                    <u-button
+                        color="warning"
+                        variant="solid"
+                        size="xs"
+                        icon="i-lucide-play"
+                        :label="$t('events.danger_resume_cta')"
+                        :loading="resuming"
+                        @click="resume"
+                    />
+                </template>
+            </u-alert>
+        </div>
+
         <!-- The moment a host knows whether the format was worth keeping.
              Here rather than on each event page because this component is
              the one thing all three of them share, and it already works out
@@ -69,9 +116,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { boardEventStatus, formatDate } from '@/Support/board';
+import { eventStatus, formatDate } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
@@ -79,16 +127,39 @@ import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
 const props = defineProps({
     event: { type: Object, required: true },
     // Whether this viewer runs the event. Only a host is offered the
-    // save-as-template prompt below.
+    // save-as-template prompt below, and the resume button on the banner.
     canEdit: { type: Boolean, default: false },
+    // Set when the only reason this page opened is a site-admin pass.
+    viewingAsAdmin: { type: Boolean, default: false },
 });
 
 const typeMeta = computed(() => eventTypeMeta(props.event.type));
 
-const status = computed(() => boardEventStatus(props.event.start_date, props.event.end_date));
+const status = computed(() => eventStatus(props.event));
 
-const DOT = { upcoming: 'bg-info', live: 'bg-success', ended: 'bg-muted' };
-const TEXT = { upcoming: 'text-info', live: 'text-success', ended: 'text-muted' };
+/**
+ * The banner carries the host's reason when there is one. "Paused" answers
+ * "can I still claim this?"; only the host can answer "for how long, and
+ * why", and that is the question the clan actually asks in Discord.
+ */
+const pausedDescription = computed(() => (props.event.pause_reason
+    ? trans('events.paused_banner_reason', { reason: props.event.pause_reason })
+    : trans('events.paused_banner')));
+
+const resuming = ref(false);
+
+function resume() {
+    resuming.value = true;
+
+    router.patch(`/events/${props.event.id}/pause`, { paused: false, notify: true }, {
+        preserveScroll: true,
+        onError: (errors) => console.error(errors),
+        onFinish: () => { resuming.value = false; },
+    });
+}
+
+const DOT = { upcoming: 'bg-info', live: 'bg-success', paused: 'bg-warning', ended: 'bg-muted' };
+const TEXT = { upcoming: 'text-info', live: 'text-success', paused: 'text-warning', ended: 'text-muted' };
 
 const dateRange = computed(() => {
     if (!props.event.start_date && !props.event.end_date) return trans('boards.no_dates');

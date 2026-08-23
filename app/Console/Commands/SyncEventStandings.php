@@ -39,7 +39,13 @@ class SyncEventStandings extends Command
             // hand, including one that just ended.
             ->unless($this->option('event'), fn ($q) => $q
                 ->where(fn ($w) => $w->whereNull('start_date')->orWhere('start_date', '<=', Carbon::now()))
-                ->where(fn ($w) => $w->whereNull('end_date')->orWhere('end_date', '>=', Carbon::now()->subDay())))
+                ->where(fn ($w) => $w->whereNull('end_date')->orWhere('end_date', '>=', Carbon::now()->subDay()))
+                // A paused race is a race whose scoreboard must not move.
+                // Skipped rather than synced-and-hidden: the standings are
+                // what a race IS, so pulling new numbers into them while the
+                // host has stopped the event would make the pause a lie the
+                // moment it was lifted.
+                ->whereNull('paused_at'))
             ->get();
 
         if ($events->isEmpty()) {

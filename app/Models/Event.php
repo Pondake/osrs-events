@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * A competition: what it is, when it runs, and who may take part.
@@ -25,6 +26,18 @@ class Event extends Model
 {
     use HasUuids;
 
+    /**
+     * Deleting an event does not delete an event.
+     *
+     * Every child table cascades off this row — board, tiles, player boards,
+     * completions, standings, participants, invites — so a hard delete takes
+     * a clan's whole event with it and nothing can put it back. The trashed
+     * row drops out of every list and 404s on every route, which is the part
+     * anyone deleting actually wants; an admin can restore it from
+     * /admin/events.
+     */
+    use SoftDeletes;
+
     protected $fillable = [
         'title',
         'type',
@@ -36,6 +49,12 @@ class Event extends Model
         'is_listed',
         'start_date',
         'end_date',
+        // Where announcements go, when a host wires one up. An ordinary
+        // setting: changing it announces nothing by itself.
+        'discord_webhook_url',
+        // `paused_at` and `pause_reason` are deliberately absent: pausing is
+        // its own action with its own permission check and its own audit
+        // entry, not a field somebody can slip into an ordinary settings save.
     ];
 
     protected $casts = [
@@ -44,7 +63,20 @@ class Event extends Model
         // was a real 500 (see CLAUDE.md).
         'start_date' => 'datetime',
         'end_date' => 'datetime',
+        'paused_at' => 'datetime',
     ];
+
+    /**
+     * On hold: readable, not playable.
+     *
+     * Every write a *player* makes checks this — rolling, ticking a tile,
+     * claiming a square, joining. Everything a *host* does stays open,
+     * because pausing is usually the prelude to fixing whatever went wrong.
+     */
+    public function isPaused(): bool
+    {
+        return $this->paused_at !== null;
+    }
 
     /**
      * The kinds of event this app runs, per docs/ROADMAP.md phases 5 and 7.

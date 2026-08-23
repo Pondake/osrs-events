@@ -61,6 +61,7 @@
                     <access-fields
                         :form="form"
                         is-edit
+                        :discord-webhooks-enabled="discordWebhooksEnabled"
                         :guilds="guilds"
                         :loading-guilds="loadingGuilds"
                         :has-discord="hasDiscord"
@@ -81,6 +82,17 @@
                         :creating="creatingInvite"
                         @create="createInvite"
                         @revoke="revokeInvite"
+                    />
+                </template>
+                <template #danger>
+                    <danger-fields
+                        :title="form.title"
+                        :can-delete="canDelete"
+                        :paused-at="board?.paused_at ?? null"
+                        :pausing="pausing"
+                        :deleting="deleting"
+                        @pause="setPaused"
+                        @destroy="destroyEvent"
                     />
                 </template>
                 <template #teams>
@@ -237,13 +249,14 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { useForm, usePage } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import AccessFields from '@/Components/BoardSettings/AccessFields.vue';
 import BasicsFields from '@/Components/BoardSettings/BasicsFields.vue';
 import FormatFields from '@/Components/BoardSettings/FormatFields.vue';
 import InviteFields from '@/Components/BoardSettings/InviteFields.vue';
+import DangerFields from '@/Components/BoardSettings/DangerFields.vue';
 import TeamFields from '@/Components/BoardSettings/TeamFields.vue';
 import TemplateFields from '@/Components/BoardSettings/TemplateFields.vue';
 import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
@@ -255,6 +268,11 @@ const { user: currentUser } = useAuth();
 const props = defineProps({
     open: { type: Boolean, default: false },
     board: { type: Object, default: null },
+    // Kept out of the `board` payload on purpose: that object is what every
+    // viewer of a public event receives and what the live channel pushes, and
+    // a webhook URL is a capability rather than a fact about the event. The
+    // server only fills this in for somebody who may edit.
+    webhookUrl: { type: String, default: null },
     // Where this modal's writes go. The admin section passes '/admin/events'
     // because an admin editing somebody else's event is a different route
     // with a different check behind it — on the public side an admin is an
@@ -277,6 +295,9 @@ const isEdit = computed(() => props.board !== null);
 const eventPath = computed(() => `${props.basePath}/${props.board?.id}`);
 
 const site = () => usePage().props?.site ?? {};
+
+// Site-wide switch for the Discord announcements field — see Setting::DEFAULTS.
+const discordWebhooksEnabled = computed(() => usePage().props?.site?.discordWebhooksEnabled ?? false);
 
 // ---------------------------------------------------------------- the form
 
@@ -334,6 +355,7 @@ function blankForm() {
         ...defaultDates(),
         dice_roll_limit: settings.defaultDiceRollLimit ?? null,
         is_listed: true,
+        discord_webhook_url: '',
         access_mode: 'OPEN',
         required_guild_id: '',
         author_ids: [],
@@ -418,6 +440,12 @@ const tabs = computed(() => [
     { value: 'access', slot: 'access', label: trans('admin.step_access') },
     ...(form.access_mode === 'INVITE' ? [{ value: 'invites', slot: 'invites', label: trans('admin.invite_links') }] : []),
     ...(form.mode === 'TEAM' ? [{ value: 'teams', slot: 'teams', label: trans('admin.team_assignment') }] : []),
+    // Last, because it is where you go on purpose. The tabs only render
+    // while editing, and only somebody who may edit the event gets this far
+    // — so pausing is available to everyone who can see this tab, while
+    // deleting is gated inside it (the owner's alone, per
+    // BoardController::destroy).
+    { value: 'danger', slot: 'danger', label: trans('admin.step_stop') },
 ]);
 
 const activeTab = ref('basics');
@@ -617,7 +645,7 @@ watch(
     () => props.board,
     (board) => {
         form.defaults(board
-            ? { ...blankForm(), ...board, ...dateFields(board), ...cardFields(board) }
+            ? { ...blankForm(), ...board, ...dateFields(board), ...cardFields(board), discord_webhook_url: props.webhookUrl ?? '' }
             : blankForm());
         form.reset();
         form.clearErrors();
@@ -781,6 +809,48 @@ function addAuthor(candidate) {
 function removeAuthor(userId) {
     selectedAuthors.value = selectedAuthors.value.filter((a) => a.id !== userId);
     form.author_ids = selectedAuthors.value.map((a) => a.id);
+}
+
+// ------------------------------------------------------------ danger zone
+
+const pausing = ref(false);
+const deleting = ref(false);
+
+/**
+ * Deleting is the owner's, pausing is any host's.
+ *
+ * The admin path is its own answer: /admin/events exists precisely so a site
+ * admin can act on an event they did not author, and the routes behind it
+ * assert that themselves.
+ */
+const canDelete = computed(() => props.basePath.startsWith('/admin')
+    || (props.board?.authors ?? []).some((author) => author.is_owner && author.user_id === currentUser.value?.id));
+
+function setPaused({ paused, notify, reason }) {
+    pausing.value = true;
+
+    router.patch(`${eventPath.value}/pause`, { paused, notify, reason }, {
+        preserveScroll: true,
+        // Stays open. A host pausing to sort something out is usually about
+        // to change something else in here, and the tab reflects the new
+        // state on its own — the page's props come back with the visit.
+        onError: (errors) => console.error(errors),
+        onFinish: () => { pausing.value = false; },
+    });
+}
+
+/**
+ * The modal does not close itself: the server redirects to the events list,
+ * so the page this is mounted on stops existing.
+ */
+function destroyEvent({ notify }) {
+    deleting.value = true;
+
+    router.delete(eventPath.value, {
+        data: { notify },
+        onError: (errors) => console.error(errors),
+        onFinish: () => { deleting.value = false; },
+    });
 }
 
 // ----------------------------------------------------------------- submit

@@ -12,8 +12,11 @@ use App\Models\EventBlueprint;
 use App\Models\EventStanding;
 use App\Models\Team;
 use App\Models\UserGuild;
+use App\Notifications\EventStatusChanged;
 use App\Services\BingoService;
 use App\Services\BoardAccessService;
+use App\Services\DiscordAnnouncer;
+use App\Services\EventNotificationService;
 use App\Services\EventParticipationService;
 use App\Services\EventStandingsService;
 use App\Services\PlayerBoardService;
@@ -34,7 +37,7 @@ class BoardController extends Controller
     /** How many of each kind the hub shows before "view all". */
     private const HUB_SLICE = 3;
 
-    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date'];
+    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'discord_webhook_url'];
 
     private const BOARD_FIELDS = ['size', 'dice_roll_limit'];
 
@@ -335,6 +338,13 @@ class BoardController extends Controller
             'hasTeam' => $playerBoards->hasTeam($event, $user),
             'joined' => app(EventParticipationService::class)->has($user, $event),
             'canEdit' => $user->canEditEvent($event),
+            // Only to somebody who may edit the event. A webhook URL is a
+            // capability, not a setting: anyone holding it can post into that
+            // Discord channel, so it must never ride along in EventCard,
+            // which every viewer of a public event receives — and which the
+            // live channel pushes to all of them every few seconds.
+            'webhookUrl' => $user->canEditEvent($event) ? $event->discord_webhook_url : null,
+            'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
         ]);
     }
 
@@ -443,6 +453,8 @@ class BoardController extends Controller
             // judging to judge it.
             'pending' => $canEdit ? $bingo->pendingQueue($card) : [],
             'canEdit' => $canEdit,
+            'webhookUrl' => $canEdit ? $event->discord_webhook_url : null,
+            'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
         ]);
     }
 
@@ -464,6 +476,8 @@ class BoardController extends Controller
             'isParticipant' => app(EventParticipationService::class)->has($user, $event)
                 || $event->standings()->where('user_id', $user?->id)->exists(),
             'canEdit' => $user?->canEditEvent($event) ?? false,
+            'webhookUrl' => $user?->canEditEvent($event) ? $event->discord_webhook_url : null,
+            'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
         ]);
     }
 
@@ -486,12 +500,13 @@ class BoardController extends Controller
             // The full join, not just the access row. Somebody who followed an
             // invite link has said what they want plainly enough — asking them
             // to press Join on arrival would be asking twice.
-            $participation->join($request->user(), $event, $token);
+            $needsTeam = $participation->join($request->user(), $event, $token);
         } catch (ValidationException $e) {
-            return redirect()->route('events.show', $event)->with('board-save-error', collect($e->errors())->flatten()->first() ?? 'Could not join this board.');
+            return redirect()->route('events.show', $event)->with('board-save-error', collect($e->errors())->flatten()->first() ?? trans('events.join_failed'));
         }
 
-        return redirect()->route('events.show', $event)->with('board-save', trans('board.joined'));
+        return redirect()->route('events.show', $event)
+            ->with('board-save', trans($needsTeam ? 'events.joined_needs_team' : 'board.joined'));
     }
 
     /**
@@ -711,6 +726,15 @@ class BoardController extends Controller
             'required_guild_id' => ['nullable', 'string', 'required_if:access_mode,GUILD'],
             'author_ids' => ['nullable', 'array'],
             'author_ids.*' => ['uuid', 'exists:users,id'],
+            // Not a plain `url` rule: the app POSTs to whatever this says, so
+            // anything accepted here is a request the server will make on a
+            // host's say-so. Only Discord's own webhook endpoints — the same
+            // check the announcer repeats before every post.
+            'discord_webhook_url' => ['sometimes', 'nullable', 'string', 'max:500', function ($attribute, $value, $fail) {
+                if (filled($value) && ! DiscordAnnouncer::isValidUrl($value)) {
+                    $fail(trans('validation.discord_webhook_invalid'));
+                }
+            }],
         ]);
 
         // Outside the transaction and before it, because it can refuse: a
@@ -759,13 +783,145 @@ class BoardController extends Controller
         return back()->with('board-save', trans('admin.board_updated'));
     }
 
-    public function destroy(Event $event, bool $asAdmin = false): RedirectResponse
-    {
-        $this->assertOwnsEvent(Auth::user(), $event, $asAdmin);
+    /**
+     * Put the event on hold, or take it off hold again.
+     *
+     * Its own endpoint rather than a field on update(), for the same reason
+     * `paused_at` is not fillable: this is an announcement, not a setting. It
+     * mails everybody who joined, it writes an audit entry, and it is the one
+     * button in the settings modal whose effect is felt by other people
+     * immediately — none of which belongs riding along inside a save that
+     * also renamed the event.
+     *
+     * A host action, not an owner one: anyone trusted to edit the event is
+     * trusted to stop it, and the person who notices the problem at 2am is
+     * rarely the person whose name is on it.
+     */
+    public function pause(
+        Request $request,
+        Event $event,
+        EventNotificationService $notifier,
+        bool $asAdmin = false,
+    ): RedirectResponse {
+        $this->assertCanEditEvent($request->user(), $event, $asAdmin);
+
+        $data = $request->validate([
+            'paused' => ['required', 'boolean'],
+            // Opt-out, not opt-in. The default is the behaviour that serves
+            // the players — being told the event they are in has stopped —
+            // and a host who is only flipping this to fix a typo in the
+            // rules can uncheck it.
+            'notify' => ['sometimes', 'boolean'],
+            // One line, and only on the way in. "Paused" says a claim will
+            // not be accepted; it does not say "we are waiting on a
+            // screenshot from team B", which is the thing the clan is
+            // actually asking in Discord. Capped at a sentence because it
+            // renders on a banner and inside an email.
+            'reason' => ['sometimes', 'nullable', 'string', 'max:200'],
+        ]);
+
+        $paused = (bool) $data['paused'];
+
+        // Idempotent, and quietly so: a double-click must not send a second
+        // round of mail to everyone.
+        if ($paused === $event->isPaused()) {
+            return back();
+        }
+
+        $event->forceFill([
+            'paused_at' => $paused ? now() : null,
+            // Cleared on resume rather than kept as history: it describes why
+            // the event is stopped right now, and a stale reason on a running
+            // event would be worse than none.
+            'pause_reason' => $paused ? ($data['reason'] ?? null) : null,
+        ])->save();
+
+        AuditLog::record($paused ? 'event.paused' : 'event.resumed', $event);
+
+        $message = trans($paused ? 'events.paused_confirmed' : 'events.resumed_confirmed');
+
+        if ($data['notify'] ?? true) {
+            $counts = $notifier->announce(
+                $event,
+                $paused ? EventStatusChanged::PAUSED : EventStatusChanged::RESUMED,
+                $request->user(),
+            );
+
+            $message .= ' '.$this->notifiedSummary($counts);
+        }
+
+        return back()->with('board-save', $message);
+    }
+
+    /**
+     * Soft-deleted, and announced first.
+     *
+     * The announcement has to happen before the delete: it reads the
+     * participant list and the title off a row that is about to disappear
+     * from every default query, and the mail is queued, so by the time it
+     * sends there is nothing to look up. Same reason the audit entry goes
+     * first — AuditLog::record() resolves the label from the live model.
+     */
+    public function destroy(
+        Request $request,
+        Event $event,
+        EventNotificationService $notifier,
+        bool $asAdmin = false,
+    ): RedirectResponse {
+        $this->assertOwnsEvent($request->user(), $event, $asAdmin);
+
+        $notify = $request->boolean('notify', true);
+
+        $counts = $notify
+            ? $notifier->announce($event, EventStatusChanged::CANCELLED, $request->user())
+            : null;
+
+        AuditLog::record('event.deleted', $event, ['participants' => $event->participants()->count()]);
 
         $event->delete();
 
-        return redirect()->route('events.index')->with('board-save', trans('admin.board_deleted'));
+        $message = trans('admin.board_deleted');
+
+        if ($counts !== null) {
+            $message .= ' '.$this->notifiedSummary($counts);
+        }
+
+        // A host goes back to the events hub, because the page they were on
+        // no longer exists. An admin stays in the admin list — that is where
+        // they were working, it is the only place the deleted event is still
+        // visible, and it is where they would go to put it back.
+        return $asAdmin
+            ? back()->with('board-save', $message)
+            : redirect()->route('events.index')->with('board-save', $message);
+    }
+
+    /**
+     * How many of the people who joined could actually be reached.
+     *
+     * Said out loud rather than left to be assumed, because the answer is
+     * usually "about half": Discord login never asks for an email address
+     * (see EventNotificationService), so a host announcing a cancellation to
+     * thirty players is often announcing it to fourteen.
+     *
+     * @param  array{sent: int, total: int}  $counts
+     */
+    private function notifiedSummary(array $counts): string
+    {
+        // Said first when it happened, because it is the line that reaches
+        // everybody: a clan's Discord channel has the players the mail does
+        // not. Only mentioned when a webhook is actually configured, so an
+        // event without one does not read as having failed to post.
+        $discord = ($counts['discord'] ?? false) ? ' '.trans('events.notified_discord') : '';
+
+        if ($counts['total'] === 0) {
+            return trans('events.notified_nobody_joined').$discord;
+        }
+
+        if ($counts['sent'] === 0) {
+            return trans('events.notified_none', ['total' => $counts['total']]).$discord;
+        }
+
+        return trans('events.notified_some', ['sent' => $counts['sent'], 'total' => $counts['total']]).$discord;
     }
 
     /**

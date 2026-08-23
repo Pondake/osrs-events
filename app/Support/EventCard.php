@@ -28,7 +28,7 @@ final class EventCard
     public static function for(Event $event): array
     {
         return [
-            ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date']),
+            ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date', 'paused_at', 'pause_reason']),
             // 'skill' or 'boss' — decides whether a race page counts XP or
             // kills, and which i18n namespace the metric name comes from.
             // Here rather than added by the race controller alone, because

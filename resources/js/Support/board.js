@@ -49,6 +49,7 @@ export const BOARD_ACCESS_META = {
 export const BOARD_STATUS_STYLE = {
     upcoming: { icon: 'i-lucide-clock', labelKey: 'boards.status_upcoming', class: 'bg-info/10 text-info' },
     live: { icon: 'i-lucide-circle-play', labelKey: 'boards.status_live', class: 'bg-success/10 text-success' },
+    paused: { icon: 'i-lucide-pause', labelKey: 'boards.status_paused', class: 'bg-warning/10 text-warning' },
     ended: { icon: 'i-lucide-flag', labelKey: 'boards.status_ended', class: 'bg-error/10 text-error' },
 };
 
@@ -61,4 +62,25 @@ export function boardEventStatus(startDate, endDate, now = new Date()) {
     if (endDate && utcDay(endDate) < today) return 'ended';
     if (startDate && utcDay(startDate) > today) return 'upcoming';
     return 'live';
+}
+
+/**
+ * The same question, asked of a whole event rather than of two dates.
+ *
+ * A host can stop an event without moving its dates, so where it sits on the
+ * calendar is no longer the whole answer. Kept as a wrapper rather than
+ * folded into boardEventStatus(): that one is a pure function of the dates
+ * and is tested as such, and every caller here has an event object to hand
+ * anyway.
+ *
+ * `ended` outranks `paused`. An event that was paused and then ran past its
+ * end date is over — saying "paused" about it would imply somebody is coming
+ * back to start it again.
+ */
+export function eventStatus(event, now = new Date()) {
+    const byDate = boardEventStatus(event?.start_date, event?.end_date, now);
+
+    if (byDate === 'ended') return 'ended';
+
+    return event?.paused_at ? 'paused' : byDate;
 }

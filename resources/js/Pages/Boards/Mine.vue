@@ -184,7 +184,7 @@ import { useAuth } from '@/Composables/useAuth';
 import BingoPreview from '@/Components/BingoPreview.vue';
 import BoardPreview from '@/Components/BoardPreview.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
-import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, boardEventStatus, formatDate } from '@/Support/board';
+import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, eventStatus, formatDate } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import { metricKindFor, rankedByLabel } from '@/Support/metrics';
 
@@ -223,13 +223,13 @@ function sizeLabel(size) {
 // Same UTC-day comparison the cards use (Support/board.js), so a board never
 // reads as Live on one page and Ended on another.
 function statusLabel(board) {
-    return trans(`boards.status_${boardEventStatus(board.start_date, board.end_date)}`);
+    return trans(`boards.status_${eventStatus(board)}`);
 }
 
-const STATUS_DOT = { upcoming: 'bg-info', live: 'bg-success', ended: 'bg-muted' };
-const STATUS_TEXT = { upcoming: 'text-info', live: 'text-success', ended: 'text-muted' };
+const STATUS_DOT = { upcoming: 'bg-info', live: 'bg-success', paused: 'bg-warning', ended: 'bg-muted' };
+const STATUS_TEXT = { upcoming: 'text-info', live: 'text-success', paused: 'text-warning', ended: 'text-muted' };
 
-const statusOf = (board) => boardEventStatus(board.start_date, board.end_date);
+const statusOf = (board) => eventStatus(board);
 
 function statusDot(board) {
     return STATUS_DOT[statusOf(board)] ?? 'bg-muted';
