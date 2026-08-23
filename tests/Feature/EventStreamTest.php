@@ -9,13 +9,14 @@ use App\Events\Channels\SnakesLaddersChannel;
 use App\Models\BingoCard;
 use App\Models\BingoCompletion;
 use App\Models\Board;
+use App\Models\BoardAuthor;
 use App\Models\Event;
 use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\Tile;
 use App\Models\User;
-use App\Support\EventCard;
 use App\Services\BingoService;
+use App\Support\EventCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\Test;
@@ -223,10 +224,16 @@ class EventStreamTest extends TestCase
         // model on every call is not what the stream does — it loads the
         // event once and asks the same object for 45 seconds — and a test
         // that re-reads is a test that cannot fail on staleness.
+        //
+        // Size and approval are in here because they were not: the grid is
+        // drawn from the size, and a resize that happened to keep the same
+        // number of squares changed nothing the channel could see.
         foreach ([
             'win_lines' => ['ROW'],
             'win_condition' => 'FULL_HOUSE',
             'line_bonus' => 5,
+            'requires_approval' => false,
+            'size' => 4,
         ] as $field => $value) {
             $before = $channel->fingerprint($event);
 
@@ -588,5 +595,112 @@ class EventStreamTest extends TestCase
         Tile::where('id', $tile->id)->update(['target_position' => 14]);
 
         $this->assertNotSame($boardBefore, $boardChannel->fingerprint($board), 'the board was read from a stale relation');
+    }
+    // ------------------------------------------------------- what it leaks
+
+    /**
+     * The payload carries the hosts now, and `User` hides only password and
+     * remember_token — so a bare `authors.user` publishes every host's email
+     * address. That exact leak shipped once, on the event pages and the board
+     * cards, which is why the card builder names its columns.
+     *
+     * Asserted against the encoded payload rather than the array, because the
+     * question is what goes down the wire.
+     */
+    #[Test]
+    public function no_channel_sends_a_host_email_address(): void
+    {
+        foreach (['SNAKES_LADDERS', 'BINGO', 'SKILL_RACE'] as $type) {
+            $event = $this->event($type, $type === 'SKILL_RACE' ? ['metric' => 'mining'] : []);
+            $email = strtolower($type).'@example.test';
+            $host = User::factory()->create(['email' => $email, 'nickname' => "Host of {$type}"]);
+            BoardAuthor::create(['event_id' => $event->id, 'user_id' => $host->id, 'is_owner' => true]);
+
+            $json = json_encode($this->resolver()->for($event)->payload($event));
+
+            // The name has to be in there, or this proves nothing: a payload
+            // that carries no host at all would pass the assertion below
+            // while saying nothing about what happens when it does.
+            $this->assertStringContainsString("Host of {$type}", $json, "{$type} sends no host at all");
+            $this->assertStringNotContainsString($email, $json, "{$type} published a host email");
+        }
+    }
+
+    // ------------------------------------------------------ claim verdicts
+
+    /**
+     * A ruling on a claim is the one change a shared channel cannot deliver:
+     * the verdict, the note and whether it completed a line are yours alone.
+     * So the payload says only *that* claims changed, and the page fetches
+     * its own copy.
+     *
+     * Before this, only hosts refreshed. A player watched the standings award
+     * them points while their own square still read "waiting for review" —
+     * reported as a card rendering half pending, half approved.
+     */
+    #[Test]
+    public function the_bingo_payload_says_when_a_claim_was_ruled_on(): void
+    {
+        $event = $this->event('BINGO');
+        $card = $event->bingoCard()->create(['size' => 3, 'win_lines' => ['ROW']]);
+        app(BingoService::class)->ensureSquares($card);
+        $square = $card->squares()->orderBy('position')->firstOrFail();
+
+        $claim = BingoCompletion::create([
+            'bingo_square_id' => $square->id,
+            'user_id' => $this->player()->id,
+            'status' => 'PENDING',
+        ]);
+
+        $channel = $this->resolver()->for($event);
+        $before = $channel->payload($event)['claims_version'];
+
+        BingoCompletion::where('id', $claim->id)->update(['status' => 'APPROVED']);
+
+        $this->assertNotSame($before, $channel->payload($event)['claims_version']);
+    }
+
+    /**
+     * And says nothing when a square was merely edited — that reaches every
+     * viewer over the channel already, so making them each fetch their own
+     * claims for it would be a request per viewer for nothing.
+     */
+    #[Test]
+    public function the_claims_version_ignores_a_square_being_edited(): void
+    {
+        $event = $this->event('BINGO');
+        $card = $event->bingoCard()->create(['size' => 3, 'win_lines' => ['ROW']]);
+        app(BingoService::class)->ensureSquares($card);
+
+        $channel = $this->resolver()->for($event);
+        $before = $channel->payload($event)['claims_version'];
+
+        $card->squares()->orderBy('position')->firstOrFail()->update(['title_override' => 'Something else']);
+
+        $this->assertSame($before, $channel->payload($event)['claims_version']);
+    }
+
+    /**
+     * The card's own settings travel with it. Its size drives the grid, so a
+     * host resizing one mid-event sent every other viewer 36 squares to draw
+     * in five columns.
+     */
+    #[Test]
+    public function the_bingo_payload_carries_the_cards_settings(): void
+    {
+        $event = $this->event('BINGO');
+        $card = $event->bingoCard()->create(['size' => 3, 'win_condition' => 'LINE', 'win_lines' => ['ROW'], 'line_bonus' => 0]);
+        app(BingoService::class)->ensureSquares($card);
+
+        $channel = $this->resolver()->for($event);
+        $channel->payload($event);
+
+        BingoCard::where('id', $card->id)->update(['size' => 5, 'requires_approval' => false]);
+        app(BingoService::class)->ensureSquares($card->fresh());
+
+        $settings = $channel->payload($event)['event']['card'];
+
+        $this->assertSame(5, $settings['size']);
+        $this->assertFalse($settings['requiresApproval']);
     }
 }

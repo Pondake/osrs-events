@@ -3,6 +3,7 @@
 namespace App\Events\Channels;
 
 use App\Events\Channels\Concerns\SignalsEventEdits;
+use App\Models\BingoCard;
 use App\Models\BingoCompletion;
 use App\Models\Event;
 use App\Services\BingoService;
@@ -48,21 +49,6 @@ class BingoChannel implements EventChannel
             return 'no-card#'.$this->eventVersion($event);
         }
 
-        // Every claim's competitor, square and status. Deliberately not
-        // updated_at: a host re-reviewing a claim to the same verdict rewrites
-        // that column without changing anything anyone can see.
-        $rows = BingoCompletion::query()
-            ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
-            ->where('bingo_squares.bingo_card_id', $card->id)
-            ->orderBy('bingo_squares.position')
-            ->orderBy('bingo_completions.id')
-            ->get([
-                'bingo_completions.team_id',
-                'bingo_completions.user_id',
-                'bingo_completions.status',
-                'bingo_squares.position',
-            ]);
-
         // The squares are part of the view too, so an author editing a tile
         // mid-event reaches everyone looking at the card.
         $squares = $card->squares()
@@ -76,13 +62,22 @@ class BingoChannel implements EventChannel
         // condition is worse than cosmetic: it decides the standings, so an
         // open card went on scoring by a rule that had been switched off.
         $rules = implode(':', [
+            // Size and approval as well as the winning shapes. The size draws
+            // the grid, so a card resized mid-event left every other viewer
+            // with the wrong number of columns; approval decides whether
+            // clicking a square opens a claim or ticks it off, which is a
+            // viewer playing by a rule that has been switched off. Neither
+            // was noticed here, and the squares only cover the resize when
+            // the count happens to change.
+            $card->size,
+            $card->requires_approval ? '1' : '0',
             $card->win_condition,
             $card->line_bonus,
             implode(',', $card->winLines()),
         ]);
 
         return md5(
-            $rows->map(fn ($r) => "{$r->position}:{$r->team_id}{$r->user_id}:{$r->status}")->implode('|')
+            $this->claimsVersion($card)
             .'#'
             .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->is_wildcard}")->implode('|')
             .'#'
@@ -90,6 +85,38 @@ class BingoChannel implements EventChannel
             .'#'
             .$this->eventVersion($event)
         );
+    }
+
+    /**
+     * Every claim's competitor, square and verdict, as one value.
+     *
+     * Sent as well as fingerprinted, because a claim being ruled on is the
+     * one change a viewer cannot be told about over a shared channel. What
+     * the host decided about *your* square is yours — the note, the verdict,
+     * whether it completed a line — so the page has to go and fetch its own
+     * copy, and this is what tells it that there is something to fetch.
+     * Without it a player watched the standings award them points while
+     * their own square still read "waiting for review": reported as a card
+     * rendering half pending, half approved.
+     *
+     * Deliberately not updated_at: a host re-reviewing a claim to the same
+     * verdict rewrites that column without changing anything anyone can see.
+     */
+    private function claimsVersion(BingoCard $card): string
+    {
+        $rows = BingoCompletion::query()
+            ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
+            ->where('bingo_squares.bingo_card_id', $card->id)
+            ->orderBy('bingo_squares.position')
+            ->orderBy('bingo_completions.id')
+            ->get([
+                'bingo_completions.team_id',
+                'bingo_completions.user_id',
+                'bingo_completions.status',
+                'bingo_squares.position',
+            ]);
+
+        return md5($rows->map(fn ($r) => "{$r->position}:{$r->team_id}{$r->user_id}:{$r->status}")->implode('|'));
     }
 
     public function payload(Event $event): array
@@ -110,6 +137,7 @@ class BingoChannel implements EventChannel
 
         return [
             'event_version' => $this->eventVersion($event),
+            'claims_version' => $this->claimsVersion($card),
             // The event itself, so an edit arrives on the connection that is
             // already open. Sending a version and letting the page re-ask
             // cost a second request, which on a single-worker dev server
