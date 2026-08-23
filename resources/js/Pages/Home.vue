@@ -96,7 +96,14 @@ const props = defineProps({
 });
 
 const heroTitle = computed(() => props.page?.title || trans('home.title'));
-const heroDescription = computed(() => props.page?.subtitle || trans('home.description'));
+/**
+ * The lead paragraph ended in "log in with Discord to get started" while the
+ * alert directly under it said the app was not open yet — two instructions in
+ * one block, one of which cannot be followed. The CMS subtitle still wins if
+ * an editor has set one; only the default sentence knows about the door.
+ */
+const heroDescription = computed(() => props.page?.subtitle
+    || trans(locked.value ? 'home.description_locked' : 'home.description'));
 const blocks = computed(() => props.page?.blocks ?? []);
 
 const seo = {
