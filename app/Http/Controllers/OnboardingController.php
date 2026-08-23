@@ -50,6 +50,12 @@ class OnboardingController extends Controller
 
         $boards = Event::query()
             ->where('is_listed', true)
+            // Nothing that would turn them away on arrival. An event that
+            // finished last week and one a host has stopped both refuse a
+            // join — offering either as somebody's first act on the site is
+            // a worse introduction than showing three events instead of four.
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()->startOfDay()))
+            ->whereNull('paused_at')
             ->where(fn ($q) => $q
                 ->where('access_mode', 'OPEN')
                 ->orWhere(fn ($guild) => $guild
