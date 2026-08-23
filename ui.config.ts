@@ -5,7 +5,20 @@ export const uiConfig = {
     },
     button: {
         slots: {
-            base: ['cursor-pointer'],
+            // 44px minimum on phones, whatever size the button asks for.
+            //
+            // Measured on a real event page at 375px: the action row
+            // ("Who is playing", "Leave event", "Event settings") renders at
+            // `size="sm"` = 28px tall, and the header's icon buttons at 32px.
+            // Apple's floor is 44 and Android's is 48; six 28px targets
+            // wrapping over two lines is a mikado game with a thumb.
+            //
+            // Here rather than on each call site, because the sizes are
+            // right on a desktop — this is about the input device, not about
+            // the emphasis of any one button. min-w matters for the
+            // icon-only ones, which would otherwise grow tall and stay
+            // narrow; on a button with a label it is inert.
+            base: ['cursor-pointer', 'max-sm:min-h-11', 'max-sm:min-w-11'],
         },
         // Nuxt UI's solid variant is `text-inverted bg-{color}`, and
         // `--ui-text-inverted` is white in light mode. On amber that's white

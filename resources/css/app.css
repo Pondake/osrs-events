@@ -186,6 +186,61 @@ html:not(.dark) .text-primary {
     color: var(--color-amber-700);
 }
 
+/* The rest of the semantic text colours, measured rather than eyeballed.
+   Against the page background, at the 14px/500 the status line actually
+   renders at:
+
+                 before          after
+     success     2.22 light      5.09 light   (9.83 dark, already fine)
+     warning     1.91 light      6.24 light   (11.11 dark)
+     error       3.81 light      5.94 light   (6.05 dark)
+
+   Every one of those was under the 4.5:1 AA floor for normal text, and they
+   are not decoration: "Running", "Paused" and a rejected claim are the words
+   that tell somebody what state their event is in. Light mode only, and text
+   only — the fills (badges, alerts, dots) keep the vivid 500s, exactly the
+   split ui.config.ts makes for solid buttons.
+
+   Warning goes to yellow-800 rather than the amber-700 used for brand text,
+   because the brand IS amber: at the same darkness the two would be the same
+   colour, and "paused" would read as a link. */
+html:not(.dark) .text-success {
+    color: var(--color-green-700);
+}
+
+html:not(.dark) .text-warning {
+    color: var(--color-yellow-800);
+}
+
+html:not(.dark) .text-error {
+    color: var(--color-red-700);
+}
+
+/* The quiet end of the neutral scale, which was quiet past the point of
+   being text. `text-dimmed` measured 2.59 on white and 3.65 on the dark
+   canvas — it carries the empty-square labels on a bingo card and the
+   secondary lines under every event card, so it has to clear 4.5 in both.
+
+   The ladder is kept rather than flattened: dimmed stays a step quieter than
+   muted on both sides, it just starts from a readable rung. The dark value
+   is hand-picked between stone-400 and stone-500 so that muted does not have
+   to brighten to stay above it — the whole dark palette shifting a notch
+   paler would be a bigger change to the look than this problem is worth. */
+:root {
+    --ui-text-dimmed: var(--color-stone-500);
+    --ui-text-muted: var(--color-stone-600);
+}
+
+.dark {
+    /* Both, not just dimmed: the :root block above is not light-mode-scoped,
+       so overriding muted there alone dragged the dark palette's secondary
+       text down to stone-600 — 2.29:1 on the dark canvas, which is worse
+       than the problem being fixed. Measured both ways round afterwards.
+       Dark: muted 6.76, dimmed 5.77. Light: muted 7.64, dimmed 4.79. */
+    --ui-text-muted: var(--color-stone-400);
+    --ui-text-dimmed: #9a938c;
+}
+
 /* ---------------------------------------------------------------------------
    Landing chrome — the torch-lit look from the coming-soon page, applied to
    the pages people READ and not to the ones they work in.
