@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\User;
 use App\Models\UserGuild;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -96,6 +97,24 @@ class OnboardingTest extends TestCase
 
         $this->assertSame(['Anyone welcome'], array_column($boards, 'title'));
         $this->assertSame($event->id, $boards[0]['id']);
+    }
+
+    /**
+     * Nothing that would turn a newcomer away on arrival. Both of these
+     * refuse a join, and this list is somebody's first act on the site.
+     */
+    #[Test]
+    public function a_finished_or_paused_event_is_not_offered(): void
+    {
+        $this->event(['title' => 'Still running', 'end_date' => Carbon::now()->addWeek()]);
+        $this->event(['title' => 'Over and done', 'end_date' => Carbon::now()->subDay()]);
+        $this->event(['title' => 'On hold'])->forceFill(['paused_at' => Carbon::now()])->save();
+
+        $boards = $this->actingAs($this->user())
+            ->getJson('/onboarding/joinable-boards')
+            ->json('boards');
+
+        $this->assertSame(['Still running'], array_column($boards, 'title'));
     }
 
     /**
