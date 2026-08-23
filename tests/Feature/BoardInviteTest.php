@@ -157,6 +157,31 @@ class BoardInviteTest extends TestCase
         $this->assertSame(4, BoardInvite::count());
     }
 
+    /**
+     * The reported "Something went wrong. Please try again." — a co-host
+     * opening the Invite links tab, which renders for anyone who may edit
+     * the event, and finding every button in it answering 403.
+     *
+     * Handing out and revoking links is running an event, not owning one.
+     */
+    #[Test]
+    public function a_co_host_can_hand_out_and_revoke_links(): void
+    {
+        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $event = $this->ownedEvent($owner);
+
+        $coHost = User::factory()->create(['osrs_username' => 'Zezima']);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $coHost->id, 'is_owner' => false]);
+
+        $this->actingAs($coHost)->getJson("/events/{$event->id}/invites")->assertOk();
+        $this->actingAs($coHost)->postJson("/events/{$event->id}/invites")->assertOk();
+
+        $invite = BoardInvite::firstOrFail();
+        $this->actingAs($coHost)->deleteJson("/events/{$event->id}/invites/{$invite->id}")->assertOk();
+
+        $this->assertSame(0, BoardInvite::count());
+    }
+
     #[Test]
     public function someone_who_does_not_own_the_event_cannot_touch_its_invites(): void
     {

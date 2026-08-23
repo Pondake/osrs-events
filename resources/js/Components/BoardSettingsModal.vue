@@ -76,6 +76,7 @@
                 </template>
                 <template #invites>
                     <invite-fields
+                        :event-id="board?.id ?? null"
                         :invites="invites"
                         :open-count="openInvites"
                         :max-open="maxOpenInvites"
