@@ -164,6 +164,10 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/events', [BoardController::class, 'store'])->name('events.store');
     Route::patch('/events/{event}', [BoardController::class, 'update'])->name('events.update');
     Route::delete('/events/{event}', [BoardController::class, 'destroy'])->name('events.destroy');
+    // Stopping an event without ending it. Its own endpoint rather than a
+    // field on the update above, because it announces itself to everybody
+    // who joined — see BoardController::pause.
+    Route::patch('/events/{event}/pause', [BoardController::class, 'pause'])->name('events.pause');
 
     // Participation is rate limited per user. Not because a player can win
     // by spamming — the game rules already bound what a roll or a claim can
@@ -317,6 +321,11 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         // to the same controller the public routes use.
         Route::patch('/events/{event}', [AdminBoardController::class, 'update'])->name('events.update');
         Route::delete('/events/{event}', [AdminBoardController::class, 'destroy'])->name('events.destroy');
+        Route::patch('/events/{event}/pause', [AdminBoardController::class, 'pause'])->name('events.pause');
+        // Not {event}: route model binding cannot find a trashed row, which
+        // is exactly the row this restores. The controller looks it up
+        // withTrashed().
+        Route::post('/events/{eventId}/restore', [AdminBoardController::class, 'restore'])->name('events.restore');
         Route::get('/events/{event}/teams', [AdminBoardController::class, 'teamsIndex'])->name('events.teams.index');
         Route::post('/events/{event}/teams', [AdminBoardController::class, 'addTeam'])->name('events.teams.add');
         Route::delete('/events/{event}/teams/{team}', [AdminBoardController::class, 'removeTeam'])->name('events.teams.remove');
@@ -372,3 +381,19 @@ Route::redirect('/my-boards', '/my-events');
 Route::redirect('/boards/{path}', '/events/{path}')->where('path', '.*');
 
 Route::get('/{page}', [PageController::class, 'show'])->name('pages.show');
+
+/**
+ * Everything else — a branded 404 instead of a bare one.
+ *
+ * `/{page}` above already catches every single-segment URL and 404s from
+ * PageController, so this is really about the deeper ones (`/events/nope/x`).
+ * Without a route to match, Laravel throws before the `web` group runs, and
+ * the error page then renders with no session and no shared Inertia props —
+ * a signed-in user gets a 404 wearing a signed-out header. Matching here puts
+ * the miss back inside the middleware stack, where the shell knows who is
+ * looking at it.
+ *
+ * The rendering is the exception handler's job, not this closure's — see
+ * bootstrap/app.php.
+ */
+Route::fallback(fn () => abort(404))->name('miss');

@@ -9,6 +9,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\AuthenticateSession;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -50,4 +52,42 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        /**
+         * Error pages are Inertia pages, not Blade ones.
+         *
+         * Laravel's stock error views are unstyled Symfony pages — the 404 a
+         * visitor got was a bare "404 | Not Found" on white, with no header,
+         * no footer and no way back into the site. Rendering Pages/Error.vue
+         * instead means the whole shell comes along: the nav, the footer, the
+         * announcement banner, the torch-lit background, dark mode.
+         *
+         * `toResponse()` then `setStatusCode()` in that order matters —
+         * Inertia builds a 200 and the status has to be stamped on afterwards,
+         * or a crawler reads a soft 404 and indexes the dead URL.
+         */
+        $exceptions->respond(function (Response $response, \Throwable $exception, Request $request) {
+            // JSON clients want the JSON body Laravel already built.
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return $response;
+            }
+
+            $status = $response->getStatusCode();
+
+            // With debug on, a server fault should still show the stack trace
+            // — a branded "something went wrong" is exactly the information a
+            // developer does not need. Client errors are branded either way:
+            // there is no trace worth reading on a 404.
+            if ($status >= 500 && config('app.debug')) {
+                return $response;
+            }
+
+            if (! in_array($status, [403, 404, 419, 429, 500, 503], true)) {
+                return $response;
+            }
+
+            return Inertia::render('Error', ['status' => $status])
+                ->toResponse($request)
+                ->setStatusCode($status);
+        });
     })->create();
