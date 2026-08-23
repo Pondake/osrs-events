@@ -3120,3 +3120,191 @@ and was the optimisation working. Check `document.visibilityState` before
 believing a stream did nothing.
 
 525 backend tests, 151 frontend.
+
+---
+
+## Stopping an event — 2026-08-23
+
+Two things a host could not do. Pausing did not exist at all, so "hold
+everything while we sort out a dispute" had no answer but editing the end
+date and hoping. Deleting existed as a route with no button outside
+`/admin/events`, so a host could create an event and never get rid of it —
+and when an admin did press it, `$event->delete()` went through a schema
+where every child table cascades: board, tiles, player boards, completions,
+standings, participants, invites, gone.
+
+- [x] ~~**`paused_at` on events.**~~ Readable, not playable. Rolling,
+  ticking a tile, claiming a square and joining all refuse while it is set;
+  leaving does not, because being stuck inside a stopped event with no way
+  out until a host comes back is worse than the thing the pause protects.
+  Everything a *host* does stays open — pausing is usually the prelude to
+  fixing whatever went wrong. `SyncEventStandings` skips paused races, or
+  the pause would be a lie the moment it lifted.
+- [x] ~~**It is live.**~~ `paused_at` is in `SignalsEventEdits`'
+  fingerprint and in `EventCard`, so an open board goes to "Paused", grows
+  a banner and loses its dice without a reload. Seen happening in a second
+  tab that was never touched.
+- [x] ~~**A danger zone in the settings modal.**~~ Last tab. Pause is any
+  host's; delete is the owner's alone and sits behind typing the event's
+  title, because "are you sure?" has been clicked through by everyone who
+  has ever used a computer.
+- [x] ~~**Deleting is a soft delete.**~~ The rows stay, the event leaves
+  every list and 404s on every route, and `/admin/events` lists it struck
+  through with a Restore button. Both halves are audited
+  (`event.paused` / `resumed` / `deleted` / `restored`).
+- [x] ~~**Everybody who joined gets told, unless the host says not to.**~~
+  A checkbox in the danger zone, defaulting to on, on both actions. Queued
+  `EventStatusChanged` notification carrying plain strings rather than the
+  model — the cancellation mail is sent about an event that is already
+  soft-deleted, so a serialized model would not resolve and the one mail
+  people most need would be the one that never arrives.
+
+**The honest part: most people will not get the email.** Discord login asks
+for `identify` and `guilds` and deliberately not `email`, and `users.email`
+is nullable, so a Discord-only account has no address at all. Those are
+skipped, and the flash says so out loud — "1 of 2 participants were
+emailed", not a silent success. The onboarding wizard now names event
+notifications as a reason to add an address. Adding `email` to the Discord
+scopes is **not** happening for now (owner's call, 2026-08-23); a Discord
+webhook per event is the other way to reach the rest, and is not built.
+
+**Verified in a browser** (localhost:8010, plus Mailpit on 1025/8025):
+
+- Pause and resume from the modal, which stays open and flips to the other
+  state rather than closing.
+- The banner and the missing dice on a Snakes & Ladders board; the banner
+  and the frozen standings on a skill race; the banner on a bingo card, and
+  a click on a square doing nothing while it is up.
+- The paused state arriving in a second tab through the stream, on a tab
+  that was never touched.
+- **All three mails, for real, over SMTP**: paused, resumed and cancelled —
+  the last two driven from the actual UI, not from a service call. Exactly
+  one mail per action; a second click sends nothing. The cancelled mail
+  correctly has no action button, because there is no page left to send
+  anyone to.
+- The email checkbox off: pause, resume and delete each stayed silent.
+- Delete → the deleted event struck through in `/admin/events` → Restore →
+  back on the site, everything intact.
+- "Paused" showing on the cards in `/events` and in `/my-events`.
+- The refusal itself, through a real session: `POST /roll` on a paused board
+  comes back with the toast rather than a roll.
+- **SSR renders the paused state.** The server-rendered HTML already
+  contains the banner and the "not taking moves" notice, so there is no
+  flash of a playable board before hydration.
+
+**Fixed while testing:** an admin deleting from `/admin/events` was thrown
+out to the public events hub — off the only page where the deleted event is
+still visible, and away from the Restore button they would want next. Admins
+stay put now; hosts still go to the hub, because the page they were on has
+gone.
+
+**One local caveat, again:** `php artisan serve` is single-threaded, so the
+pause request sat behind the two open SSE streams until they turned over.
+Not an app bug and not new (see the note above), but it is why this round
+was measured with patience rather than with two browsers.
+
+- [x] ~~**A restore tells nobody.**~~ Fixed later the same day — see the
+  walkthrough round below. Restoring announces itself, and unlike every
+  other announcement in this feature that one is not optional: everybody
+  who joined was told the event was cancelled, so silence would leave them
+  holding a false last word.
+- [ ] **Owner runs the multi-viewer test on Herd** (claimed 2026-08-23). Two
+  real browsers on `osrs-events.test`, one host and one player, pausing and
+  resuming while both watch. That is the one claim this round cannot make
+  from `artisan serve`, and it is the same gap the fingerprint round left
+  open — so proving it once covers both.
+
+552 backend tests, 154 frontend.
+
+---
+
+## The walkthrough round — 2026-08-23
+
+Six users were written down first and then walked through the app: a clan
+organiser, a player arriving from a Discord link, a co-host who does not
+play, a stranger from a search result, the site admin, and somebody on a
+phone in light mode. What follows is what they ran into. None of it was an
+error page; all of it told somebody something untrue.
+
+- [x] ~~**Light mode failed contrast on the words that carry state.**~~
+  Measured against the page background at the size they actually render:
+  "Running" 2.22, "Paused" 1.91, a rejected claim 3.81, the quiet
+  `text-dimmed` line 2.59 — against a 4.5 floor. Fixed in `app.css` the same
+  way the brand text already was: the fills keep their vivid 500s, the TEXT
+  drops a few steps in light mode only. Now light 4.79–7.64 and dark
+  5.77–11.11, both ladders intact.
+  **Watch out for:** `--ui-text-muted` set on bare `:root` also applies in
+  dark mode. Setting it there alone dragged dark muted to 2.29 — worse than
+  the bug. Both modes are pinned explicitly now, and both were re-measured.
+- [x] ~~**"Board" and "event" were used for the same thing.**~~ 69 strings.
+  The rule applied: "board" stays where it means the Snakes & Ladders GRID
+  (tiles, sizes, the S&L landing page), and becomes "event" everywhere it
+  meant the competition — "Create Board" on a page called Events, "Board
+  title", "Edit Board", "Teams share one board", "this board requires an
+  invite".
+- [x] ~~**Four player-facing strings were hardcoded English**~~ — the roll
+  limit, the roll result, "no team on this board", and every access refusal
+  in `BoardAccessService`. They are the most-read sentences in the app and
+  the only ones breaking the i18n rule.
+- [x] ~~**Tap targets under the floor on a phone.**~~ The action row was
+  28px and the header 32px, against Apple's 44. One rule in `ui.config.ts`
+  (`max-sm:min-h-11`), because the sizes are right on a desktop — this is
+  about the input device. Re-measured at 375px: 35 buttons, none under 44,
+  no horizontal overflow, admin list included.
+- [x] ~~**Joining a team event you have no team in said "you joined".**~~
+  True and useless: it reads as "you can play now", and then nothing
+  happens. `join()` now reports it and the flash says a host has to put you
+  on a team first.
+- [x] ~~**`/leaderboard` on a bingo event said "No players yet"**~~ about a
+  card five people were scoring on. That page IS the S&L ranking; an event
+  with no board redirects to where its standings actually are.
+- [x] ~~**An admin read every private event silently.**~~ The power is
+  right and moderating is what it is for — but /teams has always said "you
+  can see these because you are an admin, so you can moderate, not because
+  you are part of them", and an invite-only clan event is at least as good
+  a place to say it. Now shown on the event itself, and only when the admin
+  pass is the only reason the page opened.
+- [x] ~~**A pause could not say why.**~~ One optional line from the host,
+  carried to the banner, the email and the Discord post. "Paused" answers
+  "will my claim bounce"; the clan is asking "for how long".
+- [x] ~~**Resuming was four clicks deep**~~ in a tab called "Danger zone" —
+  where you go to END an event, not to un-pause one. The banner carries a
+  Resume button for hosts, and the tab is called "Stop or delete".
+- [x] ~~**A restore told nobody**~~ — everyone kept a "cancelled" email
+  about an event that was running again. Restoring now announces itself,
+  and that one is not optional.
+- [x] ~~**The announcement banner could not be dismissed**~~ and rendered
+  on every page including the admin area. Remembered per announcement text,
+  so editing it makes it a new one worth seeing.
+- [x] ~~**The landing page invited you through a locked door**~~ ("log in
+  with Discord to get started" directly above "the app is not open yet"),
+  and still advertised bingo and drop races as "on the way" three days
+  after both shipped.
+
+**Not a finding after all:** the header nav looked like seven flat items in
+a text dump. It is not — Events, Community and Guides are groups with
+popovers, and the flattening was the reading tool's, not the page's.
+
+### Discord announcements — off, and staying off until somebody watches it
+
+- [ ] **Try the webhook against a real Discord server before enabling it.**
+  Built this round and shipped **disabled**: admin → Site settings →
+  Discord announcements. It is the only feature here that makes the app
+  send something outward on a host's say-so, into a room full of people who
+  never asked this app for anything, so it wants a human watching the first
+  post rather than a passing test.
+
+  What to check when you do: the message reads well in a real channel; the
+  link resolves; nothing pings (`allowed_mentions` is empty, and an event
+  titled "@everyone bingo" is the test case); a revoked webhook fails
+  quietly rather than breaking the pause; and the rate limit is fine at the
+  volume a clan actually generates.
+
+  Why it exists: Discord login never asks for an email address, so on a
+  normal clan event roughly half the roster cannot be mailed at all — and
+  every one of them is already in the channel this posts to. The URL is
+  validated against Discord's own hosts only (it is a server-side request
+  forgery primitive otherwise), and it never rides in the event payload —
+  only an editor is handed it, because anyone holding it can post there.
+
+573 backend tests, 154 frontend.
