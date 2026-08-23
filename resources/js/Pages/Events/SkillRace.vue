@@ -5,7 +5,13 @@
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="liveEvent" :can-edit="canEdit" :viewing-as-admin="viewingAsAdmin">
+                    <event-type-heading
+                        :event="liveEvent"
+                        :can-edit="canEdit"
+                        :viewing-as-admin="viewingAsAdmin"
+                        :streaming="streaming"
+                        :stale="stale"
+                    >
                         <template #meta>
                             <!-- The skill's own icon, beside the line that
                                  names it. A race is chosen by its skill and
@@ -36,16 +42,6 @@
                          on the bingo card. It only needs to hold its ground
                          once there is room for it to. -->
                     <div class="flex flex-wrap items-center gap-2 sm:gap-3 sm:shrink-0">
-                        <!-- Reports the live channel rather than offering a
-                             refresh: the table updates itself, and a refresh
-                             button would imply it can't be trusted to. -->
-                        <span v-if="streaming" class="inline-flex items-center gap-1.5 text-xs" :class="stale ? 'text-muted' : 'text-success'">
-                            <span class="relative flex size-2">
-                                <span class="relative inline-flex size-2 rounded-full" :class="stale ? 'bg-muted' : 'bg-success'" />
-                            </span>
-                            {{ stale ? $t('events.reconnecting') : $t('events.auto_updating') }}
-                        </span>
-
                         <!-- Only worth a button while the standings are not
                              already the whole list. A race ranks every
                              entrant on the page, so "who is playing" was a

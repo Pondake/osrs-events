@@ -577,6 +577,7 @@
     "board.joined": "Joined the event.",
     "board.joined_board": "You've joined the event!",
     "board.joining": "Joining...",
+    "board.manage": "Manage",
     "board.mode_solo": "Solo event",
     "board.mode_team": "Team event",
     "board.no_team_desc": "This is a team event. Join or create a team that has been added to it, and your team's board appears here.",

@@ -20,22 +20,49 @@
             </span>
 
             <!-- A dot rather than another pill, so status reads as state and
-                 not as a second category. `animate-pulse` only while live —
-                 a finished event has nothing to draw the eye to. -->
-            <span class="inline-flex items-center gap-2">
+                 not as a second category.
+
+                 The live channel reports itself HERE rather than as a second
+                 chip beside it. "Running" and "Updating live" were two green
+                 dots saying overlapping things, and the second one made no
+                 sense on an event that had ended — nothing is streaming into
+                 a finished event, and nobody is waiting for it to. So the
+                 pulse IS the stream: it beats while the connection is good,
+                 stops when it drops, and never appears on an event that is
+                 not running. -->
+            <span class="inline-flex items-center gap-2" :title="liveTitle">
                 <span class="relative flex size-2.5">
                     <span
-                        v-if="status === 'live'"
+                        v-if="pulsing"
                         class="absolute inline-flex size-full rounded-full opacity-60 animate-ping"
                         :class="DOT[status]"
                     />
                     <span class="relative inline-flex size-2.5 rounded-full" :class="DOT[status]" />
                 </span>
                 <span class="text-sm font-medium" :class="TEXT[status]">{{ $t(`boards.status_${status}`) }}</span>
+                <!-- Only when the stream has actually fallen over. A healthy
+                     connection says so by beating; saying it in words as
+                     well is the duplication this replaced. -->
+                <span v-if="status === 'live' && streaming && stale" class="text-xs text-muted">
+                    {{ $t('events.reconnecting') }}
+                </span>
             </span>
         </div>
 
-        <h1 class="text-3xl font-bold text-highlighted">{{ event.title }}</h1>
+        <!-- A step smaller on a phone, and balanced. Clan events get titles
+             like "The Grand Midsummer Clan Championship — Season Four": at
+             the desktop size that is six lines on a 375px screen, pushing
+             the status, the dates and every control below the fold. Not
+             clamped — a title is the one thing on this page nobody should
+             have to expand to read.
+
+             The `!` is load-bearing. Nuxt UI ships an UNLAYERED `h1 {
+             font-size: var(--text-3xl) }`, and unlayered CSS beats anything
+             inside `@layer utilities` whatever its specificity — so a plain
+             `text-2xl` on this element is silently ignored, which is why the
+             heading was 30px here no matter what the class said. Only the
+             mobile step is forced; above sm the base rule is already right. -->
+        <h1 class="max-sm:text-2xl! font-bold text-highlighted text-balance break-words">{{ event.title }}</h1>
 
         <p v-if="event.description" class="text-muted mt-1">{{ event.description }}</p>
 
@@ -131,11 +158,24 @@ const props = defineProps({
     canEdit: { type: Boolean, default: false },
     // Set when the only reason this page opened is a site-admin pass.
     viewingAsAdmin: { type: Boolean, default: false },
+    // The live channel's own state, from useEventStream on the page. The
+    // status dot is where it is reported — see the note in the template.
+    streaming: { type: Boolean, default: false },
+    stale: { type: Boolean, default: false },
 });
 
 const typeMeta = computed(() => eventTypeMeta(props.event.type));
 
 const status = computed(() => eventStatus(props.event));
+
+/** Beats only while the event is running AND the stream is healthy. */
+const pulsing = computed(() => status.value === 'live' && props.streaming && ! props.stale);
+
+const liveTitle = computed(() => {
+    if (status.value !== 'live' || ! props.streaming) return undefined;
+
+    return props.stale ? trans('events.reconnecting') : trans('events.auto_updating');
+});
 
 /**
  * The banner carries the host's reason when there is one. "Paused" answers
