@@ -3329,3 +3329,49 @@ popovers, and the flattening was the reading tool's, not the page's.
   only an editor is handed it, because anyone holding it can post there.
 
 573 backend tests, 154 frontend.
+
+---
+
+## Multi-user pass — 2026-08-24
+
+Six seats, driven one after another through the same app: guest, player,
+player-who-may-create, co-host, owner, admin — plus a newcomer with no OSRS
+name and a half-finished wizard. The account roles were swapped underneath a
+single browser session rather than logging in six times, which is also why
+`tests/Feature/PermissionMatrixTest.php` now exists: the same table, run by
+phpunit, so it stays true without anybody driving it.
+
+**Held, in both places:** the events list and the guides are open to a guest
+and everything private redirects to login; `/admin` is 403 for every logged-in
+persona except an admin, while `/admin/tasks` and `/admin/blueprints` answer
+to their own permissions instead; an admin editing on the PUBLIC routes gets
+403 exactly like anyone else; a co-host may pause, edit and hand out invite
+links but not delete; a private event shows a stranger the gate and an admin
+the event with the notice on it; a newcomer who skips the name step is sent
+to the page that asks the moment they try to join.
+
+**Caught while writing it**, and both worth keeping in mind:
+
+- `actingAs()` sets the guard for the rest of the test. A matrix whose guest
+  row runs after an authenticated one is not testing a guest at all — it is
+  testing whoever ran last. `forgetGuards()` between personas.
+- The OSRS-name gate stands down while the first-run wizard is open, because
+  the wizard asks for the same field. Correct, and not obvious: a test that
+  asserts the redirect without completing onboarding is asserting the wrong
+  thing.
+
+**Header, reworked in the same pass.** Six equally-weighted buttons became two
+play actions and one Manage menu carrying the review count; "Updating live"
+folded into the status dot, so the pulse IS the stream and an ended event
+stops claiming to be live. Checked against a long title, an ended event, an
+upcoming one, a drop race and a Snakes & Ladders board — the five events
+seeded for it are still in the local database. On a 375px screen a 74-
+character title went from six lines to four, and the control row from three
+rows to two.
+
+**One CSS trap found doing it:** Nuxt UI ships an unlayered `h1 { font-size:
+var(--text-3xl) }`, and unlayered CSS beats anything in `@layer utilities`
+whatever its specificity — so a plain `text-2xl` on that heading is silently
+ignored. The `!` in `max-sm:text-2xl!` is load-bearing.
+
+588 backend tests, 154 frontend.
