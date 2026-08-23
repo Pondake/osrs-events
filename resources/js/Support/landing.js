@@ -20,6 +20,11 @@ export const LANDING_PAGES = [
     // same people, in the same frame of mind, and they are what a search
     // result lands on.
     'Page',
+    // The error page, for the same reason: a dead link from a search result
+    // is somebody's first sight of the site, and the panel treatment is what
+    // makes it read as a page rather than as a crash. It also gets the panel
+    // bevel for free — see .landing-page in app.css.
+    'Error',
 ];
 
 export function isLandingPage(component) {

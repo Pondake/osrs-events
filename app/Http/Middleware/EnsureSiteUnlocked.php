@@ -86,6 +86,15 @@ class EnsureSiteUnlocked
         'landing.event-ideas',
         'pages.show',
         'sitemap',
+        // The catch-all miss. A locked site should answer a dead URL the same
+        // way an open one does — and it already did for single-segment paths,
+        // which `pages.show` above lets through to 404 from PageController.
+        // Without this a deeper dead URL redirected to the lock screen
+        // instead, so `/nope` and `/nope/nope` disagreed for no reason a
+        // visitor could see. Nothing leaks: the error page is identical for
+        // every unknown URL, and the header it wears is the trimmed
+        // locked-site nav.
+        'miss',
     ];
 
     public function handle(Request $request, Closure $next): Response
