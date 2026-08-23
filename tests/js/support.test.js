@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { trans } from 'laravel-vue-i18n';
 
-import { BOARD_TILE_COUNT, boardEventStatus, formatBoardSize, formatDate } from '@/Support/board';
+import { BOARD_TILE_COUNT, boardEventStatus, eventStatus, formatBoardSize, formatDate } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import { metricIconUrl, metricKindFor, metricLabel, rankedByLabel } from '@/Support/metrics';
 
@@ -55,6 +55,26 @@ describe('boardEventStatus', () => {
     /** The API sends full timestamps, not bare dates. */
     it('accepts an ISO timestamp as well as a date', () => {
         expect(boardEventStatus('2026-08-01T00:00:00.000000Z', '2026-09-01T00:00:00.000000Z', now)).toBe('live');
+    });
+});
+
+describe('eventStatus', () => {
+    const now = new Date('2026-08-23T12:00:00Z');
+    const running = { start_date: '2026-08-01', end_date: '2026-09-01' };
+
+    it('reports a paused event as paused rather than live', () => {
+        expect(eventStatus({ ...running, paused_at: '2026-08-23T09:00:00Z' }, now)).toBe('paused');
+    });
+
+    it('leaves an un-paused event to its dates', () => {
+        expect(eventStatus({ ...running, paused_at: null }, now)).toBe('live');
+        expect(eventStatus({ start_date: '2026-09-05', end_date: '2026-09-10' }, now)).toBe('upcoming');
+    });
+
+    // Somebody has to come back and start a paused event; nobody comes back
+    // to a finished one, so 'ended' is the truer word for it.
+    it('prefers ended over paused once the end date has gone by', () => {
+        expect(eventStatus({ start_date: '2026-07-01', end_date: '2026-08-01', paused_at: '2026-07-20T09:00:00Z' }, now)).toBe('ended');
     });
 });
 

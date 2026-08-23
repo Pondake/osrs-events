@@ -5,7 +5,7 @@
         <u-page>
             <u-container class="py-8 sm:py-12">
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="liveEvent" :can-edit="canEdit">
+                    <event-type-heading :event="liveEvent" :can-edit="canEdit" :viewing-as-admin="viewingAsAdmin">
                         <template #meta>
                             <span class="inline-flex items-center gap-1.5">
                                 <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
@@ -50,7 +50,7 @@
                         <!-- Bingo had no way of saying you were playing at
                              all: taking part was inferred from having claimed
                              a square, so an empty card meant an empty event. -->
-                        <join-event-button :event-id="liveEvent.id" :joined="joined" size="sm" />
+                        <join-event-button v-if="joined || !isPaused" :event-id="liveEvent.id" :joined="joined" size="sm" />
 
                         <template v-if="canEdit">
                             <!-- Three separate things, and they were one
@@ -455,7 +455,7 @@
                 :claim="claims[claimingSquare.position] ?? null"
             />
             <template v-if="canEdit">
-                <board-settings-modal v-model:open="showSettingsModal" :board="liveEvent" />
+                <board-settings-modal v-model:open="showSettingsModal" :board="liveEvent" :webhook-url="webhookUrl" />
                 <tile-list-editor
                     v-model:open="showTileList"
                     :event-id="liveEvent.id"
@@ -473,7 +473,7 @@
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { boardEventStatus } from '@/Support/board';
+import { eventStatus } from '@/Support/board';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
@@ -501,6 +501,12 @@ const props = defineProps({
     // in the standings.
     approvedBy: { type: Object, default: () => ({}) },
     canEdit: { type: Boolean, default: false },
+    // True only when a site admin is reading a private event they were never
+    // invited to — the heading says so rather than letting it be silent.
+    viewingAsAdmin: { type: Boolean, default: false },
+    // Editors only — see BoardSettingsModal's own note on why this is not
+    // part of the event payload.
+    webhookUrl: { type: String, default: null },
     joined: { type: Boolean, default: false },
 });
 
@@ -515,7 +521,12 @@ const props = defineProps({
 const liveEvent = ref({ ...props.event });
 watch(() => props.event, (value) => (liveEvent.value = { ...value }));
 
-const status = computed(() => boardEventStatus(liveEvent.value.start_date, liveEvent.value.end_date));
+const status = computed(() => eventStatus(liveEvent.value));
+
+// From the live event, not the initial prop: a host pausing mid-event reaches
+// every open card through the stream, which carries paused_at in its
+// fingerprint (see SignalsEventEdits).
+const isPaused = computed(() => Boolean(liveEvent.value.paused_at));
 
 // Seeded from the server render, then kept current by the channel. The
 // squares are streamed too, so an author's edit lands on every open card
@@ -818,6 +829,11 @@ function onSquareClick(square) {
     if (square.isWildcard) return;
 
     if (!props.canPlay) return;
+
+    // Nothing to claim or withdraw while the event is on hold. The server
+    // refuses both (BingoController::claim) and the banner above the card has
+    // already said why, so a dialog that can only end in a toast is noise.
+    if (isPaused.value) return;
 
     // An existing claim always opens the dialog, whatever the card's review
     // setting. Withdrawing used to happen on a bare second click — no hover

@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\BoardController as EventController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\BoardInvite;
 use App\Models\Event;
 use App\Models\Team;
+use App\Notifications\EventStatusChanged;
 use App\Services\BoardAccessService;
+use App\Services\EventNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,7 +40,12 @@ class BoardController extends Controller
 
         // By column — see EventController::EVENT_WITH. The admin list
         // renders the same author names and nothing more.
-        $boards = Event::with(['authors.user:id,discord_username,nickname,avatar_url', 'eventTeams.team', 'board'])
+        // withTrashed, because this page is where a deleted event is put
+        // back — see restore(). They are listed dimmed and last rather than
+        // in place, so the list still reads as "the events" at a glance.
+        $boards = Event::withTrashed()
+            ->with(['authors.user:id,discord_username,nickname,avatar_url', 'eventTeams.team', 'board'])
+            ->orderByRaw('deleted_at is null desc')
             ->orderByDesc('start_date')
             ->get();
 
@@ -51,11 +59,57 @@ class BoardController extends Controller
         return $events->update($request, $event, asAdmin: true);
     }
 
-    public function destroy(Event $event, EventController $events): RedirectResponse
+    public function pause(
+        Request $request,
+        Event $event,
+        EventController $events,
+        EventNotificationService $notifier,
+    ): RedirectResponse {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        return $events->pause($request, $event, $notifier, asAdmin: true);
+    }
+
+    public function destroy(
+        Request $request,
+        Event $event,
+        EventController $events,
+        EventNotificationService $notifier,
+    ): RedirectResponse {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        return $events->destroy($request, $event, $notifier, asAdmin: true);
+    }
+
+    /**
+     * Put a deleted event back.
+     *
+     * Admin-only and deliberately not offered to the host who deleted it:
+     * undo belongs to the person who can see the whole list, and a host who
+     * changes their mind an hour later is asking for something more than a
+     * button — they are asking somebody to check nothing has been rebuilt in
+     * the meantime.
+     *
+     * `withTrashed()` because the route binds by id and a trashed event is
+     * invisible to the default query — the whole point of the soft delete.
+     */
+    public function restore(string $eventId, EventNotificationService $notifier): RedirectResponse
     {
         abort_unless(Auth::user()->isAdmin(), 403);
 
-        return $events->destroy($event, asAdmin: true);
+        $event = Event::withTrashed()->whereKey($eventId)->firstOrFail();
+
+        $event->restore();
+
+        AuditLog::record('event.restored', $event);
+
+        // Always announced, and this one is not optional. Everybody who
+        // joined was told the event was cancelled; leaving them with that as
+        // the last word about an event that is running again is the one case
+        // where silence actively misinforms.
+        $notifier->announce($event, EventStatusChanged::RESTORED, Auth::user());
+
+        return back()->with('board-save', trans('admin.event_restored'));
     }
 
     // ------------------------------------------------------------ the teams

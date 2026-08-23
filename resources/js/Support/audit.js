@@ -23,6 +23,10 @@ export const AUDIT_STYLES = {
     'team.member_removed': { color: 'warning', icon: 'i-lucide-user-minus' },
     'board.team_added': { color: 'success', icon: 'i-lucide-layout-grid' },
     'board.team_removed': { color: 'warning', icon: 'i-lucide-layout-grid' },
+    'event.paused': { color: 'warning', icon: 'i-lucide-pause' },
+    'event.resumed': { color: 'success', icon: 'i-lucide-play' },
+    'event.deleted': { color: 'error', icon: 'i-lucide-trash-2' },
+    'event.restored': { color: 'success', icon: 'i-lucide-undo-2' },
     'page.updated': { color: 'neutral', icon: 'i-lucide-file-pen' },
     'invite.created': { color: 'success', icon: 'i-lucide-ticket' },
     'invite.revoked': { color: 'error', icon: 'i-lucide-ticket-x' },
@@ -128,6 +132,9 @@ const FIELDS = {
             : text(String(value))),
     },
     name: { label: 'audit.field_name', format: (value) => (value ? text(value) : empty()) },
+    // How many people were in the event when it was deleted — the number
+    // that says whether this was housekeeping or somebody's clan night.
+    participants: { label: 'audit.field_participants', format: (value) => text(String(value)) },
     icon_url: {
         label: 'audit.field_icon_url',
         // The URL itself is noise in a log row; whether there IS one is the

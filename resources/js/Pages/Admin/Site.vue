@@ -57,6 +57,26 @@
 
                 <u-separator class="my-6" />
 
+                <!-- Off until somebody has watched it post to a real Discord
+                     server. It is the one feature here that makes the app
+                     send something outward on a host's say-so, into a room
+                     full of people who never asked this app for anything —
+                     so it ships switched off and gets turned on knowingly.
+                     While it is off the field is not offered on any event and
+                     nothing is ever sent, whatever is already stored. -->
+                <u-form-field
+                    :label="$t('admin.site_discord_webhooks')"
+                    :description="$t('admin.site_discord_webhooks_desc')"
+                    :error="form.errors.discord_webhooks_enabled"
+                >
+                    <u-switch
+                        v-model="form.discord_webhooks_enabled"
+                        :label="form.discord_webhooks_enabled ? $t('common.on') : $t('common.off')"
+                    />
+                </u-form-field>
+
+                <u-separator class="my-6" />
+
                 <!-- The pre-launch door. Not maintenance mode: the app keeps
                      running and answering, it just asks for a shared password
                      first — see EnsureSiteUnlocked for why the two are
@@ -240,6 +260,7 @@ const form = useForm({
     kofi_url: props.settings.kofi_url ?? '',
     announcement: props.settings.announcement ?? '',
     announcement_type: props.settings.announcement_type ?? 'info',
+    discord_webhooks_enabled: props.settings.discord_webhooks_enabled ?? false,
     site_lock_enabled: props.settings.site_lock_enabled ?? false,
     // Always blank. The server sends null for this on purpose (the stored
     // value is a bcrypt hash) and reads a blank submission as "unchanged".

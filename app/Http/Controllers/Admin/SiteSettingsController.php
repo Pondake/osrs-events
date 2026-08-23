@@ -70,6 +70,7 @@ class SiteSettingsController extends Controller
             // will accept anyway — better to reject it at the form than to
             // store a value that silently renders as no button at all.
             'kofi_url' => ['required', 'url:http,https', 'max:255'],
+            'discord_webhooks_enabled' => ['required', 'boolean'],
             'site_lock_enabled' => ['required', 'boolean'],
             // Required only when turning the lock on without one already
             // stored — otherwise blank means "keep the current password",

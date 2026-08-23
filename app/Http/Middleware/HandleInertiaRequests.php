@@ -95,6 +95,10 @@ class HandleInertiaRequests extends Middleware
                 'defaultBoardSize' => Setting::get('default_board_size'),
                 'defaultDiceRollLimit' => Setting::get('default_dice_roll_limit'),
                 'defaultEventDuration' => Setting::get('default_event_duration'),
+                // Whether the event settings form offers a Discord webhook
+                // field at all. Shared for the same reason the board defaults
+                // are: that form opens from three different places.
+                'discordWebhooksEnabled' => (bool) Setting::get('discord_webhooks_enabled'),
             ],
             'auth' => [
                 'user' => $user ? [

@@ -102,6 +102,14 @@ class AuditLog extends Model
         'team.member_removed',
         'board.team_added',
         'board.team_removed',
+        // Stopping an event, in both senses. Logged because each of these
+        // is felt by everyone playing and none of them leaves a trace
+        // anywhere else — a paused event looks the same as one nobody has
+        // touched, and a soft-deleted one is invisible by design.
+        'event.paused',
+        'event.resumed',
+        'event.deleted',
+        'event.restored',
         'page.updated',
         'invite.created',
         'invite.revoked',

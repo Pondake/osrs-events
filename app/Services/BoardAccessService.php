@@ -47,6 +47,32 @@ class BoardAccessService
     }
 
     /**
+     * Whether this person is only looking because they are a site admin.
+     *
+     * `canBypass()` above lets an admin read every private event, which is
+     * the right power for moderating and the wrong thing to exercise
+     * silently: a clan's invite-only event is somewhere they were not
+     * invited. The /teams page already says this out loud — "you can see
+     * these because you are an admin, so you can moderate, not because you
+     * are part of them" — and this is what lets an event page say the same.
+     *
+     * False for an author, for an open event, and for an admin who joined
+     * properly: in all three cases they are here like anybody else.
+     */
+    public function isAdminOnlyView(?User $user, Event $event): bool
+    {
+        if ($user === null || ! $user->isAdmin() || $event->access_mode === 'OPEN') {
+            return false;
+        }
+
+        if ($this->isAuthor($user, $event)) {
+            return false;
+        }
+
+        return ! BoardAccess::where(['event_id' => $event->id, 'user_id' => $user->id])->exists();
+    }
+
+    /**
      * Whether the user may join the board without yet having a BoardAccess
      * record. Returns a reason string when denied, for display in the UI.
      */
@@ -59,8 +85,8 @@ class BoardAccessService
         return match ($event->access_mode) {
             'OPEN' => ['allowed' => true],
             'GUILD' => $this->canJoinGuild($user, $event),
-            'INVITE' => ['allowed' => false, 'reason' => 'This board requires an invite code or link.'],
-            default => ['allowed' => false, 'reason' => 'Access denied.'],
+            'INVITE' => ['allowed' => false, 'reason' => trans('events.access_needs_invite')],
+            default => ['allowed' => false, 'reason' => trans('events.access_denied')],
         };
     }
 
@@ -74,7 +100,7 @@ class BoardAccessService
 
         return $isMember
             ? ['allowed' => true]
-            : ['allowed' => false, 'reason' => 'You must be a member of the required Discord server to join this board.'];
+            : ['allowed' => false, 'reason' => trans('events.access_needs_guild')];
     }
 
     /**

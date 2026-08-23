@@ -78,6 +78,30 @@
 
         <u-separator />
 
+        <!-- The other half of "who hears about this event".
+             Email reaches only the accounts that have an address, and a
+             Discord login never asks for one — so on a normal clan event
+             roughly half the roster cannot be mailed at all. All of them are
+             in the channel this webhook posts to. Only offered while editing:
+             a webhook URL is copied out of Discord's settings, which is not
+             something to send somebody away for mid-create. -->
+        <u-form-field
+            v-if="isEdit && discordWebhooksEnabled"
+            :label="$t('admin.discord_webhook')"
+            :description="$t('admin.discord_webhook_desc')"
+            :error="form.errors.discord_webhook_url"
+        >
+            <u-input
+                v-model="form.discord_webhook_url"
+                type="url"
+                icon="i-lucide-webhook"
+                placeholder="https://discord.com/api/webhooks/…"
+                class="w-full"
+            />
+        </u-form-field>
+
+        <u-separator v-if="isEdit && discordWebhooksEnabled" />
+
         <u-form-field :description="$t('admin.board_listed_desc')">
             <u-switch v-model="form.is_listed" :label="$t('admin.board_listed')" />
         </u-form-field>
@@ -126,6 +150,10 @@ import { trans } from 'laravel-vue-i18n';
 const props = defineProps({
     form: { type: Object, required: true },
     isEdit: { type: Boolean, default: false },
+    // Site-wide switch (admin → Site settings). Off by default: until it has
+    // been tried against a real Discord server, offering the field would be
+    // offering a feature nobody has watched work.
+    discordWebhooksEnabled: { type: Boolean, default: false },
     guilds: { type: Array, default: () => [] },
     loadingGuilds: { type: Boolean, default: false },
     hasDiscord: { type: Boolean, default: false },

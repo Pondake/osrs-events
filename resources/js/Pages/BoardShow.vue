@@ -13,7 +13,7 @@
                      bingo and race pages so all three announce themselves the
                      same way. -->
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
-                    <event-type-heading :event="liveBoard" :can-edit="canEdit">
+                    <event-type-heading :event="liveBoard" :can-edit="canEdit" :viewing-as-admin="viewingAsAdmin">
                             <template #meta>
                                 <span class="inline-flex items-center gap-1.5">
                                     <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
@@ -60,7 +60,7 @@
                                  which put every passer-by on the leaderboard
                                  at square one. Joining is a decision now, and
                                  this is where it is made. -->
-                            <join-event-button :event-id="liveBoard.id" :joined="joined" size="sm" />
+                            <join-event-button v-if="joined || !isPaused" :event-id="liveBoard.id" :joined="joined" size="sm" />
                             <template v-if="canEdit">
                                 <!-- Named for what they change — the tiles
                                      versus the event — rather than
@@ -251,7 +251,7 @@
                             </template>
 
                             <dice-roller
-                                v-if="canRoll"
+                                v-if="canRoll && !isPaused"
                                 :rolling="rolling"
                                 :last-roll="lastRoll"
                                 :rolls-today="playerBoard?.dice_rolls_today ?? 0"
@@ -259,15 +259,22 @@
                                 @roll="roll"
                             />
 
-                            <p v-else class="text-sm text-muted">{{ $t('board.roll_needs_current_tile') }}</p>
+                            <!-- A paused event refuses the roll server-side
+                                 either way; taking the dice away is so that
+                                 the refusal is not the way anyone finds out. -->
+                            <p v-else class="text-sm text-muted">
+                                {{ isPaused ? $t('events.paused_notice') : $t('board.roll_needs_current_tile') }}
+                            </p>
                         </u-card>
 
                         <!-- No board of your own yet. Rolling still creates
                              one — playing is joining — so the dice stay, with
                              the deliberate way in above them. -->
                         <u-card v-if="!playerBoard">
-                            <p class="text-sm text-muted">{{ joined ? $t('board.get_started_desc') : $t('events.join_hint') }}</p>
-                            <div class="mt-3 flex flex-col gap-3">
+                            <p class="text-sm text-muted">
+                                {{ isPaused ? $t('events.paused_notice') : (joined ? $t('board.get_started_desc') : $t('events.join_hint')) }}
+                            </p>
+                            <div v-if="!isPaused" class="mt-3 flex flex-col gap-3">
                                 <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
                                 <dice-roller :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
                             </div>
@@ -298,7 +305,7 @@
                                 </div>
                             </div>
 
-                            <div class="mt-3">
+                            <div v-if="!isPaused" class="mt-3">
                                 <u-button
                                     v-if="!currentTileCompleted"
                                     color="success"
@@ -453,7 +460,7 @@
         </u-modal>
 
         <client-only>
-            <board-settings-modal v-model:open="showSettingsModal" :board="liveBoard" />
+            <board-settings-modal v-model:open="showSettingsModal" :board="liveBoard" :webhook-url="webhookUrl" />
             <tile-list-editor
                 v-model:open="showTileList"
                 :event-id="liveBoard.id"
@@ -495,6 +502,12 @@ const props = defineProps({
     players: { type: Array, default: () => [] },
     hasTeam: { type: Boolean, default: true },
     canEdit: { type: Boolean, default: false },
+    // True only when a site admin is reading a private event they were never
+    // invited to — the heading says so rather than letting it be silent.
+    viewingAsAdmin: { type: Boolean, default: false },
+    // Editors only — see BoardSettingsModal's own note on why this is not
+    // part of the event payload.
+    webhookUrl: { type: String, default: null },
     joined: { type: Boolean, default: false },
 });
 
@@ -622,6 +635,11 @@ const currentTileHasTask = computed(() => Boolean(
  * empty — that is to say, nearly all of them.
  */
 const canRoll = computed(() => !currentTileHasTask.value || currentTileCompleted.value);
+
+// Read off the live event rather than the initial prop, so a host pausing
+// mid-game reaches an open board through the stream — the fingerprint carries
+// paused_at (see SignalsEventEdits) and this is what it lands on.
+const isPaused = computed(() => Boolean(liveBoard.value.paused_at));
 
 const clickedTileTitle = computed(() => clickedTile.value?.title_override ?? clickedTile.value?.task?.title ?? trans('tile_editor.no_task'));
 

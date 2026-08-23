@@ -121,7 +121,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { formatBoardSize, formatDate, boardEventStatus, BOARD_ACCESS_META, BOARD_STATUS_STYLE } from '@/Support/board';
+import { formatBoardSize, formatDate, eventStatus, BOARD_ACCESS_META, BOARD_STATUS_STYLE } from '@/Support/board';
 import { metricKindFor, rankedByLabel } from '@/Support/metrics';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import { trans } from 'laravel-vue-i18n';
@@ -150,6 +150,6 @@ const dateRange = computed(() => {
 
 const rankedBy = computed(() => rankedByLabel(props.board.metric, metricKindFor(props.board.type)));
 
-const status = computed(() => BOARD_STATUS_STYLE[boardEventStatus(props.board.start_date, props.board.end_date)]);
+const status = computed(() => BOARD_STATUS_STYLE[eventStatus(props.board)]);
 const access = computed(() => (props.board.access_mode ? BOARD_ACCESS_META[props.board.access_mode] : undefined));
 </script>
