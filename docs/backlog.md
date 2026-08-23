@@ -2711,15 +2711,22 @@ why several of these are things no single-seat check would have found.
 
 ### Broken
 
-- [ ] **Invite links cannot be created.** "Something went wrong. Please try
-  again." on event `01a025c8-7bc8-737c-ac4f-dea22237219c`. The Edit Board
-  dialog also showed "Event updated!" and the error toast at the same time.
+- [x] ~~**Invite links cannot be created.**~~ — cause found and fixed
+  2026-08-24. Every invite action asserted OWNERSHIP while the tab they live
+  in renders for anyone who may edit the event, so a co-host opened Invite
+  links and each button answered 403 — which reaches them as "Something went
+  wrong. Please try again." Handing out and revoking links is running an
+  event, not owning one; deleting the event stays the owner's alone.
 - [x] ~~**Snakes & Ladders has no dice.**~~ — fixed 2026-08-22. Reported as "totally broken". It is
   the deliberate gate — rolling is the reward for marking the tile you are on
   complete — but the gate is invisible, so the page reads as missing its main
   control. Show it disabled with the reason instead of not at all.
-- [ ] **A tile's target does not match the board.** The editor said target
-  tile 9 while the arrow on screen pointed somewhere else.
+- [x] ~~**A tile's target does not match the board.**~~ — fixed 2026-08-24,
+  and it was an off-by-one with two editors disagreeing. The tile list editor
+  offers targets by the number PRINTED on the tile; the click-a-tile modal
+  bound its input straight to `target_position`, which counts from zero. Type
+  9 there and the arrow goes to tile 10. The modal speaks printed numbers
+  now, bounded to tiles that exist.
 - [x] ~~**Tile edits do not reach other viewers.**~~ — fixed 2026-08-22. The second browser kept the
   old tile after a save. The Snakes & Ladders channel streams player
   positions only; bingo streams its squares.
@@ -2742,17 +2749,23 @@ why several of these are things no single-seat check would have found.
   is on rather than being a live switch under a note saying the note wins.
 - [x] ~~**Copy**~~ — fixed 2026-08-22. "You log in with Discord, so there's no email on this account
   yet" should read "You logged in through Discord, ...".
-- [ ] **Onboarding said no events were joinable** while several public open
-  events exist. Are they filtered to Discord servers? If Discord events are
-  the more relevant ones, setup should ask which servers you are in so the
-  filter has something to work with.
+- [x] ~~**Onboarding said no events were joinable**~~ while several public
+  open events exist. The cause was a refused request read as an empty result
+  — the site lock answers that endpoint with 423 for anyone who has not typed
+  the shared password, and the modal fell through to "no events to join".
+  Told apart since 2026-08-22. Tightened again 2026-08-24: the list also
+  drops events that have ended or been paused, since both refuse a join and
+  this list is somebody's first act on the site.
 - [x] ~~**Bingo has no join.**~~ — fixed 2026-08-22, and so does every other type. A new player can click a square and start
   scoring. It should take a deliberate join — and it has to, before the
   RuneLite plugin exists.
 - [x] ~~**A skill race never shows its skill icon.**~~ — fixed 2026-08-22. The metric is chosen and
   then never drawn. Find it a place.
-- [ ] **"Invite link or code"** — are those the same thing? If a code exists,
-  it should be visible and copyable in the host's own section.
+- [x] ~~**"Invite link or code"**~~ — they are one invite in two shapes, and
+  the app left people to work that out: the gate asks for "code or link"
+  while the host's list showed a six-character code and no way to get the
+  link at all. Both are copyable now, and one line above the list says they
+  are the same thing. Fixed 2026-08-24.
 
 ### Confirmed working
 
@@ -2909,6 +2922,14 @@ not alongside it — the copy depends on what the app actually ends up doing.
   display name, which is exactly the kind of retention a privacy policy has
   to state rather than imply.
   Check `/terms` at the same time; it has had no review at all on this stack.
+
+  **Draft ready 2026-08-24: `docs/legal-review.md`.** Six things the pages do
+  not say that the code does — session IP and user-agent rows, the audit log's
+  90-day retention, invites naming who created and who used them, the new
+  event emails, a team's Discord server link, and the webhook posts once that
+  switch goes on — each with the table it lives in and wording you can paste.
+  Nothing has been written to the live pages: they are CMS content and this
+  is your read-through to make, not mine.
 
   **Re-flagged 2026-08-22 at your request: both pages need a fresh read-
   through before launch, not a patch.** Since the text above was written the
