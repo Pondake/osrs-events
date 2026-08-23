@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Board;
 use App\Models\Event;
 use App\Services\BoardAccessService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,9 +13,18 @@ use Inertia\Response;
 /** Ported from PlayersService::getLeaderboard(). */
 class LeaderboardController extends Controller
 {
-    public function show(Event $event, BoardAccessService $access): Response
+    public function show(Event $event, BoardAccessService $access): Response|RedirectResponse
     {
         abort_unless($access->hasAccess(Auth::user(), $event), 403);
+
+        // This page IS the Snakes & Ladders ranking — who is furthest along
+        // the track, and whether a snake or a ladder is coming. An event with
+        // no board has no such thing, and rendering it anyway produced "No
+        // players yet" on a bingo card with five people scoring on it. Their
+        // standings live on the event page, so that is where this goes.
+        if ($event->board === null) {
+            return redirect()->route('events.show', $event);
+        }
 
         // Tiles live on the board; an event without one has none.
         $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();

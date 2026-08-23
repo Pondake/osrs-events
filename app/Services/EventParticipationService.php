@@ -46,12 +46,24 @@ class EventParticipationService
 
     /**
      * @param  string|null  $tokenOrCode  an invite, for events that need one
+     * @return bool whether they are in, but with nothing to play on yet —
+     *              a team event they have no team in. Joining still succeeds
+     *              (a host assigns teams when they are ready), but "you have
+     *              joined" on its own reads as "you can play now", and then
+     *              nothing happens. The caller says the truer thing instead.
      *
      * @throws ValidationException when they may not join, or a race cannot
      *                             enter them
      */
-    public function join(User $user, Event $event, ?string $tokenOrCode = null): void
+    public function join(User $user, Event $event, ?string $tokenOrCode = null): bool
     {
+        // A paused event takes no new entries. Leaving one is still allowed
+        // — being stuck in something that has stopped, with no way out until
+        // a host comes back, is the worse half of the trade.
+        if ($event->isPaused()) {
+            throw ValidationException::withMessages(['participation' => trans('events.paused_notice')]);
+        }
+
         // Throws when the event is not theirs to join. Idempotent for
         // somebody who already has access.
         $this->access->joinEvent($user, $event, $tokenOrCode);
@@ -70,8 +82,20 @@ class EventParticipationService
             // A board to play on, from the same place a roll would have
             // created one. TEAM mode returns null for somebody with no team,
             // which the board page has its own empty state for.
-            $this->playerBoards->getOrCreate($event, $user);
+            return $this->playerBoards->getOrCreate($event, $user) === null;
         }
+
+        // Everything else: a team event whose payload is not a board still
+        // scores per team, so being teamless is the same dead end.
+        return $event->mode === 'TEAM' && ! $this->hasTeam($user, $event);
+    }
+
+    /** Whether this user is on one of the teams taking part. */
+    private function hasTeam(User $user, Event $event): bool
+    {
+        return $event->eventTeams()
+            ->whereHas('team.members', fn ($q) => $q->where('user_id', $user->id))
+            ->exists();
     }
 
     /**

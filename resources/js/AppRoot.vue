@@ -11,7 +11,7 @@
         <!-- Site-wide announcement, set in admin site settings. Rendered
              above the page rather than inside it so it shows everywhere,
              and server-side (no client-only) so it's in the served HTML. -->
-        <div v-if="announcement && showSiteChrome" class="border-b border-default" :class="bannerClass">
+        <div v-if="announcement && showSiteChrome && !announcementDismissed" class="border-b border-default" :class="bannerClass">
             <!-- Same container as u-header and every page body: Nuxt UI's own
                  --ui-container token with its padding scale. It previously used
                  max-w-7xl + px-4 and so sat 8px left of the header wordmark and
@@ -25,10 +25,28 @@
                      drifted away from the words it belongs to. Inline, it is the
                      first thing on the first line at every width, and wraps with
                      the sentence. -->
-                <p class="text-sm text-center text-highlighted max-w-3xl mx-auto">
-                    <u-icon :name="bannerStyle.icon" class="size-4 inline-block align-[-3px] me-1.5" :class="bannerIconClass" />
-                    <rich-text :text="announcement" />
-                </p>
+                <div class="flex items-start gap-2">
+                    <p class="flex-1 text-sm text-center text-highlighted max-w-3xl mx-auto">
+                        <u-icon :name="bannerStyle.icon" class="size-4 inline-block align-[-3px] me-1.5" :class="bannerIconClass" />
+                        <rich-text :text="announcement" />
+                    </p>
+
+                    <!-- Dismissable, and remembered per announcement rather
+                         than per visit. It sits on every page including the
+                         admin area, so for the person who runs the site it
+                         was the most repeated sentence in the app. Keyed by
+                         the text itself: editing the announcement makes it a
+                         new one, which is the only reliable signal that the
+                         message has changed and deserves to be seen again. -->
+                    <u-button
+                        icon="i-lucide-x"
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        :aria-label="$t('common.dismiss')"
+                        @click="dismissAnnouncement"
+                    />
+                </div>
             </div>
         </div>
 
@@ -259,6 +277,40 @@ const showSiteChrome = computed(() => {
 const onAuthPage = computed(() => String(inertiaPage.value.component ?? '').startsWith('Auth/'));
 
 const announcement = computed(() => inertiaPage.value.props?.site?.announcement ?? null);
+
+/**
+ * Which announcement this browser has already read.
+ *
+ * localStorage rather than a database column: it is a per-person, per-device
+ * preference about one sentence, and syncing it would mean a write on every
+ * dismissal for something nobody will ever ask "why is this not on my other
+ * laptop" about. Read after mount so the server-rendered HTML always
+ * contains the banner — hiding it during SSR would mean a hydration mismatch
+ * on the one element that is meant to be seen.
+ */
+const DISMISS_KEY = 'announcement-dismissed';
+const dismissedText = ref(null);
+
+onMounted(() => {
+    try {
+        dismissedText.value = window.localStorage.getItem(DISMISS_KEY);
+    } catch (error) {
+        // Private mode, or storage disabled. The banner simply stays.
+        console.error(error);
+    }
+});
+
+const announcementDismissed = computed(() => announcement.value !== null && dismissedText.value === announcement.value);
+
+function dismissAnnouncement() {
+    dismissedText.value = announcement.value;
+
+    try {
+        window.localStorage.setItem(DISMISS_KEY, announcement.value);
+    } catch (error) {
+        console.error(error);
+    }
+}
 const bannerStyle = computed(() => styleFor(inertiaPage.value.props?.site?.announcementType));
 
 // Written out per colour rather than built as `bg-${color}/10`: Tailwind
