@@ -9,11 +9,11 @@
                         <template #meta>
                             <span class="inline-flex items-center gap-1.5">
                                 <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
-                                {{ $t('bingo.size_option', { size: card.size }) }}
+                                {{ $t('bingo.size_option', { size: liveCard.size }) }}
                             </span>
                             <span class="inline-flex items-center gap-1.5">
                                 <u-icon name="i-lucide-trophy" class="size-4 shrink-0" />
-                                {{ card.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house') : $t('bingo.win_line') }}
+                                {{ liveCard.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house') : $t('bingo.win_line') }}
                             </span>
                         </template>
                     </event-type-heading>
@@ -397,9 +397,9 @@
                                  than hunted for in a sidebar. What is left is
                                  what the heading has no room for. -->
                             <div class="space-y-2 text-sm">
-                                <div v-if="card.lineBonus" class="flex items-center gap-2">
+                                <div v-if="liveCard.lineBonus" class="flex items-center gap-2">
                                     <u-icon name="i-lucide-plus" class="size-4 text-muted shrink-0" />
-                                    <span>{{ $t('bingo.line_bonus') }}: {{ card.lineBonus }}</span>
+                                    <span>{{ $t('bingo.line_bonus') }}: {{ liveCard.lineBonus }}</span>
                                 </div>
                                 <!-- How to play, beside the rules it plays
                                      by. Hidden while editing, when clicking a
@@ -410,8 +410,8 @@
                                 </div>
 
                                 <div class="flex items-center gap-2">
-                                    <u-icon :name="card.requiresApproval ? 'i-lucide-gavel' : 'i-lucide-zap'" class="size-4 text-muted shrink-0" />
-                                    <span>{{ card.requiresApproval ? $t('bingo.info_reviewed') : $t('bingo.info_instant') }}</span>
+                                    <u-icon :name="liveCard.requiresApproval ? 'i-lucide-gavel' : 'i-lucide-zap'" class="size-4 text-muted shrink-0" />
+                                    <span>{{ liveCard.requiresApproval ? $t('bingo.info_reviewed') : $t('bingo.info_instant') }}</span>
                                 </div>
 
                                 <!-- The sentence above tells a host that
@@ -420,7 +420,7 @@
                                      here and the control only in the page
                                      header made the two read as unrelated. -->
                                 <u-button
-                                    v-if="canEdit && card.requiresApproval"
+                                    v-if="canEdit && liveCard.requiresApproval"
                                     :color="pending.length ? 'warning' : 'neutral'"
                                     variant="outline"
                                     size="xs"
@@ -461,7 +461,7 @@
                     :event-id="liveEvent.id"
                     type="BINGO"
                     :items="squares"
-                    :total="card.size * card.size"
+                    :total="liveCard.size * liveCard.size"
                 />
                 <bingo-review-modal v-model:open="showReviewModal" :event-id="liveEvent.id" :claims="pending" />
             </template>
@@ -521,6 +521,21 @@ const status = computed(() => boardEventStatus(liveEvent.value.start_date, liveE
 // squares are streamed too, so an author's edit lands on every open card
 // rather than only on the next page load.
 const rows = ref([...props.standings]);
+/**
+ * The card's own settings, as they are now.
+ *
+ * Its size drives the grid. The squares were streamed and this was not, so a
+ * host resizing a card mid-event sent everyone 36 squares to draw in five
+ * columns. `requiresApproval` matters as much and less visibly: it decides
+ * whether clicking a square opens a claim dialog or ticks it off, so a viewer
+ * on a stale copy plays by a rule that has been switched off.
+ *
+ * The squares stay in their own ref — they arrive on the same message, under
+ * their own key, and there are far more of them than there are settings.
+ */
+const liveCard = ref({ ...props.card });
+watch(() => props.card, (value) => (liveCard.value = { ...value }));
+
 const squares = ref([...props.card.squares]);
 const holders = ref({ ...props.approvedBy });
 const winLines = ref(props.card.winLines ?? ['ROW', 'COLUMN', 'DIAGONAL']);
@@ -575,6 +590,32 @@ function extraHolders(square) {
     return entry ? Math.max(0, entry.total - entry.holders.length) : 0;
 }
 
+/**
+ * Claims, as the server last saw them.
+ *
+ * Held from the first message rather than from the page: that message is the
+ * state the server has now, and reloading on it would mean a request per
+ * connection — including the reconnect that happens every 45 seconds by
+ * design.
+ */
+let claimsVersion = null;
+
+function applyClaimsVersion(version) {
+    if (claimsVersion === null) {
+        claimsVersion = version;
+
+        return;
+    }
+
+    if (version === claimsVersion) return;
+
+    claimsVersion = version;
+
+    // `pending` is the host's review queue; it comes back empty for anyone
+    // else, so asking for it costs a player nothing.
+    router.reload({ only: ['pending', 'claims', 'completed', 'completedLines', 'hasWon'] });
+}
+
 const { streaming, stale } = useEventStream({
     // A finished card cannot change. Holding a PHP worker open to watch it
     // not change is the one cost this feature has.
@@ -584,20 +625,27 @@ const { streaming, stale } = useEventStream({
         rows.value = payload.standings;
         // Merged, not replaced, so a field the channel does not know about
         // survives the first push.
-        if (payload.event) liveEvent.value = { ...liveEvent.value, ...payload.event };
+        if (payload.event) {
+            liveEvent.value = { ...liveEvent.value, ...payload.event };
+            // The same card the settings modal edits, from the same builder.
+            if (payload.event.card) liveCard.value = { ...liveCard.value, ...payload.event.card };
+        }
         if (payload.squares) squares.value = payload.squares;
         if (payload.approvedBy) holders.value = payload.approvedBy;
         // A host changing which shapes count mid-event reaches every open
         // card, so the hint never points at a line that stopped counting.
         if (payload.winLines) winLines.value = payload.winLines;
 
-        // The review queue is host-only, so it cannot ride a channel every
-        // viewer shares. The stream still says *that* something changed, so a
-        // host re-fetches just that prop — which is also what refreshes their
-        // own claim states after somebody else's claim is ruled on.
-        if (props.canEdit) {
-            router.reload({ only: ['pending', 'claims', 'completed', 'completedLines', 'hasWon'] });
-        }
+        // What a host decided about YOUR square is yours: the verdict, the
+        // note, whether it completed a line. None of it can ride a channel
+        // every viewer shares, so the page fetches its own copy — and only
+        // when a claim was actually ruled on, rather than on every push.
+        //
+        // This used to be gated on `canEdit`, so only hosts ever refreshed.
+        // A player watched the standings award them points while their own
+        // square still read "waiting for review" — the card rendering half
+        // pending, half approved.
+        if (payload.claims_version) applyClaimsVersion(payload.claims_version);
     },
 });
 
@@ -614,7 +662,7 @@ const GRID_CLASSES = {
     9: 'grid-cols-9',
     10: 'grid-cols-10',
 };
-const gridClass = computed(() => GRID_CLASSES[props.card.size] ?? GRID_CLASSES[5]);
+const gridClass = computed(() => GRID_CLASSES[liveCard.value.size] ?? GRID_CLASSES[5]);
 
 const inLine = computed(() => new Set(props.completedLines.flat()));
 
@@ -649,7 +697,7 @@ const mine = computed(() => new Set(props.completed));
 const suggestedPositions = computed(() => {
     if (editing.value || hoveredPosition.value === null) return [];
 
-    return openLinesThrough(hoveredPosition.value, props.card.size, mine.value, winLines.value);
+    return openLinesThrough(hoveredPosition.value, liveCard.value.size, mine.value, winLines.value);
 });
 
 // The squares to tint: every square on every candidate line, minus what you
@@ -662,7 +710,7 @@ const suggestedLine = computed(() => new Set(
 // One stroke per candidate line, nearest-to-finishing marked — see
 // Support/bingoLines.js, which is also where the server's own definition of
 // a line is mirrored.
-const lineStrokes = computed(() => strokesFor(suggestedPositions.value, props.card.size, mine.value));
+const lineStrokes = computed(() => strokesFor(suggestedPositions.value, liveCard.value.size, mine.value));
 
 function squareClass(square) {
     // Part of the line the hovered square would complete. Checked before
@@ -784,7 +832,7 @@ function onSquareClick(square) {
 
     // A card that trusts its players marks straight away; one that reviews
     // asks for the screenshot at the only moment the player still has it.
-    if (!props.card.requiresApproval) {
+    if (!liveCard.value.requiresApproval) {
         router.post(`/events/${liveEvent.value.id}/bingo/squares/${square.id}/claim`, {}, {
             preserveScroll: true,
             onError: (errors) => console.error(errors),

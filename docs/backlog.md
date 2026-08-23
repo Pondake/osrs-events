@@ -2730,8 +2730,10 @@ why several of these are things no single-seat check would have found.
 - [x] ~~**The claim note does not reset between squares.**~~ — fixed
   2026-08-22. Open a second tile
   and the previous note is still in the field.
-- [ ] **A reviewed card rendered half pending, half approved** after
-  approving one claim.
+- [x] ~~**A reviewed card rendered half pending, half approved** after
+  approving one claim.~~ — cause found and fixed 2026-08-23: only hosts ever
+  re-fetched their own claim state, so a player watched the standings award
+  them points while their own square still read "waiting for review".
 
 ### Wrong or missing
 
@@ -3063,3 +3065,58 @@ know whether it is counting XP or kills, and a card without it would have
 gone blank on the first push.
 
 521 backend tests, 151 frontend.
+## Sweep: what else was not live — 2026-08-23
+
+Asked after the fix landed: is that everything, and is it stable? Three more
+gaps came out of walking each channel's fingerprint against what the pages
+actually render.
+
+- [x] ~~**A claim's verdict never reached the claimant.**~~ The refresh of
+  `claims`, `completed`, `completedLines` and `hasWon` was gated on
+  `canEdit`, so only hosts got it. A player saw the standings award them
+  points and the avatar appear on the square while their own square still
+  read "waiting for review" — **which is the half pending, half approved
+  render reported in round six.** The payload now carries a claims version,
+  and every viewer fetches their own copy when it changes. Scoped to claims
+  on purpose: a square being edited already reaches everyone over the
+  channel, so making each viewer fetch for that would be a request per viewer
+  for nothing. Hosts pay less than before, not more.
+
+- [x] ~~**The bingo card's size was not fingerprinted at all.**~~ The grid is
+  drawn from it, so a host resizing a card mid-event left every other viewer
+  with the wrong number of columns — and it was only noticed at all when the
+  square count happened to change with it. `requires_approval` was missing
+  for the same reason and matters as much and less visibly: it decides
+  whether clicking a square opens a claim dialog or ticks it off, so a stale
+  viewer plays by a rule that has been switched off.
+
+- [x] ~~**The page read the card's settings from a prop the stream never
+  touched.**~~ Even once the channel noticed, `props.card.size` drove the
+  grid. It reads a live copy now, from the same `EventCard` the settings
+  modal edits.
+
+**Also covered: the payload carries the hosts now.** `User` hides only
+password and remember_token, and a bare `authors.user` published every host's
+email address once already. The card builder names its columns, and there is
+a test asserting the host's name is in the encoded payload and their address
+is not — both halves, because an assertion that no email is present passes
+trivially on a payload with no host in it.
+
+**What is deliberately not live**, because it is per viewer and a shared
+channel cannot carry it: whether you may edit, which team you are on, whether
+you have joined, your own OSRS name. All of them change only through
+somebody's deliberate action, and an event edit pulls them anyway.
+
+**Still not proven: two people at once.** `php artisan serve` serves one SSE
+stream at a time, so every measurement here is one browser plus a write from
+outside the app. The multi-viewer case needs Herd or nginx+fpm, and until
+somebody runs it there, "works when several people are in it" is reasoning,
+not evidence.
+
+**And a trap worth writing down:** the Browser pane being collapsed puts the
+tab in `visibilityState: hidden`, which the composable treats as a reason to
+drop the connection — correctly. One measurement here read as a dead feature
+and was the optimisation working. Check `document.visibilityState` before
+believing a stream did nothing.
+
+525 backend tests, 151 frontend.
