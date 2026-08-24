@@ -76,6 +76,25 @@
             <slot name="meta" />
         </div>
 
+        <!-- An admin looking at an event they do not host. The public side
+             gives them no controls at all — deliberately — and said nothing
+             about where the power went, so it read as buttons going missing.
+             This is the only place the two sides are joined up. -->
+        <div v-if="adminEditUrl" class="mt-3">
+            <u-alert color="neutral" variant="subtle" icon="i-lucide-shield" :description="$t('events.open_in_admin_hint')">
+                <template #actions>
+                    <u-button
+                        :href="adminEditUrl"
+                        color="neutral"
+                        variant="outline"
+                        size="xs"
+                        icon="i-lucide-external-link"
+                        :label="$t('events.open_in_admin')"
+                    />
+                </template>
+            </u-alert>
+        </div>
+
         <!-- Reading somebody else's private event on an admin's pass.
              The power is deliberate (BoardAccessService::canBypass) and
              moderating is what it is for, but exercising it silently is a
@@ -158,6 +177,9 @@ const props = defineProps({
     canEdit: { type: Boolean, default: false },
     // Set when the only reason this page opened is a site-admin pass.
     viewingAsAdmin: { type: Boolean, default: false },
+    // Where an admin who does not host this event goes to change it. Null
+    // for everybody else, including an admin who does host it.
+    adminEditUrl: { type: String, default: null },
     // The live channel's own state, from useEventStream on the page. The
     // status dot is where it is reported — see the note in the template.
     streaming: { type: Boolean, default: false },

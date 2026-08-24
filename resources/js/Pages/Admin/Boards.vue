@@ -66,11 +66,32 @@ import AdminLayout from '@/Components/AdminLayout.vue';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 
-defineProps({
+const props = defineProps({
     boards: { type: Array, required: true },
 });
 
-const editingBoard = ref(null);
+/**
+ * `?event=<id>` opens that event's settings on arrival.
+ *
+ * It is how an admin gets here from the event's own page (see
+ * BoardController::adminEditUrl) — landing on a list of two dozen events and
+ * being asked to find the one you just came from is not an answer to "where
+ * did the buttons go".
+ *
+ * Read while setting up rather than in onMounted, so the dialog is open in
+ * the component's first frame: set afterwards, the modal mounts closed and
+ * whether it reopens depends on the order its own open-state emit and this
+ * assignment happen to land in — which is a race that resolved the wrong way
+ * here. The `typeof window` guard is for SSR, where the modal is not rendered
+ * at all (it sits inside <client-only>).
+ */
+const wantedEventId = typeof window === 'undefined'
+    ? null
+    : new URLSearchParams(window.location.search).get('event');
+
+const editingBoard = ref(wantedEventId
+    ? props.boards.find((board) => board.id === wantedEventId) ?? null
+    : null);
 
 function destroyBoard(board) {
     // The admin route, not the public one — an admin deleting somebody

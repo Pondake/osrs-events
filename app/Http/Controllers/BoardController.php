@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\EventBlueprint;
 use App\Models\EventStanding;
 use App\Models\Team;
+use App\Models\User;
 use App\Models\UserGuild;
 use App\Notifications\EventStatusChanged;
 use App\Services\BingoService;
@@ -345,6 +346,7 @@ class BoardController extends Controller
             // live channel pushes to all of them every few seconds.
             'webhookUrl' => $user->canEditEvent($event) ? $event->discord_webhook_url : null,
             'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
+            'adminEditUrl' => $this->adminEditUrl($user, $event),
         ]);
     }
 
@@ -455,6 +457,7 @@ class BoardController extends Controller
             'canEdit' => $canEdit,
             'webhookUrl' => $canEdit ? $event->discord_webhook_url : null,
             'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
+            'adminEditUrl' => $this->adminEditUrl($user, $event),
         ]);
     }
 
@@ -478,6 +481,7 @@ class BoardController extends Controller
             'canEdit' => $user?->canEditEvent($event) ?? false,
             'webhookUrl' => $user?->canEditEvent($event) ? $event->discord_webhook_url : null,
             'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
+            'adminEditUrl' => $this->adminEditUrl($user, $event),
         ]);
     }
 
@@ -768,7 +772,21 @@ class BoardController extends Controller
                 }
             }
 
-            $event->update(collect($data)->only(self::EVENT_FIELDS)->toArray());
+            // Before the write, so `isDirty` compares against what is
+            // currently stored rather than against what we just saved.
+            $event->fill(collect($data)->only(self::EVENT_FIELDS)->toArray());
+
+            // A standing is a measurement over a window. Move a date or the
+            // metric and every row is still displayed, still ranked, and no
+            // longer true — so the event is marked stale and the race page
+            // says so until somebody pulls fresh numbers. Not re-synced here:
+            // a forty-entrant race is forty outbound requests to somebody
+            // else's API, which a form submit does not get to decide.
+            if ($event->needsMetric() && $event->isDirty(Event::MEASUREMENT_FIELDS)) {
+                $event->standings_stale_since = now();
+            }
+
+            $event->save();
 
             // Same null-means-absent rule as the card fields above: a bingo
             // event's form submits `size` (the S&L enum) as null.
@@ -862,6 +880,27 @@ class BoardController extends Controller
      * sends there is nothing to look up. Same reason the audit entry goes
      * first — AuditLog::record() resolves the label from the live model.
      */
+    /**
+     * The way in for an admin who has no other one.
+     *
+     * On the public side an admin is an ordinary user, so on an event they
+     * do not host there are no host controls at all — correct, and until now
+     * silent: nothing on the page said the power exists elsewhere, so it
+     * read as missing buttons. Reported exactly that way.
+     *
+     * Null for everybody else, including an admin who DOES host the event —
+     * they already have the ordinary controls and do not need to reach for
+     * the admin ones.
+     */
+    private function adminEditUrl(?User $user, Event $event): ?string
+    {
+        if ($user === null || ! $user->isAdmin() || $user->canEditEvent($event)) {
+            return null;
+        }
+
+        return route('admin.events').'?event='.$event->id;
+    }
+
     public function destroy(
         Request $request,
         Event $event,

@@ -9,6 +9,7 @@
                         :event="liveEvent"
                         :can-edit="canEdit"
                         :viewing-as-admin="viewingAsAdmin"
+                        :admin-edit-url="adminEditUrl"
                         :streaming="streaming"
                         :stale="stale"
                     >
@@ -78,6 +79,23 @@
                              account can edit a snakes & ladders board from
                              its page, which is where the inconsistency shows.
                              -->
+                        <!-- The answer to "is what I am looking at true?".
+                             A host who has just moved the dates or changed
+                             the metric is reading a table measured against
+                             the old ones, and the scheduled sync runs on its
+                             own clock. Hosts only: one press is one outbound
+                             request per entrant. -->
+                        <u-button
+                            v-if="canEdit"
+                            color="neutral"
+                            variant="outline"
+                            size="sm"
+                            icon="i-lucide-refresh-cw"
+                            :label="$t('events.sync_standings')"
+                            :loading="syncing"
+                            @click="syncStandings"
+                        />
+
                         <!-- `sm`, like every other control in this bar and on
                              the other two event pages. Left at the default it
                              stood 32px tall beside 28px siblings — the same
@@ -108,13 +126,51 @@
                     :actions="[{ label: $t('events.no_rsn_action'), color: 'warning', variant: 'solid', onClick: goToProfile }]"
                 />
 
+                <!-- The dates or the metric moved after these numbers were
+                     read, so every row is measured against a window that no
+                     longer exists. Said before the table rather than inside
+                     it: it is true of all of them at once, and a host who
+                     just changed the dates is the person most likely to
+                     believe what they are looking at. -->
+                <u-alert
+                    v-if="standingsStale"
+                    color="warning"
+                    variant="subtle"
+                    icon="i-lucide-triangle-alert"
+                    class="mb-6"
+                    :title="$t('events.stale_title')"
+                    :description="canEdit ? $t('events.stale_desc_host') : $t('events.stale_desc_player')"
+                >
+                    <template v-if="canEdit" #actions>
+                        <u-button
+                            color="warning"
+                            variant="solid"
+                            size="xs"
+                            icon="i-lucide-refresh-cw"
+                            :label="$t('events.sync_standings')"
+                            :loading="syncing"
+                            @click="syncStandings"
+                        />
+                    </template>
+                </u-alert>
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div class="lg:col-span-2">
                         <u-card :ui="{ body: 'p-0 sm:p-0' }">
                             <template #header>
                                 <div class="flex items-center justify-between gap-3 flex-wrap">
                                     <span class="font-semibold">{{ $t('events.standings') }}</span>
-                                    <span class="text-xs text-muted">{{ rankedBy }}</span>
+                                    <div class="flex items-center gap-3 text-xs text-muted">
+                                        <!-- How old the numbers are, said where
+                                             the numbers are. A table that reads
+                                             as live is worth doubting only when
+                                             it is not, and the only way to know
+                                             was to trust it. -->
+                                        <span :title="lastSynced ?? undefined">
+                                            {{ lastSynced ? $t('events.sync_last', { when: syncedLabel }) : $t('events.sync_never') }}
+                                        </span>
+                                        <span>{{ rankedBy }}</span>
+                                    </div>
                                 </div>
                             </template>
 
@@ -250,6 +306,33 @@ const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/Board
 
 const showSettingsModal = ref(false);
 
+const syncing = ref(false);
+
+/**
+ * Read from the live event, so a host changing the dates in one tab turns
+ * this on in every other tab watching the race — the fingerprint carries it
+ * (see SignalsEventEdits).
+ */
+const standingsStale = computed(() => Boolean(liveEvent.value.standings_stale_since));
+
+/**
+ * Runs the same refresh the scheduled command does, for this race only.
+ *
+ * `preserveScroll` because the answer arrives as a toast and a re-rendered
+ * table, and a host who pressed this while looking at row twelve should still
+ * be looking at row twelve.
+ */
+function syncStandings() {
+    syncing.value = true;
+
+    router.post(`/events/${liveEvent.value.id}/standings/sync`, {}, {
+        preserveScroll: true,
+        onError: (errors) => console.error(errors),
+        onFinish: () => { syncing.value = false; },
+    });
+}
+
+
 const props = defineProps({
     event: { type: Object, required: true },
     standings: { type: Array, default: () => [] },
@@ -259,6 +342,7 @@ const props = defineProps({
     // True only when a site admin is reading a private event they were never
     // invited to — the heading says so rather than letting it be silent.
     viewingAsAdmin: { type: Boolean, default: false },
+    adminEditUrl: { type: String, default: null },
     // Editors only — see BoardSettingsModal's own note on why this is not
     // part of the event payload.
     webhookUrl: { type: String, default: null },
@@ -278,6 +362,35 @@ watch(() => props.event, (value) => (liveEvent.value = { ...value }));
 // Seeded from the server render so the table is complete before any
 // JavaScript runs; the stream takes over from here.
 const rows = ref([...props.standings]);
+
+/**
+ * When the numbers on screen were last read from Wise Old Man.
+ *
+ * The newest of the rows, not the oldest: the question a host is asking is
+ * "has this been looked at since I changed it", and one entrant nobody has
+ * been able to measure for a week should not make the whole table read as
+ * stale.
+ */
+const lastSynced = computed(() => {
+    const stamps = rows.value.map((row) => row.syncedAt).filter(Boolean).sort();
+
+    return stamps.length ? stamps[stamps.length - 1] : null;
+});
+
+/** "12:04" today, a date once it is older than that. */
+const syncedLabel = computed(() => {
+    if (! lastSynced.value) return '';
+
+    const when = new Date(lastSynced.value);
+    const sameDay = when.toDateString() === new Date().toDateString();
+
+    return sameDay
+        ? when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+        : when.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+});
+
+
+
 /**
  * A copy of a prop only stays right if something copies it again.
  *
