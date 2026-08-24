@@ -3414,3 +3414,42 @@ is no Manage menu and no way in from that page at all — the way in is
 A small "open in admin" affordance when `isAdmin && ! canEdit` would close
 the gap; not built, because it is a decision about how visible admin power
 should be rather than a bug.
+
+---
+
+## Three things a walkthrough asked for — 2026-08-24
+
+- [x] ~~**An admin on an event they do not host had no way in.**~~ The public
+  side gives them no controls, which is the rule working, and said nothing
+  about where the power went — so it read as buttons going missing, reported
+  from a screenshot. The event now carries a notice and a link to
+  `/admin/events?event=<id>`, which opens that event's settings on arrival.
+  Shown only to an admin who cannot already edit it.
+- [x] ~~**A race's numbers could go quietly wrong.**~~ A standing is a
+  measurement over a window — this metric, between these dates — so moving
+  either leaves every row displayed, ranked, and untrue. `synced_at` could
+  not say this: it answers "when was this read", not "was it read about the
+  same question". Events carry `standings_stale_since` now, set when the
+  window changes and cleared when a sync catches up, with an "Update from
+  Wise Old Man" button in the warning and a "numbers last read" line above
+  the table. Hosts only, throttled, and the entrants Wise Old Man cannot
+  measure come back **by name** — "Not A Player is not tracked" is
+  actionable, "updated 4 of 5" is not.
+  **Deliberately not an automatic re-sync on save:** forty entrants is forty
+  outbound requests to somebody else's public API, which a form submit does
+  not get to decide.
+- [x] ~~**The walkthrough itself is now a skill.**~~
+  `.claude/skills/multi-user-walkthrough/SKILL.md`, with the decisions
+  settled rather than re-argued every time: six seats, four widths, one
+  browser session re-roled instead of six logins. Two commands back it —
+  `php artisan dev:fixtures` seeds the edge-case events demo data never
+  produces, `php artisan dev:persona <seat>` reshapes the signed-in account
+  and `restore` puts back exactly what was there before. Both refuse to run
+  outside local.
+
+**Why one seat and not six accounts:** six logins means six passwords typed
+into a form on every pass, and the app's own rule is that an admin hands out
+roles — so a second account cannot elevate itself into the seat you need.
+Re-roling one seat is the only version of this that is repeatable.
+
+600 backend tests, 154 frontend.
