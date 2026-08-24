@@ -108,3 +108,68 @@ export function snooze(storage, now = Date.now()) {
         console.error(error);
     }
 }
+
+/**
+ * How often the browser may be asked *without* a click, and when.
+ *
+ * This used to be a once-ever boolean, which sounded respectful and was not:
+ * the flag is written **before** the call, so a browser that silently declined
+ * to show the prompt — Firefox without a gesture, Chrome's quiet UI — spent
+ * its only attempt on a dialog nobody ever saw, and the app could never ask
+ * again. Reported from staging as Edge being reachable only through the
+ * settings page.
+ *
+ * Three attempts a month apart is still quiet by any measure, and it is
+ * self-healing: whatever suppressed the first is usually gone by the second.
+ */
+export const ASK_KEY = 'osrs-events:push-prompted';
+
+export const RETRY_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
+export const MAX_AUTOMATIC_ASKS = 3;
+
+/**
+ * @returns {{n: number, at: number}} attempts made, and when the last one was
+ */
+export function askRecord(storage) {
+    try {
+        const raw = storage.getItem(ASK_KEY);
+
+        if (!raw) return { n: 0, at: 0 };
+
+        // The old format was the literal string '1'. Read as "asked once, long
+        // ago", which deliberately makes every browser still carrying it due
+        // for one more attempt — those are exactly the browsers that may have
+        // spent their only ask on a prompt that was never shown.
+        if (raw === '1') return { n: 1, at: 0 };
+
+        const parsed = JSON.parse(raw);
+
+        return { n: Number(parsed.n) || 0, at: Number(parsed.at) || 0 };
+    } catch (error) {
+        // Unreadable or hand-edited. Treating it as never-asked is the
+        // harmless direction: at worst one extra prompt, against a device
+        // that could otherwise never be asked at all.
+        console.error(error);
+
+        return { n: 0, at: 0 };
+    }
+}
+
+export function mayAskAutomatically(storage, now = Date.now()) {
+    const { n, at } = askRecord(storage);
+
+    if (n >= MAX_AUTOMATIC_ASKS) return false;
+
+    return n === 0 || now - at > RETRY_AFTER_MS;
+}
+
+export function recordAutomaticAsk(storage, now = Date.now()) {
+    try {
+        const { n } = askRecord(storage);
+
+        storage.setItem(ASK_KEY, JSON.stringify({ n: n + 1, at: now }));
+    } catch (error) {
+        console.error(error);
+    }
+}

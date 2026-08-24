@@ -1,6 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { SNOOZE_MS, shouldOfferPush, snooze, snoozedUntil } from '@/Support/pushPrompt';
+import {
+    ASK_KEY,
+    MAX_AUTOMATIC_ASKS,
+    RETRY_AFTER_MS,
+    SNOOZE_MS,
+    askRecord,
+    mayAskAutomatically,
+    recordAutomaticAsk,
+    shouldOfferPush,
+    snooze,
+    snoozedUntil,
+} from '@/Support/pushPrompt';
 
 /**
  * When to offer the in-app "turn notifications on" bar.
@@ -75,7 +86,12 @@ describe('shouldOfferPush', () => {
         expect(shouldOfferPush({ ...base, isIos: true, isStandalone: true })).toBe(true);
     });
 
-    /** The gate and the tour are already asking for something. */
+    /**
+     * Something actually on screen asking for something — an auth page, or the
+     * tour while it is open. Deliberately not the *pending* onboarding state:
+     * that stays true until the tour is finished, so keying on it hid the bar
+     * completely from anybody who closed the tour instead of completing it.
+     */
     it('does not stack on a page that is already asking', () => {
         expect(shouldOfferPush({ ...base, onBlockingPage: true })).toBe(false);
     });
@@ -150,6 +166,79 @@ describe('snooze', () => {
 
         expect(snoozedUntil(hostile, 1_000)).toBe(0);
         expect(() => snooze(hostile, 1_000)).not.toThrow();
+
+        vi.restoreAllMocks();
+    });
+});
+
+/**
+ * How often the browser may be asked without a click.
+ *
+ * The interesting case is the migration. The old format was a once-ever
+ * boolean written *before* the call, so any browser that silently declined to
+ * show the prompt spent its only attempt on a dialog nobody saw. Reading that
+ * old value as "asked long ago" is what gives every one of those browsers one
+ * more attempt — and getting it wrong means nobody is ever asked again, which
+ * nothing would report.
+ */
+describe('mayAskAutomatically', () => {
+    function storage(initial = {}) {
+        const values = { ...initial };
+
+        return {
+            values,
+            getItem: (key) => values[key] ?? null,
+            setItem: (key, value) => {
+                values[key] = value;
+            },
+        };
+    }
+
+    it('asks a browser it has never asked', () => {
+        expect(mayAskAutomatically(storage(), 1_000)).toBe(true);
+    });
+
+    it('does not ask again the same day', () => {
+        const store = storage();
+
+        recordAutomaticAsk(store, 1_000);
+
+        expect(mayAskAutomatically(store, 2_000)).toBe(false);
+    });
+
+    it('asks again a month later', () => {
+        const store = storage();
+
+        recordAutomaticAsk(store, 1_000);
+
+        expect(mayAskAutomatically(store, 1_000 + RETRY_AFTER_MS + 1)).toBe(true);
+    });
+
+    it('gives up after the third attempt', () => {
+        const store = storage();
+        let now = 1_000;
+
+        for (let i = 0; i < MAX_AUTOMATIC_ASKS; i++) {
+            expect(mayAskAutomatically(store, now)).toBe(true);
+            recordAutomaticAsk(store, now);
+            now += RETRY_AFTER_MS + 1;
+        }
+
+        expect(mayAskAutomatically(store, now)).toBe(false);
+    });
+
+    /** The whole point of the migration: one more go for everybody. */
+    it('treats the old once-ever flag as asked long ago', () => {
+        const store = storage({ [ASK_KEY]: '1' });
+
+        expect(askRecord(store)).toEqual({ n: 1, at: 0 });
+        expect(mayAskAutomatically(store, RETRY_AFTER_MS + 2)).toBe(true);
+    });
+
+    it('treats an unreadable record as never asked rather than as spent', () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        expect(askRecord(storage({ [ASK_KEY]: 'not json' }))).toEqual({ n: 0, at: 0 });
 
         vi.restoreAllMocks();
     });

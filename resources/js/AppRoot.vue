@@ -544,9 +544,12 @@ const showPushOffer = computed(() => {
         snoozedUntil: pushSnoozedUntil.value,
         now: Date.now(),
         settled: push.settled.value,
-        // The gate and the tour are already asking for something. Stacking a
-        // third request on top is how a first visit becomes three dialogs.
-        onBlockingPage: onAuthPage.value || showOnboarding.value || needsOnboarding.value,
+        // Something actually on screen asking for something — the auth pages
+        // and the tour while it is *open*. Deliberately not `needsOnboarding`,
+        // which stays true until the tour is finished: somebody who closes it
+        // (it snoozes for a day) would otherwise never see this bar at all.
+        // That is what hid it from a fresh account on staging.
+        onBlockingPage: onAuthPage.value || showOnboarding.value,
         // The same gate the announcement banner and the OSRS notice use, for
         // the same reason: those pages have nowhere to put a bar.
         hasChrome: showSiteChrome.value,
