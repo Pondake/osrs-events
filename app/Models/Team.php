@@ -94,12 +94,12 @@ class Team extends Model
             return false;
         }
 
-        // Admin bypasses, same rule as User::hasPermission(). TEAM_MANAGER
-        // is the pre-per-team-roles global role and still grants this so
-        // nobody holding it loses access on deploy — docs/backlog.md tracks
-        // retiring it now that the per-team roles cover the same ground.
+        // Admin bypasses, same rule as User::hasPermission(). Everything else
+        // is per-team and always was, once OWNER/MANAGER/MEMBER existed: the
+        // global TEAM_MANAGER role used to grant this over every team on the
+        // site and was retired in retire_global_team_manager_role — the reason
+        // it survived that long, and the reason it is gone, are both there.
         return $user->isAdmin()
-            || $user->hasRole('TEAM_MANAGER')
             || in_array($this->roleFor($user), TeamMember::MANAGING_ROLES, true);
     }
 

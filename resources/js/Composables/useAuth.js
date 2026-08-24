@@ -30,7 +30,6 @@ export function useAuth() {
     const canCreateBoards = computed(() => user.value?.canCreateBoards ?? false);
     const canCreateTiles = computed(() => user.value?.canCreateTiles ?? false);
     const isEditor = computed(() => user.value?.roles?.includes('EDITOR') ?? false);
-    const isTeamManager = computed(() => user.value?.roles?.includes('TEAM_MANAGER') ?? false);
 
-    return { user, isAuthenticated, isAdmin, canCreateBoards, canCreateTiles, isEditor, isTeamManager };
+    return { user, isAuthenticated, isAdmin, canCreateBoards, canCreateTiles, isEditor };
 }

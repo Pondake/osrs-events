@@ -1539,11 +1539,10 @@ Reported from staging in one pass. Tests live in
   edit as well as create. Also closed a real hole in passing: the
   add-member user search had no permission check at all and would list every
   account on the site to anyone who could guess a team id.
-- [ ] **Retire the global `TEAM_MANAGER` role.** It still grants management
-  over every team, purely so nobody holding it loses access on deploy — but
-  the per-team roles above now cover what it was created for. Either drop
-  the check in `Team::isManagedBy()` and unassign the role, or keep it and
-  rename it to something that admits what it is (site-wide team staff).
+- [x] ~~**Retire the global `TEAM_MANAGER` role.**~~ Done 2026-08-24 — see the
+  entry at the end of this file. Dropped rather than renamed: nothing in the
+  app explained such a role, nothing granted it deliberately, and ADMIN
+  already covers "somebody has to be able to fix this team".
 - [x] ~~**Created vs joined was invisible on the profile**~~ — done.
   `/settings/profile`'s "Your events" listed everything in one column of
   cards with an Owner badge as the only hint which was which. It is compact
@@ -3741,3 +3740,48 @@ tolerates, and the bar means a suppressed prompt is no longer a dead end — but
 the automatic ask is not free, and more of it would not be better.
 
 640 backend tests, 174 frontend.
+
+---
+
+## The last global role is gone — 2026-08-24
+
+`TEAM_MANAGER` granted rename, staff and restaff over **every team on the
+site** to anyone holding it. The per-team OWNER/MANAGER/MEMBER roles replaced
+that on 2026-08-21, and it was kept alive for exactly one reason: nobody
+holding it should lose access mid-deploy. That was a temporary measure that
+outlived its reason by three days.
+
+- [x] ~~**Deleted, not renamed.**~~ The alternative on the list was to keep it
+  under an honest name ("site-wide team staff"). The reason not to: nothing in
+  the app explains such a role, nothing grants it deliberately, and ADMIN
+  already answers "somebody has to be able to fix this team". A standing
+  over-permission kept for a use case nobody has is how a permission system
+  rots — it survives every review because removing it feels riskier than
+  leaving it, and the risk only grows.
+- [x] ~~**The check, the role row, and the way back in.**~~ Gone from
+  `Team::isManagedBy()`; the migration detaches every holder and deletes the
+  role; `ROLE_OPTIONS` on the admin users page no longer offers it, because
+  offering it would recreate it by name. The dead `isTeamManager` flag in
+  `useAuth` went too — nothing had used it since the Teams nav stopped being
+  gated on it.
+- [x] ~~**No automatic conversion, deliberately.**~~ Turning a global role into
+  per-team memberships would mean adding that account to every team as a
+  MANAGER — a far larger and much less reversible change than the one being
+  undone. Whoever held it keeps every per-team role they had; if they genuinely
+  need the reach back, the answers are ADMIN or a MANAGER seat on the specific
+  teams, both of which say what they are.
+  **The migration logs who held it before detaching**, because afterwards
+  nothing anywhere records that those accounts ever did — the role row goes
+  too, so even the audit log has nothing left to join against.
+
+**Pinned as a test, not left to the migration.** The migration only deletes a
+row; nothing stops the name being created again from the admin users page. So
+`TeamOwnershipTest` asserts that a fresh `TEAM_MANAGER` holder is *forbidden*
+from renaming somebody else's team, and that an admin still can. If the check
+ever came back, that is what would catch it.
+
+Rehearsed both directions locally, including the branch that never runs on a
+clean install: with the role present and held, the row is deleted, the holder
+is detached, and the warning lands in the log with the user id in it.
+
+642 backend tests, 174 frontend.

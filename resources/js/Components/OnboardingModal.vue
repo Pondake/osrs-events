@@ -272,7 +272,7 @@ const osrsUsername = computed(() => page.props?.auth?.user?.osrsUsername ?? null
 // on its second step.
 const osrsForm = useForm({ osrs_username: '', stay: true });
 
-const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', TEAM_MANAGER: 'info', PLAYER: 'primary' };
+const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', PLAYER: 'primary' };
 const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
 
 /**
