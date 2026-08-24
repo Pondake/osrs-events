@@ -3662,3 +3662,39 @@ observe locally was the bar staying *hidden* — which it does, and without
 burning the once-ever flag, since the denied branch returns before setting it.
 
 639 backend tests, 167 frontend.
+
+---
+
+## Three from the first real test on a phone — 2026-08-24
+
+- [x] ~~**The offer bar drew over the admin heading.**~~ It was emitted from
+  AppRoot without the `showSiteChrome` gate the announcement banner and the
+  OSRS notice both carry. The admin area brings its own full-height dashboard
+  shell and renders no site chrome, so a bar above it does not push it down —
+  it draws straight across the page title.
+- [x] ~~**A repeated flash message toasted once and then never again.**~~ The
+  bridge watched the flash *value*, and a watcher only fires on a change —
+  so working through a review queue, where every approval flashes the same
+  "Claim approved", toasted the first and swallowed the rest. Now hooked to
+  Inertia's `success` event, which fires per visit regardless of whether the
+  text changed. The same miss made the Wise Old Man lookup look broken while
+  it was answering fine; that was the tell.
+- [x] ~~**The generator's example VAPID subject passes every format check.**~~
+  `mailto:you@example.com` *is* a valid mailto: URL, and push services use
+  that address to reach an operator whose app is misbehaving — so an address
+  nobody reads turns a warning into a block that arrives without one. The
+  diagnostics page warns on it now. Spotted in a screenshot of staging.
+
+**Not a bug: approving your own claim sends you nothing.** Reported as "I sent
+in a claim and approved it myself and got no notification". `BingoNotifier`
+skips the notification when the claimant and the reviewer are the same person
+— being told the outcome of a decision you made one second ago reads as a bug,
+not a service. It is deliberate and there is a test for it. Testing the real
+path needs a second account, or the Send a test button on /admin/diagnostics.
+
+**The toast itself was fine.** Measured at 76×343 with 16px padding, on
+`z-[100]` — above the modal overlay, not under it. What the screenshot showed
+was a toast sitting over the review modal's dimmed backdrop, with that modal's
+own Close footer above it, in a zoomed crop.
+
+640 backend tests, 168 frontend.

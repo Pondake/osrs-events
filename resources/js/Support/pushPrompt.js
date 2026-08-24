@@ -44,6 +44,7 @@ export const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
  * @param {number}  state.now
  * @param {boolean} state.settled         the automatic attempt has finished
  * @param {boolean} state.onBlockingPage  a page already asking for something
+ * @param {boolean} state.hasChrome       the page has a header stack to sit in
  */
 export function shouldOfferPush(state) {
     // Ordered cheapest-and-most-final first. Every one of these is a state
@@ -67,6 +68,12 @@ export function shouldOfferPush(state) {
     if (!state.settled) return false;
 
     if (state.onBlockingPage) return false;
+
+    // The admin area and the lock screen bring their own full-height shells
+    // and render no site chrome at all, so a bar emitted above them does not
+    // push them down — it draws straight over their heading. Reported from
+    // staging as the admin page wearing the bar across its own title.
+    if (!state.hasChrome) return false;
 
     return state.snoozedUntil < state.now;
 }

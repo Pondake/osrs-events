@@ -261,20 +261,29 @@ onMounted(async () => {
     raise(inertiaPage.value.props?.flash?.boardSaveError, 'board-save-error', 'error');
 });
 
-// Optional-chained on `props` itself, not just `flash` — props is briefly
-// undefined mid-visit while Inertia swaps page state for the new response,
-// and these watchers can fire in that window (confirmed live: clicking
-// "Roll dice" threw "Cannot read properties of undefined (reading 'flash')"
-// from exactly these two getters).
-watch(
-    () => inertiaPage.value.props?.flash?.boardSave,
-    (message) => raise(message, 'board-save', 'success'),
-);
+/**
+ * Every successful Inertia visit, rather than a watcher on the flash value.
+ *
+ * A watcher only fires when the value *changes*, and a flash message is very
+ * often identical to the one before it: approving a queue of bingo claims
+ * flashes "Claim approved" every time, so the first approval toasted and none
+ * of the rest did. Reported from staging, and the same shape of miss made the
+ * Wise Old Man lookup look broken when it was answering fine.
+ *
+ * Reading from the event's own page payload rather than from `inertiaPage`
+ * keeps the earlier fix intact too: props is briefly undefined mid-visit while
+ * Inertia swaps page state, and a getter reading through it threw for real
+ * (clicking "Roll dice" — "Cannot read properties of undefined").
+ *
+ * Does not fire on the initial document load, which is what the onMounted
+ * raise() above is for.
+ */
+router.on('success', (event) => {
+    const flash = event.detail?.page?.props?.flash;
 
-watch(
-    () => inertiaPage.value.props?.flash?.boardSaveError,
-    (message) => raise(message, 'board-save-error', 'error'),
-);
+    raise(flash?.boardSave, 'board-save', 'success');
+    raise(flash?.boardSaveError, 'board-save-error', 'error');
+});
 
 /**
  * Pages that render without the site header, footer and announcement banner.
@@ -538,6 +547,9 @@ const showPushOffer = computed(() => {
         // The gate and the tour are already asking for something. Stacking a
         // third request on top is how a first visit becomes three dialogs.
         onBlockingPage: onAuthPage.value || showOnboarding.value || needsOnboarding.value,
+        // The same gate the announcement banner and the OSRS notice use, for
+        // the same reason: those pages have nowhere to put a bar.
+        hasChrome: showSiteChrome.value,
     });
 });
 

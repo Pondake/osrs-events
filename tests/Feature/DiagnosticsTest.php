@@ -163,6 +163,22 @@ class DiagnosticsTest extends TestCase
         $this->assertSame(DiagnosticCheck::FAIL, $check['status']);
     }
 
+    /**
+     * It passes every format check — it *is* a mailto: URL — and push services
+     * use this address to reach an operator whose app is misbehaving. An
+     * address nobody reads turns a warning into a block with no warning.
+     */
+    #[Test]
+    public function the_generators_example_subject_is_flagged_rather_than_passed(): void
+    {
+        $this->withPair(self::PAIR_A);
+        config(['webpush.vapid.subject' => 'mailto:you@example.com']);
+
+        $check = $this->check($this->allGroups(), trans('diagnostics.push_subject'));
+
+        $this->assertSame(DiagnosticCheck::WARN, $check['status']);
+    }
+
     #[Test]
     public function missing_keys_are_reported_without_throwing(): void
     {
