@@ -85,6 +85,7 @@ documented there, but the ones that matter first:
 | `ADMIN_EMAIL` | Email the seeded admin logs in with. Defaults to `admin@osrs-events.test`. |
 | `SESSION_SECURE_COOKIE` | Leave unset locally; **set it to `true` on any HTTPS deployment**, or session cookies go out over plain HTTP. |
 | `WOM_USER_AGENT` | Identifies this app to Wise Old Man. Put a contact address in it. |
+| `APP_ICON_FLAVOR` | Leave unset. The home-screen icon follows `APP_ENV`: only `production` gets the clean brand mark, staging and local get the amber "under construction" one so two installs of the PWA are told apart. Set to `production` only to override that on a production-like host. |
 | `MAIL_*` | Password-reset mail. Ships as `log`, which *reports success and delivers nothing* — see [Mail](#mail). |
 
 ---

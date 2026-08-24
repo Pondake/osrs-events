@@ -56,6 +56,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | App Icon Flavour
+    |--------------------------------------------------------------------------
+    |
+    | Which set of home-screen icons app.blade.php links: the clean brand mark
+    | ("production") or the amber blueprint/hazard version ("dev"). Staging and
+    | production install as the same PWA otherwise, and two identical icons on
+    | one home screen means testing the wrong one.
+    |
+    | Read here rather than from a Vite/env var on the client, because this is
+    | a monolith: PHP renders the <head> that the OS reads at install time, so
+    | the server's own APP_ENV is already in the request path. Deliberately NOT
+    | derived from APP_DEBUG — that means "show stack traces", and coupling the
+    | two would swap the icon under real users the moment someone debugs a
+    | production incident.
+    |
+    | Fails safe toward "dev": this reads APP_ENV with no default, unlike 'env'
+    | above, which falls back to 'production'. A server that never set APP_ENV
+    | gets the construction icon — visible and fixable in a minute, where the
+    | reverse mistake ships silently and looks intentional.
+    |
+    */
+
+    'icon_flavor' => env('APP_ICON_FLAVOR')
+        ?: (env('APP_ENV') === 'production' ? 'production' : 'dev'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
