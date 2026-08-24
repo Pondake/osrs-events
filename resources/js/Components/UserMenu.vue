@@ -53,12 +53,11 @@ const canReachAdmin = computed(() => isAdmin.value || canCreateTiles.value);
  * under every name is a row of noise that distinguishes nobody. The full
  * set still shows on /settings/profile.
  */
-const ROLE_RANK = ['ADMIN', 'EDITOR', 'TEAM_MANAGER'];
+const ROLE_RANK = ['ADMIN', 'EDITOR'];
 
 const ROLE_CLASS = {
     ADMIN: 'text-error',
     EDITOR: 'text-warning',
-    TEAM_MANAGER: 'text-info',
 };
 
 const primaryRole = computed(() => {

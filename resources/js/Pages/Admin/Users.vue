@@ -82,12 +82,14 @@ const props = defineProps({
 
 const { user: currentUser } = useAuth();
 
-// Not fetched from the server — ADMIN/EDITOR/TEAM_MANAGER were the roles
-// referenced across the old frontend's isAdmin/isEditor checks. Roles are
-// otherwise freeform strings (Role::firstOrCreate in the controller), so
-// this is the known set worth offering, not a hard constraint.
-const ROLE_OPTIONS = ['ADMIN', 'EDITOR', 'TEAM_MANAGER', 'PLAYER'];
-const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', TEAM_MANAGER: 'info', PLAYER: 'primary' };
+// Not fetched from the server — these are the roles the app itself checks
+// for. Roles are otherwise freeform strings (Role::firstOrCreate in the
+// controller), so this is the known set worth offering, not a hard
+// constraint. TEAM_MANAGER used to be here and was retired: it granted
+// management over every team on the site, which the per-team OWNER/MANAGER
+// roles replaced. Offering it again would recreate it.
+const ROLE_OPTIONS = ['ADMIN', 'EDITOR', 'PLAYER'];
+const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', PLAYER: 'primary' };
 const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
 
 const displayName = (u) => u.nickname ?? u.discord_username ?? u.email;

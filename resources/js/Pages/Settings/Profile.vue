@@ -229,8 +229,8 @@ function replayOnboarding() {
     router.post('/onboarding/reset', {}, { preserveScroll: true });
 }
 
-const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', TEAM_MANAGER: 'info', PLAYER: 'primary' };
-const ROLE_ICONS = { ADMIN: 'i-lucide-shield-check', EDITOR: 'i-lucide-pencil', TEAM_MANAGER: 'i-lucide-users', PLAYER: 'i-lucide-user' };
+const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', PLAYER: 'primary' };
+const ROLE_ICONS = { ADMIN: 'i-lucide-shield-check', EDITOR: 'i-lucide-pencil', PLAYER: 'i-lucide-user' };
 const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
 const roleIcon = (name) => ROLE_ICONS[name] ?? 'i-lucide-user';
 </script>

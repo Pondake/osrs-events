@@ -44,6 +44,51 @@ class TeamOwnershipTest extends TestCase
         return $team;
     }
 
+    /**
+     * The role this replaced grants nothing any more.
+     *
+     * `TEAM_MANAGER` let anyone holding it rename, staff and restaff **every
+     * team on the site**. The per-team roles above took that job over on
+     * 2026-08-21, and it was kept alive for one deploy so nobody lost access
+     * mid-flight — a temporary measure that outlived its reason by three days.
+     *
+     * Pinned as a test rather than trusted to the migration, because the
+     * migration only deletes the row: nothing stops the role being created
+     * again by hand from the admin users page, and if the check ever came
+     * back that would silently restore site-wide team management to whoever
+     * happened to have the name.
+     */
+    #[Test]
+    public function the_retired_global_role_no_longer_manages_other_peoples_teams(): void
+    {
+        $owner = $this->player('Founder');
+        $team = $this->teamOwnedBy($owner);
+
+        $outsider = $this->player('Bystander');
+        $outsider->assignRole(Role::findOrCreate('TEAM_MANAGER', 'web'));
+
+        $this->assertFalse($team->isManagedBy($outsider));
+
+        $this->actingAs($outsider)
+            ->patch("/teams/{$team->id}", ['name' => 'Hijacked'])
+            ->assertForbidden();
+
+        $this->assertSame('Zulrah Enjoyers', $team->fresh()->name);
+    }
+
+    /** Admin still is the answer to "somebody has to be able to fix this". */
+    #[Test]
+    public function an_admin_still_manages_a_team_they_are_not_in(): void
+    {
+        $owner = $this->player('Founder');
+        $team = $this->teamOwnedBy($owner);
+
+        $admin = $this->player('Staff');
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+
+        $this->assertTrue($team->isManagedBy($admin));
+    }
+
     #[Test]
     public function creating_a_team_makes_you_its_owner(): void
     {
