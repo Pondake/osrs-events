@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Event;
 use App\Models\EventStanding;
 use App\Services\EventStandingsService;
+use App\Services\RaceRankNotifier;
 use App\Services\WiseOldManService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -26,7 +27,7 @@ class SyncEventStandings extends Command
 
     protected $description = 'Refresh skill-race standings from the Wise Old Man API';
 
-    public function handle(EventStandingsService $standings, WiseOldManService $wom): int
+    public function handle(EventStandingsService $standings, WiseOldManService $wom, RaceRankNotifier $ranks): int
     {
         $events = Event::query()
             // Every type that races on a metric, not just skill races — a
@@ -77,6 +78,13 @@ class SyncEventStandings extends Command
                 report($e);
             }
 
+            // Ranks as they were before this event's rows are touched, so
+            // "somebody passed you" can be answered by comparison rather
+            // than by a stored column that goes stale the moment anything
+            // else writes to the table. See RaceRankNotifier for why this
+            // fires only on the podium boundaries and not on movement.
+            $ranksBefore = $ranks->snapshot($event);
+
             // Least recently synced first, so a run that gets killed halfway
             // through still makes progress on a different slice next time
             // instead of refreshing the same few rows forever.
@@ -112,6 +120,17 @@ class SyncEventStandings extends Command
                 }
 
                 usleep($perRequestDelay);
+            }
+
+            // After the whole event, not per row: a mid-sync leaderboard is
+            // a half-updated one, and notifying from it would announce
+            // overtakes that unwind two rows later.
+            try {
+                $ranks->announce($event, $ranksBefore);
+            } catch (Throwable $e) {
+                // A failed notification must never cost more than the
+                // notification — the standings are already correct by now.
+                report($e);
             }
         }
 

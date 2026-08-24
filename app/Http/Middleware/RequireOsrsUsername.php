@@ -36,6 +36,13 @@ class RequireOsrsUsername
         // it finished.
         'onboarding.complete',
         'onboarding.joinable',
+        // Registering a browser for notifications is not playing, so the
+        // gate has no interest in it — and blocking it has a cost the gate
+        // was never meant to have. The silent opt-in runs on every page
+        // load, so a user who has not filled in their name yet would fail
+        // this POST (and log an error) on every single page until they did.
+        'push.subscribe',
+        'push.unsubscribe',
     ];
 
     public function handle(Request $request, Closure $next): Response

@@ -114,6 +114,7 @@ import ClientOnly from '@/Components/ClientOnly.vue';
 import { styleFor } from '@/Support/announcement';
 import { isLandingPage } from '@/Support/landing';
 import { CURRENT_PAGE } from '@/Support/pageState';
+import { usePush } from '@/Composables/usePush';
 
 const OnboardingModal = defineAsyncComponent(() => import('@/Components/OnboardingModal.vue'));
 
@@ -425,5 +426,59 @@ watch(needsOnboarding, (needs) => {
         // also flips this false, and that case is the modal's own to handle.
         showOnboarding.value = false;
     }
+});
+/**
+ * Push notifications — registration, the silent opt-in, and the tap.
+ *
+ * Lives here rather than on the settings page because both halves have to
+ * happen on every page: a subscription the server has lost heals itself on
+ * whatever page the user happens to open, and a notification tapped from the
+ * lock screen can land anywhere in the app.
+ */
+const push = usePush();
+
+onMounted(async () => {
+    // Registered for signed-out visitors too. It costs one request, and a
+    // registered worker is part of what makes the app installable — which on
+    // iOS is a precondition for notifications existing at all, long before
+    // anybody logs in.
+    await push.refresh();
+
+    if (! inertiaPage.value.props?.auth?.user) return;
+
+    // Seeded from the shared auth props so the very first autoSubscribe knows
+    // about an opt-out. Without it, somebody who switched notifications off
+    // would be silently resubscribed on their next page load — the OS
+    // permission is still granted, which is exactly what "subscribe silently"
+    // keys on.
+    push.hydrate({ optedOut: inertiaPage.value.props?.auth?.user?.pushOptedOut });
+
+    await push.autoSubscribe();
+});
+
+/**
+ * The service worker's fallback route for a tapped notification.
+ *
+ * `client.navigate()` is unavailable on some platforms and rejects for
+ * clients the worker does not control, so it posts here instead. Routing
+ * client-side is also faster than the reload navigate() would have caused.
+ *
+ * The path is validated before it is used. This listener will accept a
+ * message from any future source, and a value that is not a same-origin path
+ * turns router.push into an open redirect.
+ */
+onMounted(() => {
+    if (typeof navigator === 'undefined' || ! ('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        const { type, path } = event.data ?? {};
+
+        if (type !== 'app:navigate') return;
+        // Leading single slash only: `//evil.example` is a protocol-relative
+        // URL that the browser reads as another origin entirely.
+        if (typeof path !== 'string' || ! path.startsWith('/') || path.startsWith('//')) return;
+
+        router.visit(path);
+    });
 });
 </script>
