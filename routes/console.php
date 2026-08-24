@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AuditLog;
+use App\Support\ScheduleHeartbeat;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -32,7 +33,12 @@ Schedule::command('model:prune', ['--model' => [AuditLog::class]])
 Schedule::command('events:sync-standings')
     ->everyTenMinutes()
     ->withoutOverlapping()
-    ->runInBackground();
+    ->runInBackground()
+    // Stamped on success so /admin/diagnostics can answer "is the scheduler
+    // even running". Nothing else records this, and a missing cron entry is
+    // the quietest failure in the app: standings stop moving, every page
+    // still renders, nothing is logged. See ScheduleHeartbeat.
+    ->onSuccess(fn () => ScheduleHeartbeat::record('events:sync-standings'));
 
 /**
  * The time-based notifications.
@@ -52,4 +58,5 @@ Schedule::command('push:sweep')
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->onOneServer()
-    ->runInBackground();
+    ->runInBackground()
+    ->onSuccess(fn () => ScheduleHeartbeat::record('push:sweep'));

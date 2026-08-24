@@ -51,6 +51,11 @@ class HandleInertiaRequests extends Middleware
                 // kept separate from boardSave's already-formatted sentence
                 // rather than parsing a number back out of display text.
                 'lastRoll' => fn () => $request->session()->get('last-roll'),
+                // One-off payload from one action to one page, exactly like
+                // lastRoll above: the admin diagnostics sweep returns command
+                // output rather than a sentence, and a toast is the wrong
+                // shape for twenty lines of it.
+                'sweepOutput' => fn () => $request->session()->get('sweepOutput'),
             ],
             // Shared globally because two of these are needed off any page:
             // the announcement renders in AppRoot's layout, and the board
