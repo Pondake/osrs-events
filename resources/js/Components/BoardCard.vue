@@ -1,9 +1,26 @@
 <template>
     <Link :href="`/events/${board.id}`">
-        <u-page-card class="h-full hover:border-primary transition-colors cursor-pointer" :ui="{ body: 'w-full' }">
+        <!-- `min-w-0` on every one of the card's own boxes, not just on the
+             row inside it. Each of PageCard's nested flex containers defaults
+             to `min-width: auto`, so an unshrinkable child — the title, which
+             is `truncate`, therefore `white-space: nowrap` — pushes the whole
+             stack wider than its column. Setting it on the innermost element
+             alone does nothing while its parents can still grow: on a 768px
+             tablet one 74-character title dragged the page 390px sideways. -->
+        <u-page-card
+            class="h-full min-w-0 hover:border-primary transition-colors cursor-pointer"
+            :ui="{ container: 'min-w-0', wrapper: 'min-w-0', body: 'w-full min-w-0', title: 'min-w-0' }"
+        >
             <template #title>
-                <div class="flex items-center justify-between gap-3 w-full">
-                    <span class="truncate">{{ board.title }}</span>
+                <!-- `min-w-0` on both, and it is not decoration. `truncate`
+                     sets `white-space: nowrap`, and a flex item defaults to
+                     `min-width: auto` — so a long title stops being able to
+                     shrink and pushes the card past its column instead of
+                     ellipsing. On a 768px tablet, where the hub is two
+                     columns, one 74-character event title dragged the whole
+                     page 390px wider than the screen. -->
+                <div class="flex items-center justify-between gap-3 w-full min-w-0">
+                    <span class="truncate min-w-0">{{ board.title }}</span>
                     <div class="flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 shrink-0" :class="status.class">
                         <u-icon :name="status.icon" class="size-3.5" />
                         <span>{{ $t(status.labelKey) }}</span>

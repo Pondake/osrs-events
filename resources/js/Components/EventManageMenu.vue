@@ -8,8 +8,11 @@
             trailing-icon="i-lucide-chevron-down"
             :label="$t('board.manage')"
         >
+            <!-- `xs`, not `sm`: a badge one size up makes the trigger 32px
+                 tall next to 28px siblings, and a row of three buttons where
+                 one is taller reads as a mistake rather than as emphasis. -->
             <template v-if="badgeTotal" #trailing>
-                <u-badge :label="String(badgeTotal)" color="warning" variant="solid" size="sm" />
+                <u-badge :label="String(badgeTotal)" color="warning" variant="solid" size="xs" />
                 <u-icon name="i-lucide-chevron-down" class="size-4" />
             </template>
         </u-button>
