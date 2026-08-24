@@ -24,6 +24,11 @@ Every type has a **live channel**: the page opens one `EventSource` and the
 server pushes when something it displays actually changed. Adding a type
 means writing a channel, not touching the stream controller.
 
+That covers the open tab. For everything else there are **web push
+notifications** — nine categories, opt-in per category, installable as a PWA —
+because a clan event happens over days and nobody sits on the page waiting.
+See [Notifications](#notifications).
+
 ---
 
 ## Credit: Wise Old Man
@@ -51,6 +56,7 @@ with a key), and consider supporting them.
 | Auth | Discord OAuth (Socialite) · email + password |
 | Roles | `spatie/laravel-permission`, with UUID overrides |
 | Live updates | Server-Sent Events, one channel per event type |
+| Notifications | Web Push (VAPID) via `minishlink/web-push` + a service worker |
 | Rendering | SSR through a long-running Node process |
 
 There is no separate API: controllers return `Inertia::render(...)` and Vue
@@ -86,6 +92,7 @@ documented there, but the ones that matter first:
 | `SESSION_SECURE_COOKIE` | Leave unset locally; **set it to `true` on any HTTPS deployment**, or session cookies go out over plain HTTP. |
 | `WOM_USER_AGENT` | Identifies this app to Wise Old Man. Put a contact address in it. |
 | `APP_ICON_FLAVOR` | Leave unset. The home-screen icon follows `APP_ENV`: only `production` gets the clean brand mark, staging and local get the amber "under construction" one so two installs of the PWA are told apart. Set to `production` only to override that on a production-like host. |
+| `VAPID_SUBJECT` / `_PUBLIC_KEY` / `_PRIVATE_KEY` | Web push. Generate **one pair per environment** with `php artisan webpush:vapid`. Unset is a valid state — notifications simply report themselves unconfigured instead of failing. See [Notifications](#notifications). |
 | `MAIL_*` | Password-reset mail. Ships as `log`, which *reports success and delivers nothing* — see [Mail](#mail). |
 
 ---
@@ -154,18 +161,22 @@ app/
 ├── Http/Middleware/
 ├── Models/
 ├── Events/Channels/         one live channel per event type + the resolver
-└── Services/                real business logic (board access, bingo, WOM)
+├── Console/Commands/        scheduled + operational commands
+├── Support/                 catalogues and value objects (notification categories, checks)
+└── Services/                real business logic (board access, bingo, WOM, push)
 resources/
 ├── js/
 │   ├── Pages/               one component per route, PascalCase
 │   ├── Components/
 │   │   └── Cms/             page-block renderer and editor
-│   ├── Composables/
+│   ├── Composables/         useAuth, useSeo, useEventStream, usePush
 │   └── Support/             plain JS helpers
 ├── css/app.css              Tailwind, fonts, OSRS board styling
 └── views/app.blade.php      root shell
+public/sw.js                 service worker — receives pushes, routes the tap
+public/manifest.webmanifest  PWA manifest (a .dev variant for non-production)
 routes/web.php
-routes/console.php           scheduled work (standings sync)
+routes/console.php           scheduled work (standings sync, push sweep)
 ui.config.ts                 Nuxt UI theme, wired into vite.config.js
 lang/en.json                 flat dotted-key translations
 lang/en/validation.php       the one exception — :attribute names must live here
@@ -190,6 +201,198 @@ The same schedule prunes admin audit rows nightly, keeping
 also grows without limit. Those rows keep a user's display name after the
 account is deleted, which makes the window a privacy answer, not just
 housekeeping.
+
+It also runs the notification sweep every fifteen minutes:
+
+```bash
+php artisan push:sweep
+```
+
+Five of the nine notification categories are answers to "has enough time
+passed" — an event starting, an event ending, final standings, a review queue
+left sitting, standings that stopped updating — and only a clock can ask that.
+Without the scheduler those five never fire; the four that hang off a
+controller action still do.
+
+---
+
+## Notifications
+
+The app has four ways to tell someone something happened, and each covers a
+gap the others cannot:
+
+| Channel | Reaches | Blind spot |
+|---|---|---|
+| Live channel (SSE) | Whoever has the page open | Everyone else |
+| Discord webhook | The channel the event lives in | A room, not a person — scrolled past in ten minutes |
+| Email | Accounts with an address | Discord login asks for `identify`+`guilds` and deliberately **not** `email`, so roughly half of any clan has no inbox this app can reach |
+| **Web push** | An individual, on their phone, app closed | Needs permission, and on iOS needs the app installed |
+
+### The nine categories
+
+Off-by-default is a design position, not an oversight: one chatty category is
+how somebody ends up revoking permission entirely, which takes the rare
+important ones with it.
+
+| Category | Fires when | Default |
+|---|---|---|
+| Claim reviewed | A host approves or rejects your bingo square | on |
+| Event starting / ending | One hour before either | on |
+| Final standings | An hour after an event ends, with your placing | on |
+| Event paused / cancelled | A host changes an event's status | on |
+| Claims waiting *(host)* | Claims are sitting in your review queue | on |
+| Standings stopped updating *(host)* | A sync is failing, or the measurement window moved | on |
+| Your rolls are back | Your daily d6 resets and you have a board in progress | **off** |
+| Someone passed you | You lose first place, or fall off the podium | **off** |
+| Your team scored | A teammate gets a square approved | **off** |
+
+Everything lives in `App\Support\NotificationCategory::ALL` — audience,
+default, throttle window, icon. The settings page renders it, the validator
+whitelists against it, the senders read their defaults from it. Adding a
+category is one row there plus its `lang/en.json` keys.
+
+Throttles are a **per-entity floor**, not a global rate: ten claims landing in
+a host's queue inside a minute are one line saying "3 claims waiting", but two
+different events never silence each other. Only the push half is throttled —
+the SSE channels stay unthrottled, because a page already open costs nothing
+to update.
+
+### Turning it on
+
+```bash
+php artisan webpush:vapid
+```
+
+Prints a keypair. It writes nothing — the danger is in the pasting, not the
+running — so generate for staging and production from wherever is convenient
+and paste each pair into that environment only.
+
+> **Generate one pair per environment, and never rotate one that devices have
+> already subscribed against.** Every subscription is bound to the public key
+> it saw at subscribe time. Replace the pair and every registered device stops
+> receiving — *invisibly*, because pushes to the stale subscriptions are still
+> accepted by the push service. The command refuses to overwrite without
+> `--force` for exactly this reason.
+
+The private key belongs in the backend environment only. The public key is
+served by the API (`GET /push/public-key`) rather than compiled into the
+frontend bundle, so the two cannot drift apart across separate deploys.
+
+**On a host where the site has its own system user** (Ploi's isolated sites,
+and anything else that puts the app under `/home/<site-user>/` rather than
+your login's home), an SSH session as the deploy user cannot even `cd` into
+the site directory — the folder is there, it is just not readable by you.
+Three ways round it, and the first is usually the right one:
+
+```bash
+# 1. Generate anywhere at all — it only prints — and paste into the panel's
+#    environment editor, which writes .env as the correct user for you.
+php artisan webpush:vapid --force
+
+# 2. Or run it as the site's user, from its own directory:
+sudo -u <site-user> -H bash -lc 'cd /home/<site-user>/<domain> && php artisan webpush:vapid'
+
+# 3. Or become that user first, and work normally from there:
+sudo -i -u <site-user>
+```
+
+`--force` in (1) is not overriding a safety check on the target environment —
+it is telling the guard that the keys it can see are your *local* ones and not
+the ones being replaced.
+
+Users are subscribed **silently** once they allow notifications: the toggle at
+`/settings/notifications` is the deliberate way in, and after that every page
+load re-registers the browser (an upsert, which is what heals a subscription
+the server has lost). On Chrome and Android an undecided browser is asked once
+— that is where the OS accept/deny prompt appears. **iOS is never prompted
+automatically**: there, `requestPermission()` outside a user gesture records a
+denial the page can never undo.
+
+### When nothing arrives
+
+**Go to `/admin/diagnostics`.** It is the same set of checks as the command
+below, with buttons, and it does not need an SSH session — which matters
+because the moments you need it are a deploy that went quiet and a phone that
+stopped buzzing. See [Diagnostics](#diagnostics).
+
+```bash
+php artisan push:doctor
+```
+
+The command runs the *same* checks (DiagnosticsService is the single source,
+so the two cannot disagree) and adds the full device list across all users. It
+exits non-zero on a failure, so it also works as a deploy gate. Between them
+they answer: whether keys exist, whether the subject is a `mailto:`/`https:`
+URL (Apple rejects anything else), whether the public key is a 65-byte
+uncompressed P-256 point, whether **the private key actually derives the
+configured public key** — a mismatched pair passes every length check and
+breaks every send silently — and whether this PHP can generate the
+per-message encryption key at all.
+
+Things that look like bugs and are not:
+
+- **`skipped` in every result.** No VAPID keys in *that process's* environment.
+  Queue workers hold the environment they booted with, so keys added after a
+  deploy need `php artisan queue:restart` (or `horizon:terminate`) before
+  anything sends.
+- **Install offers a bookmark instead of an app.** The manifest is fetched with
+  credentials omitted, so behind any auth gate the browser gets the login page
+  instead. `crossorigin="use-credentials"` is already on the `<link>`; check the
+  content type from outside your own session with
+  `curl -sI https://<host>/manifest.webmanifest`.
+- **"Unable to create the local key" on Windows.** Encryption needs a fresh
+  ephemeral P-256 key per message and OpenSSL cannot find its config. Set
+  `OPENSSL_CONF` (Herd: `$env:OPENSSL_CONF = "$HOME\.config\herd\openssl.cnf"`).
+  A queue worker needs it in *its* environment, not just your shell.
+- **Nothing on iPhone.** iOS only delivers notifications to a PWA added to the
+  home screen. The settings page says so in words rather than showing a dead
+  toggle.
+
+Every category has a **Send a test** button on the settings page, because the
+real triggers are events you cannot summon — a host approving a claim, a race
+ending, a sync breaking. Without it the first time anyone sees a given
+notification is the moment it matters.
+
+```bash
+php artisan push:sweep --dry-run
+```
+
+Shows what the time-based sweep would send, before per-user preferences and
+throttles are applied — so most daily-roll lines it prints will not actually
+go out. The same rehearsal has a button on the diagnostics page.
+
+---
+
+## Diagnostics
+
+`/admin/diagnostics`, admin only. Five groups, each covering something that
+**fails without saying so** — the unifying theme is silence, not any one
+subsystem:
+
+| Group | The silence it catches |
+|---|---|
+| Push notifications | Keys that pass every length check and deliver nothing; devices bound to a VAPID key that no longer exists |
+| Scheduled work | A missing cron entry. Standings stop moving, five notification categories stop firing, every page still renders |
+| Mail | `MAIL_MAILER=log`, which reports success and writes to a file; queued mail with no worker consuming it |
+| Wise Old Man | Their API unreachable, or entrants whose names cannot be measured — those score zero in a live race |
+| Rendering | `public/hot` left behind by a killed dev server, which silently switches SSR off |
+
+Four buttons, and each is aimed at whoever pressed it:
+
+- **Send a test** — one real encrypted push to your own devices, per
+  notification type. The only way to prove the last hop.
+- **Send a test email** — a plain message to your own address. Transport only.
+- **Look up** — one live Wise Old Man lookup, so "is it them or is it us" has
+  an answer in five seconds. It distinguishes *unknown player* from
+  *unreachable API*, because the first is good news.
+- **Rehearse the sweep** — the notification sweep as a dry run, output shown
+  verbatim. Nothing is sent: the real run belongs to the scheduler, and a
+  button that buzzes thirty phones is not a diagnostic.
+
+Nothing on the page can reach another user, and nothing prints a secret — keys
+are described (length, shape, whether the halves match), never shown, and
+device endpoints are fingerprinted. It is meant to be screenshotted into a
+chat.
 
 ---
 

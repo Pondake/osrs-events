@@ -196,6 +196,69 @@ and Services under `app/Services/` for anything with real business logic (e.g.
 - SSE, not WebSockets: the data only flows one way. See EventStreamController
   for the full reasoning and what it costs (a PHP worker per viewer).
 
+### Push notifications — the catalogue is the contract
+- Every kind of push is a row in `App\Support\NotificationCategory::ALL`:
+  audience, default, throttle window, icon. The settings page renders it, the
+  preference validator whitelists against it, the senders read their default
+  from it, and `PushNotifier` reads its throttle from it. **Adding a category
+  means adding a row there**, plus `notifications.category_<key>[_desc]` and
+  `notifications.preview_<key>_{title,body}` in `lang/en.json`.
+- **Anything high-frequency ships `default => false`.** Permission to notify is
+  not permission to notify about everything, and one chatty category is how a
+  person ends up revoking permission — which takes the rare important ones with
+  it.
+- `throttle` is a **per-entity floor**, keyed on the message's `tag`. Same
+  concept twice on purpose: the tag is also what collapses notifications on a
+  lock screen, so a sender that has decided which notifications replace each
+  other has already decided which ones rate-limit together.
+- **Only the push half is throttled.** The SSE channels stay unthrottled — a
+  page already open costs nothing to update; it is the phone in a pocket that
+  needs restraint.
+- `PushMessage` carries a **path, not a URL**. The service worker resolves it
+  against its own scope, and the `app:navigate` fallback in `AppRoot.vue`
+  rejects anything not starting with a single `/` (a protocol-relative `//host`
+  is another origin, and would be an open redirect).
+- Sends never throw. `WebPushService` returns `{sent, expired, failed, skipped}`;
+  missing VAPID keys is a normal state (a fresh clone, a fresh deploy) and
+  reports `skipped`, which is what lets the settings page name the problem
+  instead of 500ing.
+- **Never rotate VAPID keys on a live environment.** Every subscription is bound
+  to the key it saw at subscribe time; replacing the pair invalidates every
+  device invisibly, because pushes to the stale ones are still accepted.
+  `webpush:vapid` refuses to overwrite without `--force`.
+- Auto-subscribe runs on every page load and is deliberately silent, but it
+  **must never prompt on iOS** — `requestPermission()` outside a user gesture
+  records a denial there that the page can never undo. iOS goes through the
+  toggle only.
+- On Windows, **`OPENSSL_CONF` must be set or every send fails** — encryption
+  needs a fresh ephemeral P-256 key per message and OpenSSL cannot find its
+  config. `push:doctor` checks this explicitly; without that check it reported
+  four green ticks while nothing was delivered. A queue worker needs it in
+  *its* environment, not just your shell.
+```
+php artisan webpush:vapid          # generate a pair, once, per environment
+php artisan push:doctor            # keys, pair match, encryption, every device
+php artisan push:sweep --dry-run   # what the time-based sweep would send
+```
+
+### Diagnostics — one service, two surfaces
+- `App\Services\DiagnosticsService` owns every check. `/admin/diagnostics`
+  renders all five groups; `push:doctor` prints the push half and exits
+  non-zero on a failure. **Never add a rule to one and not the other** — a
+  diagnostic whose answer depends on where you read it is worse than none.
+- A check is a `DiagnosticCheck` with four levels. `info` is not a pass: it is
+  a fact that cannot be right or wrong, and a group made only of `info` is
+  never green.
+- **Nothing a check returns may be a secret.** The page is designed to be
+  screenshotted — keys are described, never printed; endpoints are
+  fingerprinted.
+- Scheduled work is proved by `ScheduleHeartbeat`, stamped from
+  `->onSuccess()` in `routes/console.php`. Absence is the signal: a stamp that
+  was never written and one two days old both mean the cron entry is gone.
+- Actions on that page must only ever reach **the admin pressing them** (their
+  own devices, their own inbox) or be an explicit rehearsal. That rule is why
+  the sweep button is dry-run only.
+
 ### Auth
 - Discord OAuth via `laravel/socialite` + `socialiteproviders/discord` — not a first-party
   Socialite driver. Use `->setScopes([...])`, never `->scopes([...])` (the latter merges

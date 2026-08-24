@@ -3458,3 +3458,166 @@ roles — so a second account cannot elevate itself into the seat you need.
 Re-roling one seat is the only version of this that is repeatable.
 
 600 backend tests, 154 frontend.
+
+---
+
+## Push notifications — 2026-08-24
+
+Nine categories, a settings page, and a silent opt-in. The whole feature is
+one answer to a problem the app already had: **it has two announcement
+channels and neither reaches a person.** Email misses every Discord-only
+account, because the OAuth scopes are `identify`+`guilds` and deliberately not
+`email` — roughly half of any clan has no address this app can send to. The
+Discord webhook reaches the room, not the person, and one line in a busy
+channel is scrolled past in ten minutes. Push is the only channel addressed to
+an individual who is not currently looking at anything.
+
+- [x] ~~**The nine categories.**~~ Player: claim reviewed, event starting or
+  ending, final standings, event paused/cancelled, rolls back, someone passed
+  you, team scored. Host: claims waiting for review, standings stopped
+  updating. The catalogue is `App\Support\NotificationCategory::ALL` and it is
+  the contract — the settings page renders it, the validator whitelists
+  against it, senders read their default from it, the throttle reads its
+  window from it.
+- [x] ~~**Off by default is a design position, not a default.**~~ Rolls,
+  rank changes and team activity ship off. Permission to notify is not
+  permission to notify about everything: one chatty category is how somebody
+  ends up revoking permission outright, and revoking takes the rare important
+  ones — a rejected claim, a cancelled event — with it.
+- [x] ~~**"Someone passed you" had to be designed against itself.**~~ Races
+  resync every ten minutes and mid-table positions swap constantly, so the
+  obvious version (notify on any rank change) would be the loudest thing in
+  the app. It fires on **boundaries** only: you were first and are not, or you
+  were on the podium and have fallen off it. Off by default, hourly per event
+  on top of that.
+- [x] ~~**The throttle is per entity, keyed on the notification's tag.**~~ Same
+  concept used twice on purpose: the tag is also what collapses notifications
+  on a lock screen, so a sender that has decided which notifications replace
+  each other has already decided which ones rate-limit together. Ten claims
+  landing in a host's queue inside a minute are one line saying "3 claims
+  waiting", not ten buzzes.
+  **Only the push half is throttled.** The SSE channels stay unthrottled — a
+  page already open costs nothing to update.
+- [x] ~~**Silent opt-in.**~~ Runs on every page load for a signed-in user.
+  Denied → never anything. Granted with a subscription → re-POST it anyway,
+  because that upsert is what heals a browser holding a subscription the
+  server has lost (a wiped database, a pruned row) — a state that is otherwise
+  completely undetectable, since the toggle reads "on" and nothing arrives.
+  Granted without one → subscribe. Undecided → ask, once ever per browser,
+  which is where Android shows its own accept/deny prompt.
+  **iOS is skipped entirely in that last branch.** There,
+  `requestPermission()` outside a user gesture does not merely fail — it
+  records a denial the page can never undo. iOS goes through the toggle only.
+- [x] ~~**The off switch needs its own flag.**~~ Unsubscribing drops the
+  browser's subscription but leaves the OS permission granted, which is
+  exactly the state auto-subscribe reads as "granted, so subscribe silently".
+  Without `users.push_opted_out_at`, turning notifications off turned them
+  back on at the next page load and the toggle did nothing. It rides along in
+  the shared Inertia auth props so the very first autoSubscribe of a page load
+  already knows.
+- [x] ~~**The settings page names the failure instead of showing a dead
+  toggle.**~~ Eight distinguishable states, each with a different fix:
+  subscribed, ready, opted out, blocked at browser level, iOS needs the app
+  installed first, insecure context, no Push API, and *the server has no VAPID
+  keys*. That last one is on us, not the user, and a page that cannot say so
+  sends people hunting through their own browser settings for an hour.
+  Each category also has a **Send a test** button, because every real trigger
+  is an event you cannot summon — a host approving a claim, a race ending, a
+  sync breaking — so without it the first time anybody sees a given
+  notification is the moment it matters.
+
+**What verification actually proved, and what it could not.** The full send
+path was exercised against a local HTTP server standing in for a push service:
+`Authorization: vapid t=<ES256 JWT>, k=<key>`, `content-encoding: aes128gcm`,
+TTL from config, `topic` carrying the tag, 2922 bytes of encrypted body. The
+410 endpoint got its row marked `expired_at`; the 201 endpoint got
+`last_used_at` stamped. The deep-link handler was driven directly:
+`/settings/account` routed, `//evil.example.com/steal` and
+`https://evil.example.com` both refused. **Not proved locally:** the push
+service → device hop, and the OS permission grant — the embedded browser
+denies notifications outright and blocks service-worker registration, exactly
+as expected. That last hop needs a real phone and the Send a test button.
+
+**A real bug the verification caught.** `push:doctor` reported four green
+ticks on VAPID while *every single send failed*. Encrypting a payload needs a
+fresh ephemeral P-256 key per message (RFC 8291), generating one goes through
+OpenSSL, and on Windows OpenSSL cannot find its config file unless
+`OPENSSL_CONF` is set — failing with a bare "Unable to create the local key"
+that names neither OpenSSL nor the file. The doctor now tests that operation
+by performing it, and says so. **A queue worker needs `OPENSSL_CONF` in its
+own environment, not just your shell.**
+
+**Deliberately not built: a worker-side rotate endpoint.** Browsers rotate
+subscriptions on their own schedule; `pushsubscriptionchange` re-subscribes in
+the worker, but does not tell the server, because the worker holds no session
+and that endpoint could therefore not be authenticated — anyone with a stolen
+endpoint URL could redirect a person's notifications to a subscription of
+their own. The per-load sync registers the new subscription on the next visit
+instead. **The cost is real:** between the rotation and that next visit, that
+device receives nothing. The stale row cleans itself up on the first 410.
+
+617 backend tests, 154 frontend.
+
+---
+
+## Diagnostics in the admin section — 2026-08-24
+
+`push:doctor` was the wrong shape for its own job. The moments it is needed
+are a deploy that went quiet and a phone that stopped buzzing, and both of
+those were answered with "open an SSH session, find the site directory" — which
+on this host is owned by an isolated system user the deploy login cannot even
+`cd` into. A diagnostic you cannot reach is not a diagnostic.
+
+- [x] ~~**`/admin/diagnostics`, five groups.**~~ The unifying theme is not push
+  — it is **silence**. Every check covers something that reports success,
+  renders normally and delivers nothing: a mailer that writes to a log file, a
+  cron entry that was never created, a VAPID pair whose halves belong to
+  different keys, an SSR process serving an empty div. None of them raise an
+  error anywhere.
+- [x] ~~**One service, two surfaces.**~~ `DiagnosticsService` owns every rule;
+  the page renders all five groups and `push:doctor` prints the push half and
+  exits non-zero (so it still works as a deploy gate). Two implementations of
+  "is this key pair valid" would disagree within a month, and a diagnostic
+  whose answer depends on where you read it is worse than none.
+- [x] ~~**Four levels, and `info` is not a pass.**~~ A group made only of facts
+  is not green. Colouring "3 devices registered" as a success would claim a
+  check that never ran.
+- [x] ~~**The scheduler can now be asked whether it is alive.**~~ Laravel
+  records nothing about this, which made a missing cron entry the quietest
+  failure in the app. `ScheduleHeartbeat` is stamped from `->onSuccess()`, so
+  it measures what *completed*. **Absence is the signal**: a stamp that was
+  never written and one two days old mean the same thing, and a one-hour TTL
+  would have expired the evidence of an outage during the outage — turning
+  "last ran two days ago" into "never ran", which is the same display as a
+  fresh install.
+- [x] ~~**Four buttons, each aimed at whoever pressed it.**~~ A real encrypted
+  push to your own devices; a plain mail to your own address; one live Wise Old
+  Man lookup; the notification sweep as a dry run. Nothing on the page can
+  reach another user, which is what makes it safe behind an ordinary admin
+  login rather than a confirmation dialog.
+  **The sweep is dry-run only on purpose.** The real run sends to other people,
+  and a button that buzzes thirty phones is not a diagnostic — if the scheduler
+  is dead the fix is the cron entry, which the checks above already name.
+- [x] ~~**Nothing it prints is a secret.**~~ The page is built to be
+  screenshotted into a chat: keys are described (length, shape, whether the
+  halves match), never shown, and device endpoints are fingerprinted. The full
+  cross-user device list stays on the command, where you are already the
+  operator answering "whose phone stopped working".
+
+**The Wise Old Man check has three outcomes, not two.** A player their API has
+never heard of is a *working* API; reporting that as a failure would send
+somebody debugging their own server for an hour over a typo in a username.
+
+**What it found on this dev box the moment it existed**, none of which was
+visible anywhere else: encryption failing outright (`OPENSSL_CONF` unset —
+green VAPID, zero deliveries), the scheduler never having run, a Wise Old Man
+user agent with no contact address in it, and one entrant failing to sync.
+
+**A test that passed while testing nothing.** `Http::fake()` **merges** stub
+callbacks rather than replacing them, so the three-outcome Wise Old Man test —
+written as one method that re-faked the same URL pattern three times — had the
+first stub answering all three calls. It passed, and only ever exercised the
+200 branch. Split into three methods. Worth remembering for any test that
+wants two different responses from one endpoint.
+
+639 backend tests, 154 frontend.
