@@ -3375,3 +3375,42 @@ whatever its specificity — so a plain `text-2xl` on that heading is silently
 ignored. The `!` in `max-sm:text-2xl!` is load-bearing.
 
 588 backend tests, 154 frontend.
+
+---
+
+## Widths, properly this time — 2026-08-24
+
+The previous round was measured at 375px and at a browser pane that
+reported 483px while being called "desktop". That is one width and a bit,
+not three, and it hid a real bug.
+
+**Redone at 1280 (desktop), 1024 (laptop), 768 (tablet) and 375 (phone)**,
+page by page: the three event types, a 74-character title, an ended event,
+an upcoming one, a 9x9 board, the hub, my-events, the admin list, teams and
+the participants page.
+
+- [x] ~~**A long title dragged the hub 390px sideways at 768px.**~~ Only at
+  tablet width, where the grid gives a card ~341px: `truncate` sets
+  `white-space: nowrap`, and every flex box inside a PageCard defaults to
+  `min-width: auto`, so the title cannot shrink and each parent grows to fit
+  it in turn. `min-w-0` on the innermost row does nothing while its parents
+  can still grow — the whole stack needs it. No overflow at any of the four
+  widths now.
+- [x] ~~**The Manage badge made its button 32px**~~ beside 28px siblings. A
+  badge one size down, and the row is level.
+- [x] ~~**A race's controls were the default size**~~ while both other event
+  pages use `sm`. Same bar, three pages, now one height.
+
+**Measured after, at every width:** no horizontal overflow anywhere; one
+control row per event page; 28px controls on pointer widths and nothing
+under 44px at 375; hub at 3 / 3 / 2 / 1 columns; board tiles 152 / 118 / 135
+/ 62px for a 5x5 and 95 / 66 / 72 / 44px for a 9x9; contrast unchanged and
+passing in both themes (light 4.79-7.64, dark 5.77-10.15).
+
+**Worth knowing for the next report of "the buttons are gone":** an admin is
+an ordinary user on the public side, so on an event they do not host there
+is no Manage menu and no way in from that page at all — the way in is
+/admin/events. That is the rule working, but the page says nothing about it.
+A small "open in admin" affordance when `isAdmin && ! canEdit` would close
+the gap; not built, because it is a decision about how visible admin power
+should be rather than a bug.
