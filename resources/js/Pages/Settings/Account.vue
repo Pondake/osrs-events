@@ -198,7 +198,7 @@
                 </u-form-field>
 
                 <u-form-field
-                    :label="$t('profile.delete_confirm_label', { name: osrsUsername })"
+                    :label="$t('profile.delete_confirm_label', { name: deletionPhrase })"
                     :description="$t('profile.delete_confirm_help')"
                     :error="form.errors.confirmation"
                     required
@@ -232,7 +232,7 @@ const props = defineProps({
     email: { type: String, default: null },
     hasPassword: { type: Boolean, required: true },
     hasDiscord: { type: Boolean, required: true },
-    osrsUsername: { type: String, default: '' },
+    deletionPhrase: { type: String, default: '' },
     deletion: {
         type: Object,
         default: () => ({ events: [], teams: [], keptEvents: 0 }),

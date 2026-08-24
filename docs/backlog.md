@@ -4038,3 +4038,26 @@ was, so a departed player rendered as a blank name.
   gap in them.
 
 678 backend tests, 174 frontend.
+
+### One seat could not leave
+
+The player pass the deletion feature had not had. Found by reasoning about the
+seats rather than the code: **an account that never gave an OSRS name could not
+close itself.** Every settings route sits behind `require-osrs-username`, which
+redirects any write from an account without one — so the site demanded a
+RuneScape name before it would let somebody go, and the person most likely to
+want out was the only one who could not get out.
+
+- [x] ~~**The account routes came out from behind the gate.**~~ Signing in,
+  changing how you sign in, and leaving are not playing, and that gate is about
+  scoring. `settings.account` and its four writes plus the Discord link routes
+  are exempt now — all of them, rather than only the delete, because a page
+  that renders while the forms inside it redirect is the worse bug.
+- [x] ~~**The confirmation needed a fallback.**~~ It was the OSRS name, which
+  those accounts do not have. `User::deletionPhrase()` uses the OSRS name where
+  there is one and whatever else identifies the account where there is not.
+
+Confirmed as a failing test first — the redirect went to `/welcome/osrs-username`
+— then fixed, then pinned.
+
+679 backend tests, 174 frontend.

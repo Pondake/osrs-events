@@ -31,7 +31,7 @@ class AccountController extends Controller
             // to leave should be able to see what it would cost without
             // starting anything.
             'deletion' => $deletion->preflight($user),
-            'osrsUsername' => $user->osrs_username,
+            'deletionPhrase' => $user->deletionPhrase(),
         ]);
     }
 
@@ -149,7 +149,7 @@ class AccountController extends Controller
         // Compared case-insensitively and trimmed: RuneScape names are matched
         // that way everywhere else here, and failing somebody's last action on
         // a capital letter would be a poor note to end on.
-        if (mb_strtolower(trim($data['confirmation'])) !== mb_strtolower((string) $user->osrs_username)) {
+        if (mb_strtolower(trim($data['confirmation'])) !== mb_strtolower($user->deletionPhrase())) {
             throw ValidationException::withMessages([
                 'confirmation' => trans('profile.delete_confirmation_mismatch'),
             ]);

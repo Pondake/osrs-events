@@ -383,6 +383,34 @@ class AccountDeletionTest extends TestCase
         $this->actingAs($host)->get("/events/{$event->id}/leaderboard")->assertOk();
     }
 
+    /**
+     * The seat a walkthrough is for: signed up, has not given an OSRS name
+     * yet, and wants back out.
+     *
+     * Every route in the settings group sits behind `require-osrs-username`,
+     * which redirects any write from an account without one. So the person
+     * most likely to want to leave — somebody who has just realised the site
+     * wants their RuneScape name — is exactly the one who cannot.
+     */
+    #[Test]
+    public function an_account_that_never_gave_an_osrs_name_can_still_leave(): void
+    {
+        $user = User::factory()->create([
+            'osrs_username' => null,
+            'discord_username' => 'newcomer',
+            'onboarding_completed_at' => now(),
+        ]);
+
+        // The page has to be reachable at all, first.
+        $this->actingAs($user)->get('/settings/account')->assertOk();
+
+        $this->actingAs($user)
+            ->delete('/settings/account', ['confirmation' => 'newcomer'])
+            ->assertRedirect('/');
+
+        $this->assertNull(User::find($user->id));
+    }
+
     // ------------------------------------------------------------ as an admin
 
     /**
