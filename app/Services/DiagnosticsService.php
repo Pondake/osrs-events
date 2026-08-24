@@ -82,13 +82,26 @@ class DiagnosticsService
         $subjectOk = is_string($subject)
             && (str_starts_with($subject, 'mailto:') || str_starts_with($subject, 'https://'));
 
-        $checks[] = DiagnosticCheck::when(
-            $subjectOk,
-            trans('diagnostics.push_subject'),
-            (string) $subject,
-            trans('diagnostics.push_subject_bad'),
-            trans('diagnostics.push_subject_fix'),
-        );
+        // The placeholder from `webpush:vapid`'s own output, pasted through
+        // unchanged. It passes every format check — it *is* a mailto: URL —
+        // and push services use this address to reach an operator whose app
+        // is misbehaving, so an address nobody reads is a warning that only
+        // arrives as a block. Caught on staging, from a screenshot.
+        $isPlaceholder = is_string($subject) && str_contains($subject, 'example.com');
+
+        $checks[] = match (true) {
+            ! $subjectOk => DiagnosticCheck::fail(
+                trans('diagnostics.push_subject'),
+                trans('diagnostics.push_subject_bad'),
+                trans('diagnostics.push_subject_fix'),
+            ),
+            $isPlaceholder => DiagnosticCheck::warn(
+                trans('diagnostics.push_subject'),
+                trans('diagnostics.push_subject_placeholder', ['subject' => (string) $subject]),
+                trans('diagnostics.push_subject_placeholder_fix'),
+            ),
+            default => DiagnosticCheck::ok(trans('diagnostics.push_subject'), (string) $subject),
+        };
 
         $publicRaw = Base64Url::decode($public);
         $privateRaw = Base64Url::decode($private);

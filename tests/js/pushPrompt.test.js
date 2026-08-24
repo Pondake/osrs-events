@@ -27,6 +27,7 @@ const base = {
     now: 1_000_000,
     settled: true,
     onBlockingPage: false,
+    hasChrome: true,
 };
 
 describe('shouldOfferPush', () => {
@@ -77,6 +78,15 @@ describe('shouldOfferPush', () => {
     /** The gate and the tour are already asking for something. */
     it('does not stack on a page that is already asking', () => {
         expect(shouldOfferPush({ ...base, onBlockingPage: true })).toBe(false);
+    });
+
+    /**
+     * The admin area and the lock screen render no site chrome and bring
+     * their own full-height shells, so a bar above them does not push them
+     * down — it draws over their heading. Reported from staging.
+     */
+    it('stays out of pages that have nowhere to put it', () => {
+        expect(shouldOfferPush({ ...base, hasChrome: false })).toBe(false);
     });
 
     it('respects a snooze, and returns after it', () => {

@@ -867,6 +867,8 @@
     "diagnostics.push_subject": "Subject",
     "diagnostics.push_subject_bad": "Must be a mailto: or https: URL.",
     "diagnostics.push_subject_fix": "Apple rejects anything else outright, and says nothing about which field was wrong.",
+    "diagnostics.push_subject_placeholder": ":subject — still the example address from the generator.",
+    "diagnostics.push_subject_placeholder_fix": "Push services use this to reach you about a misbehaving app. An address nobody reads turns a warning into a block. Set VAPID_SUBJECT to a real contact.",
     "diagnostics.refresh": "Re-run checks",
     "diagnostics.render_bundle": "SSR bundle",
     "diagnostics.render_bundle_built": "Built :when",
