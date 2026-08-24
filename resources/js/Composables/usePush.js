@@ -1,5 +1,10 @@
 import { ref, computed } from 'vue';
 
+// The ask policy — how often, and after how long — lives in Support so the
+// same file answers it for the in-app offer bar and for the automatic ask,
+// and so both are testable without a browser.
+import { ASK_KEY, mayAskAutomatically, recordAutomaticAsk } from '@/Support/pushPrompt';
+
 /**
  * Web Push, from the browser's side.
  *
@@ -30,9 +35,6 @@ const REASON = {
     /** The server has no VAPID keys — nothing can be sent to anyone. */
     SERVER_UNCONFIGURED: 'server_unconfigured',
 };
-
-/** Remembered so an unprompted ask happens at most once, ever. */
-const PROMPTED_KEY = 'osrs-events:push-prompted';
 
 const supported = ref(false);
 const permission = ref('default');
@@ -240,12 +242,12 @@ export function usePush() {
             // so the toggle on the settings page is the only safe way in.
             if (isIos()) return;
 
-            // At most once ever, per browser. A dismissal is an answer too,
-            // and repeating the question on the next page load is how a
-            // permission prompt turns into a reason to leave.
-            if (window.localStorage.getItem(PROMPTED_KEY)) return;
+            // Not on every page load — a permission prompt that keeps
+            // returning is a reason to leave — but not once-ever either, for
+            // the reason above RETRY_AFTER_MS.
+            if (!mayAskAutomatically(window.localStorage)) return;
 
-            window.localStorage.setItem(PROMPTED_KEY, '1');
+            recordAutomaticAsk(window.localStorage);
 
             const result = await Notification.requestPermission();
             permission.value = result;
@@ -274,7 +276,7 @@ export function usePush() {
      */
     function clearPromptMemory() {
         try {
-            window.localStorage.removeItem(PROMPTED_KEY);
+            window.localStorage.removeItem(ASK_KEY);
         } catch (error) {
             console.error(error);
         }

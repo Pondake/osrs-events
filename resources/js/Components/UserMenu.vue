@@ -74,6 +74,7 @@ const items = computed(() => [
     [
         { label: trans('settings.nav_profile'), icon: 'i-lucide-user-circle', to: '/settings/profile' },
         { label: trans('settings.nav_account'), icon: 'i-lucide-shield', to: '/settings/account' },
+        { label: trans('settings.nav_notifications'), icon: 'i-lucide-bell', to: '/settings/notifications' },
     ],
     ...(canReachAdmin.value
         ? [[{ label: trans('admin.nav_admin_area'), icon: 'i-lucide-layout-dashboard', to: '/admin' }]]

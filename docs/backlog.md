@@ -3698,3 +3698,46 @@ was a toast sitting over the review modal's dimmed backdrop, with that modal's
 own Close footer above it, in a zoomed crop.
 
 640 backend tests, 168 frontend.
+
+---
+
+## Why Edge never asked — 2026-08-24
+
+The end-to-end path is confirmed working: a second account on Edge claimed a
+square, the host approved it on a phone, the notification arrived and its deep
+link landed on the right page. What did not work was getting Edge to ask in
+the first place — the only route there was the settings page, which is exactly
+what the offer bar was supposed to remove.
+
+Two causes, both mine.
+
+- [x] ~~**The bar was hidden from anyone who had not finished the tour.**~~ It
+  was gated on `needsOnboarding`, which stays true until onboarding is
+  *completed* — and closing the tour only snoozes it for a day. So a fresh
+  account (which is what a second test account is) never saw the bar at all.
+  The gate now keys on the tour being **open**, not pending. A page that is
+  actually asking for something should suppress it; a pending state should not.
+- [x] ~~**The automatic ask was once-ever, and the flag is written before the
+  call.**~~ So a browser that silently declined to show the prompt — Firefox
+  without a gesture, Chrome's quiet UI — spent its only attempt on a dialog
+  nobody ever saw, and the app could never ask again. Now at most three
+  attempts, a month apart.
+  **The migration is the point:** the old value was the literal string `'1'`,
+  and it is read as "asked once, long ago" — which makes every browser still
+  carrying it due for one more attempt on the next load. Those are precisely
+  the browsers that may have spent their only ask on nothing.
+- [x] ~~**Notifications was missing from the profile menu.**~~ It was in the
+  settings sidebar only, which you have to already be in settings to see.
+
+The whole ask policy — the bar and the automatic prompt — now lives in
+`Support/pushPrompt.js` with tests over it, including the migration. Getting
+that read backwards would mean nobody is ever asked again, and nothing
+anywhere would report it.
+
+**The trade being made, stated once:** browsers penalise unprompted permission
+requests, and repeated dismissals push Chromium into quiet mode and eventually
+into an automatic block. Three asks a month apart is well inside what that
+tolerates, and the bar means a suppressed prompt is no longer a dead end — but
+the automatic ask is not free, and more of it would not be better.
+
+640 backend tests, 174 frontend.
