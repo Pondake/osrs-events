@@ -7,6 +7,7 @@ use App\Models\BingoCompletion;
 use App\Models\BingoSquare;
 use App\Models\Event;
 use App\Models\EventParticipant;
+use App\Services\BingoNotifier;
 use App\Services\BingoService;
 use App\Services\BoardAccessService;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +32,7 @@ class BingoController extends Controller
      * host has ruled on it, changing it is the host's call, not the
      * claimant's.
      */
-    public function claim(Request $request, Event $event, BingoSquare $square, BoardAccessService $access, BingoService $bingo): RedirectResponse
+    public function claim(Request $request, Event $event, BingoSquare $square, BoardAccessService $access, BingoService $bingo, BingoNotifier $notifier): RedirectResponse
     {
         abort_unless($event->type === 'BINGO', 404);
         abort_unless($access->hasAccess($request->user(), $event), 403);
@@ -100,7 +101,7 @@ class BingoController extends Controller
             return back()->with('board-save', trans('bingo.square_cleared'));
         }
 
-        BingoCompletion::create([
+        $completion = BingoCompletion::create([
             ...$competitor,
             'bingo_square_id' => $square->id,
             'marked_by' => $request->user()->id,
@@ -108,6 +109,12 @@ class BingoController extends Controller
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);
+
+        // On a card with no approval step the claim IS the score, so the
+        // team hears about it here — there is no review() call coming to do
+        // it later. teamScored() is a no-op for a solo event and for a
+        // pending claim, so this needs no condition of its own.
+        $notifier->teamScored($event, $completion->load('square', 'markedBy'));
 
         return back()->with('board-save', $card->requires_approval
             ? trans('bingo.claim_submitted')
@@ -120,7 +127,7 @@ class BingoController extends Controller
      * A rejection keeps the row rather than deleting it, so the claimant can
      * see why and a host can see a pattern of re-submissions.
      */
-    public function review(Request $request, Event $event, BingoCompletion $completion): RedirectResponse
+    public function review(Request $request, Event $event, BingoCompletion $completion, BingoNotifier $notifier): RedirectResponse
     {
         abort_unless($event->type === 'BINGO', 404);
         $this->assertCanEditEvent($request->user(), $event);
@@ -142,6 +149,14 @@ class BingoController extends Controller
             'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(),
         ]);
+
+        // The claimant has been waiting on a human, which is the whole reason
+        // this notification exists — the live stream only reaches somebody
+        // who still has the card open, and nobody sits on a bingo card
+        // waiting for a verdict.
+        $completion->load('square', 'markedBy');
+        $notifier->reviewed($event, $completion, $request->user());
+        $notifier->teamScored($event, $completion);
 
         return back()->with('board-save', $data['status'] === 'APPROVED'
             ? trans('bingo.claim_approved')

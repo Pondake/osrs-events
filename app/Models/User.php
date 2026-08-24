@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\NotificationCategory;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -12,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['discord_id', 'discord_username', 'nickname', 'osrs_username', 'osrs_verified_at', 'avatar_url', 'email', 'password', 'onboarding_completed_at'])]
+#[Fillable(['discord_id', 'discord_username', 'nickname', 'osrs_username', 'osrs_verified_at', 'avatar_url', 'email', 'password', 'onboarding_completed_at', 'notification_preferences', 'push_opted_out_at'])]
 #[Hidden(['remember_token', 'password'])]
 class User extends Authenticatable
 {
@@ -34,6 +35,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'onboarding_completed_at' => 'datetime',
             'osrs_verified_at' => 'datetime',
+            'notification_preferences' => 'array',
+            'push_opted_out_at' => 'datetime',
         ];
     }
 
@@ -72,6 +75,48 @@ class User extends Authenticatable
     public function boardAccesses(): HasMany
     {
         return $this->hasMany(BoardAccess::class);
+    }
+
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
+     * Does this person want to be told about this kind of thing?
+     *
+     * Three gates, cheapest first, and each means something different: the
+     * explicit off switch, then the stored per-category answer, then the
+     * category's own default for somebody who has never expressed one. The
+     * defaults live in the catalogue rather than here so that adding a
+     * category needs no backfill — see NotificationCategory.
+     */
+    public function wantsNotification(string $category): bool
+    {
+        if ($this->push_opted_out_at !== null) {
+            return false;
+        }
+
+        $stored = $this->notification_preferences[$category] ?? null;
+
+        return $stored === null
+            ? NotificationCategory::defaultFor($category)
+            : (bool) $stored;
+    }
+
+    /**
+     * Every known category with the value actually in force, defaults filled
+     * in — what the settings page renders switches from.
+     *
+     * @return array<string, bool>
+     */
+    public function notificationPreferences(): array
+    {
+        return collect(NotificationCategory::keys())
+            ->mapWithKeys(fn (string $key) => [
+                $key => $this->notification_preferences[$key] ?? NotificationCategory::defaultFor($key),
+            ])
+            ->all();
     }
 
     public function isAdmin(): bool

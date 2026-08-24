@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Event;
 use App\Models\User;
 use App\Notifications\EventStatusChanged;
+use App\Support\NotificationCategory;
+use App\Support\PushMessage;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -27,14 +29,17 @@ use Illuminate\Support\Facades\Notification;
  */
 class EventNotificationService
 {
-    public function __construct(private readonly DiscordAnnouncer $discord) {}
+    public function __construct(
+        private readonly DiscordAnnouncer $discord,
+        private readonly PushNotifier $push,
+    ) {}
 
     /**
      * @param  string  $change  an EventStatusChanged constant
      * @param  User|null  $except  usually the host who pressed the button —
      *                             they know already, and mailing yourself
      *                             about your own click reads as a bug
-     * @return array{sent: int, total: int, discord: bool}
+     * @return array{sent: int, total: int, discord: bool, pushed: int}
      */
     public function announce(Event $event, string $change, ?User $except = null): array
     {
@@ -63,10 +68,36 @@ class EventNotificationService
         // a room, not to a person, so there is nobody to leave out.
         $posted = $this->discord->announce($event, $this->discordMessage($event, $change));
 
+        // The third channel, and the one that reaches the people the other
+        // two cannot. Email misses every Discord-only account (no address to
+        // send to); Discord reaches the room rather than the person, so a
+        // cancellation posted into a busy channel is scrolled past. A push is
+        // the only one addressed to an individual who is not currently
+        // looking at anything.
+        $pushed = $this->push->toParticipants(
+            $event,
+            new PushMessage(
+                title: trans("notifications.push_event_{$change}_title", ['event' => $event->title]),
+                body: $change === EventStatusChanged::PAUSED && filled($event->pause_reason)
+                    ? $event->pause_reason
+                    : trans("notifications.push_event_{$change}_body"),
+                // A cancelled event's page is gone by the time this lands, so
+                // the tap goes to the events list instead of a 404 — the same
+                // reasoning as the mail's missing action button.
+                path: $change === EventStatusChanged::CANCELLED ? '/events' : "/events/{$event->id}",
+                category: NotificationCategory::EVENT_STATUS,
+                // Per event: four status changes to one event collapse into
+                // one line, but two different events do not hide each other.
+                tag: 'status:'.$event->id,
+            ),
+            $except,
+        );
+
         return [
             'sent' => $reachable->count(),
             'total' => $participants->count(),
             'discord' => $posted,
+            'pushed' => $pushed['sent'],
         ];
     }
 

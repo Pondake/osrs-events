@@ -28,6 +28,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\Settings\AccountController;
+use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\SiteLockController;
 use App\Http\Controllers\SitemapController;
@@ -289,6 +290,25 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         ->middleware('throttle:10,1')
         ->name('settings.discord.connect');
     Route::delete('/settings/account/discord', [DiscordController::class, 'disconnect'])->name('settings.discord.disconnect');
+
+    // Notifications — the settings page, and the endpoints the browser calls
+    // for itself. subscribe/unsubscribe answer JSON rather than an Inertia
+    // redirect: they are called from a composable on page load, not from a
+    // form, and a redirect there would bounce the page somebody is reading.
+    Route::get('/settings/notifications', [NotificationController::class, 'show'])->name('settings.notifications');
+    Route::put('/settings/notifications', [NotificationController::class, 'update'])->name('settings.notifications.update');
+    Route::delete('/settings/notifications/devices/{subscription}', [NotificationController::class, 'forgetDevice'])
+        ->name('settings.notifications.device.forget');
+    // Throttled: this button sends a real push to a real device, and holding
+    // it down should not become a denial of service against somebody's own
+    // lock screen.
+    Route::post('/settings/notifications/preview', [NotificationController::class, 'preview'])
+        ->middleware('throttle:10,1')
+        ->name('settings.notifications.preview');
+
+    Route::get('/push/public-key', [NotificationController::class, 'publicKey'])->name('push.public-key');
+    Route::post('/push/subscriptions', [NotificationController::class, 'subscribe'])->name('push.subscribe');
+    Route::delete('/push/subscriptions', [NotificationController::class, 'unsubscribe'])->name('push.unsubscribe');
 
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     // Declared above /teams/{team} so the literal segment wins the match —

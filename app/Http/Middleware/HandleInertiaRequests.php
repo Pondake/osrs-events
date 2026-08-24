@@ -132,6 +132,15 @@ class HandleInertiaRequests extends Middleware
                     // email is already exposed where it's actually shown
                     // (Settings\AccountController).
                     'hasEmail' => $user->email !== null,
+                    // Read on every page by AppRoot, before the silent
+                    // opt-in runs. Push is unusual in needing a shared prop
+                    // at all: the browser's own state says permission is
+                    // granted and a subscription exists, which is
+                    // indistinguishable from "wants notifications" unless
+                    // the server's explicit off switch travels with it.
+                    // Without this, turning notifications off would undo
+                    // itself on the next page load.
+                    'pushOptedOut' => $user->push_opted_out_at !== null,
                 ] : null,
             ],
         ];

@@ -61,6 +61,7 @@ const groups = computed(() => {
             items: [
                 { key: 'profile', to: '/settings/profile', icon: 'i-lucide-user-circle', label: trans('settings.nav_profile') },
                 { key: 'account', to: '/settings/account', icon: 'i-lucide-shield', label: trans('settings.nav_account') },
+                { key: 'notifications', to: '/settings/notifications', icon: 'i-lucide-bell', label: trans('settings.nav_notifications') },
             ],
         },
     ];

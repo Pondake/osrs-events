@@ -33,3 +33,23 @@ Schedule::command('events:sync-standings')
     ->everyTenMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+/**
+ * The time-based notifications.
+ *
+ * Every fifteen minutes rather than hourly: the windows this checks are an
+ * hour wide ("starts in an hour", "an hour left"), and a sweep that only ran
+ * on the hour would deliver a warning anywhere between sixty and one minutes
+ * before the thing it warns about. Four passes narrows that to fifteen.
+ *
+ * Running four times inside one window is safe by construction, not by luck —
+ * SweepPushNotifications claims each once-per-event fact with an atomic
+ * Cache::add, and the recurring ones go through PushNotifier's per-user
+ * throttle. See that command's docblock for why those are two mechanisms and
+ * not one.
+ */
+Schedule::command('push:sweep')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->runInBackground();
