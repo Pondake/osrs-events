@@ -3785,3 +3785,45 @@ clean install: with the role present and held, the row is deleted, the holder
 is detached, and the warning lands in the log with the user id in it.
 
 642 backend tests, 174 frontend.
+
+### The walkthrough that should have run first
+
+Asked for after the fact, and fairly: a change to who-can-do-what is the
+skill's own trigger. Run properly, one account moved through the ladder.
+
+**Four teams, one account, a different seat in each** — owner, manager, member,
+outsider — so a single page load shows every rung side by side instead of
+needing four passes. What `/teams` rendered:
+
+| Seat | Card | Footer |
+|---|---|---|
+| owner | Owner badge | Members · Edit · Delete |
+| manager | Manager badge | Members · Edit |
+| member | no badge | **nothing** |
+| outsider | **not listed at all** | — |
+
+No seat is shown a control it cannot use, which is the finding this pass most
+often turns up at the collaborator rung. Inside the members modal the same
+line holds: a manager can add and remove, and is offered no promote control; an
+owner gets promote and remove on everybody except themselves. The owner's own
+row has no remove — a team without its owner is a team nobody can delete.
+
+**The gate caught me out, exactly as the skill warns.** Demoting the account to
+a plain player put the site lock back in front of it — admin had been walking
+straight through it. Lifted for the pass, restored after, and the restore is
+verified rather than assumed.
+
+**Widths** — 1265 / 1009 / 753 / 375, page-level overflow **0** at all four.
+The `under44` count at 375 is 8, and all eight are the wordmark and the footer
+text links; every team control clears 44px. Not chased: a footer of text links
+is not what that rule is aimed at.
+
+**Turned into tests rather than a paragraph.** `PermissionMatrixTest` grew a
+teams ladder with its own seat map, and the retired role is carried there as a
+seat — `ex-global-manager` holds `TEAM_MANAGER` and is in no team, so every row
+asserts it grants nothing and a row that ever came back green would say so.
+That covers rename, add member, promote, remove and delete in one table, plus
+the two guards that keep a team from losing its owner.
+
+647 backend tests, 174 frontend.
+
