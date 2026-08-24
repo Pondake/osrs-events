@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Reads and refreshes the standings table for metric events.
@@ -216,6 +217,69 @@ class EventStandingsService
      * was created — the earliest moment we can honestly claim to have been
      * watching.
      */
+    /**
+     * Refresh every row on one event, now, and say what came back.
+     *
+     * The scheduled command (SyncEventStandings) walks every live race on a
+     * timer; this is the same work aimed at one event because somebody asked
+     * for it — a host who has just changed the dates or the metric and wants
+     * to know whether the numbers under it are still true, rather than
+     * finding out when the next cron run happens.
+     *
+     * The failures come back by name. "Updated 5 of 6" is a status; "Not A
+     * Player is not tracked on Wise Old Man" is something a host can act on,
+     * and acting on it is the whole reason to press the button.
+     *
+     * Paced the same way the command is: this is somebody else's public API,
+     * and a host with forty entrants must not spend the site's whole minute
+     * budget in one click.
+     *
+     * @return array{synced: int, failed: int, failures: array<int, array{name: string, error: string}>}
+     */
+    public function syncAll(Event $event): array
+    {
+        $this->syncUsernames($event);
+
+        $delay = $this->wom->shouldThrottle()
+            ? intdiv(60 * 1_000_000, $this->wom->requestsPerMinute())
+            : 0;
+
+        $rows = EventStanding::where('event_id', $event->id)->orderBy('username')->get();
+        $synced = 0;
+        $failures = [];
+
+        foreach ($rows as $row) {
+            try {
+                $this->refresh($event, $row);
+            } catch (Throwable $error) {
+                // One entrant must never stop the rest, exactly as in the
+                // scheduled command — with the difference that somebody is
+                // watching this one, so it is reported rather than only logged.
+                report($error);
+                $failures[] = ['name' => $row->username, 'error' => 'failed'];
+
+                continue;
+            }
+
+            $fresh = $row->refresh();
+
+            if ($fresh->sync_error === null && $fresh->synced_at !== null) {
+                $synced++;
+            } else {
+                $failures[] = ['name' => $row->username, 'error' => $fresh->sync_error ?? 'pending'];
+            }
+
+            usleep($delay);
+        }
+
+        // Caught up: every row has now been asked the current question, even
+        // the ones that came back empty. A name Wise Old Man cannot measure is
+        // not a reason to keep telling everyone the table is out of date.
+        $event->forceFill(['standings_stale_since' => null])->save();
+
+        return ['synced' => $synced, 'failed' => count($failures), 'failures' => $failures];
+    }
+
     public function refresh(Event $event, EventStanding $standing): void
     {
         $start = $event->start_date ? Carbon::parse($event->start_date)->startOfDay() : $standing->created_at;
