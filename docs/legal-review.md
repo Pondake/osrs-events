@@ -1,84 +1,92 @@
-# Privacy and terms — what the pages do not yet say
+# Privacy and terms — what changed, and what still needs a human
 
-A draft, not a change. `/privacy` and `/terms` are CMS pages (admin →
-Content), and the backlog asks for a read-through before launch rather than a
-patch — so nothing here has been written to those pages. Each item below is
-what the code actually does today, with the table or file it lives in, plus
-wording that can be pasted in if you agree with it.
+**Applied 2026-08-24.** This was a draft; it is now a record. The copy lives in
+`App\Support\LegalPages`, PageSeeder plants it on a fresh install, and
+`php artisan pages:sync-legal` applies it to a database whose rows already
+exist — which is the half that was missing, because `seedPage` uses
+`firstOrCreate` and would never have touched an existing page.
 
-Checked 2026-08-24 against the current schema and the current app.
+```bash
+php artisan pages:sync-legal --diff   # what would change
+php artisan pages:sync-legal          # apply it
+```
 
-## What `/privacy` already covers, correctly
+It **overwrites** those two page bodies, so anything edited through admin →
+Content on `/privacy` or `/terms` is replaced. That is why it is a command
+somebody runs on purpose and not something a deploy does quietly.
 
-Discord identity and avatar; email address and hashed password; the OSRS
-account name and why it is required; the display name; the cached Discord
-server list; event progress; the audit log keeping a deleted account's
-display name; Discord and Wise Old Man as the two outside services; deletion
-on request. None of that needs changing.
+Still true, and still the point: **this is a legal document and being accurate
+is the floor, not the whole bar.** Everything below is what the code does. None
+of it is legal advice, and it wants your read before launch.
 
-## Missing — things the app stores that the page does not mention
+---
+
+## What went in
 
 **1. Sessions record an IP address and a browser string.**
 `sessions.ip_address` and `sessions.user_agent`, written on every request by
-Laravel's own session driver (the table is in the first migration). The audit
-log stores an IP as well — `audit_logs.ip_address`, on every recorded admin
-action. Both are personal data by any reading, and neither is named.
+Laravel's own session driver. `audit_logs.ip_address` too, on every recorded
+admin action. Both are personal data by any reading, and neither was named.
 
-> **Sessions.** Staying signed in means a session record: your account, your
-> IP address and your browser's user-agent string. It is deleted when you log
-> out, and expires on its own if you do not come back.
-
-**2. The audit log has a retention period, and it is a number.**
-Ninety days, from `config/audit.php`, pruned by `AuditLog::prunable()`. The
-page says entries are kept and deliberately outlive a deleted account. Saying
-for how long is the part that turns that from a warning into a commitment.
-
-> Audit entries are pruned after 90 days.
+**2. The audit log's retention is now a number, not a shrug.**
+Ninety days, from `config/audit.php`. The page already said entries
+deliberately outlive a deleted account; saying for how long is what turns that
+from a warning into a commitment. **Pinned by a test** — the copy has to state
+whatever `AuditLog::retentionDays()` returns, so changing the config without
+changing the page fails the suite.
 
 **3. Invite records name two people.**
-`board_invites.created_by`, and `board_accesses` records who used it. So an
-invite says who handed it out and who accepted it, and both outlive the
-invite's use.
+`board_invites.created_by` and `board_accesses` record who handed a link out
+and who accepted it, and both outlive the invite's use.
 
-> **Invites.** An invite link records who created it and who used it, so a
-> host can see who joined their event and revoke a link that is being passed
-> around.
+**4. Notifications.** *(New — 2026-08-23/24, and the reason this got applied
+rather than left as a draft.)*
+Push registers **a device**: `push_subscriptions` stores the endpoint the
+browser hands out, the keys that encrypt a message for that device, and the
+user-agent string so somebody can tell their own devices apart. That is a
+device identifier per person, which is a category the page did not have at all.
 
-**4. Emails about events you joined.** *(New — 2026-08-23.)*
-`EventNotificationService` mails every participant with an address when an
-event is paused, resumed, cancelled or restored. That is a new purpose for
-the email address, which the page currently justifies only as a login
-credential and a recovery route. This one genuinely changes what the page
-promises.
+It also introduces a third party we do not choose and cannot avoid: the
+browser's push service — Google, Apple or Mozilla. They carry the message and
+cannot read it (it is encrypted before it leaves this server), but they learn
+that this site sent that device something, and when. Stated plainly rather than
+implied.
 
-> **Event emails.** If your account has an email address, hosts of events you
-> joined can have the site tell you when their event is paused, cancelled or
-> started again. There is no marketing mail of any kind, and nothing else is
-> ever sent to that address.
+And the email address gained a purpose it did not have: `EventNotificationService`
+mails participants when an event is paused, resumed, cancelled or restored. The
+page previously justified that address only as a login credential and a recovery
+route.
 
 **5. A team can be tied to a Discord server.**
-`teams.guild_id` and `teams.guild_name`. Small, but it is a link between an
-account's clan and its Discord server, stored on our side.
+`teams.guild_id` and `teams.guild_name` — a link between an account's clan and
+its Discord server, stored on our side.
 
-**6. Discord announcements, when they are switched on.** *(Currently off.)*
-With the site setting enabled, a host can point an event at a Discord webhook
-and the event's title and status are posted into that server. That is data
-leaving to a third party chosen by the host rather than by us, which is
-exactly the kind of thing a policy has to state before it happens — worth
-writing the paragraph at the same time the switch is turned on, not after.
+**6. Discord announcements.**
+Written now rather than when the switch is flipped, and phrased so it is true
+either way: a host *can* point an event at a webhook, and when they do, the
+event's title and status are posted into that server. A destination the host
+chooses, not us.
 
-## `/terms` — one gap worth naming
+**7. `/terms` — what a host may do to the people in their event.**
+The gap that was named and is now two sections. A host can see participants'
+display and OSRS names, approve or reject their claims, remove them, delete the
+event along with everyone's progress, and push its status into Discord. Said
+from both sides: what you accept by joining, and what you take on by hosting.
+The counterweight matters as much — a host is **not** an administrator, and
+cannot see your email address or your other events.
 
-The page covers accounts, fair use, no guarantees, and the Jagex disclaimer.
-What it does not say is what a **host** may do with the people in their event:
-hosts can see participants' display names and OSRS names, remove people,
-delete an event along with everyone's progress, and (once webhooks are on)
-push its status into a Discord server. "Running an event means you can see and
-affect other people's participation" is the sentence that is missing.
+---
 
-## Also worth a look while you are in there
+## Still a judgement call, and still yours
 
-- Both pages say "Last updated August 2026" in the opening paragraph. If any
-  of the above goes in, that line moves too.
-- `/terms` has never had a read-through on this stack at all — the backlog
-  has said so since 2026-08-21 and it is still true.
+- **The deletion address.** `mailto:dev@absolit.nl` is what the page offers as
+  the route to erasure. If that is not the address you want handling those, it
+  is one line in `LegalPages::privacy()`.
+- **"Last updated August 2026"** is accurate today. It moves the next time this
+  file does, and nothing enforces that.
+- **Retention beyond the audit log.** Sessions expire and push subscriptions are
+  marked dead on a 404/410, but neither has a stated maximum age the way audit
+  entries now do. If you want a number there, the code needs one first.
+- **Whether any of this needs a lawyer.** It is a free hobby project with no
+  payments and no advertising, which is the easiest possible case — but "the
+  easiest case" is not the same as "no case".

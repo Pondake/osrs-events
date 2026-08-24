@@ -2911,7 +2911,8 @@ not alongside it — the copy depends on what the app actually ends up doing.
   and all, with none of the OSRS branding the rest of the app has.~~ **Done
   2026-08-22** — see the theme note below.
 
-- [ ] **Privacy policy needs an update.** `/privacy` was written for the
+- [x] ~~**Privacy policy needs an update.**~~ Done 2026-08-24 — see the entry
+  at the end of this file. `/privacy` was written for the
   Discord-only version of the app and no longer describes what is collected.
   Since then: email/password accounts (email address, hashed password,
   password-reset tokens), an audit log recording admin actions against named
@@ -3827,3 +3828,50 @@ the two guards that keep a team from losing its owner.
 
 647 backend tests, 174 frontend.
 
+---
+
+## The policy caught up with the code — 2026-08-24
+
+`/privacy` described the Discord-only version of this app. Since then it had
+gained email accounts, an audit log that outlives deleted users, invite records
+naming two people, sessions storing IP addresses — and, this week, push
+notifications, which store a device identifier per person and hand a message to
+a third party we do not choose. I widened that gap myself and then recommended
+closing it, which is the right order but worth admitting.
+
+- [x] ~~**The reason it was never going to fix itself.**~~ These are CMS rows,
+  and `PageSeeder::seedPage` uses `firstOrCreate` — correct for every other
+  page, because re-seeding must not flatten something an admin edited. For
+  these two it meant the repository could hold a perfectly accurate policy
+  while every environment that had already run kept serving the old one, and
+  nothing anywhere would say so.
+- [x] ~~**One source, two routes.**~~ The copy moved to
+  `App\Support\LegalPages`. The seeder plants it on a fresh install;
+  `php artisan pages:sync-legal` applies it to a database whose rows exist.
+  `--diff` rehearses. It **overwrites** those two page bodies, which is why it
+  is run on purpose and not wired into the deploy.
+- [x] ~~**Seven gaps closed**~~ — sessions (IP + user-agent), the audit log's
+  retention as a number, invites naming who created and who used them, teams
+  tied to a Discord server, Discord announcements phrased so it is true whether
+  the switch is on or off, the whole notifications section, and `/terms`
+  finally saying what a **host** may do to the people in their event.
+- [x] ~~**The retention number is pinned to the config.**~~ The page states
+  ninety days because `AuditLog::retentionDays()` returns ninety. A test
+  asserts the two agree, so changing the config without changing the copy fails
+  the suite rather than making the page quietly untrue.
+
+**What `/terms` gained is the part I would reread first.** Joining somebody
+else's event hands its host real power over your participation — they see your
+OSRS name, rule on your claims, can remove you, and can delete the event with
+everyone's progress in it. That was true the whole time and written down
+nowhere. The counterweight is in there too, because it is equally load-bearing:
+a host is not an administrator, and cannot see your email address or your other
+events.
+
+**Still yours to decide**, and listed in `docs/legal-review.md` rather than
+guessed at here: whether `dev@absolit.nl` is the right address for deletion
+requests, whether sessions and push subscriptions want a stated maximum age the
+way audit entries now have, and whether a free hobby project with no payments
+needs a lawyer's read anyway.
+
+655 backend tests, 174 frontend.
