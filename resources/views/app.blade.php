@@ -9,15 +9,47 @@
              <Head> block (see Pages/SnakesAndLadders.vue), collected during
              the server render and injected here by @inertiaHead — not
              appended client-side after hydration. --}}
+        {{-- Home-screen icons come in two flavours: the clean brand mark on
+             production, and an amber blueprint/hazard version everywhere else,
+             so a phone with both installed shows which one it is opening. See
+             config/app.php's 'icon_flavor' for why APP_ENV decides this and why
+             the unknown case falls to dev. --}}
+        @php
+            $isProdIcons = config('app.icon_flavor') === 'production';
+            $iconAppName = config('app.name').($isProdIcons ? '' : ' (dev)');
+        @endphp
+
         {{-- Favicons — transparent, monochrome toasting mugs. favicon.svg adapts to
-             light/dark tab chrome; the .ico/PNGs are the legacy fallback. --}}
+             light/dark tab chrome; the .ico/PNGs are the legacy fallback.
+             Deliberately NOT varied per flavour: there is no background to put a
+             texture on at 16px, and the tab already shows the URL. --}}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg">
         <link rel="icon" type="image/x-icon" href="/favicon.ico">
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
         <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-        <link rel="manifest" href="/manifest.webmanifest">
+        <link rel="apple-touch-icon" sizes="180x180" href="{{ $isProdIcons ? '/apple-touch-icon.png' : '/apple-touch-icon-dev.png' }}">
+        {{-- crossorigin, even though the manifest is same-origin and served
+             as a static file. The manifest is fetched with credentials
+             OMITTED by default, so behind any auth gate (a password-protected
+             preview, an SSO proxy) the browser gets the gate's login HTML
+             instead, fails to parse it, and silently downgrades "Install app"
+             to a plain bookmark — while the page itself loads perfectly,
+             because THAT request does carry the cookie. It is a no-op here
+             and cheap insurance against the day it is not; on iOS an app that
+             cannot be installed is an app that cannot receive notifications
+             at all. --}}
+        <link rel="manifest" href="{{ $isProdIcons ? '/manifest.webmanifest' : '/manifest.dev.webmanifest' }}" crossorigin="use-credentials">
+
+        <meta name="theme-color" content="#1c1919">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        {{-- iOS reads its home-screen label from here, not from the manifest,
+             so the "(dev)" suffix has to be repeated for it to differ there. --}}
+        <meta name="apple-mobile-web-app-title" content="{{ $iconAppName }}">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="application-name" content="{{ $iconAppName }}">
+        <meta name="msapplication-TileColor" content="#1c1919">
 
         {{-- Google Fonts — Cinzel and Cinzel Decorative for OSRS-style headings --}}
         <link rel="preconnect" href="https://fonts.googleapis.com">
