@@ -104,6 +104,14 @@ class HandleInertiaRequests extends Middleware
                 // field at all. Shared for the same reason the board defaults
                 // are: that form opens from three different places.
                 'discordWebhooksEnabled' => (bool) Setting::get('discord_webhooks_enabled'),
+                // Whether this server could send a push at all. Shared
+                // site-wide because AppRoot decides on every page whether to
+                // offer the "turn notifications on" bar, and a bar whose
+                // button leads to a server with no keys is an advert for a
+                // feature that cannot work. Config, not a setting: it comes
+                // from the environment, so it is free to read.
+                'pushConfigured' => filled(config('webpush.vapid.public_key'))
+                    && filled(config('webpush.vapid.private_key')),
             ],
             'auth' => [
                 'user' => $user ? [

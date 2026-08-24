@@ -3621,3 +3621,44 @@ first stub answering all three calls. It passed, and only ever exercised the
 wants two different responses from one endpoint.
 
 639 backend tests, 154 frontend.
+
+---
+
+## The prompt that never came — 2026-08-24
+
+Reported from staging: *"it did not instant prompt me. Since there's no
+prompt, I cant test notifications yet."*
+
+- [x] ~~**The automatic ask is not a reliable way to get a prompt.**~~ It only
+  works on Chromium. Firefox has required a user gesture for
+  `Notification.requestPermission()` since 72 and ignores the call otherwise,
+  Safari the same, and Chrome may answer with its quiet UI — a bell in the
+  address bar that is **indistinguishable from nothing having happened**. The
+  silent opt-in was built exactly as asked and is still right where it works;
+  it just cannot be the only route.
+- [x] ~~**An in-app offer bar.**~~ Shown to a signed-in user whose permission
+  is still undecided, once the automatic attempt has settled. Clicking it is a
+  real gesture, so it produces a real prompt on every platform — and on iOS it
+  is the only route that has ever existed. "Not now" snoozes for a week rather
+  than forever: forever belongs to the browser's own block and to the off
+  switch, both of which are explicit.
+- [x] ~~**The once-ever flag could be spent on a prompt nobody saw.**~~ It is
+  set *before* the call, so a browser that silently refused to show the prompt
+  burned it anyway and could never be asked again from the app. The bar clears
+  that memory before asking, and `clearPromptMemory()` exists for it.
+- [x] ~~**The bar stays hidden wherever it could not help**~~ — no Push API,
+  no VAPID keys on the server, permission already decided, opted out, iOS
+  outside an installed app, or a page already asking for something (the OSRS
+  gate, the onboarding tour). A bar advertising a button that does nothing
+  turns a quiet failure into a visible broken one.
+
+The decision is a pure function in `Support/pushPrompt.js` with thirteen tests
+over it, because it is an eight-way answer that is otherwise only observable
+by finding a browser in each state.
+
+**What could not be verified here:** the bar itself. The embedded browser
+forces `Notification.permission` to `denied`, so the correct behaviour to
+observe locally was the bar staying *hidden* — which it does, and without
+burning the once-ever flag, since the denied branch returns before setting it.
+
+639 backend tests, 167 frontend.

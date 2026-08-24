@@ -300,13 +300,23 @@ sudo -i -u <site-user>
 it is telling the guard that the keys it can see are your *local* ones and not
 the ones being replaced.
 
-Users are subscribed **silently** once they allow notifications: the toggle at
-`/settings/notifications` is the deliberate way in, and after that every page
+Users are subscribed **silently** once they allow notifications: every page
 load re-registers the browser (an upsert, which is what heals a subscription
-the server has lost). On Chrome and Android an undecided browser is asked once
-— that is where the OS accept/deny prompt appears. **iOS is never prompted
-automatically**: there, `requestPermission()` outside a user gesture records a
-denial the page can never undo.
+the server has lost). An undecided browser is asked once, automatically —
+that is where Chrome and Android raise the OS accept/deny prompt.
+
+**Do not rely on that automatic ask alone.** It only works on Chromium.
+Firefox has required a user gesture for `Notification.requestPermission()`
+since 72 and ignores the call otherwise; Safari the same; and Chrome may
+answer it with its quiet UI — a small bell in the address bar that is
+indistinguishable from nothing having happened. So a signed-in user whose
+permission is still undecided also gets an in-app bar offering to turn
+notifications on. Clicking it is a real gesture, so it produces a real prompt
+everywhere, and on iOS it is the only route that has ever existed. "Not now"
+snoozes it for a week; the toggle at `/settings/notifications` is always there.
+
+**iOS is never prompted automatically**: there, `requestPermission()` outside
+a user gesture records a denial the page can never undo.
 
 ### When nothing arrives
 
@@ -347,6 +357,10 @@ Things that look like bugs and are not:
 - **Nothing on iPhone.** iOS only delivers notifications to a PWA added to the
   home screen. The settings page says so in words rather than showing a dead
   toggle.
+- **"It never prompted me."** Usually the browser suppressing an unprompted
+  ask (see above), not the app. The in-app bar is the reliable route; if that
+  is not showing either, `/admin/diagnostics` will say whether the server has
+  keys at all, since the bar stays hidden when it cannot work.
 
 Every category has a **Send a test** button on the settings page, because the
 real triggers are events you cannot summon — a host approving a claim, a race
