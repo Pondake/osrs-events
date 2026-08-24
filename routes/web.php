@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\DiagnosticsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventBlueprintController as AdminEventBlueprintController;
 use App\Http\Controllers\Admin\InviteController;
@@ -386,6 +387,25 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
 
         // Read-only by design — see AuditLogController.
         Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+
+        // The "why is nothing happening" page. The checks are reads; the four
+        // actions each address the admin pressing them (their own devices,
+        // their own inbox) or are explicitly a rehearsal, so none of them can
+        // reach another user. Throttled anyway — these make real outbound
+        // requests, and a held-down button should not become one.
+        Route::get('/diagnostics', [DiagnosticsController::class, 'index'])->name('diagnostics');
+        Route::post('/diagnostics/push', [DiagnosticsController::class, 'testPush'])
+            ->middleware('throttle:10,1')
+            ->name('diagnostics.push');
+        Route::post('/diagnostics/mail', [DiagnosticsController::class, 'testMail'])
+            ->middleware('throttle:5,1')
+            ->name('diagnostics.mail');
+        Route::post('/diagnostics/wom', [DiagnosticsController::class, 'checkWom'])
+            ->middleware('throttle:10,1')
+            ->name('diagnostics.wom');
+        Route::post('/diagnostics/sweep', [DiagnosticsController::class, 'sweep'])
+            ->middleware('throttle:10,1')
+            ->name('diagnostics.sweep');
     });
 
     // Admin lived under /settings/admin until 2026-08-20. Redirects rather
