@@ -17,6 +17,7 @@
                         :event="liveBoard"
                         :can-edit="canEdit"
                         :viewing-as-admin="viewingAsAdmin"
+                        :admin-edit-url="adminEditUrl"
                         :streaming="streaming"
                         :stale="stale"
                     >
@@ -483,6 +484,7 @@ const props = defineProps({
     // True only when a site admin is reading a private event they were never
     // invited to — the heading says so rather than letting it be silent.
     viewingAsAdmin: { type: Boolean, default: false },
+    adminEditUrl: { type: String, default: null },
     // Editors only — see BoardSettingsModal's own note on why this is not
     // part of the event payload.
     webhookUrl: { type: String, default: null },
