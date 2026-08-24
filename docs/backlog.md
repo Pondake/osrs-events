@@ -3438,14 +3438,19 @@ should be rather than a bug.
   **Deliberately not an automatic re-sync on save:** forty entrants is forty
   outbound requests to somebody else's public API, which a form submit does
   not get to decide.
-- [x] ~~**The walkthrough itself is now a skill.**~~
-  `.claude/skills/multi-user-walkthrough/SKILL.md`, with the decisions
-  settled rather than re-argued every time: six seats, four widths, one
-  browser session re-roled instead of six logins. Two commands back it —
-  `php artisan dev:fixtures` seeds the edge-case events demo data never
-  produces, `php artisan dev:persona <seat>` reshapes the signed-in account
-  and `restore` puts back exactly what was there before. Both refuse to run
-  outside local.
+- [x] ~~**The walkthrough itself is now repeatable.**~~ Two local-only
+  commands: `php artisan dev:fixtures` seeds the edge-case events demo data
+  never produces (a title long enough to wrap, ended, unstarted, on hold,
+  invite-only, teams), and `php artisan dev:persona <seat>` reshapes the
+  signed-in account into guest/player/creator/cohost/owner/admin/newcomer,
+  with `restore` putting back exactly what was there before — from a snapshot
+  taken at the first switch rather than from an assumption.
+
+  The method itself — six seats, four widths, one session re-roled instead of
+  six logins — is a **personal skill** (`multi-user-walkthrough`) rather than
+  a file in this repo, because none of it is about OSRS events. These two
+  commands are this project's implementation of the "reshape one account"
+  step it asks for.
 
 **Why one seat and not six accounts:** six logins means six passwords typed
 into a form on every pass, and the app's own rule is that an admin hands out
