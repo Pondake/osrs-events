@@ -64,6 +64,9 @@ trait SignalsEventEdits
             // this is the line that makes it.
             $event->paused_at?->toIso8601String(),
             $event->pause_reason,
+            // So a host editing the dates in one tab turns the warning on in
+            // every other tab watching the race, rather than on their reload.
+            $event->standings_stale_since?->toIso8601String(),
         ]));
     }
 }

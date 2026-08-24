@@ -207,6 +207,12 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/events/{event}/enter', [SkillRaceController::class, 'enter'])
         ->middleware('throttle:10,1')
         ->name('events.enter');
+    // Pulling fresh numbers on demand. Throttled hardest of the lot: one
+    // press is one outbound Wise Old Man request per entrant, against a
+    // public API whose budget is theirs and not ours.
+    Route::post('/events/{event}/standings/sync', [SkillRaceController::class, 'sync'])
+        ->middleware('throttle:4,1')
+        ->name('events.standings.sync');
     Route::delete('/events/{event}/enter', [SkillRaceController::class, 'leave'])
         ->middleware('throttle:10,1')
         ->name('events.leave');

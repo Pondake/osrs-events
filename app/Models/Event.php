@@ -64,6 +64,7 @@ class Event extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'paused_at' => 'datetime',
+        'standings_stale_since' => 'datetime',
     ];
 
     /**
@@ -76,6 +77,20 @@ class Event extends Model
     public function isPaused(): bool
     {
         return $this->paused_at !== null;
+    }
+
+    /**
+     * The fields a standing is measured against.
+     *
+     * Change any of them and every row on the event describes a window that
+     * no longer exists — see the standings_stale_since migration.
+     */
+    public const MEASUREMENT_FIELDS = ['metric', 'start_date', 'end_date'];
+
+    /** Whether the numbers were read before the question last changed. */
+    public function standingsAreStale(): bool
+    {
+        return $this->standings_stale_since !== null;
     }
 
     /**
