@@ -3910,6 +3910,12 @@ next pass does not start from scratch.
   `mailto:dev@absolit.nl` on `/privacy`, and the owner is unsure — the GitHub
   account is public, so anyone determined can reach the same contact details,
   LinkedIn included.
+  **Also now out of date:** the policy says "ask and your account will be
+  deleted", which was true when it was the only route. Settings → Account has
+  a delete button as of 2026-08-24, so that paragraph in
+  `LegalPages::privacy()` should point at it and the address should become the
+  fallback. Noted here rather than changed, because the whole legal pass is
+  the owner's.
   Two things worth separating there. *Findable* and *published* are not the
   same act, and which one the page performs is still a choice. And the address
   is only load-bearing because of the point below.
@@ -4008,3 +4014,27 @@ come back to it, and it is the last thing keeping the contact address
 load-bearing.
 
 676 backend tests, 174 frontend.
+
+### Finishing the deletion feature
+
+Asked whether it was complete. It was not, and not for the reason I had been
+raising: the data survived a deletion but nothing on screen said whose row it
+was, so a departed player rendered as a blank name.
+
+- [x] ~~**"Deleted player", said out loud.**~~ One key, `common.deleted_user`,
+  applied where a row can outlive its account: the board's player list and its
+  live overlay, the leaderboard, and the three name builders in BingoService.
+  An unlabelled row reads as a rendering bug rather than as somebody who left,
+  which is the opposite of what the anonymisation was for.
+- [x] ~~**Checked for crashes rather than assumed.**~~ Every unguarded
+  `->user->` in the app was reread against a null. Both candidates —
+  `LeaderboardController` building its player payload and
+  `EventStandingsService` clearing the verified flag — were already written
+  with explicit null checks, so nothing throws. Worth having looked: making a
+  column nullable is exactly the change that turns a defensive habit into a
+  load-bearing one.
+- [x] ~~**Pinned.**~~ Bingo standings must return the label for a departed
+  player, and the board page and leaderboard must both still answer 200 with a
+  gap in them.
+
+678 backend tests, 174 frontend.

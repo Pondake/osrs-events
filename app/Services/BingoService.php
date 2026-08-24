@@ -243,7 +243,7 @@ class BingoService
 
                 return [
                     'id' => $first->team_id ?? $first->user_id,
-                    'name' => $first->team?->name ?? ($first->user?->nickname ?: $first->user?->discord_username),
+                    'name' => $first->team?->name ?? ($first->user?->nickname ?: $first->user?->discord_username) ?: trans('common.deleted_user'),
                     'avatarUrl' => $first->team?->icon_url ?? $first->user?->avatar_url,
                     'squares' => count($positions),
                     'points' => $this->score($card, $positions, $points),
@@ -284,7 +284,7 @@ class BingoService
                 'position' => (int) $c->square_position,
                 'label' => $c->square?->label(),
                 'iconUrl' => $c->square?->task?->icon_url,
-                'competitor' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username),
+                'competitor' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username) ?: trans('common.deleted_user'),
                 'competitorAvatar' => $c->team?->icon_url ?? $c->user?->avatar_url,
                 // Both identities, because they are how a host checks a
                 // claim: the Discord name is who is asking, the OSRS name is
@@ -328,7 +328,7 @@ class BingoService
                 'holders' => $group->take(3)->map(fn (BingoCompletion $c) => [
                     // A team event credits the team, a solo one the player —
                     // the same competitor split competitorFor() makes.
-                    'name' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username),
+                    'name' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username) ?: trans('common.deleted_user'),
                     'avatarUrl' => $c->team?->icon_url ?? $c->user?->avatar_url,
                 ])->values()->all(),
                 'total' => $group->count(),

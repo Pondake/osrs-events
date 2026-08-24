@@ -398,8 +398,8 @@
                                     >
                                         {{ p.team.name.slice(0, 2).toUpperCase() }}
                                     </span>
-                                    <u-avatar v-else :src="p.user?.avatar_url ?? undefined" :alt="p.user?.nickname ?? p.user?.discord_username" size="xs" class="shrink-0" />
-                                    <span class="flex-1 min-w-0 truncate font-medium">{{ p.team?.name ?? p.user?.nickname ?? p.user?.discord_username }}</span>
+                                    <u-avatar v-else :src="p.user?.avatar_url ?? undefined" :alt="p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? $t('common.deleted_user')" size="xs" class="shrink-0" />
+                                    <span class="flex-1 min-w-0 truncate font-medium">{{ p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? $t('common.deleted_user') }}</span>
                                     <span class="text-xs text-muted shrink-0">#{{ p.current_position + 1 }}</span>
                                     <span
                                         class="text-xs font-semibold w-10 text-right shrink-0"
@@ -654,7 +654,10 @@ function playersOnTile(position) {
         .filter((p) => p.current_position === position)
         .map((p) => ({
             id: p.team?.id ?? p.user_id,
-            name: p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? 'Player',
+            // Falls through to the deleted-player label rather than a hardcoded
+            // 'Player': a board keeps the space somebody occupied after
+            // they close their account, and an unlabelled row reads as a bug.
+            name: p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? trans('common.deleted_user'),
             avatarUrl: p.team?.icon_url ?? p.user?.avatar_url ?? null,
         }));
 }
