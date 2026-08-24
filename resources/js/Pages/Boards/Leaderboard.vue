@@ -28,7 +28,7 @@
 
                         <div class="flex-1 min-w-0">
                             <div class="font-medium truncate">
-                                {{ entry.team?.name ?? entry.user?.nickname ?? entry.user?.discord_username }}
+                                {{ entry.team?.name ?? entry.user?.nickname ?? entry.user?.discord_username ?? $t('common.deleted_user') }}
                             </div>
                             <div class="text-xs text-muted">
                                 {{ $t('board.tile', { n: entry.currentPosition + 1 }) }} / {{ totalTiles }} — {{ entry.tilesRemaining }} {{ $t('leaderboard.tiles_left') }}

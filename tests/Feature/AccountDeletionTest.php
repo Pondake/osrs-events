@@ -338,6 +338,51 @@ class AccountDeletionTest extends TestCase
         $this->assertSame(0, PushSubscription::where('user_id', $user->id)->count());
     }
 
+    /**
+     * The half that is easy to leave out: the row survives, and the page has
+     * to say whose it was. An unlabelled entry reads as a rendering bug rather
+     * than as somebody who left.
+     */
+    #[Test]
+    public function a_kept_row_is_labelled_rather_than_left_blank(): void
+    {
+        $host = $this->player('Host');
+        $user = $this->player('Leaver');
+        $event = $this->eventOwnedBy($host, ['end_date' => Carbon::now()->subMonth()]);
+        $card = BingoCard::create(['event_id' => $event->id, 'size' => 3]);
+        $square = BingoSquare::create(['bingo_card_id' => $card->id, 'position' => 0, 'points' => 10]);
+
+        BingoCompletion::create([
+            'bingo_square_id' => $square->id,
+            'user_id' => $user->id,
+            'marked_by' => $user->id,
+            'status' => 'APPROVED',
+        ]);
+
+        $this->service()->delete($user);
+
+        $standings = app(\App\Services\BingoService::class)->standings($event->fresh(), $card->fresh());
+
+        $this->assertNotEmpty($standings);
+        $this->assertSame(trans('common.deleted_user'), $standings->first()['name']);
+    }
+
+    /** And the board page still renders, rather than dereferencing a gap. */
+    #[Test]
+    public function a_board_with_a_departed_player_still_renders(): void
+    {
+        $host = $this->player('Host');
+        $user = $this->player('Leaver');
+        $event = $this->eventOwnedBy($host, ['type' => 'SNAKES_LADDERS']);
+        $board = Board::create(['event_id' => $event->id]);
+        PlayerBoard::create(['board_id' => $board->id, 'user_id' => $user->id, 'current_position' => 3]);
+
+        $this->service()->delete($user);
+
+        $this->actingAs($host)->get("/events/{$event->id}")->assertOk();
+        $this->actingAs($host)->get("/events/{$event->id}/leaderboard")->assertOk();
+    }
+
     // ------------------------------------------------------------ as an admin
 
     /**

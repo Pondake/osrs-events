@@ -797,6 +797,7 @@
     "common.copyright": "OSRS Events • © :year",
     "common.create": "Create",
     "common.delete": "Delete",
+    "common.deleted_user": "Deleted player",
     "common.disabled": "Disabled",
     "common.dismiss": "Dismiss",
     "common.edit": "Edit",
