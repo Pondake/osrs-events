@@ -66,6 +66,7 @@
                             v-if="isParticipant || (status !== 'ended' && status !== 'paused')"
                             :event-id="liveEvent.id"
                             :joined="isParticipant"
+                            size="sm"
                             icon="i-lucide-swords"
                             :join-label="$t('events.enter')"
                             :leave-label="$t('events.leave')"
@@ -77,10 +78,15 @@
                              account can edit a snakes & ladders board from
                              its page, which is where the inconsistency shows.
                              -->
+                        <!-- `sm`, like every other control in this bar and on
+                             the other two event pages. Left at the default it
+                             stood 32px tall beside 28px siblings — the same
+                             mismatch the Manage badge caused. -->
                         <u-button
                             v-if="canEdit"
                             color="neutral"
                             variant="outline"
+                            size="sm"
                             icon="i-lucide-settings"
                             :label="$t('board.event_settings')"
                             @click="showSettingsModal = true"
