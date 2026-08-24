@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\BoardAuthor;
 use App\Models\Event;
 use App\Models\Permission;
+use App\Models\Team;
+use App\Models\TeamMember;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,6 +33,10 @@ class PermissionMatrixTest extends TestCase
     private Event $event;
 
     private User $owner;
+
+    private Team $team;
+
+    private User $teamOwner;
 
     protected function setUp(): void
     {
@@ -93,10 +99,14 @@ class PermissionMatrixTest extends TestCase
     /**
      * @param  array<string, int|string>  $expected  status per persona, or
      *                                               'redirect' for any 3xx
+     * @param  array<string, User|null>|null  $seats  the ladder to walk, when
+     *                                                it is not the event one —
+     *                                                team rights are per team,
+     *                                                so they have their own
      */
-    private function assertMatrix(string $method, string $url, array $expected, array $payload = []): void
+    private function assertMatrix(string $method, string $url, array $expected, array $payload = [], ?array $seats = null): void
     {
-        foreach ($this->everyone() as $persona => $user) {
+        foreach ($seats ?? $this->everyone() as $persona => $user) {
             if (! array_key_exists($persona, $expected)) {
                 continue;
             }
@@ -242,6 +252,143 @@ class PermissionMatrixTest extends TestCase
         $this->assertMatrix('POST', "/events/{$this->event->id}/join", [
             'guest' => 'redirect', 'player' => 'redirect', 'admin' => 'redirect',
         ]);
+    }
+
+    // ------------------------------------------------------------------ teams
+
+    /**
+     * Team rights are per team, so they need their own ladder.
+     *
+     * The extra seat is the point: **ex-global-manager** holds `TEAM_MANAGER`,
+     * the site-wide role retired on 2026-08-24, and is not in the team. It used
+     * to manage every team on the site. Carrying it as a seat rather than as
+     * one test means every row below asserts it grants nothing, and a row that
+     * ever came back green would say so out loud.
+     *
+     * @return array<string, User|null>
+     */
+    private function teamSeats(): array
+    {
+        return [
+            'guest' => null,
+            'outsider' => $this->player('Outsider'),
+            'ex-global-manager' => tap($this->player('ExGlobal'), fn (User $u) => $u->assignRole(Role::findOrCreate('TEAM_MANAGER', 'web'))),
+            'member' => $this->teamMember(TeamMember::MEMBER),
+            'manager' => $this->teamMember(TeamMember::MANAGER),
+            'owner' => $this->teamOwner,
+            'admin' => $this->admin(),
+        ];
+    }
+
+    private function teamMember(string $role): User
+    {
+        $user = $this->player($role);
+
+        TeamMember::create(['team_id' => $this->team->id, 'user_id' => $user->id, 'role' => $role]);
+
+        return $user;
+    }
+
+    /** Created lazily: most rows in this file have no team in them. */
+    private function withTeam(): void
+    {
+        $this->teamOwner = $this->player('TeamOwner');
+        $this->team = Team::create(['name' => 'Zulrah Enjoyers']);
+
+        TeamMember::create([
+            'team_id' => $this->team->id,
+            'user_id' => $this->teamOwner->id,
+            'role' => TeamMember::OWNER,
+        ]);
+    }
+
+    #[Test]
+    public function renaming_a_team_is_for_the_people_running_it(): void
+    {
+        $this->withTeam();
+
+        $this->assertMatrix('PATCH', "/teams/{$this->team->id}", [
+            'guest' => 'redirect',
+            'outsider' => 403,
+            'ex-global-manager' => 403,
+            'member' => 403,
+            'manager' => 'redirect',
+            'owner' => 'redirect',
+            'admin' => 'redirect',
+        ], ['name' => 'Renamed'], $this->teamSeats());
+    }
+
+    #[Test]
+    public function adding_someone_to_a_team_is_for_the_people_running_it(): void
+    {
+        $this->withTeam();
+        $recruit = $this->player('Recruit');
+
+        $this->assertMatrix('POST', "/teams/{$this->team->id}/members", [
+            'outsider' => 403,
+            'ex-global-manager' => 403,
+            'member' => 403,
+            'manager' => 'redirect',
+        ], ['user_id' => $recruit->id], $this->teamSeats());
+    }
+
+    /**
+     * Promotion is the owner's alone, so a manager cannot quietly make more
+     * managers — the one place the manager seat stops short of running things.
+     */
+    #[Test]
+    public function promoting_a_member_is_the_owners_alone(): void
+    {
+        $this->withTeam();
+        $seats = $this->teamSeats();
+        $target = $seats['member'];
+
+        $this->assertMatrix('PATCH', "/teams/{$this->team->id}/members/{$target->id}", [
+            'outsider' => 403,
+            'ex-global-manager' => 403,
+            'member' => 403,
+            'manager' => 403,
+            'owner' => 'redirect',
+        ], ['role' => TeamMember::MANAGER], $seats);
+    }
+
+    /**
+     * Deleting takes the whole team's history with it, so it stops at the
+     * owner. Asserted as refusals first and the one success last, because a
+     * successful delete would leave every later row testing a 404.
+     */
+    #[Test]
+    public function deleting_a_team_is_the_owners_alone(): void
+    {
+        $this->withTeam();
+
+        $this->assertMatrix('DELETE', "/teams/{$this->team->id}", [
+            'outsider' => 403,
+            'ex-global-manager' => 403,
+            'member' => 403,
+            'manager' => 403,
+        ], [], $this->teamSeats());
+
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($this->teamOwner)->delete("/teams/{$this->team->id}")->assertRedirect();
+    }
+
+    /**
+     * The owner cannot be removed or demoted out of their own team — either
+     * would leave it with nobody who can delete it and no way to appoint one.
+     */
+    #[Test]
+    public function a_team_always_keeps_someone_who_can_end_it(): void
+    {
+        $this->withTeam();
+
+        $this->actingAs($this->teamOwner)
+            ->delete("/teams/{$this->team->id}/members/{$this->teamOwner->id}")
+            ->assertForbidden();
+
+        $this->actingAs($this->teamOwner)
+            ->patch("/teams/{$this->team->id}/members/{$this->teamOwner->id}", ['role' => TeamMember::MEMBER])
+            ->assertForbidden();
     }
 
     // ------------------------------------------------------------- the admin area
