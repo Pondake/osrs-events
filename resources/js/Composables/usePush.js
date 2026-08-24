@@ -43,6 +43,16 @@ const optedOut = ref(false);
 const ready = ref(false);
 
 /**
+ * The automatic attempt has run to a conclusion.
+ *
+ * Separate from `ready`, which only means "we have read the browser's state".
+ * The in-app offer waits on this: on Chromium autoSubscribe may raise the
+ * real permission dialog, and showing a bar asking the same question
+ * underneath it is asking twice at once.
+ */
+const settled = ref(false);
+
+/**
  * iOS is the one platform where asking at the wrong moment is destructive:
  * `requestPermission()` outside a user gesture does not merely fail there, it
  * records a denial the page can never undo. So iOS is detected and left
@@ -189,11 +199,19 @@ export function usePush() {
      * reads "on" and not a single notification arrives.
      */
     async function autoSubscribe() {
-        if (!supported.value || optedOut.value || busy.value) return;
+        if (!supported.value || optedOut.value || busy.value) {
+            settled.value = true;
+
+            return;
+        }
 
         // Denied is final, and re-asking is not even possible — the browser
         // ignores the call. Nagging is what makes people uninstall.
-        if (permission.value === 'denied') return;
+        if (permission.value === 'denied') {
+            settled.value = true;
+
+            return;
+        }
 
         try {
             if (permission.value === 'granted') {
@@ -205,6 +223,13 @@ export function usePush() {
 
                 return;
             }
+
+            // From here on the automatic path may or may not produce a
+            // prompt, and on Firefox and Safari it definitely will not: both
+            // require a user gesture and ignore the call otherwise. Chrome
+            // may also answer with its quiet UI — a bell in the address bar,
+            // indistinguishable from nothing having happened. That is what
+            // the in-app offer bar is for; see Support/pushPrompt.js.
 
             // Undecided. Chrome and Android show their own accept/deny prompt
             // here, which is exactly the intended experience — the OS asks
@@ -232,6 +257,25 @@ export function usePush() {
         } catch (error) {
             // Never surfaced. This runs unasked in the background; a toast
             // about a feature nobody just tried to use reads as a broken app.
+            console.error(error);
+        } finally {
+            settled.value = true;
+        }
+    }
+
+    /**
+     * Forget that the automatic ask already happened.
+     *
+     * Needed because the once-ever flag is set *before* the call, so a prompt
+     * the browser silently refused to show still spends it. Without a way to
+     * clear it, a browser that quietly suppressed the one attempt could never
+     * be asked again from this app — which is the exact failure being
+     * reported when somebody says "it never prompted me".
+     */
+    function clearPromptMemory() {
+        try {
+            window.localStorage.removeItem(PROMPTED_KEY);
+        } catch (error) {
             console.error(error);
         }
     }
@@ -327,12 +371,18 @@ export function usePush() {
         subscribed,
         busy,
         ready,
+        settled,
+        // Exposed rather than derived from `reason`: that computed checks
+        // iOS and blocking first, so reading an opt-out out of it depends on
+        // an ordering that has nothing to do with the question.
+        optedOut,
         reason,
         refresh,
         autoSubscribe,
         enable,
         disable,
         hydrate,
+        clearPromptMemory,
         isIos,
         isStandalone,
     };

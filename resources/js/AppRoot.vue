@@ -85,6 +85,49 @@
             </div>
         </div>
 
+        <!-- The in-app way in.
+
+             The automatic ask only reliably raises a prompt on Chromium.
+             Firefox has needed a user gesture since 72 and ignores the call
+             otherwise, Safari the same, and Chrome may answer with its quiet
+             UI — a bell in the address bar that looks exactly like nothing
+             having happened. Clicking this is a real gesture, so it produces
+             a real prompt everywhere, and on iOS it is the only route there
+             has ever been.
+
+             Not rendered server-side: every input is browser state that does
+             not exist during SSR, and a bar that appears and then vanishes on
+             hydration is worse than one that arrives a moment late. -->
+        <client-only>
+            <div v-if="showPushOffer" class="border-b border-default bg-primary/10">
+                <div class="w-full max-w-(--ui-container) mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                    <div class="flex items-center justify-center gap-x-3 gap-y-1 flex-wrap text-sm text-center">
+                        <span class="text-highlighted">
+                            <u-icon name="i-lucide-bell" class="size-4 inline-block align-[-3px] me-1.5 text-primary" />
+                            {{ $t('notifications.offer_line') }}
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                            <u-button
+                                size="xs"
+                                color="primary"
+                                variant="soft"
+                                :loading="push.busy.value"
+                                :label="$t('notifications.offer_enable')"
+                                @click="acceptPushOffer"
+                            />
+                            <u-button
+                                size="xs"
+                                color="neutral"
+                                variant="ghost"
+                                :label="$t('notifications.offer_later')"
+                                @click="dismissPushOffer"
+                            />
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </client-only>
+
         <!-- display:contents, so the wrapper is a hook for the panel
              styling and nothing else — it generates no box and the page
              lays out exactly as it did without it. -->
@@ -115,6 +158,13 @@ import { styleFor } from '@/Support/announcement';
 import { isLandingPage } from '@/Support/landing';
 import { CURRENT_PAGE } from '@/Support/pageState';
 import { usePush } from '@/Composables/usePush';
+// Aliased: this file already has its own snooze pair for the onboarding
+// tour, and the two are unrelated windows over unrelated questions.
+import {
+    shouldOfferPush,
+    snooze as snoozePushOffer,
+    snoozedUntil as pushOfferSnoozedUntil,
+} from '@/Support/pushPrompt';
 
 const OnboardingModal = defineAsyncComponent(() => import('@/Components/OnboardingModal.vue'));
 
@@ -451,10 +501,66 @@ onMounted(async () => {
     // would be silently resubscribed on their next page load — the OS
     // permission is still granted, which is exactly what "subscribe silently"
     // keys on.
-    push.hydrate({ optedOut: inertiaPage.value.props?.auth?.user?.pushOptedOut });
+    push.hydrate({
+        optedOut: inertiaPage.value.props?.auth?.user?.pushOptedOut,
+        serverConfigured: inertiaPage.value.props?.site?.pushConfigured,
+    });
 
     await push.autoSubscribe();
+
+    // Read after the automatic attempt, not before: the attempt may change
+    // the permission, and the offer below is only for the case where it did
+    // not.
+    pushSnoozedUntil.value = pushOfferSnoozedUntil(window.localStorage);
 });
+
+/**
+ * Whether to offer the bar. The decision itself lives in Support/pushPrompt so
+ * the eight-way answer is testable without a browser.
+ */
+const pushSnoozedUntil = ref(0);
+const pushOfferDismissed = ref(false);
+
+const showPushOffer = computed(() => {
+    if (pushOfferDismissed.value) return false;
+
+    return shouldOfferPush({
+        signedIn: !! inertiaPage.value.props?.auth?.user,
+        supported: push.supported.value,
+        configured: inertiaPage.value.props?.site?.pushConfigured !== false,
+        permission: push.permission.value,
+        optedOut: push.optedOut.value,
+        isIos: push.isIos(),
+        isStandalone: push.isStandalone(),
+        snoozedUntil: pushSnoozedUntil.value,
+        now: Date.now(),
+        settled: push.settled.value,
+        // The gate and the tour are already asking for something. Stacking a
+        // third request on top is how a first visit becomes three dialogs.
+        onBlockingPage: onAuthPage.value || showOnboarding.value || needsOnboarding.value,
+    });
+});
+
+async function acceptPushOffer() {
+    // Clears the once-ever memory first: the automatic attempt sets that flag
+    // *before* calling, so a prompt the browser silently refused to show has
+    // already spent it. Without this the explicit click could inherit that
+    // and look just as broken.
+    push.clearPromptMemory();
+
+    const granted = await push.enable();
+
+    // Either way the bar has done its job. A refusal is an answer, and
+    // repeating the question is what turns a prompt into a reason to leave.
+    pushOfferDismissed.value = true;
+
+    if (! granted) snoozePushOffer(window.localStorage);
+}
+
+function dismissPushOffer() {
+    pushOfferDismissed.value = true;
+    snoozePushOffer(window.localStorage);
+}
 
 /**
  * The service worker's fallback route for a tapped notification.
