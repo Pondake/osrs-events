@@ -52,6 +52,20 @@ class User extends Authenticatable
         return $this->nickname ?? $this->discord_username ?? $this->email ?? '';
     }
 
+    /**
+     * What somebody types to confirm closing their account.
+     *
+     * The OSRS name where there is one — it is the thing every playing account
+     * has and a passer-by at an unlocked laptop does not. An account that never
+     * got that far still has to be able to leave, so it falls back to whatever
+     * does identify it; see RequireOsrsUsername for the gate that made this
+     * necessary.
+     */
+    public function deletionPhrase(): string
+    {
+        return $this->osrs_username ?: $this->displayName();
+    }
+
     public function playerBoards(): HasMany
     {
         return $this->hasMany(PlayerBoard::class);

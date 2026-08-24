@@ -43,6 +43,18 @@ class RequireOsrsUsername
         // this POST (and log an error) on every single page until they did.
         'push.subscribe',
         'push.unsubscribe',
+        // Managing how you sign in — and leaving — are not playing, and this
+        // gate is about scoring. Deletion is the one that made the rule
+        // obvious: an account with no OSRS name was redirected to the page
+        // demanding one when it tried to close itself, so the person most
+        // likely to want out (somebody who has just realised the site wants
+        // their RuneScape name) was the only one who could not get out.
+        'settings.account',
+        'settings.account.destroy',
+        'settings.account.email',
+        'settings.account.password',
+        'settings.discord.connect',
+        'settings.discord.disconnect',
     ];
 
     public function handle(Request $request, Closure $next): Response
