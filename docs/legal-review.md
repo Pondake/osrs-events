@@ -79,9 +79,17 @@ cannot see your email address or your other events.
 
 ## Still a judgement call, and still yours
 
+The owner is taking a second pass at this — see the "Legal, round two" section
+at the end of `docs/backlog.md` for what they want to look at (licensed policy
+sources, writing for a worldwide playerbase rather than an EU-shaped one, and
+whether to publish a personal address at all).
+
 - **The deletion address.** `mailto:dev@absolit.nl` is what the page offers as
   the route to erasure. If that is not the address you want handling those, it
   is one line in `LegalPages::privacy()`.
+  It is also **the only route there is**: `Admin\UserController::destroy` is
+  the sole way an account gets deleted, and there is no button in Settings.
+  Build that and the address becomes a fallback rather than the mechanism.
 - **"Last updated August 2026"** is accurate today. It moves the next time this
   file does, and nothing enforces that.
 - **Retention beyond the audit log.** Sessions expire and push subscriptions are
