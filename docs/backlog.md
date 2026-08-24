@@ -3875,3 +3875,61 @@ way audit entries now have, and whether a free hobby project with no payments
 needs a lawyer's read anyway.
 
 655 backend tests, 174 frontend.
+
+---
+
+## Legal, round two — owner's own pass (open)
+
+The pages are accurate now; that was the engineering half. The owner is coming
+back to the rest, and this is what they were thinking when they said so, so the
+next pass does not start from scratch.
+
+- [ ] **Look at free/licensed policy sources instead of hand-writing more.**
+  The current text was written from the schema, which is its strength and its
+  ceiling: it describes this app precisely and carries none of the structure or
+  jurisdiction boilerplate a template would bring. **The decision worth making
+  first is which half comes from where** — keep the accurate description of
+  what is stored, and let a template supply the scaffolding around it. Swapping
+  wholesale would trade something true for something generic.
+  Leads worth checking rather than trusting: permissively-licensed policies
+  published by other open projects (Automattic's are CC-licensed and widely
+  adapted), and the various policy generators. **Verify the licence terms
+  yourself** — "free to use" and "free to adapt and publish under your own
+  name" are not the same permission, and I have not checked any of them.
+
+- [ ] **Written for the world, not for the Netherlands.** The playerbase is
+  wherever OSRS is, so anything that reads as EU-only ceremony is the wrong
+  shape. The good news is that the two facts that simplify this most are
+  already true and already stated: **nothing is sold, and there is no
+  analytics, advertising or third-party tracking of any kind.** Most
+  jurisdiction-specific machinery — "do not sell my data" rights, ad-tech
+  disclosures, consent banners — collapses to a sentence when there is nothing
+  to disclose. Worth keeping that framing when a template tries to add it back.
+
+- [ ] **Whether to publish a personal email address at all.** Currently
+  `mailto:dev@absolit.nl` on `/privacy`, and the owner is unsure — the GitHub
+  account is public, so anyone determined can reach the same contact details,
+  LinkedIn included.
+  Two things worth separating there. *Findable* and *published* are not the
+  same act, and which one the page performs is still a choice. And the address
+  is only load-bearing because of the point below.
+
+- [ ] **Self-serve account deletion would mostly dissolve that question.**
+  Right now `Admin\UserController::destroy` is the only way an account gets
+  deleted — there is no button in Settings. That is why the policy has to say
+  "ask", and why asking needs an address. A delete-your-account flow turns the
+  contact address into a fallback for edge cases rather than the mechanism, and
+  it is a better answer for the user too: nobody should have to email a
+  stranger to leave.
+  This is a feature, not a policy question, which is why it is the one item
+  here that does not need the owner's judgement to start.
+  Worth designing around: it is destructive and irreversible, it takes their
+  event progress with it, and events they *host* have other people's progress
+  in them — so "delete my account" and "delete the events I run" are not the
+  same request and should not be the same button.
+
+**Not doing on my own:** none of the above is legal advice, and the first three
+are the owner's calls rather than mine. `docs/legal-review.md` holds the
+applied changes and the smaller open questions (the deletion address, whether
+sessions and push subscriptions want a stated maximum age).
+
