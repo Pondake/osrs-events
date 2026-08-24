@@ -3914,7 +3914,8 @@ next pass does not start from scratch.
   same act, and which one the page performs is still a choice. And the address
   is only load-bearing because of the point below.
 
-- [ ] **Self-serve account deletion would mostly dissolve that question.**
+- [x] ~~**Self-serve account deletion would mostly dissolve that question.**~~
+  Done 2026-08-24 — see the entry at the end of this file.
   Right now `Admin\UserController::destroy` is the only way an account gets
   deleted — there is no button in Settings. That is why the policy has to say
   "ask", and why asking needs an address. A delete-your-account flow turns the
@@ -3933,3 +3934,77 @@ are the owner's calls rather than mine. `docs/legal-review.md` holds the
 applied changes and the smaller open questions (the deletion address, whether
 sessions and push subscriptions want a stated maximum age).
 
+---
+
+## Leaving without taking everyone with you — 2026-08-24
+
+Self-serve account deletion, at Settings → Account. It was on the list as the
+thing that would make the "do I have to publish my email address" question
+mostly go away, and it does — but it turned out to be worth building on its own
+merits, because it uncovered a crash.
+
+**Account deletion was already broken.** `board_invites.created_by` was NOT
+NULL with a plain `constrained('users')`, which defaults to RESTRICT — so
+deleting any account that had ever handed out an invite link failed on a
+foreign key violation. An admin was the only deletion route that existed, which
+means deletion has not worked for a single host since invites shipped, and
+nothing ever said so. Found by trying it before writing anything.
+
+### The shape
+
+The hard part is never the delete. It is that one account can be the only
+person able to run something other people are still in, and **neither default
+is acceptable**: silently ending somebody's event, or refusing to let a person
+leave until they find a replacement. So the page states the whole cost on one
+screen and makes the unavoidable choices explicit.
+
+Three outcomes:
+
+- [x] ~~**Handed over.**~~ Anything still running that somebody else can take.
+  Co-hosts are offered first — they already run it, so a handover changes
+  nothing anybody would notice — and participants only when there is no
+  co-host. Never a list of everybody on the site: that invites handing your
+  clan's event to a stranger.
+- [x] ~~**Ended.**~~ The same things, when nobody else is in them or the owner
+  would rather. Events are soft-deleted, so an admin can still put one back.
+- [x] ~~**Kept, anonymised.**~~ Anything already finished. A race that ended in
+  July had a winner and still does: the standings row stays, keeps the OSRS
+  name it was scored on, and loses only its link to the account. Same for bingo
+  squares and board positions. On screen that reads as a deleted player, which
+  is what actually happened.
+
+**The line is whether a thing has ended, not how old it is.** A finished event
+needs no owner — nothing about it can change any more — so asking somebody to
+rehome their archive is asking a question with no useful answer.
+
+### Decisions worth restating
+
+- [x] ~~**No FK surgery.**~~ The obvious version was four `nullOnDelete`
+  constraints. Rejected twice over: SQLite cannot change a foreign key's action
+  without a table rebuild, and it would scatter "what happens when an account
+  closes" across four migrations where nobody deciding that would ever read it.
+  `AccountDeletionService::keepHistory()` nulls them in one readable pass, and
+  the tests can watch it do so. Only the columns became nullable.
+- [x] ~~**An unanswered choice is a refused request.**~~ The service throws
+  rather than defaulting, because every default here is either "silently delete
+  somebody else's event" or "silently hand it over". The page catches that and
+  says the page went stale — which is exactly what it means when a second tab
+  created an event after this one rendered.
+- [x] ~~**Typed confirmation, not a checkbox.**~~ The OSRS name, trimmed and
+  case-insensitive. Plus the password where the account has one, on the same
+  reasoning as changing the email: a borrowed session must not be able to do
+  the irreversible things.
+- [x] ~~**An admin deleting somebody else is a different operation.**~~ It makes
+  no decisions on their behalf: history is preserved identically, and anything
+  the account owned simply loses its owner — still reachable from
+  /admin/events, which is where that admin already is.
+
+### What this does not do
+
+The privacy page's promise is still "ask and your account will be deleted" —
+`LegalPages` has not been updated to point at the button, because the whole
+legal pass is the owner's to make. That is a one-line change to make when they
+come back to it, and it is the last thing keeping the contact address
+load-bearing.
+
+676 backend tests, 174 frontend.
