@@ -292,6 +292,13 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         ->name('settings.discord.connect');
     Route::delete('/settings/account/discord', [DiscordController::class, 'disconnect'])->name('settings.discord.disconnect');
 
+    // Closing your own account. Throttled hard: it is irreversible, it asks
+    // for a password, and a form that takes guesses at one all afternoon is a
+    // different feature than the one intended.
+    Route::delete('/settings/account', [AccountController::class, 'destroy'])
+        ->middleware('throttle:5,1')
+        ->name('settings.account.destroy');
+
     // Notifications — the settings page, and the endpoints the browser calls
     // for itself. subscribe/unsubscribe answer JSON rather than an Inertia
     // redirect: they are called from a composable on page load, not from a

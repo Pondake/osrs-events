@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Services\AccountDeletionService;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -116,7 +117,7 @@ class UserController extends Controller
      * ADMIN role is removed first, and — new here — you can't delete
      * yourself, which the old GraphQL version never guarded against.
      */
-    public function destroy(User $user): RedirectResponse
+    public function destroy(User $user, AccountDeletionService $deletion): RedirectResponse
     {
         abort_unless(Auth::user()->isAdmin(), 403);
 
@@ -139,7 +140,10 @@ class UserController extends Controller
             'roles' => $user->roles->pluck('name')->all(),
         ]);
 
-        $user->delete();
+        // Through the service rather than a bare delete: finished events keep
+        // their leaderboards, and the invite foreign key that used to make this
+        // fail outright is cleared first. See AccountDeletionService.
+        $deletion->deleteAsAdmin($user);
 
         return back()->with('board-save', trans('admin.user_deleted', ['name' => $name]));
     }

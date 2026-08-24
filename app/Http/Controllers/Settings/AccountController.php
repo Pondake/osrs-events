@@ -3,19 +3,21 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Services\AccountDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /** Auth-method settings — linked accounts and password. See ProfileController for the display side. */
 class AccountController extends Controller
 {
-    public function show(): Response
+    public function show(AccountDeletionService $deletion): Response
     {
         $user = Auth::user();
 
@@ -23,6 +25,13 @@ class AccountController extends Controller
             'email' => $user->email,
             'hasPassword' => $user->password !== null,
             'hasDiscord' => $user->discord_id !== null,
+
+            // What closing the account would still need decided. Loaded with
+            // the page rather than behind a button: somebody weighing whether
+            // to leave should be able to see what it would cost without
+            // starting anything.
+            'deletion' => $deletion->preflight($user),
+            'osrsUsername' => $user->osrs_username,
         ]);
     }
 
@@ -100,5 +109,66 @@ class AccountController extends Controller
         Auth::logoutOtherDevices($data['password']);
 
         return back()->with('board-save', trans('profile.password_updated'));
+    }
+
+    /**
+     * Close the account.
+     *
+     * Three guards, and each answers a different question:
+     *
+     *  - **The password**, when the account has one. Same rule as changing the
+     *    email: a borrowed session must not be able to do the irreversible
+     *    things. A Discord-only account has none to give, which is why this is
+     *    conditional rather than required.
+     *  - **The OSRS name, typed out.** The one thing every account has, that
+     *    the person closing it knows and a passer-by at an unlocked laptop does
+     *    not. It is deliberately not a checkbox — this deletes other people's
+     *    evening as well as your own.
+     *  - **A decision per owned event and team**, enforced in the service. A
+     *    default would be either "silently delete somebody else's event" or
+     *    "silently hand it over", and both are worse than a refused request.
+     */
+    public function destroy(Request $request, AccountDeletionService $deletion): RedirectResponse
+    {
+        $user = $request->user();
+
+        $rules = [
+            'confirmation' => ['required', 'string'],
+            'events' => ['array'],
+            'events.*' => ['required', 'string'],
+            'teams' => ['array'],
+            'teams.*' => ['required', 'string'],
+        ];
+
+        if ($user->password !== null) {
+            $rules['current_password'] = ['required', 'current_password'];
+        }
+
+        $data = $request->validate($rules);
+
+        // Compared case-insensitively and trimmed: RuneScape names are matched
+        // that way everywhere else here, and failing somebody's last action on
+        // a capital letter would be a poor note to end on.
+        if (mb_strtolower(trim($data['confirmation'])) !== mb_strtolower((string) $user->osrs_username)) {
+            throw ValidationException::withMessages([
+                'confirmation' => trans('profile.delete_confirmation_mismatch'),
+            ]);
+        }
+
+        try {
+            $deletion->delete($user, $data['events'] ?? [], $data['teams'] ?? []);
+        } catch (InvalidArgumentException) {
+            // The page was stale — an event was created in another tab after
+            // it rendered. Say so rather than deleting on a half-answered form.
+            throw ValidationException::withMessages([
+                'confirmation' => trans('profile.delete_needs_decisions'),
+            ]);
+        }
+
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/')->with('board-save', trans('profile.account_deleted'));
     }
 }

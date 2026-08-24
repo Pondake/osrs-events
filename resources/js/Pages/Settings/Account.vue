@@ -101,18 +101,142 @@
                 </form>
             </template>
         </u-card>
+
+        <!-- Closing the account.
+
+             Last on the page and visibly separate, because everything above
+             it is reversible and this is not. The decisions are rendered
+             inline rather than behind a wizard: the thing somebody weighing
+             this needs is the whole cost on one screen, not a first step. -->
+        <u-card :ui="{ root: 'ring-error/30' }">
+            <template #header>
+                <div class="flex items-center gap-2">
+                    <u-icon name="i-lucide-triangle-alert" class="size-4 shrink-0 text-error" />
+                    <span class="font-semibold text-error">{{ $t('profile.delete_account') }}</span>
+                </div>
+            </template>
+
+            <p class="text-sm text-muted mb-4">{{ $t('profile.delete_account_desc') }}</p>
+
+            <!-- Events still running. Each needs an answer, and the answer is
+                 either a person or an ending — there is no third option and
+                 no default, so the select starts empty. -->
+            <div v-if="deletion.events.length" class="space-y-3 mb-6">
+                <p class="text-sm font-medium text-highlighted">{{ $t('profile.delete_events_heading') }}</p>
+
+                <div v-for="event in deletion.events" :key="event.id" class="border border-default rounded-md p-3 space-y-2">
+                    <div class="flex items-start justify-between gap-3 flex-wrap">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-highlighted">{{ event.title }}</p>
+                            <p class="text-xs text-muted">
+                                {{ event.participants === 0
+                                    ? $t('profile.delete_event_nobody')
+                                    : $t('profile.delete_event_players', { count: event.participants }) }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <client-only>
+                        <u-select
+                            v-model="form.events[event.id]"
+                            :items="choicesFor(event)"
+                            :placeholder="$t('profile.delete_choose')"
+                            class="w-full"
+                        />
+                    </client-only>
+
+                    <p v-if="!event.candidates.length" class="text-xs text-warning">
+                        {{ $t('profile.delete_no_candidates') }}
+                    </p>
+                </div>
+            </div>
+
+            <div v-if="deletion.teams.length" class="space-y-3 mb-6">
+                <p class="text-sm font-medium text-highlighted">{{ $t('profile.delete_teams_heading') }}</p>
+
+                <div v-for="team in deletion.teams" :key="team.id" class="border border-default rounded-md p-3 space-y-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-highlighted">{{ team.name }}</p>
+                        <p class="text-xs text-muted">{{ $t('profile.delete_team_members', { count: team.members }) }}</p>
+                    </div>
+
+                    <client-only>
+                        <u-select
+                            v-model="form.teams[team.id]"
+                            :items="choicesFor(team)"
+                            :placeholder="$t('profile.delete_choose')"
+                            class="w-full"
+                        />
+                    </client-only>
+
+                    <p v-if="!team.candidates.length" class="text-xs text-warning">
+                        {{ $t('profile.delete_no_candidates') }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Said before the button, not after: "everything is deleted" is
+                 not quite true, and finding that out afterwards is worse than
+                 reading it now. -->
+            <u-alert
+                v-if="deletion.keptEvents"
+                color="neutral"
+                variant="subtle"
+                icon="i-lucide-history"
+                class="mb-4"
+                :description="$t('profile.delete_history_kept', { count: deletion.keptEvents })"
+            />
+
+            <form class="space-y-3 max-w-sm" @submit.prevent="submitDelete">
+                <u-form-field
+                    v-if="hasPassword"
+                    :label="$t('profile.current_password')"
+                    :error="form.errors.current_password"
+                    required
+                >
+                    <u-input v-model="form.current_password" type="password" autocomplete="current-password" class="w-full" />
+                </u-form-field>
+
+                <u-form-field
+                    :label="$t('profile.delete_confirm_label', { name: osrsUsername })"
+                    :description="$t('profile.delete_confirm_help')"
+                    :error="form.errors.confirmation"
+                    required
+                >
+                    <u-input v-model="form.confirmation" class="w-full" autocomplete="off" />
+                </u-form-field>
+
+                <u-button
+                    type="submit"
+                    color="error"
+                    size="sm"
+                    icon="i-lucide-trash-2"
+                    :loading="form.processing"
+                    :disabled="!ready"
+                    :label="$t('profile.delete_account')"
+                />
+            </form>
+        </u-card>
     </settings-layout>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
+import ClientOnly from '@/Components/ClientOnly.vue';
 
 const props = defineProps({
     email: { type: String, default: null },
     hasPassword: { type: Boolean, required: true },
     hasDiscord: { type: Boolean, required: true },
+    osrsUsername: { type: String, default: '' },
+    deletion: {
+        type: Object,
+        default: () => ({ events: [], teams: [], keptEvents: 0 }),
+    },
 });
 
 const { user } = useAuth();
@@ -139,5 +263,53 @@ function submitPassword() {
 
 function disconnectDiscord() {
     router.delete('/settings/account/discord', { preserveScroll: true });
+}
+
+// --- closing the account -------------------------------------------------
+
+const form = useForm({
+    confirmation: '',
+    current_password: '',
+    // Keyed by id so the server gets a decision per thing rather than a list
+    // it has to line up with one it built separately.
+    events: {},
+    teams: {},
+});
+
+/**
+ * Hand it over, or end it. Deliberately no pre-selected option: whichever one
+ * this defaulted to would be the wrong thing to do by accident.
+ */
+function choicesFor(thing) {
+    return [
+        ...thing.candidates.map((candidate) => ({
+            label: trans('profile.delete_transfer_to', { name: candidate.name }),
+            value: candidate.id,
+        })),
+        { label: trans('profile.delete_end_it'), value: 'delete' },
+    ];
+}
+
+/**
+ * Every owned thing answered, and the name typed out. The server checks all
+ * of this again — this only stops somebody pressing a button that was always
+ * going to fail.
+ */
+const ready = computed(() => {
+    const answered = (list, answers) => list.every((thing) => Boolean(answers[thing.id]));
+
+    return (
+        form.confirmation.trim().length > 0 &&
+        answered(props.deletion.events, form.events) &&
+        answered(props.deletion.teams, form.teams)
+    );
+});
+
+function submitDelete() {
+    form.delete('/settings/account', {
+        preserveScroll: true,
+        onError: (errors) => console.error(errors),
+        onFinish: () => (form.current_password = ''),
+    });
 }
 </script>
