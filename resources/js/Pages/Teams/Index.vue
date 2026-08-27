@@ -39,8 +39,17 @@
                         </div>
                         <p class="text-sm text-muted -mt-3 mb-4">{{ group.description }}</p>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <u-card v-for="team in group.teams" :key="team.id">
+                        <!-- CSS multi-column, not `grid` — a grid gives every
+                             card in a row the same height, so a team with a
+                             two-line member list and one with fifteen sat in
+                             equally tall boxes with a lot of empty card below
+                             the short one. Columns let each card be exactly
+                             as tall as its own content and stack the next one
+                             straight underneath it. `break-inside-avoid` on
+                             each card stops a browser splitting one card's
+                             content across two columns. -->
+                        <div class="columns-1 sm:columns-2 lg:columns-3 gap-6">
+                            <u-card v-for="team in group.teams" :key="team.id" class="break-inside-avoid mb-6">
                         <template #header>
                             <div class="flex items-center gap-3">
                                 <u-avatar :src="team.icon_url ?? undefined" :alt="team.name" size="sm" />
@@ -90,7 +99,15 @@
                             <div class="flex flex-wrap gap-2">
                                 <u-button size="xs" color="neutral" variant="outline" :label="$t('teams.manage_members_short')" icon="i-lucide-users" @click="managingTeamId = team.id" />
                                 <u-button size="xs" color="neutral" variant="outline" :label="$t('common.edit')" icon="i-lucide-pencil" @click="openEdit(team)" />
-                                <u-button v-if="team.canDelete" size="xs" color="error" variant="outline" :label="$t('common.delete')" icon="i-lucide-trash-2" @click="destroyTeam(team)" />
+                                <confirm-popover
+                                    v-if="team.canDelete"
+                                    :message="$t('teams.delete_confirm', { name: team.name })"
+                                    :confirm-label="$t('common.delete')"
+                                    :loading="deletingTeamId === team.id"
+                                    @confirm="(note, done) => destroyTeam(team, done)"
+                                >
+                                    <u-button size="xs" color="error" variant="outline" :label="$t('common.delete')" icon="i-lucide-trash-2" />
+                                </confirm-popover>
                             </div>
                         </template>
                             </u-card>
@@ -117,6 +134,7 @@ import { computed, defineAsyncComponent, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import ConfirmPopover from '@/Components/ConfirmPopover.vue';
 
 const TeamSettingsModal = defineAsyncComponent(() => import('@/Components/TeamSettingsModal.vue'));
 const TeamMembersModal = defineAsyncComponent(() => import('@/Components/TeamMembersModal.vue'));
@@ -174,11 +192,22 @@ function openEdit(team) {
 const managingTeamId = ref(null);
 const managingTeam = computed(() => props.teams.find((t) => t.id === managingTeamId.value) ?? null);
 
-function destroyTeam(team) {
-    // Deleting a team takes every member row and every board assignment with
-    // it, and there is no undo — the one action here worth a confirm.
-    if (!window.confirm(trans('teams.delete_confirm', { name: team.name }))) return;
+const deletingTeamId = ref(null);
 
-    router.delete(`/teams/${team.id}`, { preserveScroll: true });
+function destroyTeam(team, done) {
+    // Deleting a team takes every member row and every board assignment with
+    // it, and there is no undo — the one action here worth a confirm. A
+    // popover anchored to the button, not window.confirm(): a native browser
+    // dialog can't be styled and reads as a jarring interruption next to
+    // every other confirm in the app.
+    deletingTeamId.value = team.id;
+
+    router.delete(`/teams/${team.id}`, {
+        preserveScroll: true,
+        onFinish: () => {
+            deletingTeamId.value = null;
+            done?.();
+        },
+    });
 }
 </script>
