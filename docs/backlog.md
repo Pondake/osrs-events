@@ -1485,6 +1485,10 @@ event", "OSRS clan event", "runescape events", "old school runescape event"?
   still marked `available: false`.** The clearest SEO opportunity and the
   biggest product gap are the same thing.
 
+  **Half of that is no longer true, 2026-08-24:** bingo shipped and
+  `Event::EVENT_TYPES` marks it `available: true`. The product gap closed; the
+  SEO opportunity is still entirely open, because none of it is deployed.
+
 - [ ] **Missing on-page work, in order of value:**
   1. `Organization` + `WebSite` JSON-LD on the home page — nothing identifies
      the site as an entity, which is what a navigational brand query needs.
@@ -1766,7 +1770,7 @@ That last one deserves its own note:
 
 ### Privacy
 
-- [ ] **Scope the task library the way teams are now scoped.** `/tasks/search`
+- [x] **Scope the task library the way teams are now scoped.** `/tasks/search`
   returns every Task on the site to anyone who can edit a board. Today that is
   fourteen seeded rows so nothing is exposed — but the wiki picker creates a
   Task per page anybody imports, so the library grows into a record of what
@@ -1776,6 +1780,10 @@ That last one deserves its own note:
   set it) and the same visibility scope. If that turns out to be more than it
   is worth, the fallback is simpler and also fine: drop the local library
   from the picker and let the wiki be the only source.
+
+  **Retired by round four's wiki-cache change** — the picker is one search box
+  over the OSRS Wiki and `tasks` became an ordinary cache with a seven-day TTL,
+  so the table stopped being a record of what each clan is running.
 
 
 ## Staging feedback, round four — 2026-08-21
@@ -1933,7 +1941,7 @@ credentials.
 
 ### Still open from round four
 
-- [ ] **Clicking a claimed square withdraws it, with no warning.** No hover
+- [x] **Clicking a claimed square withdraws it, with no warning.** No hover
   state says so and nothing confirms it, so an accidental second click
   quietly undoes a claim. Should open the claim in a dialog with a delete
   button, matching how everything else destructive works here.
@@ -4061,3 +4069,837 @@ Confirmed as a failing test first — the redirect went to `/welcome/osrs-userna
 — then fixed, then pinned.
 
 679 backend tests, 174 frontend.
+
+## Livegangdatum vastleggen
+
+Zodra de site live gaat: de datum ergens vastleggen. Hij is nodig voor het
+portfolio-artikel over dit project (veld `end_date` / livegang) en anders is hij over een
+maand niet meer te achterhalen.
+
+## The wizard that kept coming back — 2026-08-25
+
+Asked because it kept reappearing on staging. **Not a bug in the state, a bug
+in the labels** — and this time it was actually driven in a browser rather than
+read off the code, because reading it off the code is how the last three
+"probably fine"s happened.
+
+### The criteria, confirmed
+
+The modal opens when all three hold:
+
+1. `users.onboarding_completed_at IS NULL`, shared as `auth.user.needsOnboarding`;
+2. the page component does not start with `Auth/` — the OSRS-name gate wins;
+3. `localStorage['onboarding-snoozed-until']` is in the past.
+
+### What the two exits actually do
+
+| Exit | Effect |
+| --- | --- |
+| **Skip for now** / **Get started** | POST `/onboarding/complete`, timestamp written, gone for good |
+| **X**, Escape, click-outside | 24h `localStorage` snooze, nothing server-side |
+
+Driven end to end on `localhost:8010` with a fresh account: finished the flow,
+confirmed `onboarding_completed_at` was written, then set the snooze **25 hours
+into the past** so the tour was explicitly *allowed* to reappear, reloaded, and
+navigated. It stayed shut. Then reset the row, closed with the X, and confirmed
+the mirror image: `onboarding_completed_at` still NULL, snooze exactly 24.00h,
+and the tour back on the next load once that expired.
+
+**So the mechanism is right and the wording is backwards.** "Skip for *now*" is
+the permanent one; the X — which every user reads as "close this for now" — is
+the temporary one. Whoever keeps seeing it is clicking the X, which is the only
+control on the modal that behaves the way its shape promises.
+
+- [ ] **Rename `onboarding.skip`.** It should say what it does. The 24h snooze
+  is worth keeping exactly as it is — it exists because closing the tour used
+  to persist nothing and it reopened on every single page load — but the button
+  next to it must stop calling a permanent action "for now".
+
+**Two things that are not the bug, worth writing down so they are not
+re-investigated:** the snooze is per-browser while the completion is
+per-account, so a second device shows it once more; and `localStorage` throwing
+in private mode is deliberately read as "not snoozed", which fails toward
+showing it.
+
+Also noticed while setting this up: the site lock renders `SiteLock`, which
+does **not** match the `Auth/` prefix that suppresses the tour. An admin
+bypasses the lock so it never collides in practice, but the guard is narrower
+than its comment implies.
+
+### The account-deletion paragraph, fixed
+
+`/privacy` still said "ask and your account will be deleted" with a mailto as
+the only route, which stopped being true when Settings → Account shipped.
+`LegalPages::privacy()` now leads with the self-serve route and keeps the
+address as the fallback for someone locked out of their own account.
+
+**It will not reach staging by re-running the seeder.** `PageSeeder` is
+`firstOrCreate` on the slug, on purpose: once a page is a row it is editable
+content and a re-run must not overwrite an admin's edits. Landing a copy change
+today means deleting the row first. If seeder-as-source-of-truth is the
+workflow until launch, that wants an explicit `--force` refresh rather than
+softening `firstOrCreate`.
+
+83 tests over the legal, onboarding and page suites.
+
+### The tab strip with no pointer — not a finding on develop
+
+Reported from staging: the Site settings section nav (Access / Boards /
+Support / Announcement) shows no `cursor: pointer`. Measured on `develop` at
+`localhost:8010`, all four compute `pointer`:
+
+```
+Access → pointer   Events → pointer   Support → pointer   Announcement → pointer
+```
+
+They are plain `<button type="button">` in `Pages/Admin/Site.vue`, and the
+unlayered rule in `resources/css/app.css` covers every non-disabled button.
+It is in the shipped bundle.
+
+**The screenshot dates itself.** It reads "Boards"; `admin.site_section_boards`
+has said "Events" since `1354dcf` (2026-08-24). And the global cursor rule
+landed in `fe9b170` (2026-08-21), one day *after* the section nav itself
+(`4313501`, 2026-08-20) — so a build from that window has this nav and not the
+rule. Staging is running something older than both.
+
+Nothing to fix; it goes away with a deploy. Worth remembering that a screenshot
+from staging is evidence about staging's build, not about the branch.
+
+## Snakes & Ladders task tiles have no claim/approve flow — asked 2026-08-25
+
+Bingo's claim/review model (PENDING/APPROVED/REJECTED, proof URL, reviewer —
+see the "table question" writeup above) exists because a bingo square is
+**"a claim under review"**, not a boolean fact: a clan cannot trust a
+self-reported drop without proof.
+
+But `Tile` carries a `task_id` too ([Tile.php:14](../app/Models/Tile.php)) — an
+S&L tile can be exactly the same kind of challenge as a bingo square ("kill
+Zulrah"). It just gets marked done by `PlayerBoardController::toggleTile()`
+([PlayerBoardController.php:117](../app/Http/Controllers/PlayerBoardController.php)),
+a plain self-toggle with no proof and no host review. Same trust problem
+bingo was built to solve, unsolved on the other board type.
+
+- [ ] **Decide whether task tiles on Snakes & Ladders should require proof and
+  host approval**, same as bingo squares. Not free — `requires_approval`,
+  `proof_url`, review state and a review queue all live on `bingo_cards`, not
+  on `boards`/`player_boards`/`completed_tiles`, and the "table question"
+  research deliberately kept the two schemas separate. Options are: extend
+  `completed_tiles` with the same review columns, or accept the asymmetry
+  because S&L is a race-to-the-end and a lying self-toggle mostly just costs
+  the liar the game, while a bingo squad's own trust in each other never gets
+  tested unless the host looks. Whichever way this goes, write down the
+  reasoning — it's the kind of thing that gets re-litigated every time
+  someone new reads the two board types side by side.
+
+## Feedback batch, staging screenshots — 2026-08-25
+
+Two of these were real bugs, fixed directly rather than filed:
+
+- [x] ~~**An ended event still let you play it.**~~ Reported live: an event
+  showing the "Ended" badge still rendered a clickable "mark as complete" card
+  and a working dice roller, and the roll actually landed. The "Ended" badge
+  itself was already correct (`eventStatus()` in `Support/board.js`, driven off
+  `end_date`) — nothing gating the dice/tile-complete controls had ever checked
+  it, client or server, only `isPaused()`. Added `Event::isEnded()` (mirrors
+  `boardEventStatus()`'s day-level comparison, `endOfDay()->isPast()` rather
+  than a bare `isPast()` so an event stays playable through the rest of its own
+  end date) and checked it in `PlayerBoardController::roll()`/`toggleTile()`
+  (server) and `BoardShow.vue`'s `isEnded` computed (client, same "ended
+  outranks paused" precedence as the JS status badge already uses).
+- [x] ~~**Page header didn't reach the same right edge as the alert below
+  it.**~~ `EventTypeHeading`'s root `<div class="min-w-0">` had no grow class
+  in the `flex justify-between` row it sits in, so it (and the "you're an
+  admin, not a host" alert nested inside it) only sized to content instead of
+  filling the row. Added `flex-1`; same fix applies to all three event types
+  since Board/Bingo/SkillRace pages all wrap it in the identical flex row.
+
+Everything else here is scoping only — none of it is built yet:
+
+- [x] ~~**Account deletion: split "end" from "delete progress".**~~ — done
+  2026-08-26. The old single "End it" choice for a still-running, co-host-less
+  event was a real mismatch between label and behaviour: its copy claimed
+  "delete the event and everyone's progress," but the code only ever
+  soft-deleted the `Event` row — hidden from every list, admin-restorable, and
+  every player's board position/completed tiles/standings sitting untouched
+  and simply unreachable underneath it. Now split into what each of those two
+  things actually deserves to be:
+  * **End it** — `AccountDeletionService::endEventInPlace()`. The event, its
+    board and everyone's progress are completely untouched; only its
+    `end_date` is pulled to now (if it hasn't already passed), which is
+    enough on its own — `Event::isEnded()` (this session's earlier fix) and
+    every rule built on it already refuse a roll or a tile-complete on an
+    ended event. The row is never soft-deleted, so it keeps its place in
+    every listing. The owner attribution disappears on its own too, via
+    `board_authors.user_id`'s existing `cascadeOnDelete` firing when
+    `$user->delete()` runs at the end of the transaction — no code needed
+    there at all.
+  * **Delete it** — `AccountDeletionService::deleteEventAndProgress()`. What
+    the old label always claimed: every `PlayerBoard`/`CompletedTile` for its
+    board, every `EventStanding`, every `BingoCompletion` on its card, and its
+    `EventParticipant` rows are deleted outright. The event ROW is still only
+    soft-deleted afterwards, same as before — an admin restoring it from
+    `/admin/events` gets back an empty shell (its settings), not a
+    resurrection of what this just destroyed.
+  * **"Delete account and all events"** — a fast path beside the ordinary
+    delete button. Skips every per-item select entirely: `AccountController::
+    destroy()` builds the choice maps itself (`'delete'` for every owned
+    event and team) when `delete_everything` is sent, and ignores any
+    `events`/`teams` sent alongside it — the fast path means what it says,
+    not "everything except what I'd already picked."
+  * **Confirmation moved into a modal.** Typing the RuneScape name and giving
+    the password used to sit inline on the page; a stray click anywhere in
+    that card could get partway through a form for an irreversible action.
+    Both delete buttons now just open one shared `<client-only>` `u-modal`,
+    keyed by which one was clicked (different confirmation copy for the
+    ordinary vs. fast path) — the per-item selects still live on the page
+    itself, since there can be many of them and a small modal is the wrong
+    place for that part.
+  Teams were **not** given the same three-way split — the ask was specifically
+  about events, and a team's only "ending" was already destructive before
+  this (see "Verify what actually happens when a team is deleted" above); left
+  as its own question if a team ever needs the same treatment.
+  10 new backend tests in `AccountDeletionTest.php`, all passing alongside
+  the pre-existing 21. Verified live in a browser: the fast-path modal opens
+  with the account's real name interpolated into the confirm copy, and the
+  ordinary delete button is correctly disabled until every per-item choice is
+  made.
+  **Follow-up, same day**: the team candidate list offered every member in
+  storage order with no manager-first priority, unlike events' co-hosts-first
+  rule — fixed to match (`TeamMember::MANAGING_ROLES` first, falling back to
+  everyone only when there's no manager). The team's "End it" choice had also
+  borrowed the event's soft-ending copy verbatim, which is backwards for a
+  choice that is still the destructive cascade discovered above — given its
+  own accurate label and hint. The event "End it" label/hint were rewritten a
+  second time too — "keep it, but it's over" was still vague on its own
+  terms, and the hint's claim that a departed owner shows "the same as a
+  deleted player anywhere else" was simply untrue: `board_authors.user_id` is
+  `NOT NULL`, so there is no anonymised placeholder to leave behind the way a
+  leaderboard row gets one — the row is removed outright and the owner stops
+  appearing as an editor, full stop. The hint now says exactly that instead of
+  implying a parity that was never built. Also added a standalone "settle one
+  event/team right now" action (its own endpoint, `AccountDeletionService::
+  settleOneEvent()`/`settleOneTeam()`, account never touched) plus client-side
+  "Load more" paging for the events/teams lists — asked for after noticing the
+  list had no ceiling and every decision was otherwise stuck until the final,
+  irreversible confirm. 9 more backend tests, verified live against the actual
+  running server (not just PHPUnit) for both the "end" and "delete" code
+  paths.
+- [x] ~~**Profile → "Your events" as its own page.**~~ — turned out to already
+  exist, 2026-08-26: `/my-events` (`BoardController::mine()`) answers the same
+  question with real board previews and hosted/playing filters across every
+  event type, reachable from the header's **Events → My events** nav item
+  (`nav.boards`/`nav.my_boards` were already literally "Events"/"My events" —
+  the stale code comments calling that group "Boards" were the only thing
+  saying otherwise). Asked the owner rather than building a near-duplicate
+  page: confirmed it was redundant, so the simpler created/joined list
+  embedded in `Settings/Profile.vue` was removed rather than kept in sync
+  with a second implementation of the same list. `ProfileController::show()`
+  dropped the whole `events` query it was building for that section. The
+  settings page now links out to `/my-events` instead. Two tests that pinned
+  bugs specific to the removed list (title/link correctness, the
+  created/joined `isHost` flag) were deleted rather than ported, since
+  `/my-events` already has its own equivalent coverage in
+  `StagingFeedbackTest.php`.
+- [ ] **Per-host Wise Old Man API key.** Today `WOM_API_KEY` is one site-wide
+  key (`config/services.php`, read by `WiseOldManService`) shared by the
+  scheduled `events:sync-standings` sync across every event — there's no
+  per-user or per-event key anywhere. Idea: let an event host paste their own
+  WOM API key (a Settings section, "Wise Old Man") so their own events sync at
+  the higher authenticated rate limit without depending on the site's shared
+  key/quota. Needs a place to store it (probably on `users` or `events`), and a
+  decision on how per-event throttling interacts with the sync command's
+  current single global rate pacing (`WiseOldManService::requestsPerMinute()`/
+  `shouldThrottle()`) before it's more than a config field.
+- [x] ~~**Community hub page**~~ — done 2026-08-26. New `/community`
+  (`CommunityController`), same shape as the events hub: a slice of the
+  user's own teams (with a "View all" to `/teams` once there are more than
+  the slice shows), plus an explained placeholder section per still-"Soon"
+  nav child (Global leaderboards, Clan directory) — same convention
+  `Boards/Index.vue` already uses for its own Calendar row, rather than
+  silently having nothing where the nav promises something. The Community nav
+  group gained a `to: '/community'` the same way the Boards group has its own
+  destination — clicking the label goes somewhere, hovering/the chevron opens
+  the children. **What the two Soon placeholders actually describe is real
+  scoping work, not filler copy** — see the two new backlog entries directly
+  below, written while building this, for what they'd need to become real.
+  No per-team destination page exists yet (`/teams` has no `/teams/{id}`
+  route — everything happens through modals on the one list page), so hub
+  cards link to `/teams` as a whole rather than to an individual team; worth
+  revisiting if a team ever gets its own page for another reason.
+- [ ] **Global leaderboards, for real** (the Community hub's first Soon
+  placeholder). Site-wide rankings across every event a player has taken
+  part in, not scoped to one event the way `LeaderboardController` and
+  `EventStandingsService` both are today. Concrete shape worth starting
+  from: total tiles completed across every Snakes & Ladders board ever
+  played, count of events hosted vs. joined, and a "hall of fame" ranking
+  the single biggest XP gain and the single biggest kill-count gain ever
+  recorded by `EventStandingsService` — the numbers already exist per event,
+  this is an aggregation question, not a new data source. Needs deciding
+  whether it's all-time or has its own rolling window (a season?), and
+  whether an account that's been through the leaving-without-taking-
+  everyone-with-you deletion flow should still occupy a hall-of-fame slot as
+  "Deleted player" (consistent with how a finished event's own standings
+  already survive account deletion) or drop out of a *global*, cross-event
+  ranking specifically — a question this app hasn't had to answer yet
+  because every ranking has been scoped to one event until now.
+- [ ] **Clan directory** (the Community hub's second Soon placeholder). A
+  browsable, public-facing directory of clans/teams open to new members —
+  distinct from `/teams`, which only ever shows teams a given account is
+  already in or shares a Discord server with (`Team::scopeVisibleTo`) and is
+  therefore useless for finding a clan you're not already part of. Needs:
+  an opt-in "publicly listed" flag on `Team` (defaulting off — a private
+  team should stay invisible to strangers exactly as it is today), a public
+  index page showing member count, recent activity and upcoming events the
+  clan is running, and a real join mechanism for a stranger to request or
+  claim a spot (today the only way onto a team is being added by someone who
+  already manages it — `TeamController::addMember`/`searchUsers`, both
+  scoped to people already visible to the manager). That join mechanism is
+  the load-bearing piece: a directory that only ever shows clans without a
+  way to actually get into one is a list, not a directory.
+- [x] ~~**`/teams` as a masonry grid.**~~ — done 2026-08-26. CSS multi-column
+  (`columns-1 sm:columns-2 lg:columns-3` + `break-inside-avoid` per card)
+  replaces the plain `grid`, which forced every card in a row to match the
+  tallest one — a two-member team and a sixteen-member team sat in equally
+  tall boxes, one of them mostly empty. Columns let each card be exactly as
+  tall as its own content.
+- [ ] **`/teams` team membership history.** A team that had members A/B/C/D
+  at one event and A/B/D at a later one is still "the same team," and
+  there's currently no way to see that a roster changed between events.
+  Worth thinking through as a lightweight revision log on `TeamMember`
+  (add/remove timestamps already imply this partially, via `AuditLog`)
+  rather than a new versioning system — the audit log already records
+  team/member mutations (see Admin & users → Audit log above), so this may
+  mostly be a UI question (a "roster over time" view per team) rather than
+  new storage.
+- [x] ~~**OSRS wiki icon search for team icons**~~ — done 2026-08-26, and
+  extended to the task icon field below in the same pass since both wanted
+  the identical thing: pick an icon straight off the OSRS Wiki instead of
+  pasting a URL by hand. New `WikiController::searchGlobal()` +
+  `GET /wiki/search`, gated on being signed in rather than on
+  `assertCanEditEvent` — there's no event to check edit rights against for a
+  team or a standalone task, and the actual writes (saving the team, saving
+  the task) stay permissioned at their own endpoints regardless of what this
+  read-only search returns. `TaskPicker.vue` (the tile/bingo-square editor's
+  wiki picker) creates or refreshes a **Task** row per choice on purpose — a
+  tile really does want a shared, reusable Task underneath it. A team icon
+  and a task's own icon field have nothing to attach a second Task to, so
+  the new `WikiIconPicker.vue` just emits the chosen `icon_url` directly,
+  same search endpoint and result shape, no Task side-effect. Both new
+  components are only ever rendered behind `<client-only>` (`TeamSettingsModal`
+  via `Teams/Index.vue`, `TaskSettingsModal` via `Admin/Tasks.vue`), which is
+  what makes them safe without the SSR gymnastics tile editing's version needs.
+  **Not done, left as its own idea**: sourcing team/task icons from an
+  in-house icon set instead of (or alongside) a live wiki lookup, now that
+  skill icons exist and boss icons are in progress — a genuinely separate
+  question from "can you search the wiki at all," which this answers.
+- [ ] **Discord server picker: recently-used ordering.** When choosing a
+  Discord server for a team or event, most-recently-used/most-often-picked
+  servers should sort to the top instead of a flat list.
+- [ ] **Discord server picker: server icon per entry**, if the Discord API
+  actually exposes a per-guild icon for servers the bot/OAuth session already
+  knows about — check what's available before committing to this.
+- [ ] **Team edit modal: show the linked Discord server**, and consider
+  loading "add member" suggestions from that server's membership if Discord's
+  API/our stored guild-sync data supports it (`UserGuild` sync exists for
+  login, but check whether per-guild member *lists* are actually fetchable
+  with the scopes this app requests before promising this).
+- [x] ~~**Team members modal: tooltip, not `title` attribute**~~ — done
+  2026-08-26. `u-tooltip` on the promote/demote and remove-member buttons in
+  `TeamMembersModal.vue`, safe here specifically because that whole modal is
+  already rendered behind `<client-only>` in `Teams/Index.vue` — unlike the
+  SkillRace leaderboard's error badge, which stays a native `title` on
+  purpose because that page renders server-side and a real `u-tooltip` there
+  would be the SSR hazard CLAUDE.md warns about.
+- [x] ~~**Teams: replace `window.confirm` on delete with a popover confirm**~~
+  — done 2026-08-26. New `Components/ConfirmPopover.vue` (a `u-popover`
+  wrapping a message + cancel/confirm pair, with an optional note textarea
+  built in for the task-delete item below) replaces `window.confirm()` in
+  `Teams/Index.vue`. `Admin/Blueprints.vue` still uses `window.confirm()` for
+  its own delete — not touched, since it wasn't asked for, but the same
+  component is right there if that's wanted next.
+- [x] ~~**Verify what actually happens when a team is deleted**~~ — traced
+  2026-08-26, and it deletes more than the confirm text used to say. `Team`
+  is hard-deleted, not soft, and three foreign keys cascade off it: its
+  `team_members` rows and `board_teams` assignment (both expected), but also
+  **`player_boards.team_id`** and, through that, every one of that team's
+  `completed_tiles` — meaning a deleted team's actual Snakes & Ladders
+  progress (dice position, every tile ticked off) is destroyed on every board
+  it was ever assigned to, and the same is true of its bingo claims
+  (`bingo_teams`/`bingo_squares.team_id`, also `cascadeOnDelete`). The old
+  confirm text ("its members and every event it is assigned to lose the
+  team") undersold this badly — it read as an unassignment, not as the
+  team's game history being gone for good. `teams.delete_confirm` now says
+  so plainly: dice position, completed tiles, claimed squares, all of it.
+  No behaviour changed, only the warning — deciding whether team deletion
+  should become soft/reversible (matching how `Event` and `Task` both work
+  now) is a bigger question than a copy fix and is its own decision to make,
+  not assumed here.
+- [ ] **Guide pages read as landing pages, not guides — Snakes & Ladders
+  done, the rest still open.** `/osrs-snakes-and-ladders`'s "How it works"
+  was rewritten 2026-08-27 from one flat five-step list (which mixed host
+  actions and player actions with nothing signalling the audience changed
+  partway through) into two explicitly-labelled tracks — **Running an
+  event** (5 steps: create, give every tile a task, place snakes/ladders,
+  decide who can join, share it) and **Playing** (4 steps: join by rolling,
+  see what you landed on, complete it or don't, come back tomorrow) — each
+  with its own numbering, so "step 3" means something different depending
+  which column you're reading.
+  **Found and fixed while touching this**: both this list and the "Board
+  sizes" section below it were hardcoded English sitting in
+  `LandingController::snakesAndLadders()` (`'Create a board'`, `'5x5
+  board'`, …) while a full, already-translated, already-correct set of
+  `landing.snakes.step*`/`size_*` keys sat unused in `lang/en.json` — nothing
+  had ever pointed at them. Both arrays now build through `trans()`, and the
+  orphaned duplicate keys the old hardcoded copy would have collided with
+  were removed rather than left alongside the ones now actually wired up.
+  Also dropped a second, dead JSON-LD builder in the Vue file itself
+  (`useSeoData({ jsonLd: [...] })` computed a `jsonLdBlocks` value the
+  template never rendered) — the real FAQPage/HowTo structured data for this
+  page has only ever come from `LandingController`'s own `View::share
+  ('jsonLd', ...)` straight into `app.blade.php`, for the SSR reasons that
+  controller method's own comment already documents; the Vue-side attempt
+  was pure dead weight computing something nobody read.
+  **Screenshots are still not in the page.** A real, populated demo board
+  ("Summer Grind Board", owned by the `claude-demo@absolit.nl` account — see
+  that seeder's own docblock) was built specifically to screenshot from, and
+  renders exactly as intended (task icons, snake/ladder connectors, the "You
+  are here" label, the dice roller) — confirmed live via `claude-in-chrome`.
+  What blocked finishing this: no tool in this session could get a captured
+  screenshot from either browser (Claude_Browser pane or real Chrome via
+  claude-in-chrome, including its own `save_to_disk` option) onto a locally
+  readable path — searched Downloads, all three Chrome profiles, and every
+  Claude CLI cache directory without finding one. Whoever picks this up next
+  should drop real PNGs into `public/images/guides/` at the two marked
+  `<!-- Screenshot slot -->` comments in `SnakesAndLadders.vue` (the tile
+  editor mid-wiki-search, and the live board) rather than reopen that search —
+  the demo board is already sitting there ready to shoot.
+  **Not started at all**: Bingo, Skill of the Month and Drop Race have no
+  guide page of any kind yet, only `/osrs-clan-events` (a general "what is
+  this platform" overview, not a per-format walkthrough) and
+  `/osrs-event-ideas`. Static content stays the right call for all of these
+  rather than waiting on the CMS block vocabulary to grow to support it.
+- [x] ~~**"You are here" label on the current tile**~~ — done 2026-08-26,
+  **Snakes & Ladders only**. A thin top-of-tile banner (`.board-tile--here-
+  label` in `app.css`, same brand-ink-on-amber pairing the primary-button
+  contrast fix already established) on whichever tile equals
+  `playerBoard.current_position` in `BoardShow.vue`. **Not applied to
+  Bingo**: bingo has no single "current position" at all — every square is
+  independently claimable, so there's no one tile that "you are here" could
+  point at. If the actual want is highlighting the viewer's own
+  claimed/pending squares on a bingo card, that's a different feature
+  (styling by claim state, not by position) and worth asking for by that
+  name rather than assumed here.
+- [ ] **A real Snakes & Ladders connector SVG** — dynamic height or an actual
+  curved path between snake/ladder endpoints, rather than the current
+  percentage-coordinate straight connector (see Branding → "Snake/ladder SVG
+  connector lines" above for what exists today). Explicitly open-ended: "see
+  how far this can be made to look right," not a fixed spec.
+- [x] ~~**Event detail meta fields need tooltips/popovers.**~~ — done
+  2026-08-26, as native `title` attributes rather than `u-tooltip`.
+  `EventTypeHeading.vue`'s date-range line and every field the three event
+  pages add through its `#meta` slot (board size + solo/team on
+  `BoardShow.vue`, card size + win condition on `Bingo.vue`, ranked-by on
+  `SkillRace.vue`) now explain themselves on hover, dynamically where the
+  wording depends on what's configured (solo vs team, line vs full-house,
+  skill vs boss race). Also added to the second, lower "meta" card on
+  `BoardShow.vue` (dates/size/roll-limit/mode badges), which repeats the same
+  facts and was equally unexplained.
+  **Native `title`, not `u-tooltip`, everywhere here** — `EventTypeHeading`
+  is shared by all three event pages and all three render server-side;
+  `u-tooltip` reaches `@nuxt/ui`'s `#imports` specifier, the SSR crash
+  CLAUDE.md's SSR-gotchas list warns about (see `SkillRace.vue`'s own error
+  badge, which avoids it for the identical reason). The Teams tooltip fix
+  earlier in this batch is the exception that proves the rule: that one is
+  safe specifically because it's already rendered behind `<client-only>`.
+- [ ] **Ideas/feedback page.** A form (guides page, footer, or its own route)
+  where anyone can submit an idea or piece of feedback. Needs: honeypot field,
+  rate limiting, basic spam heuristics on title+description (flag likely spam
+  rather than reject outright; only delete what's unambiguously spam), an
+  admin CRUD to review submissions, and on a non-spam submission both an email
+  to the site owner and a push notification (existing `NotificationCategory`
+  catalogue + `PushNotifier` — see CLAUDE.md's push section for the pattern
+  every new category has to follow).
+- [x] ~~**Admin events list needs a search box and filters**~~ — done
+  2026-08-26. `/admin/events` had no search or filter at all before this —
+  every event ever created, in one flat list. `AdminBoardController::index()`
+  now takes `search` (title match) and `status` (active/paused/deleted, an
+  unrecognised value falling back to 'all' rather than to an empty list) and
+  echoes both back as `filters` so the UI reflects what actually ran, not
+  what was typed. Debounced reload mirrors Audit.vue's own pattern.
+  **The one thing this needed beyond Audit's pattern**: real `sessionStorage`
+  persistence, not just the URL — asked for explicitly, since a plain link
+  back to `/admin/events` from anywhere else in `/admin` carries no query
+  string at all, unlike Audit.vue's filters which only survive within that
+  page's own back/forward history. A bare visit with nothing saved uses the
+  URL as normal; a bare visit with something saved re-syncs the URL to match
+  on load, so the address bar and the visible list never disagree. 7 new
+  tests in `AdminEventsFilterTest.php`.
+- [x] ~~**Task delete is instant and irreversible in the UI.**~~ Popover
+  confirm + optional note + undo, done 2026-08-26. `Task` gained
+  `SoftDeletes` (migration `add_soft_deletes_to_tasks_table`) specifically so
+  undo could be a real restore rather than a same-title recreate: every tile/
+  bingo square's `task_id` uses `nullOnDelete`, which only fires on an actual
+  SQL DELETE — a soft delete is an UPDATE, so a tile using the task keeps
+  pointing at it the entire time it's "deleted," and restoring the task row
+  is the complete undo with nothing to re-link. `TaskController::destroy()`
+  takes an optional `note` (recorded on the `task.deleted` audit log entry,
+  not stored on the task itself — there's no row left to attach it to once
+  deleted) and no longer sets a `board-save` flash, since the frontend shows
+  its own actioned toast (`common.undo` → `TaskController::restore()`) and a
+  second plain-text toast saying the same thing would just be noise on top
+  of it. `ConfirmPopover.vue`'s note textarea is generic (any consumer can
+  opt in via `note-placeholder`), not task-specific. 6 new tests in
+  `TaskControllerTest.php`.
+  **Not done: notifying hosts.** Whether a host should be told when a task
+  their board is using gets deleted out from under them is still an open
+  question, deliberately not answered here — it needs its own
+  `NotificationCategory` entry (throttle, default on/off, copy) per
+  CLAUDE.md's push conventions, which is a real design decision and not
+  something to fold into a delete-confirm popover.
+- [x] ~~**Task edit: icon field is a bare URL.**~~ — done 2026-08-26, in the
+  same pass as the team-icon wiki lookup above — see that entry for how
+  `WikiIconPicker.vue` works and why it doesn't create a Task the way the
+  tile editor's own wiki picker does.
+- [x] ~~**Diagnostics: "N standings are failing to sync" needs to actually be
+  actionable.**~~ — done 2026-08-27. New `DiagnosticCheck::$key` (only set on
+  `wom_standings`) lets the page attach a "Details" button to this one check
+  without matching on its label; opens `StandingsFailuresModal.vue`, fetched
+  from a new `GET /admin/diagnostics/standings`.
+  **Grouped by account, not by row** — the same wrong RSN commonly fails
+  several events at once, and the fix (a nudge, a reset) is one action
+  against the account, never one per event. A row whose account no longer
+  exists is still counted (so the summary line and the modal never disagree)
+  but offers neither action — there's nobody left to nudge.
+  **Nudge** sends a real push through a new catalogue category,
+  `OSRS_USERNAME_REMINDER` — its own category rather than riding along under
+  an existing one, so a player who muted something else for an unrelated
+  reason doesn't lose this too. Logged via `AuditLog` (`diagnostics.
+  osrs_nudge_sent`), and the modal surfaces the count and "last nudged
+  :when" per account so a repeat failure reads as "reset it" rather than
+  "nudge it again," exactly as asked — though the choice between the two
+  stays the admin's, nothing here forces a reset after N nudges.
+  **Reset** clears `osrs_username`/`osrs_verified_at` outright rather than
+  editing them — `RequireOsrsUsername` middleware already sends any account
+  with neither set through `/welcome/osrs-username` on its next page load,
+  the same path a brand new signup takes, so "re-onboard cleanly" needed no
+  new UI at all. Logged via `AuditLog` (`diagnostics.osrs_username_reset`,
+  carrying the old value in metadata).
+  **The page's own "nothing here reaches another user" guarantee is
+  deliberately given up for these three routes only** — the class docblock
+  now says so explicitly, since it used to justify skipping confirmation
+  dialogs entirely. Both actions sit behind their own `ConfirmPopover`.
+  7 new backend tests, plus live verification against the actual running
+  server (not just PHPUnit) for both the nudge and the reset.
+
+Two questions answered while triaging this batch rather than filed as work:
+
+- **`WOM_USER_AGENT`** — `config/services.php`'s `services.wom.user_agent`,
+  defaulting to `env('WOM_USER_AGENT', 'osrs-events')`. Wise Old Man's API
+  etiquette asks every caller to identify itself with a contact address in its
+  User-Agent so they have someone to reach if a client is hammering them (see
+  the comments in `WiseOldManService`/`config/services.php`) — it should be
+  something like `"osrs-events (contact: you@example.com)"`, per
+  `.env.example`'s own documented format, not the bare default. It is
+  unrelated to the API key: the key raises the shared rate limit, the
+  user-agent just says who's asking. Whether it should be the owner's personal
+  email or a dedicated project address is a judgement call, not a technical
+  one — either satisfies WOM's ask.
+- **Discord webhooks/announcements** — already built, not missing from the
+  backlog: `Event::$fillable` carries `discord_webhook_url`, and
+  `app/Services/DiscordAnnouncer.php` + `EventNotificationService` send
+  through it. If specific announcement triggers are still missing (which
+  events, which moments), that's a narrower follow-up than "is this built at
+  all" — worth naming precisely if something's still not firing.
+
+## The pre-launch door blocked the wrong people — 2026-08-25
+
+Reported live, from staging: an ordinary signed-in account ("MB Test") saw
+the header showing them fully logged in, the home page's "not open yet"
+banner, AND the onboarding welcome modal, all at once — described as "iets
+geks/fout" (something weird/wrong), a session mix-up.
+
+It wasn't a mix-up. It was the pre-launch door doing exactly what it had
+always been built to do, and that turned out to be the wrong thing:
+`EnsureSiteUnlocked` let an **admin** session through and nobody else,
+including an ordinary account that had signed in perfectly normally. The
+owner's own read, unprompted: *"het slotje is puur bedoeld ter afscherming
+van nieuwe mensen"* — the lock exists to keep out newcomers, not to lock out
+people who already have an account. Someone already signed in has, by
+definition, already gotten past whichever door they came through; asking them
+for the shared password on top of that answered "are you allowed to use the
+site you're already using" with a password box. The home page's "not open
+yet" banner and the header's trimmed nav were reading the same wrong signal,
+which is why both fired for a fully-authenticated player at once.
+
+- [x] ~~**Fixed: any signed-in account now walks straight through the
+  pre-launch door.**~~ `EnsureSiteUnlocked` (now exposing a shared static
+  `isShutFor()` that both the middleware and `HandleInertiaRequests`' `site`
+  props call, so the route gate and the header/home-page signal can't
+  disagree the way they just did) passes anyone with an existing session —
+  any role, not only admin. The door still refuses a stranger with no
+  account and no shared password, and still refuses new registration
+  (including via Discord — `DiscordController::registrationClosed()`).
+- [x] ~~**Added the second, stricter switch the owner asked for, with
+  different naming and look.**~~ `admin_lockdown_enabled` — "Full lockdown"
+  in the admin Site settings, deliberately styled in `error` red rather than
+  the pre-launch lock's neutral tone, so the two don't read as "the same
+  lock, one notch further." While it's on, **only** an admin session gets
+  through — not an existing player, not the shared password, and (unlike the
+  pre-launch door) not the public marketing pages either, since "blocks
+  everything except for admins" was the explicit spec. Sign-in routes stay
+  reachable regardless, or an admin who isn't currently signed in would have
+  no way to become one. 31 tests in `SiteLockTest.php` cover both doors,
+  including that full lockdown refuses the shared password outright rather
+  than silently accepting it and bouncing the visitor right back.
+
+Not touched: the onboarding modal itself. It was never gated by the lock at
+all (`needsOnboarding` + a non-`Auth/` page), and showing a real welcome tour
+to a real logged-in account is correct regardless of whether the site is
+pre-launch — it was only ever confusing *alongside* the incorrect "not open
+yet" banner a moment earlier, which the fix above removes for anyone actually
+signed in.
+
+## Feedback batch, round two — 2026-08-25
+
+- [ ] **Active bingo/S&L tasks need a wiki link and an explanation popup.**
+  Today an active tile just shows the task's title/description/icon (see
+  `board.your_task` card in `BoardShow.vue` and its Bingo equivalent) — no
+  link out to the OSRS Wiki article the task is drawn from, and no in-app
+  explainer of what actually completes it. Wants: a link straight to the
+  task's wiki page (task icons already carry wiki provenance in spirit — see
+  the "task edit icon is a URL, should be a wiki lookup" item above, which
+  this would piggyback on for the actual URL), plus a button opening a popup
+  with a fuller description of how to satisfy the task, separate from the
+  short label shown on the tile itself.
+
+## Guide pages for the other three event types — 2026-08-27
+
+Picks up two things the S&L guide rewrite (above, "Guides content hierna")
+left open: real screenshots were still blocked, and Bingo/Skill Race/Drop
+Race had no guide page at all even though all three have been `available =>
+true` in `Event::EVENT_TYPES` this whole time — `/osrs-event-ideas` was
+telling visitors "Bingo boards are the next event type on the roadmap," which
+was simply wrong.
+
+- [x] ~~**Visible screenshot placeholders, not HTML comments.**~~ New
+  `GuideScreenshot.vue` (`resources/js/Components/`): given only an `alt`
+  description and no `src`, it renders a dashed-border box with an image icon
+  and the description as visible body text — the placeholder's actual content
+  is the description, not a blank rectangle. Once a real file exists under
+  `public/images/guides/` and gets passed as `src`, the same component swaps
+  to a real `<img :alt>` **plus that same text repeated as a visible
+  `<figcaption>` underneath** — the explicit ask was that the description
+  must show up for sighted users too, not live only in the invisible `alt`
+  attribute. Replaced the two bare `<!-- Screenshot slot -->` comments in
+  `SnakesAndLadders.vue` with it; the screenshot-tooling dead end itself
+  (documented in the previous entry) is unchanged and still unresolved — this
+  only fixes what the page shows in the meantime.
+- [x] ~~**Bingo, Skill Race and Drop Race guide pages, same host/player
+  two-track shape as Snakes & Ladders.**~~ New routes `/osrs-bingo`,
+  `/osrs-skill-race`, `/osrs-drop-race` (`LandingController::bingo()` and a
+  shared `metricRacePage()` helper for the two WOM-backed types, since
+  `SKILL_RACE`/`DROP_RACE` are one pipeline server-side already —
+  `Event::needsMetric()`, `EventParticipationService`, the same
+  `SkillRaceController` routes — differing only in `SKILL_METRICS` vs
+  `BOSS_METRICS`). Each page: hero, a host-steps/player-steps two-column
+  section (5 host steps, 4 player steps, mirroring the S&L page's structure
+  and using the same `GuideScreenshot` placeholder pattern), a "why this
+  format" paragraph, a 3-item features grid, and an FAQ — CMS-editable via
+  `faqsFor()` the same way the existing three landing pages are, falling back
+  to the shipped copy.
+  **Drop Race's copy deliberately corrects the format's own name**: the
+  underlying mechanic is a boss *killcount* race (`bosses.{name}.kills` from
+  Wise Old Man, per the existing comment in `Event.php`), not a log of actual
+  item drops — the guide says so explicitly ("Kill count, not drop luck")
+  rather than let the page's own name overpromise RNG-drop tracking that
+  doesn't exist.
+  Wired into every place the three existing guides already appear:
+  `AppHeader.vue`'s Guides submenu (desktop hover + mobile drawer),
+  `AppFooter.vue`, `EnsureSiteUnlocked::PUBLIC_ROUTES` and
+  `Support/landing.js`'s `PUBLIC_PATHS`/`LANDING_PAGES` (so all three stay
+  reachable and correctly-styled while the site is pre-launch-locked),
+  `SitemapController::STATIC_PATHS`, and `Page::PARTIAL_SLUGS`.
+  **Also fixed**: `landing.event_ideas.supported_body` — the sentence
+  claiming Bingo was still "the next event type on the roadmap" — now lists
+  all four formats the site actually runs.
+  Covered by `tests/Feature/NewGuidePagesTest.php` (steps/modes/FAQ counts
+  and FAQPage JSON-LD, all three routes) plus extended assertions in
+  `SiteLockTest.php`, `SitemapTest.php` and `tests/js/landing.test.js`. Full
+  suite green (734 backend, 174 frontend) after the change; both
+  `pnpm build` and `pnpm exec vite build --ssr` reran and the SSR node
+  process restarted on the new bundle. Verified live in-browser: all three
+  new pages, the S&L page's two placeholder boxes, and the nav drawer's
+  Guides submenu links.
+
+## Jagex attribution wording, corrected — 2026-08-27
+
+Double-checked against the actual policy text
+(`legal.jagex.com/docs/policies/fan-content-policy` §8.1), which requires this
+exact sentence "in a prominent and visible place":
+
+> "Created using intellectual property belonging to Jagex Limited under the
+> terms of Jagex's Fan Content Policy. This content is not endorsed by or
+> affiliated with Jagex."
+
+- [x] ~~**The live disclaimer didn't match — close, but not the required
+  wording.**~~ The footer (`common.not_affiliated`, rendered on every page —
+  the actual "prominent and visible" placement, more so than one page) said
+  only "Not affiliated with Jagex Ltd." The `/terms` page's own Jagex callout
+  (`LegalPages::terms()`) was closer but still a paraphrase, not the
+  sentence. Both now carry the exact required wording verbatim. Ran
+  `php artisan pages:sync-legal` to push the `/terms` change into the
+  existing database row — `LegalPages.php`'s own docblock warns that editing
+  the file alone does nothing on an environment that already seeded the page,
+  since the seeder only `firstOrCreate`s.
+- [x] ~~**Found and removed a second, dead copy while checking.**~~ An entire
+  earlier draft of the terms page — 26 `terms.*` keys in `lang/en.json`
+  (`terms.jagex_body`, `terms.service_body`, `terms.acceptance_body`, etc.) —
+  turned out to be orphaned: nothing in `resources/js` or `app/` referenced
+  any of them, only the bundled translation file itself. This is what the
+  session initially (and wrongly) quoted back as "the current wording" before
+  actually checking what renders — `LegalPages.php` (`Written from what the
+  schema stores, checked against it on 2026-08-24`) superseded this whole
+  namespace at some point and nobody deleted the leftover keys. Removed
+  rather than left sitting there as a second, disagreeing source of truth for
+  the same legal page.
+
+Full suite still green after (734 backend / 174 frontend); both bundles
+rebuilt, SSR restarted, and the exact sentence verified live on both the
+site-wide footer and `/terms`.
+
+## The guide pages read like a landing page, not a guide — 2026-08-27
+
+Reported directly: *"het feit dat alles met zulke ontiegelijke grote margins
+wordt verspreid alsof het nog een landingspagina is ofzo vind ik exceptioneel
+kut om te lezen"* — the six guide pages (Snakes & Ladders, Bingo, Skill Race,
+Drop Race, Clan Events, Event Ideas) were built from `u-page`/`u-page-hero`/
+`u-page-section`, which are @nuxt/ui's own marketing-landing-page components:
+centered narrow content, huge vertical gaps between sections, no theme
+override in `ui.config.ts` to soften it because there isn't one to write —
+the components are the wrong shape for the job, not a CSS tweak away from
+right. Explicit reference point given: OSRS Wiki — dense, connected,
+information-first, with a sidebar.
+
+- [x] ~~**New `GuideLayout.vue`**~~ — compact left-aligned header (title,
+  lead, CTA row) instead of a full-bleed hero; a two-column
+  `grid-cols-[1fr_260px]` body below it; the article column capped at
+  `max-w-3xl` so a line of text isn't stretched across a 1440px screen (the
+  actual cause of "erg lelijk om te lezen" — nothing was wrapping, it was
+  just unreadably wide); a `sticky` sidebar, desktop-only, carrying three
+  wiki-style blocks decided in this pass since the ask left them open to
+  "door jou te bepalen": an anchor-linked **"On this page"** table of
+  contents, a **"Quick facts"** infobox (grid size / win condition / metric /
+  players — whatever's fixed per page), and an **"Other guides"** list. Mobile
+  drops the sidebar entirely rather than building a collapsible ToC — these
+  pages are short enough on a phone that a jump-nav would cost a tap to reach
+  content already one scroll away.
+  **`@apply` in a scoped `<style>` block was tried first and reverted** —
+  Tailwind v4 rejects `@apply` inside a Vue SFC's scoped style unless it also
+  imports the theme via `@reference`, which isn't a pattern used anywhere
+  else in this codebase. Went with a shared `GUIDE_PROSE` class-string object
+  in the new `resources/js/Support/guides.js` instead — plain Tailwind
+  utility classes applied directly to each page's own tags, one definition,
+  no scoped-style plumbing.
+  Same file adds `GUIDE_LINKS` (path/label-key/icon for all six guides), now
+  the one source both `AppHeader.vue`'s Guides dropdown and `AppFooter.vue`'s
+  footer links map over — previously typed out twice (three times, counting
+  the sidebar this pass just added), which is how a dropdown and a footer
+  eventually stop agreeing on what a "guide" is.
+- [x] ~~**All six guide pages rebuilt onto it.**~~ Same wiki-style rhythm
+  everywhere: underlined `<h2>` section headers, connected paragraphs, tight
+  lists instead of feature-grid cards for things like Bingo's win conditions
+  or Snakes & Ladders' board sizes. `GuideScreenshot` placeholders (see the
+  entry above) carried over unchanged into the new layout.
+- [x] ~~**Dropped CMS-editability for these six pages' FAQ, per explicit
+  instruction — "Maak ze statisch en zelf zonder CMS. Dat fixen we later
+  wel."**~~ Three of the six (`osrs-snakes-and-ladders`, `osrs-clan-events`)
+  used to read their FAQ from a `pages` database row if one existed
+  (`LandingController::faqsFor()` → `Page::faqItems()`), falling back to a
+  hardcoded array otherwise; the other three never had this wired up at all.
+  All six now always render the static array — `faqsFor()` and
+  `Page::faqItems()`/`collectFaqs()` removed as dead code (zero remaining
+  callers), `PageSeeder.php` no longer seeds FAQ blocks for these slugs.
+  `Page::PARTIAL_SLUGS` keeps all six regardless — an environment that
+  already ran the old seeder still has these rows, and that list's job (keep
+  them out of the CMS inventory and the `/{page}` catch-all) doesn't depend
+  on whether anything still reads their content.
+  `tests/Feature/LandingPageFaqTest.php` rewritten from "a Page row overrides
+  the shipped FAQ" to the opposite: a leftover row for any of the six slugs
+  must be ignored. The generic `'faq'` CMS block type itself is untouched —
+  still valid on any other editable page — only the special-case landing-page
+  wiring is gone.
+
+Full suite green after (740 backend / 174 frontend — the FAQ test rewrite
+added a few); both bundles rebuilt, SSR restarted, verified live on all six
+guide pages at 1100px and mobile width, including that the sidebar ToC's
+anchor links, the quick-facts box and the other-guides list all render
+correctly and exclude the current page from its own "other guides" list.
+
+## Guide-page follow-ups from the first real read-through — 2026-08-27
+
+- [x] ~~**FAQ made foldable, open by default.**~~ New `GuideFaq.vue` — native
+  `<details>`/`<summary>` per question, no JS and nothing to `<client-only>`
+  for SSR. `open` by default: these are guide pages meant to be read, not FAQ
+  widgets meant to stay collapsed until clicked, so foldable is the
+  affordance (a question you've already read can be closed out of the way)
+  rather than a way to hide the answers. Replaces the inline `<dl>` on all
+  five FAQ-carrying guides.
+- [x] ~~**Fixed a real spacing bug the redesign shipped with.**~~ Every
+  section's `<h2>` had `first:mt-0` in its shared class, meant to zero the
+  top margin on the page's opening heading only — but each `<h2>` is the
+  first child of its own `<section>`, so `first:` matched every one of them,
+  not just the first on the page. Every heading below the first was hugging
+  the paragraph above it with no breathing room. Removed; `mt-12` now applies
+  everywhere it's supposed to.
+- [x] ~~**Light-mode quick-facts box looked off.**~~ `bg-elevated/50` over
+  the page background picked up a muddy, faintly-warm tint in light mode
+  instead of a clean neutral card. Solid `bg-elevated`, no opacity.
+- [x] ~~**Snakes & Ladders' quick facts relabelled and extended.**~~ "Rolls:
+  1 per day (default)" buried the fact that it's a default inside the value
+  string instead of saying so in the label — now "Default roll limit: 1 per
+  day" (it genuinely is a per-board default, `Board::dice_roll_limit`, not a
+  fixed rule — a host can raise or remove it). Added a fourth fact, Access
+  (open / Discord / invite), matching the fact count the other five guides
+  already carry.
+- [x] ~~**Clan Events' "Free, no ads" quick fact cut down to "Free".**~~
+  Reported directly as reading like an unprompted denial nobody asked for.
+  The longer "free, ad-free, no paid tier" framing still exists as an actual
+  feature-grid item elsewhere on that same page, where the context to explain
+  it exists — the one-line infobox fact didn't need to defend against an
+  objection nobody raised.
+- [x] ~~**Event Ideas: badged the four formats that aren't built, and fixed
+  one that was misdescribed.**~~ The page listed eight formats with no
+  signal that only four exist as a real event type
+  (`Event::EVENT_TYPES`) — Speedrun ladder, Achievement diary/quest race,
+  Battleship and Collection log push now carry the same "Soon" badge the nav
+  uses for planned features. Also found a real content bug while at it:
+  "Drop log race" was described as teams logging actual item drops for
+  points — that is NOT what the shipped Drop Race does (kill count from the
+  moment you join, synced via Wise Old Man, same as Skill Race but on a boss)
+  — so the idea was quietly promising a different, unbuilt mechanic under
+  the name of a feature that already exists. Renamed to "Drop race" and
+  rewritten to describe the real mechanic; `LandingController::eventIdeas()`'s
+  `$formats` ItemList array updated to match.
+- [x] ~~**The four unbuilt formats are now real backlog items, not just
+  page copy.**~~ Filed below as their own entry rather than only living as
+  marketing copy on `/osrs-event-ideas`.
+
+**New backlog items — future event types** (from the Event Ideas page, not
+yet built, no entry in `Event::EVENT_TYPES`):
+- [ ] **Speedrun ladder** — a fixed set of encounters, members submit times,
+  runs indefinitely with no end date. Lowest-maintenance format on the list;
+  good as a permanent background event between bigger ones.
+- [ ] **Achievement diary or quest race** — points for diary tiers or quests
+  completed inside the event window. One of the few formats that favours
+  newer accounts over veterans, since veterans have already finished
+  everything — useful for onboarding a wave of new members.
+- [ ] **Battleship** — each team hides ships on a grid and fires by
+  completing tasks. Very social, very chat-heavy, and needs an organiser
+  watching it daily — the format lives or dies on somebody refereeing it.
+- [ ] **Collection log push** — track collection log slots filled across the
+  whole clan against one shared target. Cooperative rather than competitive,
+  which suits clans where a leaderboard would put people off rather than
+  draw them in.
+
+Full suite still green (740 backend / 174 frontend); both bundles rebuilt,
+SSR restarted.

@@ -17,6 +17,9 @@ describe('isLandingPage', () => {
         expect(isLandingPage('SnakesAndLadders')).toBe(true);
         expect(isLandingPage('OsrsClanEvents')).toBe(true);
         expect(isLandingPage('OsrsEventIdeas')).toBe(true);
+        expect(isLandingPage('OsrsBingo')).toBe(true);
+        expect(isLandingPage('OsrsSkillRace')).toBe(true);
+        expect(isLandingPage('OsrsDropRace')).toBe(true);
     });
 
     /** About, Privacy, Terms and anything an admin adds later. */
@@ -68,6 +71,9 @@ describe('isPublicPath', () => {
     it('keeps the links that still go somewhere while the site is locked', () => {
         expect(isPublicPath('/')).toBe(true);
         expect(isPublicPath('/osrs-snakes-and-ladders')).toBe(true);
+        expect(isPublicPath('/osrs-bingo')).toBe(true);
+        expect(isPublicPath('/osrs-skill-race')).toBe(true);
+        expect(isPublicPath('/osrs-drop-race')).toBe(true);
         expect(isPublicPath('/about')).toBe(true);
     });
 

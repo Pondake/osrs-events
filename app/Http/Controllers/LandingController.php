@@ -42,30 +42,47 @@ class LandingController extends Controller
      * was scoped to, since it carries both FAQPage and HowTo JSON-LD plus a
      * full meta/canonical/OG set. Mirrors the shape of
      * frontend/app/pages/osrs-snakes-and-ladders.vue's <script setup>: the
-     * server builds the same faqs/steps/sizes arrays and passes them as
-     * props, so the Vue page can build identical JSON-LD from identical data
-     * rather than duplicating the copy in two places.
+     * server builds the same faqs/hostSteps/playerSteps/sizes arrays and
+     * passes them as props, so the Vue page can build identical JSON-LD from
+     * identical data rather than duplicating the copy in two places.
      */
     public function snakesAndLadders(): Response
     {
-        $steps = [
-            ['icon' => 'i-lucide-layout-grid', 'title' => 'Create a board', 'description' => 'Pick a board size and generate a fresh Snakes & Ladders grid for your clan.'],
-            ['icon' => 'i-lucide-list-checks', 'title' => 'Set the tiles', 'description' => 'Assign an OSRS task, boss kill or drop to every tile on the board.'],
-            ['icon' => 'i-lucide-arrow-up-from-line', 'title' => 'Invite your team', 'description' => 'Share the board link or a Discord invite so teammates can join.'],
-            ['icon' => 'i-simple-icons-discord', 'title' => 'Sync with Discord', 'description' => 'Members log in with Discord so progress is tied to a real identity.'],
-            ['icon' => 'i-lucide-dice-6', 'title' => 'Roll and climb', 'description' => 'Complete a tile to roll and move up the board — or land on a snake.'],
-        ];
+        // Two tracks — what a host does to set a board up, and what a player
+        // actually experiences opening one — rather than one hardcoded
+        // English list. Both are real i18n keys now; the five-step version
+        // this replaced was never translated at all (`'Create a board'` etc.
+        // baked straight into this controller), which is exactly the
+        // hardcoded-string rule CLAUDE.md's i18n section exists to catch.
+        $hostSteps = collect(range(1, 5))->map(fn ($i) => [
+            'title' => trans("landing.snakes.host_step{$i}_title"),
+            'description' => trans("landing.snakes.host_step{$i}_desc"),
+        ])->all();
 
-        $sizes = [
-            ['icon' => 'i-lucide-grid-3x3', 'title' => '5x5 board', 'description' => 'A quick 25-tile board for a short event or a small clan.'],
-            ['icon' => 'i-lucide-grid-3x3', 'title' => '7x7 board', 'description' => 'A 49-tile board with room for a longer running event.'],
-            ['icon' => 'i-lucide-grid-3x3', 'title' => '9x9 board', 'description' => 'An 81-tile marathon board for large, long-running clan events.'],
-        ];
+        $playerSteps = collect(range(1, 4))->map(fn ($i) => [
+            'title' => trans("landing.snakes.player_step{$i}_title"),
+            'description' => trans("landing.snakes.player_step{$i}_desc"),
+        ])->all();
 
-        // Editable when a row exists; the array below is the seeded default
-        // and the fallback for a fresh install. Whichever wins feeds BOTH the
-        // rendered page and the FAQPage JSON-LD below — see Page::faqItems().
-        $faqs = $this->faqsFor('osrs-snakes-and-ladders') ?: [
+        // Same fix as hostSteps/playerSteps above: this was hardcoded English
+        // ('5x5 board', ...) with a matching set of `landing.snakes.size_*`
+        // keys sitting in lang/en.json completely unused — the copy already
+        // existed, translated, and nothing pointed at it.
+        $sizes = collect(['5', '7', '9'])->map(fn ($n) => [
+            'icon' => 'i-lucide-grid-3x3',
+            'title' => trans("landing.snakes.size_{$n}_title"),
+            'description' => trans("landing.snakes.size_{$n}_desc"),
+        ])->all();
+
+        // Static on purpose, not CMS-editable — the guide pages used to read
+        // their FAQ from a `pages` row (Page::faqItems()) so an admin could
+        // edit it without a deploy. Dropped in the same pass that rebuilt
+        // these pages away from `u-page-section`'s landing-page spacing: the
+        // CMS abstraction was solving an editing-convenience problem while
+        // the actual problem was the layout, and it's easier to redesign a
+        // page you can just read top to bottom in one file. Revisit CMS
+        // editability later if it's still wanted once the layout is settled.
+        $faqs = [
             ['question' => 'What is an OSRS Snakes and Ladders board?', 'answer' => 'A clan event board inspired by the classic board game — tiles are OSRS tasks instead of squares, and snakes send you back down the board.'],
             ['question' => 'Do I need Discord to play?', 'answer' => 'You need a Discord account to log in, since board membership and progress are tied to your Discord identity.'],
             ['question' => 'Can I customise the tiles?', 'answer' => 'Yes — board owners can set a custom task, boss or drop requirement for every tile.'],
@@ -108,22 +125,120 @@ class LandingController extends Controller
                 [
                     '@type' => 'HowTo',
                     'name' => 'How it works',
-                    'description' => 'Five steps from empty board to a running clan event.',
+                    'description' => 'From an empty board to a clan actually playing it, host side and player side.',
+                    // Host steps then player steps, in the order someone
+                    // would actually hit them end to end — a search engine
+                    // reading this as one sequence still gets the real flow,
+                    // even though the page itself renders them as two tracks.
                     'step' => array_map(fn ($step, $i) => [
                         '@type' => 'HowToStep',
                         'position' => $i + 1,
                         'name' => $step['title'],
                         'text' => $step['description'],
-                    ], $steps, array_keys($steps)),
+                    ], [...$hostSteps, ...$playerSteps], array_keys([...$hostSteps, ...$playerSteps])),
                 ],
             ],
         ));
 
         return Inertia::render('SnakesAndLadders', [
-            'steps' => $steps,
+            'hostSteps' => $hostSteps,
+            'playerSteps' => $playerSteps,
             'sizes' => $sizes,
             'faqs' => $faqs,
         ]);
+    }
+
+    /**
+     * Same host/player two-track shape as snakesAndLadders(), one method per
+     * new event type rather than a single parameterised action: each type's
+     * steps, FAQ and "how progress is tracked" copy are genuinely different
+     * prose, not a templated substitution, so a shared method would just be
+     * passing three near-identical arrays through one signature for no
+     * reduction in duplication.
+     */
+    public function bingo(): Response
+    {
+        $hostSteps = collect(range(1, 5))->map(fn ($i) => [
+            'title' => trans("landing.bingo.host_step{$i}_title"),
+            'description' => trans("landing.bingo.host_step{$i}_desc"),
+        ])->all();
+
+        $playerSteps = collect(range(1, 4))->map(fn ($i) => [
+            'title' => trans("landing.bingo.player_step{$i}_title"),
+            'description' => trans("landing.bingo.player_step{$i}_desc"),
+        ])->all();
+
+        $modes = [
+            ['icon' => 'i-lucide-rows-3', 'title' => trans('landing.bingo.modes_lines_title'), 'description' => trans('landing.bingo.modes_lines_desc')],
+            ['icon' => 'i-lucide-grid-3x3', 'title' => trans('landing.bingo.modes_full_title'), 'description' => trans('landing.bingo.modes_full_desc')],
+            ['icon' => 'i-lucide-shield-check', 'title' => trans('landing.bingo.modes_wildcard_title'), 'description' => trans('landing.bingo.modes_wildcard_desc')],
+        ];
+
+        $faqs = collect(range(1, 4))->map(fn ($i) => [
+            'question' => trans("landing.bingo.faq_q{$i}"),
+            'answer' => trans("landing.bingo.faq_a{$i}"),
+        ])->all();
+
+        $this->shareFaqJsonLd($faqs);
+
+        return Inertia::render('OsrsBingo', [
+            'hostSteps' => $hostSteps,
+            'playerSteps' => $playerSteps,
+            'modes' => $modes,
+            'faqs' => $faqs,
+        ]);
+    }
+
+    /** @return Response */
+    private function metricRacePage(string $key, string $component): Response
+    {
+        $hostSteps = collect(range(1, 5))->map(fn ($i) => [
+            'title' => trans("landing.{$key}.host_step{$i}_title"),
+            'description' => trans("landing.{$key}.host_step{$i}_desc"),
+        ])->all();
+
+        $playerSteps = collect(range(1, 4))->map(fn ($i) => [
+            'title' => trans("landing.{$key}.player_step{$i}_title"),
+            'description' => trans("landing.{$key}.player_step{$i}_desc"),
+        ])->all();
+
+        $modes = [
+            ['icon' => 'i-lucide-refresh-cw', 'title' => trans("landing.{$key}.modes_auto_title"), 'description' => trans("landing.{$key}.modes_auto_desc")],
+            ['icon' => 'i-lucide-zap', 'title' => trans("landing.{$key}.modes_manual_title"), 'description' => trans("landing.{$key}.modes_manual_desc")],
+            ['icon' => 'i-lucide-lock', 'title' => trans("landing.{$key}.modes_locked_title"), 'description' => trans("landing.{$key}.modes_locked_desc")],
+        ];
+
+        $faqs = collect(range(1, 4))->map(fn ($i) => [
+            'question' => trans("landing.{$key}.faq_q{$i}"),
+            'answer' => trans("landing.{$key}.faq_a{$i}"),
+        ])->all();
+
+        $this->shareFaqJsonLd($faqs);
+
+        return Inertia::render($component, [
+            'hostSteps' => $hostSteps,
+            'playerSteps' => $playerSteps,
+            'modes' => $modes,
+            'faqs' => $faqs,
+        ]);
+    }
+
+    /**
+     * SKILL_RACE and DROP_RACE share one pipeline server-side already
+     * (Event::needsMetric(), EventParticipationService, the same
+     * SkillRaceController routes) — only the metric vocabulary differs
+     * (Event::SKILL_METRICS vs BOSS_METRICS). The guide copy mirrors that:
+     * one shared builder, two lang namespaces, two Vue pages so each keeps
+     * its own SEO identity and URL.
+     */
+    public function skillRace(): Response
+    {
+        return $this->metricRacePage('skill_race', 'OsrsSkillRace');
+    }
+
+    public function dropRace(): Response
+    {
+        return $this->metricRacePage('drop_race', 'OsrsDropRace');
     }
 
     public function clanEvents(): Response
@@ -135,8 +250,6 @@ class LandingController extends Controller
             ['question' => 'What happens when an event ends?', 'answer' => 'The board stays available to read after its end date, so you keep the final standings and can look back at previous events.'],
             ['question' => 'Is any of this paid?', 'answer' => 'No. Every feature is free, with no ads and no paid tier. Donations cover hosting.'],
         ];
-
-        $faqs = $this->faqsFor('osrs-clan-events') ?: $faqs;
 
         $this->shareFaqJsonLd($faqs);
 
@@ -153,7 +266,7 @@ class LandingController extends Controller
         // <Head> can't carry it), and the page's copy lives in the JS
         // translation file. Keep the two in step by hand.
         $formats = [
-            'Snakes & Ladders', 'Bingo', 'Drop log race', 'Skill race',
+            'Snakes & Ladders', 'Bingo', 'Drop race', 'Skill race',
             'Speedrun ladder', 'Achievement diary or quest race', 'Battleship',
             'Collection log push',
         ];
@@ -172,23 +285,6 @@ class LandingController extends Controller
         ])]);
 
         return Inertia::render('OsrsEventIdeas');
-    }
-
-    /**
-     * FAQ entries stored for a landing page, or an empty array if that page
-     * has no row yet.
-     *
-     * These pages are only PARTLY editable: the FAQ is content an admin
-     * should be able to change, while the step and format lists stay in code
-     * because they drive HowTo and ItemList schema whose shape the block
-     * vocabulary cannot express. Returning [] rather than null so callers can
-     * write `?: $default` and keep the fallback readable.
-     *
-     * @return array<int, array{question: string, answer: string}>
-     */
-    private function faqsFor(string $slug): array
-    {
-        return Page::where('slug', $slug)->where('is_published', true)->first()?->faqItems() ?? [];
     }
 
     /** @param array<int, array{question: string, answer: string}> $faqs */

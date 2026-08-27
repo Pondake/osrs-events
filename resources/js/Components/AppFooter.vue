@@ -28,6 +28,7 @@
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import { GUIDE_LINKS } from '@/Support/guides';
 
 // Shared globally (HandleInertiaRequests) rather than passed as a prop —
 // the footer renders on every page, including ones with no controller of
@@ -41,15 +42,14 @@ const kofiUrl = computed(() => inertiaPage.props?.site?.kofiUrl ?? 'https://ko-f
 // convention as boardEventStatus() in Support/board.js.
 const currentYear = new Date().getUTCFullYear();
 
-// Guide pages first — the footer is the only site-wide crawl path to them
-// (no header nav entry, since they're marketing/SEO pages not app features).
-// Ko-fi is linked straight from here rather than through a /donate page of
-// our own. A middle page had nothing to add that Ko-fi's own doesn't say,
-// and it put a click between the button and the thing it's for.
+// Guide pages first — search engines still reach them fastest from a
+// site-wide footer link, even though the header's Guides menu also carries
+// them now. Ko-fi is linked straight from here rather than through a
+// /donate page of our own. A middle page had nothing to add that Ko-fi's
+// own doesn't say, and it put a click between the button and the thing it's
+// for.
 const footerLinks = computed(() => [
-    { to: '/osrs-snakes-and-ladders', label: trans('nav.snakes') },
-    { to: '/osrs-clan-events', label: trans('nav.clan_events') },
-    { to: '/osrs-event-ideas', label: trans('nav.event_ideas') },
+    ...GUIDE_LINKS.map((link) => ({ to: link.to, label: trans(link.labelKey) })),
     { to: '/about', label: trans('nav.about') },
     { to: kofiUrl.value, label: trans('nav.support'), external: true },
     { to: '/privacy', label: trans('nav.privacy') },

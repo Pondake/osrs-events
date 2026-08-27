@@ -262,6 +262,7 @@ import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import AppLogo from '@/Components/AppLogo.vue';
 import { isPublicPath } from '@/Support/landing';
+import { GUIDE_LINKS } from '@/Support/guides';
 import { useCurrentPage } from '@/Support/pageState';
 import UserMenu from '@/Components/UserMenu.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
@@ -311,9 +312,7 @@ function toggleGroup(label) {
 const soon = (item) => ({ ...item, disabled: true, soon: true });
 
 const guideChildren = () => [
-    { label: trans('nav.snakes'), to: '/osrs-snakes-and-ladders', icon: 'i-lucide-arrow-up-from-line' },
-    { label: trans('nav.clan_events'), to: '/osrs-clan-events', icon: 'i-lucide-users' },
-    { label: trans('nav.event_ideas'), to: '/osrs-event-ideas', icon: 'i-lucide-lightbulb' },
+    ...GUIDE_LINKS.map((link) => ({ label: trans(link.labelKey), to: link.to, icon: link.icon })),
     soon({ label: trans('nav.runelite'), icon: 'i-lucide-puzzle' }),
 ];
 
@@ -374,6 +373,11 @@ const navigation = computed(() => {
         {
             label: trans('nav.community'),
             icon: 'i-lucide-users-round',
+            // Same "group with a destination of its own" fix the Boards
+            // group got above, for the same reason: hovering/the chevron
+            // opens the children, a click on the label itself should go
+            // somewhere rather than only ever open a list.
+            to: '/community',
             children: [
                 // Every signed-in account gets Teams. It used to be gated on
                 // isAdmin || isTeamManager, which was wrong in both

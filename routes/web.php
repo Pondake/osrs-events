@@ -19,6 +19,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BingoController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
+use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\EventBlueprintController;
 use App\Http\Controllers\EventParticipationController;
 use App\Http\Controllers\EventStreamController;
@@ -123,6 +124,9 @@ Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadd
     ->name('landing.snakes');
 Route::get('/osrs-clan-events', [LandingController::class, 'clanEvents'])->name('landing.clan-events');
 Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name('landing.event-ideas');
+Route::get('/osrs-bingo', [LandingController::class, 'bingo'])->name('landing.bingo');
+Route::get('/osrs-skill-race', [LandingController::class, 'skillRace'])->name('landing.skill-race');
+Route::get('/osrs-drop-race', [LandingController::class, 'dropRace'])->name('landing.drop-race');
 
 // /privacy and /terms are CMS pages now, resolved by the /{page} catch-all at
 // the bottom of this file — the same path /about already took. Keeping fixed
@@ -247,6 +251,12 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/events/{event}/wiki/tasks', [WikiController::class, 'importTask'])
         ->middleware('throttle:60,1')
         ->name('wiki.import');
+    // The same search with no event to scope it to — a team icon, a task's
+    // own icon field. See WikiController::searchGlobal for why this one
+    // needs no per-event permission check.
+    Route::get('/wiki/search', [WikiController::class, 'searchGlobal'])
+        ->middleware('throttle:60,1')
+        ->name('wiki.search.global');
     Route::get('/users/search', [UserSearchController::class, 'index'])->name('users.search');
     // Read side of the admin blueprint list — the create-event form's
     // title autocomplete. Same reasoning as tasks/search above it.
@@ -299,6 +309,17 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         ->middleware('throttle:5,1')
         ->name('settings.account.destroy');
 
+    // Settle one owned event/team right now, independent of ever deleting the
+    // account — the per-item "confirm" action beside each row on the same
+    // page. Same throttle as the account delete itself: these are just as
+    // irreversible, one at a time.
+    Route::patch('/settings/account/events/{event}', [AccountController::class, 'settleEvent'])
+        ->middleware('throttle:20,1')
+        ->name('settings.account.events.settle');
+    Route::patch('/settings/account/teams/{team}', [AccountController::class, 'settleTeam'])
+        ->middleware('throttle:20,1')
+        ->name('settings.account.teams.settle');
+
     // Notifications — the settings page, and the endpoints the browser calls
     // for itself. subscribe/unsubscribe answer JSON rather than an Inertia
     // redirect: they are called from a composable on page load, not from a
@@ -318,6 +339,7 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/push/subscriptions', [NotificationController::class, 'subscribe'])->name('push.subscribe');
     Route::delete('/push/subscriptions', [NotificationController::class, 'unsubscribe'])->name('push.unsubscribe');
 
+    Route::get('/community', [CommunityController::class, 'index'])->name('community.index');
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     // Declared above /teams/{team} so the literal segment wins the match —
     // it only collides with the PATCH/DELETE verbs today, but the next GET
@@ -375,6 +397,10 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::post('/tasks', [AdminTaskController::class, 'store'])->name('tasks.store');
         Route::patch('/tasks/{task}', [AdminTaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
+        // {task} is not route-model-bound here on purpose — implicit binding
+        // 404s on a soft-deleted id, which is exactly the row this route
+        // needs to reach.
+        Route::post('/tasks/{task}/restore', [AdminTaskController::class, 'restore'])->name('tasks.restore');
 
         // Gated on canCreateBoards, not isAdmin — see the controller.
         Route::get('/blueprints', [AdminEventBlueprintController::class, 'index'])->name('blueprints');
@@ -396,10 +422,10 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
 
         // The "why is nothing happening" page. The checks are reads; the four
-        // actions each address the admin pressing them (their own devices,
-        // their own inbox) or are explicitly a rehearsal, so none of them can
-        // reach another user. Throttled anyway — these make real outbound
-        // requests, and a held-down button should not become one.
+        // original actions each address the admin pressing them (their own
+        // devices, their own inbox) or are explicitly a rehearsal, so none of
+        // them can reach another user. Throttled anyway — these make real
+        // outbound requests, and a held-down button should not become one.
         Route::get('/diagnostics', [DiagnosticsController::class, 'index'])->name('diagnostics');
         Route::post('/diagnostics/push', [DiagnosticsController::class, 'testPush'])
             ->middleware('throttle:10,1')
@@ -413,6 +439,18 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::post('/diagnostics/sweep', [DiagnosticsController::class, 'sweep'])
             ->middleware('throttle:10,1')
             ->name('diagnostics.sweep');
+
+        // The one part of this page that reaches somebody else — see
+        // DiagnosticsController's own class docs for why these three are
+        // guarded differently from the four above.
+        Route::get('/diagnostics/standings', [DiagnosticsController::class, 'standingsFailures'])
+            ->name('diagnostics.standings');
+        Route::post('/diagnostics/standings/{user}/nudge', [DiagnosticsController::class, 'nudgeStandingsFailure'])
+            ->middleware('throttle:20,1')
+            ->name('diagnostics.standings.nudge');
+        Route::delete('/diagnostics/standings/{user}/username', [DiagnosticsController::class, 'resetStandingsUsername'])
+            ->middleware('throttle:20,1')
+            ->name('diagnostics.standings.reset');
     });
 
     // Admin lived under /settings/admin until 2026-08-20. Redirects rather
