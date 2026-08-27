@@ -94,8 +94,12 @@ class HandleInertiaRequests extends Middleware
                 // lock screen already drops the site chrome; the login page
                 // has to as well, or "let me in" hands a stranger the full
                 // nav bar and a banner one click later.
-                'locked' => fn () => Setting::get('site_lock_enabled') && ! $this->announcementVisible($request),
-                'announcement' => fn () => $this->announcementVisible($request) ? Setting::get('announcement') : null,
+                'locked' => fn () => EnsureSiteUnlocked::isShutFor($request),
+                // Distinct from `locked`: the header/lock screen need to know
+                // WHICH door this is so the copy doesn't offer a shared
+                // password that full lockdown will refuse anyway.
+                'fullLockdown' => fn () => (bool) Setting::get('admin_lockdown_enabled'),
+                'announcement' => fn () => ! EnsureSiteUnlocked::isShutFor($request) ? Setting::get('announcement') : null,
                 'announcementType' => Setting::get('announcement_type'),
                 'defaultBoardSize' => Setting::get('default_board_size'),
                 'defaultDiceRollLimit' => Setting::get('default_dice_roll_limit'),
@@ -159,20 +163,4 @@ class HandleInertiaRequests extends Middleware
         ];
     }
 
-    /**
-     * Whether this request is allowed to see the site-wide announcement.
-     *
-     * Everything is visible on an unlocked site; on a locked one it takes
-     * the same pass the rest of the site takes — the shared password or an
-     * admin session. See EnsureSiteUnlocked.
-     */
-    private function announcementVisible(Request $request): bool
-    {
-        if (! Setting::get('site_lock_enabled')) {
-            return true;
-        }
-
-        return $request->user()?->isAdmin()
-            || $request->session()->get(EnsureSiteUnlocked::SESSION_KEY) === true;
-    }
 }

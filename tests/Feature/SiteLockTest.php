@@ -78,6 +78,9 @@ class SiteLockTest extends TestCase
         $this->get('/osrs-snakes-and-ladders')->assertOk();
         $this->get('/osrs-clan-events')->assertOk();
         $this->get('/osrs-event-ideas')->assertOk();
+        $this->get('/osrs-bingo')->assertOk();
+        $this->get('/osrs-skill-race')->assertOk();
+        $this->get('/osrs-drop-race')->assertOk();
         $this->get('/sitemap.xml')->assertOk();
     }
 
@@ -296,16 +299,110 @@ class SiteLockTest extends TestCase
         $this->actingAs($admin)->get('/events')->assertOk();
     }
 
-    /** Being signed in is not the same as being allowed in. */
+    /**
+     * The pre-launch door is for strangers, not for people who already have
+     * a way in. This used to be backwards — every signed-in non-admin met
+     * the door same as an anonymous visitor, reported live: a logged-in
+     * player saw the lock screen's banner AND the app's own onboarding modal
+     * at once, because the header/home page and the route middleware
+     * disagreed about whether this visitor had access at all.
+     */
     #[Test]
-    public function an_ordinary_account_still_meets_the_door(): void
+    public function an_ordinary_signed_in_account_walks_straight_through(): void
     {
         $this->lock();
 
         $player = User::factory()->create(['osrs_username' => 'Pondake']);
         $player->assignRole(Role::findOrCreate('PLAYER', 'web'));
 
+        $this->actingAs($player)->get('/events')->assertOk();
+    }
+
+    /** Matches the route-level fix above: the shared `locked` prop must agree. */
+    #[Test]
+    public function an_ordinary_signed_in_account_gets_props_that_say_the_door_is_open(): void
+    {
+        $this->lock();
+
+        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player->assignRole(Role::findOrCreate('PLAYER', 'web'));
+
+        $props = $this->actingAs($player)->get('/')->viewData('page')['props'];
+
+        $this->assertFalse($props['site']['locked']);
+    }
+
+    /** An anonymous stranger is still the one the door is actually for. */
+    #[Test]
+    public function a_stranger_still_meets_the_door(): void
+    {
+        $this->lock();
+
+        $this->get('/events')->assertRedirect('/locked');
+    }
+
+    // ------------------------------------------------------- full lockdown
+
+    private function lockdown(): void
+    {
+        Setting::set('admin_lockdown_enabled', true);
+    }
+
+    /** The stricter switch refuses even a signed-in ordinary account. */
+    #[Test]
+    public function full_lockdown_refuses_an_ordinary_signed_in_account(): void
+    {
+        $this->lockdown();
+
+        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player->assignRole(Role::findOrCreate('PLAYER', 'web'));
+
         $this->actingAs($player)->get('/events')->assertRedirect('/locked');
+    }
+
+    /** Unlike the pre-launch door, full lockdown does not spare the public pages. */
+    #[Test]
+    public function full_lockdown_refuses_the_public_pages_too(): void
+    {
+        $this->lockdown();
+
+        $this->get('/')->assertRedirect('/locked');
+        $this->get('/osrs-snakes-and-ladders')->assertRedirect('/locked');
+    }
+
+    /** An admin is still the one way through. */
+    #[Test]
+    public function full_lockdown_still_lets_an_admin_in(): void
+    {
+        $this->lockdown();
+
+        $admin = User::factory()->create(['osrs_username' => 'TheAdmin']);
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+
+        $this->actingAs($admin)->get('/events')->assertOk();
+    }
+
+    /** The shared password is exactly what full lockdown is built to refuse. */
+    #[Test]
+    public function full_lockdown_refuses_the_shared_password_too(): void
+    {
+        $this->lockdown();
+        Setting::set('site_lock_enabled', true);
+        Setting::set('site_lock_password', Hash::make('clan-secret'));
+
+        $this->post('/locked', ['password' => 'clan-secret'])->assertSessionHasErrors('password');
+
+        $this->get('/events')->assertRedirect('/locked');
+    }
+
+    /** Sign-in itself still has to work, or an admin has no way to prove it. */
+    #[Test]
+    public function full_lockdown_still_lets_sign_in_pages_through(): void
+    {
+        $this->lockdown();
+
+        $this->get('/login')->assertOk();
+        $this->get('/locked')->assertOk();
     }
 
     /**
@@ -391,6 +488,7 @@ class SiteLockTest extends TestCase
             'kofi_url' => 'https://ko-fi.com/pondake',
             'site_lock_enabled' => true,
             'site_lock_password' => '',
+            'admin_lockdown_enabled' => false,
         ])->assertRedirect();
 
         $this->assertSame($before, Setting::get('site_lock_password'));
@@ -412,6 +510,7 @@ class SiteLockTest extends TestCase
             'kofi_url' => 'https://ko-fi.com/pondake',
             'site_lock_enabled' => true,
             'site_lock_password' => '',
+            'admin_lockdown_enabled' => false,
         ])->assertSessionHasErrors('site_lock_password');
     }
 }

@@ -183,6 +183,7 @@ class EventDurationTest extends TestCase
             'discord_webhooks_enabled' => false,
             'site_lock_enabled' => false,
             'site_lock_password' => '',
+            'admin_lockdown_enabled' => false,
             ...$overrides,
         ];
     }
