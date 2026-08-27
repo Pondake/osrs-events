@@ -56,13 +56,43 @@ class TaskController extends Controller
         return back()->with('board-save', trans('admin.task_updated'));
     }
 
-    public function destroy(Task $task): RedirectResponse
+    public function destroy(Request $request, Task $task): RedirectResponse
     {
         abort_unless(Auth::user()->hasPermission('canCreateTiles'), 403);
 
-        AuditLog::record('task.deleted', $task);
+        // Optional, not required: a note explaining why is worth capturing
+        // when someone bothers to write one, but forcing it on every delete
+        // is exactly the friction the popover confirm already adds.
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
+
+        AuditLog::record('task.deleted', $task, array_filter([
+            'note' => $data['note'] ?? null,
+        ]));
+
+        // Soft delete (see the task's own SoftDeletes note) — every tile or
+        // bingo square already using this task keeps its task_id pointing
+        // here the whole time, which is what makes restore() below a
+        // complete undo rather than a same-title task with none of its old
+        // links back.
         $task->delete();
 
-        return back()->with('board-save', trans('admin.task_deleted'));
+        // No board-save flash here on purpose — the frontend shows its own
+        // toast with an Undo action once the delete actually lands, and a
+        // second toast saying the same thing plainer would just be noise
+        // stacked on top of it.
+        return back();
+    }
+
+    /** Undo for the delete above — see TaskController::destroy(). */
+    public function restore(string $task): RedirectResponse
+    {
+        abort_unless(Auth::user()->hasPermission('canCreateTiles'), 403);
+
+        $model = Task::withTrashed()->findOrFail($task);
+        $model->restore();
+
+        AuditLog::record('task.restored', $model);
+
+        return back();
     }
 }
