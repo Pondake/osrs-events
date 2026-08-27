@@ -6,6 +6,7 @@ use App\Models\BingoCompletion;
 use App\Models\BoardAuthor;
 use App\Models\BoardInvite;
 use App\Models\Event;
+use App\Models\EventParticipant;
 use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\Team;
@@ -25,12 +26,32 @@ use Illuminate\Support\Facades\DB;
  * "you may not leave until you find a replacement". So the flow is: **say what
  * is attached, make the unavoidable choices explicit, then act.**
  *
- * Three outcomes for the things attached to an account:
+ * Four outcomes for the things attached to an account:
  *
  *  - **Handed over.** Anything still running that somebody else can take.
- *  - **Deleted.** The same things, when there is nobody to take them, or when
- *    the owner would rather end them. Events are soft-deleted, so an admin can
- *    still put one back.
+ *  - **Ended.** A live event with nobody to take it (or whose owner would
+ *    rather stop it than hand it off), frozen in place rather than hidden.
+ *    Its `end_date` is pulled to now if it hasn't already passed, so every
+ *    rule that already refuses a move on an ended event (`Event::isEnded()`)
+ *    starts refusing this one too — but the row itself, its board, and
+ *    everyone's progress on it all stay exactly as they were. The event
+ *    keeps its place in every listing; only the ownership row goes with it,
+ *    explicitly — not left to the account-deletion cascade, since this
+ *    outcome is also reachable on its own (see `settleOneEvent()`) with the
+ *    account never actually being deleted at all. This is what "Kept,
+ *    anonymised" below already does for an event that finished on its own;
+ *    this outcome is choosing that ending early for one that hadn't.
+ *  - **Deleted.** For when ending it in place isn't enough and the owner
+ *    wants the event and everyone's progress on it actually gone — not
+ *    merely frozen. Every `PlayerBoard`/`CompletedTile` for its board, every
+ *    `EventStanding`, every `BingoCompletion` on its card, and its
+ *    `EventParticipant` rows are deleted outright; the event ROW itself is
+ *    still soft-deleted afterwards rather than hard-deleted, so an admin
+ *    restoring it from `/admin/events` gets back an empty shell — its
+ *    settings, not a resurrection of what it just destroyed. **Genuinely
+ *    irreversible for everyone who played it**, which is why it is offered
+ *    as a distinct, separately-labelled choice from Ended rather than being
+ *    what "delete" quietly does by default.
  *  - **Kept, anonymised.** Anything already finished. A race that ended in July
  *    had a winner and still does; the row keeps its OSRS name and loses its
  *    link to the account. On screen that reads as a deleted player, which is
@@ -153,11 +174,24 @@ class AccountDeletionService
             ->all();
     }
 
-    /** @return array<int, array<string, string>> */
+    /**
+     * Who could take this team on.
+     *
+     * Managers first, same reasoning as `eventCandidates()`'s co-hosts: a
+     * promoted manager already has the run of the team (rename it, move
+     * members around — see `Team::isManagedBy()`), so handing over to one
+     * changes nothing anybody would notice. Falls back to every other member
+     * only when there is no manager to hand it to.
+     *
+     * @return array<int, array<string, string>>
+     */
     private function teamCandidates(Team $team, User $user): array
     {
-        return $team->members
-            ->where('user_id', '!=', $user->id)
+        $others = $team->members->where('user_id', '!=', $user->id);
+
+        $managers = $others->whereIn('role', TeamMember::MANAGING_ROLES);
+
+        return ($managers->isNotEmpty() ? $managers : $others)
             ->map(fn (TeamMember $member) => [
                 'id' => $member->user_id,
                 'name' => $member->user?->displayName() ?? '',
@@ -216,18 +250,104 @@ class AccountDeletionService
     private function settleEvents(User $user, array $choices): void
     {
         foreach ($this->ownedLiveEvents($user) as $event) {
-            $choice = $choices[$event->id] ?? 'delete';
+            $this->settleOneEvent($user, $event, $choices[$event->id] ?? 'end');
+        }
+    }
 
+    /**
+     * One event, decided and acted on immediately — the same logic
+     * `settleEvents()` runs per item inside the account-delete transaction,
+     * exposed on its own for the settings page's per-item "confirm" action.
+     * That action settles a single event right away, independent of whether
+     * the account is ever actually deleted — asked for explicitly, so
+     * somebody with many owned events isn't stuck deciding all of them in
+     * one sitting right before an irreversible account close.
+     *
+     * Callers must have already checked this event is one of the user's own
+     * `ownedLiveEvents()` — this does not re-check, since both existing call
+     * sites (the bulk delete flow and `AccountController`'s standalone
+     * endpoint) already do.
+     */
+    public function settleOneEvent(User $user, Event $event, string $choice): void
+    {
+        DB::transaction(function () use ($user, $event, $choice) {
             if ($choice === 'delete') {
-                // Soft-deleted, like every other event deletion here: it drops
-                // out of every list and 404s, and an admin can restore it.
-                $event->delete();
+                $this->deleteEventAndProgress($event);
 
-                continue;
+                return;
+            }
+
+            if ($choice === 'end') {
+                $this->endEventInPlace($event, $user);
+
+                return;
             }
 
             $this->handEventTo($event, $choice, $user);
+        });
+    }
+
+    /**
+     * Freeze it in place rather than hiding it. The event, its board and
+     * everyone's progress on it are untouched — only its own end date moves,
+     * and only if it hasn't already passed. `Event::isEnded()` already
+     * refuses a roll or a tile-complete on anything past its end date (see
+     * PlayerBoardController), so this is the whole mechanism: no separate
+     * "ended by account deletion" flag to keep in sync with that rule.
+     *
+     * The ownership row IS explicitly removed here, not left to a later
+     * cascade — `settleOneEvent()` is also reachable with the account never
+     * actually being deleted, so there is no guaranteed later moment for
+     * `board_authors.user_id`'s `cascadeOnDelete` to fire. Harmless when the
+     * account IS about to be deleted too: the row would disappear a moment
+     * later either way.
+     *
+     * Note what this does NOT do, since it was asked about directly: there is
+     * no "deleted player" placeholder left in the event's editors list the
+     * way an anonymised participant/standing gets one. `board_authors.user_id`
+     * is `NOT NULL` — there is no nullable slot to anonymise into — so the
+     * row is removed outright and the departed owner simply stops appearing
+     * as an editor, the same as if they had never been added. A leaderboard
+     * row survives because the numbers it carries (an OSRS name, a rank) are
+     * still meaningful with no account behind them; an editors list has
+     * nothing left to say once someone can no longer edit.
+     */
+    private function endEventInPlace(Event $event, User $user): void
+    {
+        if ($event->end_date === null || $event->end_date->isFuture()) {
+            $event->end_date = Carbon::now();
+            $event->save();
         }
+
+        BoardAuthor::where(['event_id' => $event->id, 'user_id' => $user->id])->delete();
+    }
+
+    /**
+     * The destructive one. Deletes every row that IS somebody's progress —
+     * not the event's own settings, which stay behind on the soft-deleted
+     * shell exactly as every other event deletion here leaves them.
+     */
+    private function deleteEventAndProgress(Event $event): void
+    {
+        if ($event->board !== null) {
+            // CompletedTile cascades off PlayerBoard's own FK — see
+            // create_completed_tiles_table — so deleting these is deleting both.
+            PlayerBoard::where('board_id', $event->board->id)->delete();
+        }
+
+        if ($event->bingoCard !== null) {
+            BingoCompletion::whereIn('bingo_square_id', $event->bingoCard->squares()->pluck('id'))->delete();
+        }
+
+        EventStanding::where('event_id', $event->id)->delete();
+        EventParticipant::where('event_id', $event->id)->delete();
+
+        // Soft-deleted, like every other event deletion here: it drops out of
+        // every list and 404s, and an admin can restore it — but everything
+        // above is already gone by the time that happens, on purpose. What
+        // comes back is the event's own settings, not what it did to everyone
+        // else's progress.
+        $event->delete();
     }
 
     private function handEventTo(Event $event, string $newOwnerId, User $user): void
@@ -249,20 +369,26 @@ class AccountDeletionService
     private function settleTeams(User $user, array $choices): void
     {
         foreach ($this->ownedTeams($user) as $team) {
-            $choice = $choices[$team->id] ?? 'delete';
+            $this->settleOneTeam($user, $team, $choices[$team->id] ?? 'delete');
+        }
+    }
 
+    /** One team, decided and acted on immediately — see `settleOneEvent()`'s own note. */
+    public function settleOneTeam(User $user, Team $team, string $choice): void
+    {
+        DB::transaction(function () use ($user, $team, $choice) {
             if ($choice === 'delete') {
                 $team->members()->delete();
                 $team->delete();
 
-                continue;
+                return;
             }
 
             TeamMember::where(['team_id' => $team->id, 'user_id' => $choice])
                 ->update(['role' => TeamMember::OWNER]);
 
             TeamMember::where(['team_id' => $team->id, 'user_id' => $user->id])->delete();
-        }
+        });
     }
 
     /**
