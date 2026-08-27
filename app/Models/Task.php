@@ -5,10 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
 {
     use HasUuids;
+
+    /**
+     * Soft, not hard. Every tile/bingo square that used this task points at
+     * it via a `nullOnDelete` foreign key — which only fires on a real SQL
+     * DELETE. Soft-deleting keeps that pointer intact while the task is
+     * "gone", which is what lets an admin undo a delete by simply restoring
+     * the row: no tile needs re-linking, because none was ever severed.
+     */
+    use SoftDeletes;
 
     protected $fillable = ['title', 'icon_url', 'description', 'wiki_page_id', 'wiki_url', 'wiki_synced_at'];
 

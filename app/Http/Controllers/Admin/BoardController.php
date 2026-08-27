@@ -34,9 +34,17 @@ use Inertia\Response;
  */
 class BoardController extends Controller
 {
-    public function index(): Response
+    /** Statuses the list can be narrowed to — anything else falls back to 'all'. */
+    private const STATUSES = ['active', 'paused', 'deleted'];
+
+    public function index(Request $request): Response
     {
         abort_unless(Auth::user()->isAdmin(), 403);
+
+        $search = $request->string('search')->toString();
+        $status = in_array($request->query('status'), self::STATUSES, true)
+            ? $request->query('status')
+            : 'all';
 
         // By column — see EventController::EVENT_WITH. The admin list
         // renders the same author names and nothing more.
@@ -45,11 +53,24 @@ class BoardController extends Controller
         // in place, so the list still reads as "the events" at a glance.
         $boards = Event::withTrashed()
             ->with(['authors.user:id,discord_username,nickname,avatar_url', 'eventTeams.team', 'board'])
+            ->when($search !== '', fn ($q) => $q->where('title', 'like', '%'.$search.'%'))
+            // Paused/active only make sense among events still standing —
+            // 'deleted' is its own branch below, via onlyTrashed().
+            ->when($status === 'active', fn ($q) => $q->whereNull('deleted_at')->whereNull('paused_at'))
+            ->when($status === 'paused', fn ($q) => $q->whereNull('deleted_at')->whereNotNull('paused_at'))
+            ->when($status === 'deleted', fn ($q) => $q->onlyTrashed())
             ->orderByRaw('deleted_at is null desc')
             ->orderByDesc('start_date')
             ->get();
 
-        return Inertia::render('Admin/Boards', ['boards' => $boards]);
+        return Inertia::render('Admin/Boards', [
+            'boards' => $boards,
+            // Echoed back rather than read straight off the request client
+            // side, so the search box and status select reflect what the
+            // server actually filtered on — including the fallback to 'all'
+            // for a query string nobody meant to type by hand.
+            'filters' => ['search' => $search, 'status' => $status],
+        ]);
     }
 
     public function update(Request $request, Event $event, EventController $events): RedirectResponse

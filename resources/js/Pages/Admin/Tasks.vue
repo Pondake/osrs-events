@@ -19,7 +19,17 @@
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                     <u-button icon="i-lucide-pencil" size="xs" color="neutral" variant="ghost" :aria-label="$t('common.edit')" @click="openEdit(task)" />
-                    <u-button icon="i-lucide-trash-2" size="xs" color="error" variant="ghost" :aria-label="$t('common.delete')" @click="destroyTask(task)" />
+                    <confirm-popover
+                        :message="$t('admin.task_delete_confirm', { title: task.title })"
+                        :confirm-label="$t('common.delete')"
+                        :loading="deletingTaskId === task.id"
+                        :note-placeholder="$t('admin.task_delete_note_placeholder')"
+                        @confirm="(note, done) => destroyTask(task, note, done)"
+                    >
+                        <template #default>
+                            <u-button icon="i-lucide-trash-2" size="xs" color="error" variant="ghost" :aria-label="$t('common.delete')" />
+                        </template>
+                    </confirm-popover>
                 </div>
             </div>
             <p v-if="!tasks.length" class="px-4 py-8 text-center text-muted text-sm">{{ $t('admin.no_tasks') }}</p>
@@ -34,8 +44,10 @@
 <script setup>
 import { defineAsyncComponent, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import AdminLayout from '@/Components/AdminLayout.vue';
+import ConfirmPopover from '@/Components/ConfirmPopover.vue';
 
 const TaskSettingsModal = defineAsyncComponent(() => import('@/Components/TaskSettingsModal.vue'));
 
@@ -62,7 +74,37 @@ function openEdit(task) {
     showModal.value = true;
 }
 
-function destroyTask(task) {
-    router.delete(`/admin/tasks/${task.id}`, { preserveScroll: true });
+const deletingTaskId = ref(null);
+
+function destroyTask(task, note, done) {
+    deletingTaskId.value = task.id;
+
+    router.delete(`/admin/tasks/${task.id}`, {
+        data: { note: note || null },
+        preserveScroll: true,
+        onSuccess: async () => {
+            // Dynamic import, not a top-level one: useToast() reaches
+            // @nuxt/ui's `#imports` virtual specifier, which only resolves
+            // through the ui() Vite plugin's bundler pipeline — importing it
+            // eagerly crashes Admin pages' place in the SSR module graph even
+            // though the admin shell itself renders behind <ClientOnly>. Same
+            // pattern AppRoot.vue uses for its own toast calls.
+            const { useToast } = await import('@nuxt/ui/composables/useToast');
+            useToast().add({
+                id: `task-deleted-${task.id}`,
+                title: trans('admin.task_deleted'),
+                color: 'success',
+                actions: [{ label: trans('common.undo'), onClick: () => restoreTask(task) }],
+            });
+        },
+        onFinish: () => {
+            deletingTaskId.value = null;
+            done?.();
+        },
+    });
+}
+
+function restoreTask(task) {
+    router.post(`/admin/tasks/${task.id}/restore`, {}, { preserveScroll: true });
 }
 </script>
