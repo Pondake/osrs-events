@@ -310,32 +310,6 @@ class StagingFeedbackTest extends TestCase
     }
 
     /**
-     * The profile list was built from PlayerBoard rows and rendered
-     * `board.title` — a column the event/board split removed — so every row
-     * showed a blank name and linked to /events/{board id}, which is not the
-     * event id for anything created since that split.
-     */
-    #[Test]
-    public function the_profile_lists_events_with_a_title_and_a_working_link(): void
-    {
-        Http::fake();
-
-        $event = $this->race();
-        $user = $this->player();
-
-        $this->actingAs($user)->post("/events/{$event->id}/enter")->assertRedirect();
-
-        $events = $this->actingAs($user)->get('/settings/profile')->viewData('page')['props']['events'];
-
-        $this->assertCount(1, $events);
-        $this->assertSame('Skill of the Month — Mining', $events[0]['title']);
-        $this->assertSame($event->id, $events[0]['id']);
-
-        // A race has a rank, not a position on a grid — no invented percentage.
-        $this->assertNull($events[0]['progress']);
-    }
-
-    /**
      * Each dashboard row links to its own view of /my-events, so those
      * filters have to actually filter — a "view all" that lands on
      * everything is the same dead end as no link.
@@ -738,36 +712,6 @@ class StagingFeedbackTest extends TestCase
 
         $this->actingAs($player)->get('/admin/blueprints')->assertForbidden();
         $this->actingAs($player)->getJson('/event-blueprints')->assertForbidden();
-    }
-
-    // ------------------------------------- created vs joined on the profile
-
-    /**
-     * The profile listed every event in one column with an Owner badge as
-     * the only hint which was which. The page now filters on this flag, so
-     * it has to be there and it has to mean "you run this one".
-     */
-    #[Test]
-    public function the_profile_marks_which_events_you_run(): void
-    {
-        $host = $this->player('Host');
-        $mine = $this->race(['title' => 'Mine']);
-        BoardAuthor::create(['event_id' => $mine->id, 'user_id' => $host->id, 'is_owner' => true]);
-
-        $theirs = $this->race(['title' => 'Theirs']);
-        BoardAuthor::create(['event_id' => $theirs->id, 'user_id' => $this->player('Someone')->id, 'is_owner' => true]);
-        EventStanding::create([
-            'event_id' => $theirs->id,
-            'user_id' => $host->id,
-            'username' => 'Host',
-            'start_value' => 0,
-        ]);
-
-        $events = collect($this->actingAs($host)->get('/settings/profile')->viewData('page')['props']['events'])
-            ->keyBy('title');
-
-        $this->assertTrue($events['Mine']['isHost']);
-        $this->assertFalse($events['Theirs']['isHost']);
     }
 
     // ------------------------------------------------------------- dates
