@@ -61,6 +61,20 @@
                             <p v-if="check.fix" class="text-sm mt-1" :class="toneText[check.status]">
                                 {{ check.fix }}
                             </p>
+
+                            <!-- The one check with something behind it worth
+                                 a modal — see DiagnosticCheck's own `key` doc
+                                 for why this is keyed rather than matched on
+                                 the label. -->
+                            <u-button
+                                v-if="check.key === 'wom_standings'"
+                                size="xs"
+                                color="warning"
+                                variant="outline"
+                                class="mt-2"
+                                :label="$t('diagnostics.standings_details')"
+                                @click="showStandingsModal = true"
+                            />
                         </div>
                     </div>
                 </div>
@@ -162,15 +176,23 @@
                 </template>
             </u-card>
         </div>
+
+        <client-only>
+            <standings-failures-modal v-model:open="showStandingsModal" />
+        </client-only>
     </admin-layout>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import AdminLayout from '@/Components/AdminLayout.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
+
+const StandingsFailuresModal = defineAsyncComponent(() => import('@/Components/StandingsFailuresModal.vue'));
+
+const showStandingsModal = ref(false);
 
 const props = defineProps({
     groups: { type: Array, required: true },
