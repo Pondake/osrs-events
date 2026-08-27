@@ -19,29 +19,37 @@
 
                             <!-- Promotion is the owner's alone (see
                                  TeamController::updateMemberRole), so a
-                                 manager sees the roles without the switch. -->
-                            <u-button
-                                v-if="canPromote && member.role !== 'OWNER'"
-                                variant="ghost"
-                                color="neutral"
-                                size="xs"
-                                :icon="member.role === 'MANAGER' ? 'i-lucide-shield-minus' : 'i-lucide-shield-plus'"
-                                :aria-label="member.role === 'MANAGER' ? $t('teams.demote') : $t('teams.promote')"
-                                :title="member.role === 'MANAGER' ? $t('teams.demote') : $t('teams.promote')"
-                                @click="setRole(member, member.role === 'MANAGER' ? 'MEMBER' : 'MANAGER')"
-                            />
+                                 manager sees the roles without the switch.
+                                 u-tooltip rather than a native title prop —
+                                 this modal is already rendered behind
+                                 <client-only> in Teams/Index.vue, so it
+                                 doesn't carry the SSR risk a real u-tooltip
+                                 has on a server-rendered page (see
+                                 SkillRace.vue's leaderboard for the case
+                                 where that risk is why one is NOT used). -->
+                            <u-tooltip v-if="canPromote && member.role !== 'OWNER'" :text="member.role === 'MANAGER' ? $t('teams.demote') : $t('teams.promote')">
+                                <u-button
+                                    variant="ghost"
+                                    color="neutral"
+                                    size="xs"
+                                    :icon="member.role === 'MANAGER' ? 'i-lucide-shield-minus' : 'i-lucide-shield-plus'"
+                                    :aria-label="member.role === 'MANAGER' ? $t('teams.demote') : $t('teams.promote')"
+                                    @click="setRole(member, member.role === 'MANAGER' ? 'MEMBER' : 'MANAGER')"
+                                />
+                            </u-tooltip>
 
                             <!-- Removing the owner would leave a team nobody
                                  can delete; the server refuses it too. -->
-                            <u-button
-                                v-if="member.role !== 'OWNER'"
-                                variant="ghost"
-                                color="error"
-                                size="xs"
-                                icon="i-lucide-x"
-                                :aria-label="$t('teams.remove_member')"
-                                @click="removeMember(member.user)"
-                            />
+                            <u-tooltip v-if="member.role !== 'OWNER'" :text="$t('teams.remove_member')">
+                                <u-button
+                                    variant="ghost"
+                                    color="error"
+                                    size="xs"
+                                    icon="i-lucide-x"
+                                    :aria-label="$t('teams.remove_member')"
+                                    @click="removeMember(member.user)"
+                                />
+                            </u-tooltip>
                         </div>
                     </div>
                     <p v-else class="text-xs text-muted italic px-1">{{ $t('teams.no_members') }}</p>
