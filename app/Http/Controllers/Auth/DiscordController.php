@@ -236,20 +236,28 @@ class DiscordController extends Controller
     }
 
     /**
-     * Whether the site is shut to newcomers, for either of the two reasons.
+     * Whether the site is shut to newcomers, for any of three reasons.
      *
-     * The lock is one. `registration_open` is the other — an admin switch
-     * that has always gated the email/password form and, until this method,
-     * nothing else: turning it off closed the front door and left Discord
-     * wide open, which is not what a switch labelled "registration" says.
+     * The two locks are two of them — full lockdown as much as the
+     * pre-launch door, since neither is meant to hand out fresh accounts
+     * while it's on, only let existing ones through. `registration_open` is
+     * the third — an admin switch that has always gated the email/password
+     * form and, until this method, nothing else: turning it off closed the
+     * front door and left Discord wide open, which is not what a switch
+     * labelled "registration" says.
      *
-     * Not `EnsureSiteUnlocked`'s own check for the first half: that asks
-     * whether THIS request may pass, and a request arriving here has already
-     * been let through as a sign-in route.
+     * Not `EnsureSiteUnlocked::isShutFor()`: that asks whether THIS visitor
+     * may use the site at all, and a request arriving here has already been
+     * let through as a sign-in route (both locks carve out `auth/discord/*`
+     * on purpose, or nobody could sign in through it). This asks the
+     * narrower question of whether the account being signed into is allowed
+     * to be a NEW one.
      */
     private function registrationClosed(): bool
     {
-        return Setting::get('site_lock_enabled') || ! Setting::get('registration_open');
+        return Setting::get('site_lock_enabled')
+            || Setting::get('admin_lockdown_enabled')
+            || ! Setting::get('registration_open');
     }
 
     private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl, ?string $globalName): User

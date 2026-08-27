@@ -70,6 +70,14 @@ class Setting extends Model
         // admin page can set a new one or leave it alone.
         'site_lock_enabled' => false,
         'site_lock_password' => null,
+        // The stricter door: while this is on, ONLY an admin session gets
+        // through — not an existing player, not the shared password. Separate
+        // from site_lock_enabled on purpose (see EnsureSiteUnlocked): the
+        // pre-launch door above is meant to keep the app unannounced from
+        // strangers while the people already let in keep playing; this one is
+        // for the rarer case of actually taking the app away from everyone
+        // but the person working on it.
+        'admin_lockdown_enabled' => false,
     ];
 
     /** Banner styles. Keys are stored; the UI maps them to colour and icon. */

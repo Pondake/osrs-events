@@ -45,11 +45,11 @@
                          hands it straight back. -->
                     <u-switch
                         v-model="form.registration_open"
-                        :disabled="form.site_lock_enabled"
+                        :disabled="form.site_lock_enabled || form.admin_lockdown_enabled"
                         :label="form.registration_open ? $t('admin.site_registration_on') : $t('admin.site_registration_off')"
                     />
 
-                    <p v-if="form.site_lock_enabled" class="text-xs text-warning mt-2 flex items-start gap-1.5">
+                    <p v-if="form.site_lock_enabled || form.admin_lockdown_enabled" class="text-xs text-warning mt-2 flex items-start gap-1.5">
                         <u-icon name="i-lucide-lock" class="size-3.5 shrink-0 mt-0.5" />
                         <span>{{ $t('admin.site_registration_locked_note') }}</span>
                     </p>
@@ -118,6 +118,34 @@
                     variant="subtle"
                     icon="i-lucide-info"
                     :description="$t('admin.site_lock_note')"
+                />
+
+                <u-separator class="my-6" />
+
+                <!-- The stricter, rarer switch. Deliberately different color
+                     and icon from the pre-launch lock above — this refuses
+                     everyone but an admin, including people already signed in
+                     and the shared password itself, so it must not read as
+                     "the same lock, one notch further". -->
+                <u-form-field
+                    :label="$t('admin.site_full_lockdown')"
+                    :description="$t('admin.site_full_lockdown_desc')"
+                    :error="form.errors.admin_lockdown_enabled"
+                >
+                    <u-switch
+                        v-model="form.admin_lockdown_enabled"
+                        color="error"
+                        :label="form.admin_lockdown_enabled ? $t('admin.site_full_lockdown_on') : $t('admin.site_full_lockdown_off')"
+                    />
+                </u-form-field>
+
+                <u-alert
+                    v-if="form.admin_lockdown_enabled"
+                    class="mt-4"
+                    color="error"
+                    variant="subtle"
+                    icon="i-lucide-shield-alert"
+                    :description="$t('admin.site_full_lockdown_note')"
                 />
             </u-card>
 
@@ -262,6 +290,7 @@ const form = useForm({
     announcement_type: props.settings.announcement_type ?? 'info',
     discord_webhooks_enabled: props.settings.discord_webhooks_enabled ?? false,
     site_lock_enabled: props.settings.site_lock_enabled ?? false,
+    admin_lockdown_enabled: props.settings.admin_lockdown_enabled ?? false,
     // Always blank. The server sends null for this on purpose (the stored
     // value is a bcrypt hash) and reads a blank submission as "unchanged".
     site_lock_password: '',
