@@ -22,6 +22,10 @@ use Inertia\Response;
  * second, database-backed flag would still need the app booting and the DB
  * reachable, which is exactly what maintenance mode is usually needed for.
  * Two switches that disagree is worse than one that lives in artisan.
+ *
+ * `admin_lockdown_enabled` below is not that either, for the same reason:
+ * the app keeps running and answering, it just refuses everyone but an
+ * admin. See EnsureSiteUnlocked for how it differs from `site_lock_enabled`.
  */
 class SiteSettingsController extends Controller
 {
@@ -72,6 +76,7 @@ class SiteSettingsController extends Controller
             'kofi_url' => ['required', 'url:http,https', 'max:255'],
             'discord_webhooks_enabled' => ['required', 'boolean'],
             'site_lock_enabled' => ['required', 'boolean'],
+            'admin_lockdown_enabled' => ['required', 'boolean'],
             // Required only when turning the lock on without one already
             // stored — otherwise blank means "keep the current password",
             // which is what an admin editing any other field on this page

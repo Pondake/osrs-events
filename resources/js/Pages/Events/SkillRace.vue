@@ -24,7 +24,10 @@
                                  icon set is built from wiki item images and
                                  there is no Zulrah icon (see
                                  Support/metrics.js). -->
-                            <span class="inline-flex items-center gap-1.5">
+                            <span
+                                class="inline-flex items-center gap-1.5"
+                                :title="isBossRace ? $t('events.meta_ranked_by_boss_hint') : $t('events.meta_ranked_by_skill_hint')"
+                            >
                                 <img
                                     v-if="metricIcon"
                                     :src="metricIcon"

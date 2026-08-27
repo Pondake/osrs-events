@@ -14,11 +14,14 @@
                         :stale="stale"
                     >
                         <template #meta>
-                            <span class="inline-flex items-center gap-1.5">
+                            <span class="inline-flex items-center gap-1.5" :title="$t('bingo.size_hint')">
                                 <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
                                 {{ $t('bingo.size_option', { size: liveCard.size }) }}
                             </span>
-                            <span class="inline-flex items-center gap-1.5">
+                            <span
+                                class="inline-flex items-center gap-1.5"
+                                :title="liveCard.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house_hint') : $t('bingo.win_line_hint')"
+                            >
                                 <u-icon name="i-lucide-trophy" class="size-4 shrink-0" />
                                 {{ liveCard.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house') : $t('bingo.win_line') }}
                             </span>
