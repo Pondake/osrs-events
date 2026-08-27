@@ -115,9 +115,11 @@ final class LegalPages
                 'type' => 'section',
                 'props' => ['title' => 'Your data is yours'],
                 'blocks' => [
-                    ['type' => 'prose', 'props' => ['text' => 'You can change your display name and OSRS username yourself under Settings, choose which notifications you get, and remove any device you registered. Ask and your account will be deleted, along with the progress attached to it.']],
+                    ['type' => 'prose', 'props' => ['text' => 'You can change your display name and OSRS username yourself under Settings, choose which notifications you get, and remove any device you registered. You can also **delete your account yourself**, under Settings → Account — nobody has to approve it and you do not have to ask anyone. It takes your progress with it, and the page tells you what happens to any event you host before you confirm.']],
+                    ['type' => 'prose', 'props' => ['text' => 'If you cannot reach that page — you have lost access to the account, or something is broken — mail us and we will do it for you.']],
                     ['type' => 'links', 'props' => ['links' => [
-                        ['label' => 'Request account deletion', 'to' => 'mailto:dev@absolit.nl', 'icon' => 'i-lucide-mail', 'variant' => 'outline'],
+                        ['label' => 'Delete your account', 'to' => '/settings/account', 'icon' => 'i-lucide-trash-2', 'variant' => 'outline'],
+                        ['label' => 'Ask us to do it', 'to' => 'mailto:dev@absolit.nl', 'icon' => 'i-lucide-mail', 'variant' => 'ghost'],
                     ]]],
                 ],
             ],
@@ -204,7 +206,12 @@ final class LegalPages
                     'color' => 'warning',
                     'icon' => 'i-lucide-alert-triangle',
                     'title' => 'Not affiliated with Jagex',
-                    'description' => 'OSRS Events is an unofficial fan project. Old School RuneScape is a trademark of Jagex Ltd, who neither endorse nor are involved with this site.',
+                    // Exact wording required by Jagex's Fan Content Policy §8.1,
+                    // not a paraphrase — the policy specifies this sentence
+                    // verbatim as the required attribution, not just "say
+                    // something like this". Kept in step with the same
+                    // sentence in the site-wide footer (common.not_affiliated).
+                    'description' => "Created using intellectual property belonging to Jagex Limited under the terms of Jagex's Fan Content Policy. This content is not endorsed by or affiliated with Jagex.",
                 ],
             ],
         ];

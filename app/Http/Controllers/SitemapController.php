@@ -35,6 +35,9 @@ class SitemapController extends Controller
         '/osrs-snakes-and-ladders' => ['priority' => '0.9', 'changefreq' => 'monthly'],
         '/osrs-clan-events' => ['priority' => '0.9', 'changefreq' => 'monthly'],
         '/osrs-event-ideas' => ['priority' => '0.9', 'changefreq' => 'monthly'],
+        '/osrs-bingo' => ['priority' => '0.9', 'changefreq' => 'monthly'],
+        '/osrs-skill-race' => ['priority' => '0.9', 'changefreq' => 'monthly'],
+        '/osrs-drop-race' => ['priority' => '0.9', 'changefreq' => 'monthly'],
     ];
 
     public function __invoke(): Response

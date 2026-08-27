@@ -16,6 +16,9 @@ export const LANDING_PAGES = [
     'SnakesAndLadders',
     'OsrsClanEvents',
     'OsrsEventIdeas',
+    'OsrsBingo',
+    'OsrsSkillRace',
+    'OsrsDropRace',
     // Every CMS page — about, privacy, terms, donate. They are read by the
     // same people, in the same frame of mind, and they are what a search
     // result lands on.
@@ -45,6 +48,9 @@ export const PUBLIC_PATHS = [
     '/osrs-snakes-and-ladders',
     '/osrs-clan-events',
     '/osrs-event-ideas',
+    '/osrs-bingo',
+    '/osrs-skill-race',
+    '/osrs-drop-race',
     '/about',
 ];
 

@@ -30,7 +30,7 @@ class SitemapTest extends TestCase
     {
         $response = $this->get('/sitemap.xml');
 
-        foreach (['/osrs-snakes-and-ladders', '/osrs-clan-events', '/osrs-event-ideas', '/events'] as $path) {
+        foreach (['/osrs-snakes-and-ladders', '/osrs-clan-events', '/osrs-event-ideas', '/osrs-bingo', '/osrs-skill-race', '/osrs-drop-race', '/events'] as $path) {
             $response->assertSee(url($path), false);
         }
     }

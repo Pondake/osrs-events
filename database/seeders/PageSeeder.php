@@ -45,45 +45,15 @@ class PageSeeder extends Seeder
         // exactly as it did until someone actually adds something.
         $this->seedPage('home', __('home.title'), __('home.description'), []);
 
-        // The three SEO landing pages, also partial. Only their FAQ is
-        // editable — the step and format lists stay in code because they
-        // drive HowTo and ItemList schema the block vocabulary cannot
-        // express. The FAQ is both the visible copy AND the FAQPage
-        // structured data, which is exactly why it must have one source.
-        $this->seedPage(
-            'osrs-snakes-and-ladders',
-            'OSRS Snakes & Ladders',
-            'How a Snakes & Ladders clan event works.',
-            [['type' => 'faq', 'props' => ['items' => [
-                ['question' => 'What is an OSRS Snakes and Ladders board?', 'answer' => 'A clan event board inspired by the classic board game — tiles are OSRS tasks instead of squares, and snakes send you back down the board.'],
-                ['question' => 'Do I need Discord to play?', 'answer' => 'No. Discord login is the quickest way in, but you can sign up with an email address instead.'],
-                ['question' => 'Can I customise the tiles?', 'answer' => 'Yes — board owners can set a custom task, boss or drop requirement for every tile.'],
-                ['question' => 'How many players can join a board?', 'answer' => 'As many as your clan wants; boards support teams as well as individual players.'],
-                ['question' => 'Is it free to use?', 'answer' => 'Yes, OSRS Events is free for any clan to use.'],
-                ['question' => 'Can I run multiple boards at once?', 'answer' => 'Yes, you can create and manage several boards for different events at the same time.'],
-                ['question' => 'What happens when I land on a snake?', 'answer' => 'You slide back down to the tile at the bottom of that snake, same as the classic board game.'],
-            ]]]],
-        );
-
-        $this->seedPage(
-            'osrs-clan-events',
-            'OSRS Clan Events',
-            'Running events for an Old School RuneScape clan.',
-            [['type' => 'faq', 'props' => ['items' => [
-                ['question' => 'Do I need to be a clan leader to run an event?', 'answer' => 'No. Anyone can create an event. If you lock it to a Discord server, players just need to be members of that server to join.'],
-                ['question' => 'Can we run more than one event at once?', 'answer' => 'Yes. There is no limit, and each event has its own access rules, teams and leaderboard.'],
-                ['question' => 'Can two clans compete against each other?', 'answer' => 'Yes. Use a team board with one team per clan, or an open event that both rosters can join.'],
-                ['question' => 'What happens when an event ends?', 'answer' => 'It stays available to read after its end date, so you keep the final standings and can look back at previous events.'],
-                ['question' => 'Is any of this paid?', 'answer' => 'No. Every feature is free, with no ads and no paid tier. Donations cover hosting.'],
-            ]]]],
-        );
-
-        $this->seedPage(
-            'osrs-event-ideas',
-            'OSRS Event Ideas',
-            'Event formats for Old School RuneScape clans.',
-            [],
-        );
+        // The six OSRS Events guide pages (Snakes & Ladders, Bingo, Skill
+        // Race, Drop Race, Clan Events, Event Ideas) used to seed a partial
+        // Page row here so an admin could edit their FAQ without a deploy.
+        // Dropped: the guide pages are static content now, written directly
+        // in LandingController and lang/en.json — see that controller's own
+        // comment on snakesAndLadders() for why. Still listed in
+        // Page::PARTIAL_SLUGS regardless, since an environment that already
+        // ran this seeder before the change still has these rows and they
+        // must stay excluded from the CMS inventory and the /{page} catch-all.
 
         $this->seedPage('privacy', 'Privacy Policy', 'What we collect, and what we do not.', LegalPages::privacy());
         $this->seedPage('terms', 'Terms of Service', 'The rules for using OSRS Events.', LegalPages::terms());
