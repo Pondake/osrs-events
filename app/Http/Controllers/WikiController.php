@@ -33,6 +33,21 @@ class WikiController extends Controller
     }
 
     /**
+     * The same search, for a picker with no event to scope it to — a team
+     * icon, a task's own icon field. Gated on being signed in rather than on
+     * `assertCanEditEvent`, since there's no event here to check edit rights
+     * against: this is a read-only proxy over the wiki's own public search,
+     * and every actual write it feeds (saving a team, saving a task) is
+     * permissioned at its own endpoint regardless of what this returns.
+     */
+    public function searchGlobal(Request $request, Wiki $wiki): JsonResponse
+    {
+        return response()->json([
+            'results' => $wiki->search($request->string('search')->toString()),
+        ]);
+    }
+
+    /**
      * Turn a chosen wiki page into a Task, or return the one it already
      * became.
      *
