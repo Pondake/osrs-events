@@ -115,6 +115,15 @@ h3 {
 .board-tile--current {
     outline: 2px solid var(--ui-color-primary-500, #d4a33e);
 }
+/* The "You are here" label's own ink, same brand-ink value ui.config.ts pins
+   for solid primary buttons — kept literal rather than a Tailwind text color
+   utility, since neither light nor dark mode's default text-inverted token
+   clears contrast against amber-500 (see the "Primary button contrast"
+   backlog entry: white-on-amber measured 2.15:1). */
+.board-tile--here-label {
+    background: var(--ui-color-primary-500, #d4a33e);
+    color: #1c1919;
+}
 .board-tile--completed {
     opacity: 0.85;
 }

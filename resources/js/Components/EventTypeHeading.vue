@@ -1,5 +1,5 @@
 <template>
-    <div class="min-w-0">
+    <div class="min-w-0 flex-1">
         <!-- What this event IS, at a size you can read.
              It was three `size="sm"` badges stacked above the title — type,
              status and win condition, all the same weight, all small enough
@@ -69,7 +69,12 @@
         <!-- Secondary facts: the dates, and whatever the page adds through
              the slot (win condition, board size, what a race ranks on). -->
         <div class="flex items-center gap-x-4 gap-y-1 flex-wrap mt-2 text-sm text-muted">
-            <span class="inline-flex items-center gap-1.5">
+            <!-- Native title, not u-tooltip: this heading is shared by
+                 BoardShow/Bingo/SkillRace, all rendered server-side, and a
+                 real u-tooltip reaches @nuxt/ui's `#imports` specifier — the
+                 SSR hazard CLAUDE.md warns about (see SkillRace.vue's own
+                 error badge for the same reasoning). -->
+            <span class="inline-flex items-center gap-1.5" :title="$t('events.meta_dates_hint')">
                 <u-icon name="i-lucide-calendar" class="size-4 shrink-0" />
                 {{ dateRange }}
             </span>

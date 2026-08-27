@@ -128,6 +128,71 @@ class PlayerBoardTest extends TestCase
         $this->assertGreaterThanOrEqual(0, $player->current_position);
     }
 
+    // ---------------------------------------------------------- ended events
+
+    /**
+     * The status badge on the page derives "Ended" from end_date alone
+     * (eventStatus() in Support/board.js); rolling and tile-completion used to
+     * only check isPaused() and never end_date at all, so a finished event
+     * still let a player roll and move — reported live on staging.
+     */
+    #[Test]
+    public function rolling_is_refused_once_the_event_has_ended(): void
+    {
+        [$owner, $event] = $this->board(['event' => [
+            'start_date' => now()->subDays(10),
+            'end_date' => now()->subDay(),
+        ]]);
+        $this->fillTiles($event->board);
+
+        $player = PlayerBoard::create([
+            'user_id' => $owner->id,
+            'board_id' => $event->board->id,
+            'current_position' => 0,
+        ]);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/roll")->assertRedirect();
+
+        $this->assertSame(0, $player->fresh()->current_position);
+    }
+
+    #[Test]
+    public function ticking_a_tile_is_refused_once_the_event_has_ended(): void
+    {
+        [$owner, $event] = $this->board(['event' => [
+            'start_date' => now()->subDays(10),
+            'end_date' => now()->subDay(),
+        ]]);
+        $this->fillTiles($event->board);
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles/{$tile->id}/toggle")->assertRedirect();
+
+        $this->assertSame(0, CompletedTile::where('tile_id', $tile->id)->count());
+    }
+
+    /** An event still running through the rest of its own end_date is not ended yet. */
+    #[Test]
+    public function rolling_still_works_on_the_last_day_of_the_event(): void
+    {
+        [$owner, $event] = $this->board(['event' => [
+            'start_date' => now()->subDays(10),
+            'end_date' => now(),
+        ]]);
+        $this->fillTiles($event->board);
+
+        PlayerBoard::create([
+            'user_id' => $owner->id,
+            'board_id' => $event->board->id,
+            'current_position' => 0,
+        ]);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/roll");
+
+        $this->assertGreaterThan(0, PlayerBoard::where('board_id', $event->board->id)->first()->current_position);
+    }
+
     // ------------------------------------------------------------ the roll limit
 
     #[Test]

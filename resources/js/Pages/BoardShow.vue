@@ -22,11 +22,14 @@
                         :stale="stale"
                     >
                             <template #meta>
-                                <span class="inline-flex items-center gap-1.5">
+                                <span class="inline-flex items-center gap-1.5" :title="$t('admin.board_size_desc')">
                                     <u-icon name="i-lucide-grid-3x3" class="size-4 shrink-0" />
                                     {{ sizeLabel }}
                                 </span>
-                                <span class="inline-flex items-center gap-1.5">
+                                <span
+                                    class="inline-flex items-center gap-1.5"
+                                    :title="liveBoard.mode === 'TEAM' ? $t('admin.board_mode_team_hint') : $t('admin.board_mode_solo_hint')"
+                                >
                                     <u-icon :name="liveBoard.mode === 'TEAM' ? 'i-lucide-users' : 'i-lucide-user'" class="size-4 shrink-0" />
                                     {{ liveBoard.mode === 'TEAM' ? $t('admin.board_mode_team') : $t('admin.board_mode_solo') }}
                                 </span>
@@ -67,7 +70,7 @@
                                  which put every passer-by on the leaderboard
                                  at square one. Joining is a decision now, and
                                  this is where it is made. -->
-                            <join-event-button v-if="joined || !isPaused" :event-id="liveBoard.id" :joined="joined" size="sm" />
+                            <join-event-button v-if="joined || (!isPaused && !isEnded)" :event-id="liveBoard.id" :joined="joined" size="sm" />
                             <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
                             <u-button
                                 :href="`/events/${liveBoard.id}/leaderboard`"
@@ -122,6 +125,18 @@
                                          note. Paint order relies entirely on DOM order (later =
                                          on top), so nothing here can leak into the root stacking
                                          context and climb above a teleported modal. -->
+                                    <!-- The one tile that gets a top label, not just the
+                                         --current ring/tint app.css already applies: the
+                                         ring reads as "highlighted" on a screenshot but
+                                         doesn't say WHICH highlight it is next to the
+                                         --past styling on tiles behind it. -->
+                                    <div
+                                        v-if="isCurrentTile(tile)"
+                                        class="board-tile--here-label absolute top-0 inset-x-0 z-10 text-[6px] sm:text-[7px] font-bold uppercase tracking-wide text-center leading-tight py-0.5 truncate px-0.5"
+                                    >
+                                        {{ $t('board.you_are_here') }}
+                                    </div>
+
                                     <div class="absolute inset-0 flex flex-col items-center justify-center px-1 overflow-hidden">
                                         <img
                                             v-if="tile.task?.icon_url"
@@ -228,7 +243,7 @@
                             </template>
 
                             <dice-roller
-                                v-if="canRoll && !isPaused"
+                                v-if="canRoll && !isPaused && !isEnded"
                                 :rolling="rolling"
                                 :last-roll="lastRoll"
                                 :rolls-today="playerBoard?.dice_rolls_today ?? 0"
@@ -236,11 +251,11 @@
                                 @roll="roll"
                             />
 
-                            <!-- A paused event refuses the roll server-side
+                            <!-- Paused/ended both refuse the roll server-side
                                  either way; taking the dice away is so that
                                  the refusal is not the way anyone finds out. -->
                             <p v-else class="text-sm text-muted">
-                                {{ isPaused ? $t('events.paused_notice') : $t('board.roll_needs_current_tile') }}
+                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : $t('board.roll_needs_current_tile')) }}
                             </p>
                         </u-card>
 
@@ -249,9 +264,9 @@
                              the deliberate way in above them. -->
                         <u-card v-if="!playerBoard">
                             <p class="text-sm text-muted">
-                                {{ isPaused ? $t('events.paused_notice') : (joined ? $t('board.get_started_desc') : $t('events.join_hint')) }}
+                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (joined ? $t('board.get_started_desc') : $t('events.join_hint'))) }}
                             </p>
-                            <div v-if="!isPaused" class="mt-3 flex flex-col gap-3">
+                            <div v-if="!isPaused && !isEnded" class="mt-3 flex flex-col gap-3">
                                 <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
                                 <dice-roller :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
                             </div>
@@ -282,7 +297,7 @@
                                 </div>
                             </div>
 
-                            <div v-if="!isPaused" class="mt-3">
+                            <div v-if="!isPaused && !isEnded" class="mt-3">
                                 <u-button
                                     v-if="!currentTileCompleted"
                                     color="success"
@@ -352,19 +367,24 @@
                                 <span class="font-semibold">{{ $t('boards.meta') }}</span>
                             </template>
                             <div class="flex flex-wrap gap-2">
-                                <u-badge color="neutral" variant="subtle" icon="i-lucide-calendar">
+                                <u-badge color="neutral" variant="subtle" icon="i-lucide-calendar" :title="$t('events.meta_dates_hint')">
                                     {{ formatDate(liveBoard.start_date) }} – {{ formatDate(liveBoard.end_date) }}
                                 </u-badge>
-                                <u-badge color="neutral" variant="subtle" icon="i-lucide-grid-3x3">
+                                <u-badge color="neutral" variant="subtle" icon="i-lucide-grid-3x3" :title="$t('admin.board_size_desc')">
                                     {{ formatBoardSize(liveBoard.size) }}
                                 </u-badge>
-                                <u-badge v-if="liveBoard.dice_roll_limit" color="neutral" variant="subtle" icon="i-lucide-dice-6">
+                                <u-badge v-if="liveBoard.dice_roll_limit" color="neutral" variant="subtle" icon="i-lucide-dice-6" :title="$t('board.roll_limit_hint')">
                                     {{ $t('boards.roll_limit', { limit: liveBoard.dice_roll_limit }) }}
                                 </u-badge>
-                                <u-badge v-else color="neutral" variant="subtle" icon="i-lucide-dice-6">
+                                <u-badge v-else color="neutral" variant="subtle" icon="i-lucide-dice-6" :title="$t('board.roll_limit_hint')">
                                     {{ $t('dice.unlimited') }}
                                 </u-badge>
-                                <u-badge :color="liveBoard.mode === 'TEAM' ? 'warning' : 'neutral'" variant="subtle" icon="i-lucide-users-round">
+                                <u-badge
+                                    :color="liveBoard.mode === 'TEAM' ? 'warning' : 'neutral'"
+                                    variant="subtle"
+                                    icon="i-lucide-users-round"
+                                    :title="liveBoard.mode === 'TEAM' ? $t('admin.board_mode_team_hint') : $t('admin.board_mode_solo_hint')"
+                                >
                                     {{ liveBoard.mode === 'TEAM' ? $t('board.mode_team') : $t('board.mode_solo') }}
                                 </u-badge>
                             </div>
@@ -467,7 +487,7 @@ import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
-import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate } from '@/Support/board';
+import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate, eventStatus } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
@@ -624,6 +644,12 @@ const canRoll = computed(() => !currentTileHasTask.value || currentTileCompleted
 // paused_at (see SignalsEventEdits) and this is what it lands on.
 const isPaused = computed(() => Boolean(liveBoard.value.paused_at));
 
+// Same "ended outranks paused" rule EventTypeHeading already uses for its
+// status badge (eventStatus() in Support/board.js) — the badge said "Ended"
+// on this exact page while the dice/complete-tile controls stayed live,
+// because they only ever checked isPaused. Ended events must refuse both.
+const isEnded = computed(() => eventStatus(liveBoard.value) === 'ended');
+
 /** The host's tools, in one menu — see EventManageMenu. */
 const manageItems = computed(() => [
     { key: 'edit', label: editMode.value ? trans('bingo.editing_tiles') : trans('bingo.edit_tiles'), icon: 'i-lucide-grid-2x2-plus', active: editMode.value },
@@ -740,6 +766,12 @@ function tileTitle(tile) {
 
 function isTileCompleted(tile) {
     return props.playerBoard?.completedTileIds.includes(tile.id) ?? false;
+}
+
+function isCurrentTile(tile) {
+    const current = props.playerBoard?.current_position;
+
+    return current !== undefined && current !== null && tile.position === current;
 }
 
 function tileClasses(tile) {

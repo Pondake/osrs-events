@@ -80,6 +80,27 @@ class Event extends Model
     }
 
     /**
+     * Over: nothing anyone does moves it any more.
+     *
+     * A pure function of `end_date`, mirroring `boardEventStatus()` in
+     * resources/js/Support/board.js — the JS side already derives the
+     * "Ended" badge shown on the page from this same date, so a mutation
+     * endpoint that didn't check it too would let a player roll or tick a
+     * tile on a board the page itself displays as finished. Ended outranks
+     * paused, same reasoning as the JS `eventStatus()` wrapper: a paused
+     * event that ran past its end date is over, not "paused".
+     */
+    public function isEnded(): bool
+    {
+        // endOfDay(), not a bare isPast(): boardEventStatus() in board.js only
+        // calls a day "ended" once it is wholly in the past (utcDay(end) <
+        // today), so an event running through the end of its own end_date is
+        // still live for the rest of that day, not ended at its first
+        // midnight tick.
+        return $this->end_date !== null && $this->end_date->copy()->endOfDay()->isPast();
+    }
+
+    /**
      * The fields a standing is measured against.
      *
      * Change any of them and every row on the event describes a window that
