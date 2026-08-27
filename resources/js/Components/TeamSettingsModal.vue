@@ -14,7 +14,7 @@
                 </u-form-field>
 
                 <u-form-field :label="$t('teams.team_icon')">
-                    <u-input v-model="form.icon_url" class="w-full" placeholder="https://..." />
+                    <wiki-icon-picker v-model="form.icon_url" />
                 </u-form-field>
 
                 <!-- A picker over the servers this account is actually in,
@@ -68,6 +68,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import WikiIconPicker from '@/Components/WikiIconPicker.vue';
 
 const props = defineProps({
     open: { type: Boolean, default: false },

@@ -195,4 +195,34 @@ class WikiSearchTest extends TestCase
 
         Http::assertNothingSent();
     }
+
+    // --------------------------------------------------- the event-less search
+
+    /**
+     * Behind the team-icon and task-icon pickers, neither of which has an
+     * event to check canEditEvent against. Any signed-in account can reach
+     * it — it's a read-only proxy over the wiki's own public search, and the
+     * writes it feeds (saving a team, saving a task) are permissioned at
+     * their own endpoints regardless of what this returns.
+     */
+    #[Test]
+    public function any_signed_in_account_can_use_the_global_search(): void
+    {
+        $this->fakeWiki([$this->page(44127, 'Zulrah', 'https://oldschool.runescape.wiki/images/zulrah.png')]);
+
+        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+
+        $this->actingAs($user)
+            ->getJson('/wiki/search?search=zulrah')
+            ->assertOk()
+            ->assertJsonPath('results.0.title', 'Zulrah');
+    }
+
+    #[Test]
+    public function the_global_search_requires_being_signed_in(): void
+    {
+        Http::fake();
+
+        $this->getJson('/wiki/search?search=zulrah')->assertUnauthorized();
+    }
 }

@@ -6,7 +6,7 @@
                     <u-input v-model="form.title" class="w-full" :placeholder="$t('admin.task_title_placeholder')" />
                 </u-form-field>
                 <u-form-field :label="$t('admin.task_icon_label')">
-                    <u-input v-model="form.icon_url" class="w-full" :placeholder="$t('admin.icon_url_placeholder')" />
+                    <wiki-icon-picker v-model="form.icon_url" />
                 </u-form-field>
                 <u-form-field :label="$t('admin.task_desc_label')">
                     <u-textarea v-model="form.description" class="w-full" :rows="3" />
@@ -26,6 +26,7 @@
 <script setup>
 import { computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import WikiIconPicker from '@/Components/WikiIconPicker.vue';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
