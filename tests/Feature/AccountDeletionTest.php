@@ -132,6 +132,47 @@ class AccountDeletionTest extends TestCase
         $this->assertSame('participant', $candidates[0]['role']);
     }
 
+    /**
+     * Same reasoning as events' co-hosts-first: a manager already has the
+     * run of the team, so handing over to one changes nothing anybody
+     * notices. Reported as confusing when it wasn't happening — the
+     * candidate list used to be every member in storage order, with no
+     * indication whether a manager or a plain member would be offered.
+     */
+    #[Test]
+    public function a_teams_managers_are_offered_before_plain_members(): void
+    {
+        $user = $this->player('Owner');
+        $team = Team::create(['name' => 'Iron Fist']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $user->id, 'role' => TeamMember::OWNER]);
+
+        $manager = $this->player('Manager');
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $manager->id, 'role' => TeamMember::MANAGER]);
+
+        $member = $this->player('Member');
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $member->id, 'role' => TeamMember::MEMBER]);
+
+        $candidates = $this->service()->preflight($user)['teams'][0]['candidates'];
+
+        $this->assertSame([$manager->id], array_column($candidates, 'id'));
+    }
+
+    /** With no manager to hand it to, every other member is offered. */
+    #[Test]
+    public function a_teams_plain_members_are_offered_when_there_is_no_manager(): void
+    {
+        $user = $this->player('Owner');
+        $team = Team::create(['name' => 'Iron Fist']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $user->id, 'role' => TeamMember::OWNER]);
+
+        $member = $this->player('Member');
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $member->id, 'role' => TeamMember::MEMBER]);
+
+        $candidates = $this->service()->preflight($user)['teams'][0]['candidates'];
+
+        $this->assertSame([$member->id], array_column($candidates, 'id'));
+    }
+
     // -------------------------------------------------------------- refusal
 
     /**
@@ -190,6 +231,118 @@ class AccountDeletionTest extends TestCase
 
         $this->assertNull(Event::find($event->id));
         $this->assertNotNull(Event::withTrashed()->find($event->id));
+    }
+
+    // ------------------------------------------------------ end it in place
+
+    /**
+     * "End it" freezes a live event rather than hiding it — the split asked
+     * for after "delete the event and everyone's progress" turned out to
+     * only ever soft-delete (hide, admin-restorable) and never actually touch
+     * anyone's progress. This is the softer of the two: nothing about the
+     * event's own row, board or progress changes at all, only its end date.
+     */
+    #[Test]
+    public function ending_it_in_place_leaves_the_event_fully_visible(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user, ['end_date' => Carbon::now()->addWeek()]);
+        $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
+        $playerBoard = PlayerBoard::create(['user_id' => $this->player('Other')->id, 'board_id' => $board->id, 'current_position' => 3]);
+
+        $this->service()->delete($user, [$event->id => 'end']);
+
+        $fresh = Event::find($event->id);
+        $this->assertNotNull($fresh, 'the event must not be soft-deleted');
+        $this->assertTrue($fresh->end_date->isPast());
+        $this->assertNotNull(PlayerBoard::find($playerBoard->id), 'progress must survive');
+    }
+
+    /**
+     * An event whose end date has already passed earlier TODAY is left
+     * exactly where it was. `ownedLiveEvents()` still offers it as something
+     * to decide — its own boundary is the calendar day, not the exact
+     * instant, same as `boardEventStatus()` on the JS side — but
+     * `endEventInPlace()` should not need to move a date that is already in
+     * the past just because it isn't in the future either.
+     */
+    #[Test]
+    public function ending_an_already_ended_event_does_not_move_its_date_again(): void
+    {
+        $user = $this->player('Host');
+        $originalEnd = Carbon::now()->subHours(2);
+        $event = $this->eventOwnedBy($user, ['end_date' => $originalEnd]);
+
+        $this->service()->delete($user, [$event->id => 'end']);
+
+        // Second precision, not an exact Carbon equalTo(): the column does
+        // not store microseconds, so the round trip alone would fail an
+        // exact comparison even when nothing moved it.
+        $this->assertSame($originalEnd->format('Y-m-d H:i:s'), Event::find($event->id)->end_date->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * The ownership row is never touched directly by "end" — it disappears
+     * on its own via board_authors.user_id's cascadeOnDelete the moment
+     * $user->delete() runs, same as it always has for a finished event this
+     * account happened to own.
+     */
+    #[Test]
+    public function ending_it_in_place_still_removes_the_ownership_row(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user);
+
+        $this->service()->delete($user, [$event->id => 'end']);
+
+        $this->assertSame(0, BoardAuthor::where('event_id', $event->id)->count());
+    }
+
+    // -------------------------------------------------- delete with progress
+
+    /**
+     * The harder option — what "delete the event and everyone's progress"
+     * always claimed to do and never actually did. Everyone's progress is
+     * genuinely gone; the event ROW is still only soft-deleted, so an admin
+     * restoring it gets its settings back, not a resurrection of what this
+     * just destroyed.
+     */
+    #[Test]
+    public function deleting_it_removes_every_players_progress(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user);
+        $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
+        $other = $this->player('Other');
+        $playerBoard = PlayerBoard::create(['user_id' => $other->id, 'board_id' => $board->id, 'current_position' => 3]);
+        EventParticipant::create(['event_id' => $event->id, 'user_id' => $other->id]);
+
+        $this->service()->delete($user, [$event->id => 'delete']);
+
+        $this->assertNull(PlayerBoard::find($playerBoard->id));
+        $this->assertSame(0, EventParticipant::where('event_id', $event->id)->count());
+        $this->assertNull(Event::find($event->id));
+        $this->assertNotNull(Event::withTrashed()->find($event->id), 'the shell stays restorable');
+    }
+
+    #[Test]
+    public function deleting_it_removes_standings_and_bingo_completions_too(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user, ['type' => 'BINGO']);
+        $card = BingoCard::create(['event_id' => $event->id, 'size' => 5, 'win_condition' => 'LINE']);
+        $square = BingoSquare::create(['bingo_card_id' => $card->id, 'position' => 0]);
+        $other = $this->player('Other');
+        $completion = BingoCompletion::create(['bingo_square_id' => $square->id, 'user_id' => $other->id]);
+        $standing = EventStanding::create(['event_id' => $event->id, 'user_id' => $other->id, 'username' => 'Other', 'start_value' => 0]);
+
+        $this->service()->delete($user, [$event->id => 'delete']);
+
+        $this->assertNull(BingoCompletion::find($completion->id));
+        $this->assertNull(EventStanding::find($standing->id));
+        // The square and card themselves are the event's own structure, not
+        // anyone's progress — they stay, same as the event row's settings do.
+        $this->assertNotNull(BingoSquare::find($square->id));
     }
 
     #[Test]
@@ -525,5 +678,175 @@ class AccountDeletionTest extends TestCase
             ->assertSessionHasErrors('confirmation');
 
         $this->assertNotNull(User::find($user->id));
+    }
+
+    // --------------------------------------------- the "delete everything" fast path
+
+    /**
+     * The quick action next to the ordinary delete button: no per-item
+     * decisions, everything owned gets the hard delete outright.
+     */
+    #[Test]
+    public function delete_everything_skips_per_item_decisions_and_hard_deletes_them_all(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user);
+        $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
+        $other = $this->player('Other');
+        $playerBoard = PlayerBoard::create(['user_id' => $other->id, 'board_id' => $board->id, 'current_position' => 3]);
+
+        $team = Team::create(['name' => 'Mine']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $user->id, 'role' => TeamMember::OWNER]);
+
+        $this->actingAs($user)
+            ->delete('/settings/account', ['confirmation' => 'Host', 'delete_everything' => true])
+            ->assertRedirect('/');
+
+        $this->assertGuest();
+        $this->assertNull(User::find($user->id));
+        $this->assertNull(PlayerBoard::find($playerBoard->id), 'progress must be hard-deleted, not just handed off');
+        $this->assertNotNull(Event::withTrashed()->find($event->id), 'the event shell stays admin-restorable');
+        $this->assertNull(Event::find($event->id));
+        $this->assertNull(Team::find($team->id));
+    }
+
+    /** Explicit per-item choices are ignored when the fast path is on — it means what it says. */
+    #[Test]
+    public function delete_everything_ignores_any_events_or_teams_sent_alongside_it(): void
+    {
+        $user = $this->player('Host');
+        $heir = $this->player('Heir');
+        $event = $this->eventOwnedBy($user);
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $heir->id, 'is_owner' => false]);
+
+        $this->actingAs($user)->delete('/settings/account', [
+            'confirmation' => 'Host',
+            'delete_everything' => true,
+            // A handover choice sent alongside it must not survive — the
+            // fast path is "everything, hard", not "everything except what
+            // I'd already picked".
+            'events' => [$event->id => $heir->id],
+        ])->assertRedirect('/');
+
+        $this->assertNull(Event::find($event->id));
+        $this->assertFalse($heir->fresh()->isEventOwner($event));
+    }
+
+    // -------------------------------------------------- settle one item now
+
+    /**
+     * The per-item "confirm" button beside each row — settles a single event
+     * right away, with the account never touched at all. Asked for
+     * explicitly: deciding a dozen events in one sitting right before an
+     * irreversible account close is the wrong moment to be making a dozen
+     * decisions.
+     */
+    #[Test]
+    public function settling_one_event_as_ended_does_not_touch_the_account(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user, ['end_date' => Carbon::now()->addWeek()]);
+
+        $this->actingAs($user)
+            ->patch("/settings/account/events/{$event->id}", ['choice' => 'end'])
+            ->assertRedirect();
+
+        $this->assertNotNull(User::find($user->id), 'the account must survive');
+        $this->assertTrue(Event::find($event->id)->end_date->isPast());
+        $this->assertSame(0, BoardAuthor::where('event_id', $event->id)->count());
+    }
+
+    #[Test]
+    public function settling_one_event_as_delete_removes_only_that_events_progress(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user);
+        $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
+        $other = $this->player('Other');
+        $playerBoard = PlayerBoard::create(['user_id' => $other->id, 'board_id' => $board->id, 'current_position' => 3]);
+
+        $untouched = $this->eventOwnedBy($user, ['title' => 'Untouched']);
+
+        $this->actingAs($user)
+            ->patch("/settings/account/events/{$event->id}", ['choice' => 'delete'])
+            ->assertRedirect();
+
+        $this->assertNotNull(User::find($user->id));
+        $this->assertNull(PlayerBoard::find($playerBoard->id));
+        $this->assertNull(Event::find($event->id));
+        $this->assertNotNull(Event::find($untouched->id), 'a sibling event must be untouched');
+    }
+
+    #[Test]
+    public function settling_one_event_by_handover_works_on_its_own(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user);
+        $heir = $this->player('Heir');
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $heir->id, 'is_owner' => false]);
+
+        $this->actingAs($user)
+            ->patch("/settings/account/events/{$event->id}", ['choice' => $heir->id])
+            ->assertRedirect();
+
+        $this->assertTrue($heir->fresh()->isEventOwner($event));
+        $this->assertNotNull(User::find($user->id));
+    }
+
+    /** An event this account does not own is not this account's to settle. */
+    #[Test]
+    public function settling_an_event_you_do_not_own_is_refused(): void
+    {
+        $owner = $this->player('Owner');
+        $event = $this->eventOwnedBy($owner);
+        $stranger = $this->player('Stranger');
+
+        $this->actingAs($stranger)
+            ->patch("/settings/account/events/{$event->id}", ['choice' => 'end'])
+            ->assertForbidden();
+
+        $this->assertNotNull(Event::find($event->id));
+    }
+
+    /** Already-finished events are not something to settle at all — see ownedLiveEvents(). */
+    #[Test]
+    public function settling_an_already_finished_event_is_refused(): void
+    {
+        $user = $this->player('Host');
+        $event = $this->eventOwnedBy($user, ['end_date' => Carbon::now()->subMonth()]);
+
+        $this->actingAs($user)
+            ->patch("/settings/account/events/{$event->id}", ['choice' => 'end'])
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function settling_one_team_works_on_its_own(): void
+    {
+        $user = $this->player('Owner');
+        $team = Team::create(['name' => 'Mine']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $user->id, 'role' => TeamMember::OWNER]);
+
+        $this->actingAs($user)
+            ->patch("/settings/account/teams/{$team->id}", ['choice' => 'delete'])
+            ->assertRedirect();
+
+        $this->assertNotNull(User::find($user->id));
+        $this->assertNull(Team::find($team->id));
+    }
+
+    #[Test]
+    public function settling_a_team_you_do_not_own_is_refused(): void
+    {
+        $owner = $this->player('Owner');
+        $team = Team::create(['name' => 'Mine']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $owner->id, 'role' => TeamMember::OWNER]);
+        $stranger = $this->player('Stranger');
+
+        $this->actingAs($stranger)
+            ->patch("/settings/account/teams/{$team->id}", ['choice' => 'delete'])
+            ->assertForbidden();
+
+        $this->assertNotNull(Team::find($team->id));
     }
 }

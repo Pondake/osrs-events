@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\Event;
+use App\Models\Team;
 use App\Services\AccountDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -127,6 +129,10 @@ class AccountController extends Controller
      *  - **A decision per owned event and team**, enforced in the service. A
      *    default would be either "silently delete somebody else's event" or
      *    "silently hand it over", and both are worse than a refused request.
+     *    `delete_everything` is the one deliberate exception: the fast path
+     *    next to the ordinary delete button skips asking per item and hard-
+     *    deletes everything the account owns, on the reasoning that someone
+     *    who chose that button already made the one decision that matters.
      */
     public function destroy(Request $request, AccountDeletionService $deletion): RedirectResponse
     {
@@ -138,6 +144,11 @@ class AccountController extends Controller
             'events.*' => ['required', 'string'],
             'teams' => ['array'],
             'teams.*' => ['required', 'string'],
+            // The fast path: "delete account and all events" next to the
+            // ordinary delete button. Skips asking for a per-item decision —
+            // everything owned gets the hard delete outright — so `events`/
+            // `teams` above are ignored entirely when this is set.
+            'delete_everything' => ['sometimes', 'boolean'],
         ];
 
         if ($user->password !== null) {
@@ -155,8 +166,16 @@ class AccountController extends Controller
             ]);
         }
 
+        if ($data['delete_everything'] ?? false) {
+            $events = $deletion->ownedLiveEvents($user)->mapWithKeys(fn ($event) => [$event->id => 'delete'])->all();
+            $teams = $deletion->ownedTeams($user)->mapWithKeys(fn ($team) => [$team->id => 'delete'])->all();
+        } else {
+            $events = $data['events'] ?? [];
+            $teams = $data['teams'] ?? [];
+        }
+
         try {
-            $deletion->delete($user, $data['events'] ?? [], $data['teams'] ?? []);
+            $deletion->delete($user, $events, $teams);
         } catch (InvalidArgumentException) {
             // The page was stale — an event was created in another tab after
             // it rendered. Say so rather than deleting on a half-answered form.
@@ -170,5 +189,42 @@ class AccountController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/')->with('board-save', trans('profile.account_deleted'));
+    }
+
+    /**
+     * Settle one owned event right now, independent of ever deleting the
+     * account. Asked for explicitly: deciding a dozen events in one sitting
+     * right before an irreversible account close is exactly the wrong moment
+     * to be making a dozen decisions, so each row on the settings page can be
+     * confirmed and settled on its own, whenever it's convenient.
+     *
+     * The account is never touched here — only `AccountDeletionService::
+     * settleOneEvent()`'s own three outcomes (hand over / end / delete) apply.
+     */
+    public function settleEvent(Request $request, Event $event, AccountDeletionService $deletion): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($deletion->ownedLiveEvents($user)->contains('id', $event->id), 403);
+
+        $data = $request->validate(['choice' => ['required', 'string']]);
+
+        $deletion->settleOneEvent($user, $event, $data['choice']);
+
+        return back()->with('board-save', trans('profile.delete_settled'));
+    }
+
+    /** Same as settleEvent() above, for a team. */
+    public function settleTeam(Request $request, Team $team, AccountDeletionService $deletion): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($deletion->ownedTeams($user)->contains('id', $team->id), 403);
+
+        $data = $request->validate(['choice' => ['required', 'string']]);
+
+        $deletion->settleOneTeam($user, $team, $data['choice']);
+
+        return back()->with('board-save', trans('profile.delete_settled'));
     }
 }
