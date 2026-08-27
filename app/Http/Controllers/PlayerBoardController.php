@@ -34,6 +34,10 @@ class PlayerBoardController extends Controller
             return back()->with('board-save-error', trans('events.paused_notice'));
         }
 
+        if ($event->isEnded()) {
+            return back()->with('board-save-error', trans('events.ended_notice'));
+        }
+
         // Tiles hang off the board, not the event — an event type without a
         // board has none.
         $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();
@@ -130,6 +134,10 @@ class PlayerBoardController extends Controller
         // On hold, same as roll().
         if ($event->isPaused()) {
             return back()->with('board-save-error', trans('events.paused_notice'));
+        }
+
+        if ($event->isEnded()) {
+            return back()->with('board-save-error', trans('events.ended_notice'));
         }
 
         // Same as roll(): ticking a tile off is playing, so it joins.
