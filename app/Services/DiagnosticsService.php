@@ -305,6 +305,9 @@ class DiagnosticsService
                 trans('diagnostics.wom_standings'),
                 trans('diagnostics.wom_standings_bad', ['count' => $broken]),
                 trans('diagnostics.wom_standings_fix'),
+                // Lets the page attach a details modal to this one check
+                // specifically — see DiagnosticsController::standingsFailures().
+                'wom_standings',
             );
 
         return $checks;

@@ -3,12 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use App\Models\EventStanding;
 use App\Models\PushSubscription;
+use App\Models\User;
 use App\Services\DiagnosticsService;
+use App\Services\PushNotifier;
 use App\Services\WebPushService;
 use App\Services\WiseOldManService;
 use App\Support\NotificationCategory;
 use App\Support\PushMessage;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -28,12 +34,21 @@ use Throwable;
  * user. The checks are the same — DiagnosticsService is the single source and
  * `push:doctor` prints its push half — so the two surfaces cannot disagree.
  *
- * **Read-only by default.** Every check is a question. The three buttons that
- * do something are each addressed at the admin pressing them (a push to their
- * own devices, a mail to their own address) or are explicitly a rehearsal
- * (the sweep's dry run). Nothing here can reach another user, which is what
- * makes it safe to put behind an ordinary admin login rather than a
- * confirmation dialog.
+ * **Read-only by default.** Every check is a question. The original three
+ * buttons that do something are each addressed at the admin pressing them (a
+ * push to their own devices, a mail to their own address) or are explicitly a
+ * rehearsal (the sweep's dry run) — nothing THERE reaches another user,
+ * which is what makes those three safe behind an ordinary admin login rather
+ * than a confirmation dialog.
+ *
+ * The standings-failure actions below are the deliberate exception — the
+ * first things on this page that DO reach somebody else (a push, an
+ * unrequested reset of their RuneScape name). They earn their own guard
+ * rather than inheriting the page's: a popover confirm on both, an audit
+ * trail on both (`diagnostics.osrs_nudge_sent` / `diagnostics.
+ * osrs_username_reset`), and a nudge count/last-sent surfaced back so a name
+ * that's been nudged three times reads as "reset it" rather than "nudge it
+ * again" — see `standingsFailures()`.
  */
 class DiagnosticsController extends Controller
 {
@@ -191,5 +206,97 @@ class DiagnosticsController extends Controller
         Artisan::call('push:sweep', ['--dry-run' => true]);
 
         return back()->with('sweepOutput', trim(Artisan::output()));
+    }
+
+    /**
+     * Who's actually behind "N standings are failing to sync", and why.
+     *
+     * Grouped by user, not by row: the same account can be failing on
+     * several events at once (the same wrong RSN everywhere), and the fix —
+     * a nudge, or a reset — is one action against the account, not one per
+     * event. A row whose account no longer exists is still listed (so the
+     * count on the summary line and the count in this modal never disagree)
+     * but carries no actions — there is nobody left to nudge.
+     */
+    public function standingsFailures(): JsonResponse
+    {
+        $rows = EventStanding::query()
+            ->whereNotNull('sync_error')
+            ->with(['user:id,nickname,discord_username,osrs_username', 'event:id,title'])
+            ->get();
+
+        $users = $rows->groupBy(fn (EventStanding $row) => $row->user_id ?? $row->id)
+            ->map(function ($rowsForUser) {
+                $user = $rowsForUser->first()->user;
+
+                return [
+                    'id' => $user?->id,
+                    'name' => $user?->displayName() ?? trans('common.deleted_user'),
+                    'osrsUsername' => $user?->osrs_username,
+                    'events' => $rowsForUser->map(fn (EventStanding $row) => [
+                        'title' => $row->event?->title ?? trans('common.unknown'),
+                        'error' => $row->sync_error,
+                    ])->values(),
+                    'nudgeCount' => $user ? $this->nudgeLog($user)->count() : 0,
+                    'lastNudge' => $user ? $this->nudgeLog($user)->first()?->created_at->diffForHumans() : null,
+                ];
+            })
+            ->values();
+
+        return response()->json(['users' => $users]);
+    }
+
+    private function nudgeLog(User $user): Collection
+    {
+        return AuditLog::where('action', 'diagnostics.osrs_nudge_sent')
+            ->where('target_id', $user->id)
+            ->latest()
+            ->get();
+    }
+
+    /**
+     * Ask them to check their own username. A push, not an email — the
+     * whole point is this account is already reachable through one, and a
+     * category exists (`OSRS_USERNAME_REMINDER`) so this doesn't quietly ride
+     * along under a category they might have turned off for another reason.
+     */
+    public function nudgeStandingsFailure(Request $request, User $user, PushNotifier $notifier): RedirectResponse
+    {
+        $standing = EventStanding::whereNotNull('sync_error')->where('user_id', $user->id)->with('event')->first();
+
+        abort_if($standing === null, 404);
+
+        $notifier->toUser($user, new PushMessage(
+            title: trans('notifications.preview_osrs_username_reminder_title'),
+            body: trans('diagnostics.osrs_nudge_body', ['event' => $standing->event?->title ?? trans('common.unknown')]),
+            path: '/settings/profile',
+            category: NotificationCategory::OSRS_USERNAME_REMINDER,
+        ));
+
+        AuditLog::record('diagnostics.osrs_nudge_sent', $user);
+
+        return back()->with('board-save', trans('diagnostics.osrs_nudge_sent', ['name' => $user->displayName()]));
+    }
+
+    /**
+     * Clear the name outright so the account re-onboards it cleanly.
+     *
+     * `osrs_username` is required by `RequireOsrsUsername` on every settings
+     * route, so nulling it sends the account straight back through
+     * `/welcome/osrs-username` the next time they load a page — the same
+     * path a brand new signup takes, not a special "fix this" form. Meant
+     * for the account that's been nudged more than once already: a repeat
+     * failure is more likely a typo baked in at signup than something a
+     * reminder will fix on its own.
+     */
+    public function resetStandingsUsername(Request $request, User $user): RedirectResponse
+    {
+        AuditLog::record('diagnostics.osrs_username_reset', $user, [
+            'previous_username' => $user->osrs_username,
+        ]);
+
+        $user->update(['osrs_username' => null, 'osrs_verified_at' => null]);
+
+        return back()->with('board-save', trans('diagnostics.osrs_reset_done', ['name' => $user->displayName()]));
     }
 }

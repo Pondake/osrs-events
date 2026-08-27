@@ -52,6 +52,13 @@ final class NotificationCategory
     public const TEAM_ACTIVITY = 'team_activity';
 
     /**
+     * An admin's nudge that your OSRS username isn't syncing — sent by a
+     * person pressing a button on the diagnostics page, not by a scheduled
+     * job. See DiagnosticsController::nudgeStandingsFailure().
+     */
+    public const OSRS_USERNAME_REMINDER = 'osrs_username_reminder';
+
+    /**
      * key => [audience, default, throttle seconds, icon]
      *
      * `audience` is display grouping on the settings page, not enforcement —
@@ -68,6 +75,10 @@ final class NotificationCategory
         self::TEAM_ACTIVITY => ['audience' => 'player', 'default' => false, 'throttle' => 3600, 'icon' => 'i-lucide-users'],
         self::REVIEW_QUEUE => ['audience' => 'host', 'default' => true, 'throttle' => 3600, 'icon' => 'i-lucide-gavel'],
         self::STANDINGS_HEALTH => ['audience' => 'host', 'default' => true, 'throttle' => 86400, 'icon' => 'i-lucide-triangle-alert'],
+        // Not high-frequency by nature — an admin has to press the button —
+        // so this defaults on like the other important player-facing
+        // categories, rather than off the way an automated, frequent one would.
+        self::OSRS_USERNAME_REMINDER => ['audience' => 'player', 'default' => true, 'throttle' => 86400, 'icon' => 'i-lucide-user-round-x'],
     ];
 
     /** @return array<int, string> */

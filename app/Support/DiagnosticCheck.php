@@ -36,6 +36,14 @@ final class DiagnosticCheck
         public readonly string $detail,
         /** What to do about it, when there is something to do. */
         public readonly ?string $fix = null,
+        /**
+         * A stable identifier the frontend can key off of, for the rare check
+         * that offers more than a status line — e.g. `wom_standings`, whose
+         * "N failing to sync" wants a details modal, not just a fix sentence.
+         * Null for every ordinary check: matching on this only makes sense
+         * for the handful that actually have something behind them.
+         */
+        public readonly ?string $key = null,
     ) {}
 
     public static function ok(string $label, string $detail): self
@@ -43,14 +51,14 @@ final class DiagnosticCheck
         return new self($label, self::OK, $detail);
     }
 
-    public static function warn(string $label, string $detail, ?string $fix = null): self
+    public static function warn(string $label, string $detail, ?string $fix = null, ?string $key = null): self
     {
-        return new self($label, self::WARN, $detail, $fix);
+        return new self($label, self::WARN, $detail, $fix, $key);
     }
 
-    public static function fail(string $label, string $detail, ?string $fix = null): self
+    public static function fail(string $label, string $detail, ?string $fix = null, ?string $key = null): self
     {
-        return new self($label, self::FAIL, $detail, $fix);
+        return new self($label, self::FAIL, $detail, $fix, $key);
     }
 
     public static function info(string $label, string $detail): self
@@ -72,6 +80,7 @@ final class DiagnosticCheck
             'status' => $this->status,
             'detail' => $this->detail,
             'fix' => $this->fix,
+            'key' => $this->key,
         ];
     }
 }
