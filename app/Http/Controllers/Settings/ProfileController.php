@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use App\Models\Board;
-use App\Models\Event;
 use App\Rules\OsrsUsername;
 use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
@@ -14,9 +12,18 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Display-side settings (name, roles, joined boards). Account-side settings
- * — auth methods, password — live in AccountController next to this one;
- * both render inside Components/SettingsLayout.vue's sidebar shell.
+ * Display-side settings (name, roles). Account-side settings — auth methods,
+ * password — live in AccountController next to this one; both render inside
+ * Components/SettingsLayout.vue's sidebar shell.
+ *
+ * Used to also list every event you host or play, built from Event rows with
+ * a hand-rolled progress calculation. Removed 2026-08-26, not fixed in place:
+ * `/my-events` (BoardController::mine()) already answers the same question
+ * with real board previews and hosted/playing filters across every event
+ * type, reachable from the header's Events → My events nav item. A second,
+ * simpler list here duplicating the same data was two places that could
+ * disagree about it, not two features — this page now just links to that one
+ * instead of rebuilding it.
  */
 class ProfileController extends Controller
 {
@@ -24,68 +31,8 @@ class ProfileController extends Controller
     {
         $user = Auth::user()->load('roles:id,name');
 
-        // Built from events, not PlayerBoard rows. Two things were wrong with
-        // the old list, and both came from the event/board split:
-        //
-        //  - `boards` has no `title` column any more — it lives on the event
-        //    — so every row rendered with a blank name.
-        //  - it linked to /events/{board id}. Those matched only for rows
-        //    migrated at the split; every board created since gets its own
-        //    uuid, so the link 404'd.
-        //
-        // And being PlayerBoard-shaped, it could only ever list Snakes &
-        // Ladders: races and bingo cards were absent from "your boards"
-        // entirely, which is what "I made a skill event and it is not linked
-        // to me" was actually showing.
-        $tileCounts = Board::TILE_COUNTS;
-
-        $playerBoards = $user->playerBoards()->with('completedTiles')->get()->keyBy('board_id');
-
-        $events = Event::involving($user)
-            ->with(['board', 'authors'])
-            ->orderByDesc('start_date')
-            ->get()
-            ->map(function (Event $event) use ($playerBoards, $tileCounts, $user) {
-                $progress = null;
-
-                // Progress only where there is a board to progress across —
-                // a race has a rank, not a position, and inventing a
-                // percentage for it would be a made-up number.
-                if ($event->board && ($pb = $playerBoards->get($event->board->id))) {
-                    $total = $tileCounts[$event->board->size] ?? 49;
-                    $position = max(0, $pb->current_position);
-
-                    $progress = [
-                        'position' => $position + 1,
-                        'total' => $total,
-                        'completed' => $pb->completedTiles->count(),
-                        // Capped at 99 until the last tile is actually done,
-                        // the same rule the hub uses.
-                        'pct' => $total <= 1 ? 0 : min(99, (int) floor(($position / ($total - 1)) * 100)),
-                    ];
-                }
-
-                return [
-                    'id' => $event->id,
-                    'title' => $event->title,
-                    'type' => $event->type,
-                    'size' => $event->board?->size,
-                    'isOwner' => $event->authors->contains(
-                        fn ($author) => $author->user_id === $user->id && $author->is_owner,
-                    ),
-                    // The created/joined split the page filters on. Broader
-                    // than isOwner deliberately: an event you were added to
-                    // as an editor is one you run, not one you joined, and
-                    // /my-events already draws the line in that same place.
-                    'isHost' => $event->authors->contains(fn ($author) => $author->user_id === $user->id),
-                    'progress' => $progress,
-                ];
-            })
-            ->values();
-
         return Inertia::render('Settings/Profile', [
             'roles' => $user->roles->pluck('name'),
-            'events' => $events,
             // Not shared globally via HandleInertiaRequests: this is the only
             // page that edits it, and the skill-race page gets its own copy.
             'osrsUsername' => $user->osrs_username,
