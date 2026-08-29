@@ -10,7 +10,12 @@ import { trans } from 'laravel-vue-i18n';
  * literal in source anyway, or Tailwind's icon scan never bundles them.
  */
 const EVENT_TYPE_META = {
-    SNAKES_LADDERS: { icon: 'i-lucide-dice-6', label: 'events.type_snakes_ladders' },
+    // Lucide has no snake icon — `worm` was the stand-in and read as neither
+    // a snake nor anything else recognizable. `mdi:snake` is a real,
+    // filled snake glyph; pulled in `@iconify-json/mdi` for it specifically
+    // (that set also has `mdi:ladder`, kept in reserve — see BoardCard.vue
+    // if the mark ever needs to say "ladder" too, not just "snake").
+    SNAKES_LADDERS: { icon: 'i-mdi-snake', label: 'events.type_snakes_ladders' },
     SKILL_RACE: { icon: 'i-lucide-trophy', label: 'events.type_skill_race' },
     DROP_RACE: { icon: 'i-lucide-swords', label: 'events.type_drop_race' },
     BINGO: { icon: 'i-lucide-grid-3x3', label: 'events.type_bingo' },

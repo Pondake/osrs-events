@@ -15,6 +15,7 @@ declare module 'vue' {
     UApp: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/App.vue')['default']
     UAvatar: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Avatar.vue')['default']
     UBadge: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Badge.vue')['default']
+    UBreadcrumb: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Breadcrumb.vue')['default']
     UButton: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Button.vue')['default']
     UCard: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Card.vue')['default']
     UCheckbox: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Checkbox.vue')['default']

@@ -8,6 +8,8 @@
     <u-main>
         <u-page>
             <u-container class="py-12">
+                <u-breadcrumb :items="breadcrumbs" class="mb-4" />
+
                 <!-- Stacks on a phone. Side by side, the title block was left
                      with a ~150px column and the description broke into
                      four ragged lines beside a button that needed none of
@@ -128,6 +130,12 @@ const seo = {
     title: trans('seo.boards_title'),
     description: trans('seo.boards_desc'),
 };
+
+// No href on the last crumb — it's this page, not a link to itself.
+const breadcrumbs = [
+    { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },
+    { label: trans('nav.events') },
+];
 
 // Dynamic import, not a static one — a static import would still pull
 // BoardSettingsModal (and the @nuxt/ui form components it uses) into the SSR

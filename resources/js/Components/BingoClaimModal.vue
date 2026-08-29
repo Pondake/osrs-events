@@ -1,6 +1,42 @@
 <template>
     <u-modal v-model:open="isOpen" :title="square?.label || $t('bingo.empty_square')" :dismissible="false">
         <template #body>
+            <!-- What the square is asking for — the same icon/description a
+                 tile carries elsewhere (see BoardShow's task card), plus a
+                 link straight to the wiki page it came from. Shown above
+                 both the claim form and the already-claimed state: whichever
+                 one a player sees, they still need to know what satisfies
+                 the square before they act on it. -->
+            <div v-if="square?.task" class="flex items-start gap-3 pb-4 border-b border-default">
+                <img
+                    v-if="square.task.icon_url"
+                    :src="square.task.icon_url"
+                    alt=""
+                    class="size-10 object-contain shrink-0"
+                />
+                <u-icon v-else name="i-lucide-scroll-text" class="size-10 text-muted shrink-0" />
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-sm">{{ square.task.title }}</p>
+                    <p v-if="square.task.description" class="text-xs text-muted mt-1 leading-relaxed">
+                        {{ square.task.description }}
+                    </p>
+                </div>
+                <!-- A proper button, not a small icon tucked beside the
+                     title — same fix as BoardShow's task card. -->
+                <u-button
+                    v-if="square.task.wiki_url"
+                    :href="square.task.wiki_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="xs"
+                    color="neutral"
+                    variant="outline"
+                    trailing-icon="i-lucide-external-link"
+                    :label="$t('tile_editor.open_wiki_page')"
+                    class="shrink-0"
+                />
+            </div>
+
             <!-- Already claimed: what you submitted, what the host said, and
                  the one destructive action, behind a button rather than
                  behind a second click on the square.
@@ -58,13 +94,27 @@
             <div v-else class="space-y-4 py-2">
                 <p class="text-sm text-muted">{{ $t('bingo.claim_intro') }}</p>
 
-                <u-form-field :label="$t('bingo.proof_url')" :description="$t('bingo.proof_url_desc')" :error="form.errors.proof_url">
+                <u-form-field :label="$t('bingo.proof_url')" :description="$t('bingo.proof_url_desc')" :error="form.errors.proof_url" required>
                     <u-input v-model="form.proof_url" class="w-full" placeholder="https://" />
                 </u-form-field>
 
                 <u-form-field :label="$t('bingo.claim_note')" :error="form.errors.note">
                     <u-input v-model="form.note" class="w-full" />
                 </u-form-field>
+
+                <!-- A preview of Phase 4's plan (docs/runelite-plugin.md,
+                     ROADMAP.md), not a working control — same teaser as
+                     TileClaimModal.vue's, for the same reason: disabled and
+                     inert, so nothing here looks clickable before the
+                     plugin exists to answer it. -->
+                <div class="rounded-lg ring ring-default/60 px-3 py-2.5 opacity-60">
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <u-icon name="i-lucide-puzzle" class="size-4 text-muted shrink-0" />
+                        <span class="text-xs font-medium text-muted">{{ $t('board.runelite_teaser_title') }}</span>
+                        <u-badge color="neutral" variant="subtle" size="xs">{{ $t('board.runelite_teaser_badge') }}</u-badge>
+                    </div>
+                    <u-input disabled size="sm" class="w-full pointer-events-none" :placeholder="$t('board.runelite_teaser_placeholder')" />
+                </div>
             </div>
         </template>
 
@@ -95,6 +145,7 @@
                 <u-button
                     v-if="!claim"
                     color="primary"
+                    :disabled="!form.proof_url.trim()"
                     :loading="form.processing"
                     :label="$t('bingo.submit_claim')"
                     @click="submit"

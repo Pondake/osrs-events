@@ -18,6 +18,16 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
+                    <a
+                        v-if="task.wiki_url"
+                        :href="task.wiki_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-muted hover:text-primary transition-colors p-1.5"
+                        :title="$t('tile_editor.open_wiki_page')"
+                    >
+                        <u-icon name="i-lucide-external-link" class="size-4" />
+                    </a>
                     <u-button icon="i-lucide-pencil" size="xs" color="neutral" variant="ghost" :aria-label="$t('common.edit')" @click="openEdit(task)" />
                     <confirm-popover
                         :message="$t('admin.task_delete_confirm', { title: task.title })"

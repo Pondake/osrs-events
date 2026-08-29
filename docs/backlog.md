@@ -4110,10 +4110,15 @@ the permanent one; the X — which every user reads as "close this for now" — 
 the temporary one. Whoever keeps seeing it is clicking the X, which is the only
 control on the modal that behaves the way its shape promises.
 
-- [ ] **Rename `onboarding.skip`.** It should say what it does. The 24h snooze
-  is worth keeping exactly as it is — it exists because closing the tour used
-  to persist nothing and it reopened on every single page load — but the button
-  next to it must stop calling a permanent action "for now".
+- [x] ~~**Rename `onboarding.skip`.**~~ Done 2026-08-29 — "Skip for now" →
+  "Skip intro". `AppRoot.vue`'s 24h snooze (closing via Escape/X/outside
+  click) is untouched, still exactly what its own comment says it should
+  be — only this button, which always calls the permanent
+  `completeOnboarding()` (`POST /onboarding/complete`) regardless of which
+  step it's clicked from, was the one claiming to be temporary. The 24h
+  snooze is worth keeping exactly as it is — it exists because closing the
+  tour used to persist nothing and it reopened on every single page load —
+  but the button next to it must stop calling a permanent action "for now".
 
 **Two things that are not the bug, worth writing down so they are not
 re-investigated:** the snooze is per-browser while the completion is
@@ -4661,16 +4666,33 @@ signed in.
 
 ## Feedback batch, round two — 2026-08-25
 
-- [ ] **Active bingo/S&L tasks need a wiki link and an explanation popup.**
-  Today an active tile just shows the task's title/description/icon (see
-  `board.your_task` card in `BoardShow.vue` and its Bingo equivalent) — no
-  link out to the OSRS Wiki article the task is drawn from, and no in-app
-  explainer of what actually completes it. Wants: a link straight to the
-  task's wiki page (task icons already carry wiki provenance in spirit — see
-  the "task edit icon is a URL, should be a wiki lookup" item above, which
-  this would piggyback on for the actual URL), plus a button opening a popup
-  with a fuller description of how to satisfy the task, separate from the
-  short label shown on the tile itself.
+- [x] ~~**Active bingo/S&L tasks need a wiki link and an explanation popup.**~~
+  Done 2026-08-27. The `board.your_task`/`board.tile_info` cards in
+  `BoardShow.vue` already showed the full description inline, so no separate
+  popup was needed there — just the missing wiki link, added next to the
+  title the same way `TaskPicker.vue` already links out. The bingo side had
+  the bigger gap: `BingoClaimModal.vue` — the dialog a player actually opens
+  to claim a square — showed neither the description nor a wiki link at all,
+  and `BoardController::bingo()`'s `squares.task` eager-load only selected
+  `id,title,icon_url`, so `description`/`wiki_url` weren't even reaching the
+  frontend. Both now show a task header (icon, title, wiki link, description)
+  above the claim form — that header **is** the explanation popup the item
+  asked for, since the claim dialog already is one. Also added the same wiki
+  link to the Admin > Tasks list row.
+  **Re-seeding, since this exposed how bare the demo data was:**
+  `DemoDataSeeder::seedTasks()` grew from 14 tasks to 66 (bossing, Slayer,
+  clues, minigames, more skills, quests/diaries), all with `wiki_url` now —
+  including backfilling it onto the original 14, which predate that column
+  being read here. `seedTiles()` used to leave ~70% of NORMAL tiles without a
+  task at all (a 3-in-10 roll, the rest a generic label or a one-off
+  "Community choice tile" override); every NORMAL tile gets a real task now,
+  shuffled and cycled per board instead of drawn with replacement, so the
+  same task doesn't cluster. A new `backfillTileTasks()` fixes up
+  already-seeded boards too — `seedTiles()` itself only ever fires once per
+  board (`$board->tiles()->count() === 0`), so the old sparse assignment
+  would otherwise have stuck around forever on every board seeded before this
+  change. Verified against the 9 demo boards after a re-seed: zero empty
+  NORMAL tiles, 20–54 distinct tasks per board depending on size.
 
 ## Guide pages for the other three event types — 2026-08-27
 
@@ -4903,3 +4925,508 @@ yet built, no entry in `Event::EVENT_TYPES`):
 
 Full suite still green (740 backend / 174 frontend); both bundles rebuilt,
 SSR restarted.
+
+## The RuneLite plugin is not a replacement for the approval system — 2026-08-28
+
+Raised directly, not yet acted on: the owner wants to build the RuneLite
+plugin `docs/runelite-plugin.md` already scopes, but is explicit that it must
+not become a gate. Players keep free choice of client — mobile, OSRS
+Deadman-style clients, or just not running RuneLite at all — and none of that
+can turn into "your claims don't count." The manual claim/screenshot path
+(`BingoClaimModal.vue`, `board.complete_tile` on `BoardShow.vue`) has to stay
+first-class for as long as this app exists, not a fallback that quietly rots
+once the plugin ships.
+
+This actually matches what `runelite-plugin.md`'s own "Trust boundary" section
+already says — plugin completions are *claims*, not verified fact, because
+anything a local HTTP client sends with a token is trivially forgeable.
+`CompletedTile.completed_via` already models `MANUAL | RUNELITE` for exactly
+this reason. What that section left as a "consider" is now a real ask:
+
+- [ ] **Surface `completed_via` in the UI**, not just the schema. A board
+  owner reviewing a bingo card's pending queue (`BingoReviewModal.vue`) or
+  looking at a Snakes & Ladders board's completed tiles currently can't tell
+  which were plugin-reported vs. manually claimed — needed before the plugin
+  ships, not after, or every auto-completion looks identical to a screenshot
+  claim with no way to audit it later. Confirmed as the right call.
+- [x] ~~**The plugin must never be the only path to a tile.**~~ Confirmed,
+  explicitly — "dit zal elke event raken" (this will touch every event).
+  Every task a board can ask for has to stay completable by hand, full stop.
+  Less a code change than a standing design constraint on the tile/task
+  model, worth keeping in mind on every future task type: if a task can only
+  be verified by something the plugin detects and a human reviewing a
+  screenshot cannot judge, that task type isn't allowed to exist.
+
+**Resolves the open "does a plugin completion still need approval" question
+above** — the answer isn't one global rule, it's a choice per board:
+
+- [ ] **Per-board "trust RuneLite" toggle**, owner/host-only, off by default.
+  Off (the safe default): a RuneLite-reported completion lands exactly like
+  a manual claim — same `requires_approval` gate, same review queue, nothing
+  skipped. On: the host is explicitly extending clan-level trust to their own
+  players, and a plugin completion on that board auto-approves — no queue,
+  no review click. This is deliberately an opt-in the *host* makes about
+  *their own* clanmates, not a platform-wide policy — a casual weekend board
+  and a competitive clan championship are not the same trust decision, and
+  the toggle is what lets them differ instead of picking one rule for both.
+  Needs its own `Board` column (`trust_runelite_completions` or similar) and
+  a branch in whatever the plugin's completion endpoint becomes — doesn't
+  exist yet, since the plugin itself doesn't exist yet, but the schema
+  decision is cheap to make now and expensive to retrofit once boards exist
+  that already have completions on them.
+- [ ] **Guides content: how to take a claim screenshot that actually holds
+  up.** Raised alongside the above — the six guide pages
+  (`docs/backlog.md`, "The guide pages read like a landing page, not a
+  guide") are the natural home for this, not a tooltip buried in
+  `BingoClaimModal.vue`. What actually needs to be visible in a screenshot
+  (username, timestamp, the specific drop/message) is currently only
+  implied by `bingo.claim_intro`'s one line of copy
+  ("Post a screenshot showing the drop message or collection log slot, with
+  your username and the timestamp visible.") — worth a real section with an
+  example image, since a rejected claim over a bad screenshot is exactly the
+  kind of friction a guide page exists to prevent, and it's the same
+  screenshot standard whether or not a board ever gets a RuneLite plugin.
+
+## The type-icon corner mark, and `/my-events` reading as three different pages — 2026-08-28
+
+Two rounds of iteration on the events-hub card's type indicator, then a
+consistency pass on `/my-events` off the back of it.
+
+- [x] ~~**`BoardCard.vue`'s type badge replaced with a corner mark.**~~ The
+  pill (icon + "Snakes & Ladders"/"Bingo" label) repeated across every card
+  in a grid read as the loudest thing on the page for the fact needed least
+  — the description rows already imply it. Three real bugs surfaced getting
+  the replacement right, not just taste:
+  1. **z-index**: `relative` alone does not open a new stacking context —
+     only a positioned element with an explicit z-index does. Without `z-0`
+     alongside it, `-z-10` on the mark was scoped to whatever ancestor
+     *did* open one, however far up the tree, and the icon could vanish
+     behind something unrelated. Root cause of "I don't see it at all."
+  2. **Self-overlapping stroke icons**: `text-{color}/N` sets alpha on
+     `currentColor`, which is *per path*. `worm`'s stroke crosses itself, so
+     two 20%-alpha strokes overlapping compounded to ~36% where they
+     crossed — the doubled, darker line the icon showed. `opacity-N` on the
+     `<svg>` itself composites the icon as one flattened layer instead,
+     which also stopped mattering once —
+  3. **No snake icon in Lucide.** `worm` was the stand-in and just looked
+     wrong. `@iconify-json/mdi` added (matches the existing
+     `@iconify-json/lucide`/`simple-icons` pattern — dev dependency, only
+     referenced icons bundle) for `mdi:snake`, a real filled snake glyph.
+     `mdi:ladder` is sitting in the same package if the mark ever needs to
+     say "ladder" too. Final treatment: `text-muted opacity-20`, not
+     `text-primary` — primary is the one hue this page already uses for
+     "click here" (the Play button), and decorating with it made the mark
+     compete with the actual call to action on its own card.
+- [x] ~~**`/my-events` redesigned around one consistent preview slot.**~~
+  Reported directly: every event type rendered differently and the page
+  felt messy. Root cause: the preview block (`BoardPreview`/`BingoPreview`)
+  was conditional on which data happened to exist, not on what kind of
+  event the row was — a race got nothing (no grid to draw), and a *hosted*
+  board or bingo card got nothing either, because `entry.preview` and
+  `entry.card` are only populated once you've actually played/opened one.
+  - New `RacePreview.vue`, the race analogue of the other two — same
+    `aspect-square` footprint, shows rank/participants/XP gained when
+    entered, the shared error/pending copy from the standings table when
+    sync hasn't landed, and a distinct "not entered" state (trophy icon)
+    for a race you only host. That third state used to just be blank.
+  - A **hosted-but-not-played board** now gets `BoardPreview` in its
+    existing illustrative mode (no `specialTiles`/`currentPosition` given)
+    — the same placeholder the create-event form already shows, instead of
+    an empty box.
+  - One container size for all three previews (`w-64` — was `w-64` for a
+    board and `w-56` for bingo, two numbers with no reason to differ).
+  - The inline rank/participants/XP block in the content column was a
+    second, differently-laid-out copy of what `RacePreview` now shows in
+    the consistent slot — removed rather than kept as a duplicate.
+  - Bingo had no entry at all in the meta-facts row (a board said its grid
+    size, a race said what it ranked on, bingo said nothing) — added
+    `:size × :size card` there too, reusing `boards.bingo_card`.
+  - The primary button's label/icon was gated on `=== 'board'`, so bingo
+    fell into the *race* branch by elimination and said "View standings"
+    with a trophy icon for a card that is played, not ranked. Now
+    board → Continue, bingo → Play, race → View standings.
+  - `formatXp()` was independently defined in three places now
+    (`SkillRace.vue`, `Boards/Mine.vue`, and the new `RacePreview.vue`) —
+    extracted to `formatMetricValue()` in `Support/metrics.js`, the file
+    that already owns everything else about how a metric's value is
+    labelled.
+  - Verified logged in as the `ClaudeDemoUserSeeder` account
+    (`claude-demo@absolit.nl`), enrolled into one of each kind (a played
+    board, a hosted-only board, an entered race, a joined bingo card) —
+    all four now show a populated preview in the same slot, same size.
+
+## `/my-events` button consistency, a rename, and a page-transition regression — 2026-08-28/29
+
+Follow-up feedback on the pass above, plus a scoped motion request.
+
+- [x] ~~**One button label, "Open", instead of Continue/Play/View standings.**~~
+  All three went to the exact same href — the words differed, the
+  destination never did. Fixed in both `Boards/Mine.vue`'s row button and
+  `BoardCard.vue`'s grid-card footer button (same underlying bug: gated on
+  `board.size`/`=== 'board'`, so bingo fell into "View standings" in both
+  places). New `common.open` key; `boards.continue`, `boards.play` and
+  `events.view_standings` were left with zero references anywhere in
+  `resources/js` afterward and were removed rather than kept as dead keys.
+- [x] ~~**Participant counts, where relevant.**~~ Added `withCount('participants')`
+  to `BoardController::mine()`'s query and a `participants` field per entry,
+  shown in the meta-facts row for every kind (reuses the existing
+  `participants.count` key). Surfaced a real, if minor, data gap while
+  testing it: `DemoDataSeeder::seedPlayerBoard()` and `seedSkillRace()`
+  create `PlayerBoard`/`EventStanding` rows directly and never wrote the
+  matching `EventParticipant` row, so `participants()->count()` — the
+  column this feature reads — came back 0 on boards with real seeded
+  players. **Not a live bug**: `EventParticipationService::join()`, the
+  path an actual "Join event" click goes through, already writes
+  `EventParticipant` correctly; only the seeder's direct-Eloquent shortcuts
+  skipped it. Fixed in the seeder to match, re-ran it, confirmed non-zero
+  counts on re-check.
+- [x] ~~**"Who is playing" renamed to "Participants."**~~ `participants.heading`,
+  `participants.open` (the button on BoardShow/Bingo/SkillRace that opens
+  the page), and `participants.title` (the browser tab title) all updated;
+  a stale comment in `ui.config.ts` referencing the old label by name
+  updated too.
+- [x] ~~**Page transitions, modelled on a "vet" one built in a sibling
+  project (`i:/portfolio`).**~~ Shipped, but not on the first attempt —
+  recorded in full because the failure mode is worth remembering:
+  - **First attempt (reverted the same session): a Vue `<Transition
+    name="page" mode="out-in">` wrapped around `<component :is="page">` in
+    `AppRoot.vue`, keyed on the URL** — the direct equivalent of what
+    Nuxt's `pageTransition` config does automatically, since Inertia has no
+    such built-in. **Broke real navigation immediately**: clicking into an
+    event, and the browser's own Back button, both landed on a blank page.
+    `mode="out-in"` will not mount the next page until it receives a
+    `transitionend` for the one leaving — and for whatever reason, in this
+    particular unmount/remount chain, that event never fired, so the app
+    just sat there empty, permanently, waiting on a contract that was
+    never going to complete. Reported directly by the owner within
+    minutes of shipping; reverted immediately, confirmed fixed with real
+    click-throughs (forward and Back, on both an S&L board and a bingo
+    event) before touching it again.
+  - **Second attempt (shipped): no `<Transition>`, no remounting, no
+    `:key`.** `router.on('start', …)` / `router.on('finish', …)` toggle a
+    plain `navigating` ref, bound as a `page-navigating` class directly on
+    `<component :is="page">` (not on its `display: contents` wrapper —
+    that property has a history of inconsistent browser support for
+    `opacity`). `finish` fires whether the visit succeeded, failed, or was
+    cancelled, so the dim always clears. This class of approach cannot
+    reproduce the first attempt's failure: the page component is never
+    unmounted, so there is no lifecycle contract to hang on — worst case
+    if something's off, the class just doesn't toggle and there's no
+    visual effect, never a blank page. Deliberately brisk per the ask
+    ("niet te langzame transities, lekker vlot") — 100ms, opacity only, no
+    transform. `prefers-reduced-motion: reduce` turns it off outright
+    (`transition: none`), which is safe here specifically because nothing
+    is waiting on the transition to end, unlike the first attempt where
+    the reduced-motion path would have made the hang worse, not better.
+    Verified with real clicks (not just tool-driven navigation) through
+    multiple hops each direction, console clean throughout.
+
+Full suites still green after (740 backend / 174 frontend).
+
+## Breadcrumbs, a genuinely clickable board preview, and a mobile title bug found while checking — 2026-08-29
+
+- [x] ~~**Breadcrumbs on every event-related page.**~~ Home → Events, plus
+  the page's own place in the hierarchy — `Boards/Index.vue` (`/events`),
+  `Boards/Mine.vue` (`/my-events`), `Boards/Leaderboard.vue`,
+  `Events/Participants.vue`, and — one addition covering three pages at
+  once — `EventTypeHeading.vue`'s `event.title` crumb, computed from the
+  live event so a host renaming mid-visit doesn't leave it stale, added
+  individually to `BoardShow.vue`, `Events/Bingo.vue` and
+  `Events/SkillRace.vue` (the heading component itself sits inside a flex
+  row with a sibling action bar, so the breadcrumb had to live on the page
+  above that row rather than inside the shared component, or the action
+  bar would misalign against it). Plain `u-breadcrumb :items`, no new
+  wrapper component — it's a single prop pass-through everywhere, nothing
+  to abstract.
+- [x] ~~**The board preview on `/my-events` looked clickable and wasn't.**~~
+  Reported directly. `BoardPreview`/`BingoPreview`/`RacePreview` sit in
+  their own block beside the row's content, outside both the title link
+  and the "Open" button — and `BoardPreview` specifically reuses the real
+  board's `.board-tile` styling (app.css), hover scale-up included, which
+  is built for an actually-clickable tile. The preview inherited the cue
+  with none of the behaviour. Fixed by making the whole slot a real
+  `<Link :href="/events/:id">` rather than stripping the hover effect —
+  the affordance was correct, the page just needed to make it true.
+  Verified the click lands on the event page, not just that it looks
+  right.
+- [x] ~~**Found and fixed while checking the above at a real phone
+  width, not the tool pane's own ~530px shape: the event-page title
+  rendered one letter per line at 375px.**~~ Directly prompted — "denk je
+  om de layout?" — and worth checking with a real breakpoint, not
+  assuming the browser pane's own width proved anything. Measured before
+  guessing: the heading's flex-item width was 4.8px against a 343px row,
+  the action bar beside it 322px. `BoardShow.vue`, `Events/Bingo.vue` and
+  `Events/SkillRace.vue` share one row —
+  `flex items-start justify-between gap-4 flex-wrap` — with the heading as
+  a `flex-1` child. That combination has a real heuristic problem: a
+  browser decides whether a flex row wraps using each child's
+  *hypothetical* (pre-grow) size, and `flex-1`'s basis is 0 — so the
+  heading "wants" nothing going into that decision, the action bar's own
+  wrapped width already fits beside it, and the row never wraps at all.
+  What renders instead is the leftover after grow: ~5px, and `break-words`
+  on the `<h1>` did exactly what it's told with that little room —
+  breaking every single character. `BoardShow.vue` had *already* fixed the
+  adjacent symptom once (`sm:shrink-0` on the action bar, with a comment
+  explaining a 772px-wide control bar running off a 375px screen) — that
+  fix was real but incomplete, since it addresses the action bar's own
+  width, not the heading's starvation next to it, and evidently was never
+  re-tested at a width narrow enough to expose this second half. Fixed by
+  switching the row to `flex-col sm:flex-row` on all three pages instead
+  of fighting the wrap heuristic — the two stack, full width each, below
+  `sm`, so there's no wrap decision left to get wrong. Verified at a real
+  375×812 viewport (`resize_window`) on all three event-type pages plus
+  `/my-events`, not just the pane's own shape.
+
+Full suite still green (174 frontend; no backend touched this pass).
+
+## An upcoming event could be played — reported live from the "Starts next month" demo board — 2026-08-29
+
+Screenshotted directly: an event badged "Upcoming" with a working dice
+button and "Click to roll" beside it. Real bug, both sides of the request.
+
+- [x] ~~**Nothing server-side checked the start date at all.**~~ `Event` had
+  `isPaused()` and `isEnded()`, both mirroring `boardEventStatus()` in
+  `Support/board.js`, but no `isUpcoming()` — so
+  `PlayerBoardController::roll()`, `PlayerBoardController::toggleTile()` and
+  `BingoController::claim()` each checked paused/ended and stopped there.
+  Confirmed the gap was real, not theoretical: a direct POST to `/roll` on
+  the upcoming demo board (bypassing the UI entirely) created zero
+  `PlayerBoard` rows before the fix. New `Event::isUpcoming()`
+  (`start_date`'s own day counts as started, mirroring `isEnded()`'s
+  `endOfDay()` the other direction — a board due today is live from
+  midnight), checked in all three, each with its own already-established
+  message key (`events.not_started`, or `bingo.event_not_started` — new —
+  for the bingo-specific "claims aren't open" phrasing `bingo.event_ended`
+  already used).
+- [x] ~~**Frontend hid the controls to match**~~ — `BoardShow.vue` gained an
+  `isUpcoming` computed (same pattern as its own `isEnded`, whose comment
+  already documented this exact class of bug happening once before, for
+  "ended" instead of "upcoming" — the dice/tick-tile controls only ever
+  checked `isPaused` then too). `Bingo.vue`'s `onSquareClick` gained the
+  matching early return. **Joining stays available while upcoming** — that's
+  signing up ahead of the start, which `EventParticipationService::join()`
+  already allows (only checks `isPaused`) and the header's own join button
+  never restricted; only the dice and the tick-tile button, which are
+  actually playing, now wait for the start date. Verified at
+  `BoardShow.vue`, `Events/Bingo.vue`, and traced `Events/SkillRace.vue`
+  (no play action there — entering isn't gated either, same reasoning).
+
+Full suite still green (740 backend / 174 frontend).
+
+## Bingo never got a seeder, so no bingo card was ever fully task-filled — 2026-08-29
+
+Picks up the earlier "task variety" pass (14 tasks → 66, every NORMAL S&L
+tile filled) — asked again explicitly for bingo, which that pass never
+touched.
+
+- [x] ~~**No `BINGO` event existed in any seeder at all.**~~ `DatabaseSeeder`'s
+  own board and every `boardSpecs()` entry are `SNAKES_LADDERS`; the six
+  bingo events already sitting in this dev database (Clan Bingo — Summer,
+  Weekend Bingo, Christmas Event, the Midsummer Championship, Ended last
+  week, Invite only night) were each created by hand through the app, which
+  is exactly why none had more than 14 of 25 squares filled — nothing ever
+  filled one in but a host clicking through the UI. New `bingoSpecs()` /
+  `seedBingoCard()` / `seedBingoSquares()`, mirroring `boardSpecs()`'s
+  shape: three cards (solo/open, team/full-house, solo/invite) rather than
+  boards' nine — bingo's own state variety was already covered by what
+  existed by hand, backfilled below regardless.
+- [x] ~~**New `backfillBingoSquareTasks()`, site-wide, not scoped to the
+  three specs above.**~~ Deliberate: "every seeded S&L and bingo board"
+  meant fixing what was already in the database from manual testing too,
+  not only what this seeder creates going forward. One wildcard per card,
+  shuffled-and-cycled tasks on the rest — same reasoning as
+  `backfillTileTasks()`. Verified after running: all 9 bingo cards site-wide
+  (6 pre-existing + 3 new), 0 squares without a task or a wildcard reason —
+  up from 14/25, 1/25, and four cards at 0/25 before.
+
+Full suite still green (740 backend / 174 frontend).
+
+## The S&L side of that same pass was scoped too narrowly — reported live from a still-empty board — 2026-08-29
+
+`backfillTileTasks(Board $board)` only ever got called from inside
+`seedBoard()`, which only runs for `boardSpecs()`'s own nine titles — so a
+board created by hand through the app, same as the bingo cards the previous
+entry backfilled, was never reachable. Caught immediately: the owner opened
+"Starts next month" right after the reseed and it was still bare.
+
+- [x] ~~**`backfillTileTasks()` rewritten as `backfillAllTileTasks()`, no
+  `Board` param, site-wide.**~~ Exactly the same fix `backfillBingoSquareTasks()`
+  already got a few commits earlier, applied to the surface it was
+  supposed to cover the first time. Dropped the per-board call from
+  `seedBoard()` entirely — the site-wide sweep runs once in `run()` and
+  catches boardSpecs()' own boards too, so nothing is lost by removing it
+  from there. Re-ran: 178 empty NORMAL tiles backfilled in one pass — the
+  exact count flagged as "not this seeder's boards" three commits ago, now
+  covered. "Starts next month" verified directly: 25/25 NORMAL tiles filled.
+
+Full suite still green (740 backend / 174 frontend).
+
+## "Your current task" was below "Roll the dice" whose own copy said "above" — and the wiki link/description vanished seconds after page load — 2026-08-29
+
+Two bugs off one screenshot: a card order that contradicted its own text,
+and a live-channel data gap that undid the wiki-link work from days earlier
+almost as soon as the page rendered it correctly.
+
+- [x] ~~**Card order swapped in `BoardShow.vue`'s sidebar: "Your current
+  task" now precedes "Roll the dice."**~~ `board.roll_needs_current_tile`
+  reads "Finish the tile you are on first, then roll. Mark it complete
+  **above**" — true only if the task card is actually above the roll
+  card, and it wasn't; it was the next one down. Reordered rather than
+  reworded: the task is what a player acts on next, the dice are the
+  reward for finishing it, so "things to do are always on top" was the
+  right call and "above" was the copy that should have been true all
+  along. Verified at 375px: task card (with the "Mark as complete"
+  button) now renders first, "Roll the dice" and its now-accurate "above"
+  second.
+- [x] ~~**The wiki link (and the description) on the current/selected task
+  disappeared moments after page load — a real data gap, not a display
+  bug.**~~ Asked directly: "did you not seed that along, or is the code
+  missing." Neither — the earlier wiki-link pass fixed
+  `BoardController::show()`'s initial props (`'board.tiles.task'`, no
+  column restriction) but missed the **live SSE channel** that overwrites
+  `liveTiles` on (near-)every connect: `SnakesLaddersChannel::payload()`
+  still had `->with('task:id,title,icon_url')` — no `description`, no
+  `wiki_url` — so the correct initial render got clobbered by a narrower
+  one within seconds of the page opening, same as `BingoChannel::payload()`'s
+  `squares.task:id,title,icon_url`, which had the identical gap and was
+  fixed alongside it even though nobody had reported it yet for bingo.
+  Both channels select `description,wiki_url` now. Verified live: clicked
+  a tile after the page had settled (channel definitely connected), wiki
+  link and description both present in the DOM, not just in a
+  screenshot-free initial fetch.
+
+Full suite still green (740 backend / 174 frontend).
+
+## The wiki link was an icon tucked beside a title; S&L tiles had no claim/approve flow — 2026-08-29
+
+Two separate asks in one message, both acted on directly.
+
+- [x] ~~**Wiki link: a proper button, not a small icon beside the title.**~~
+  "Im not that satisfied with just a link button icon that goes to the wiki.
+  Needs a better button maybe. Maybe in the header, aligning to the right?"
+  Moved from a bare `<u-icon>` wrapped in an `<a>` next to the task title
+  into a real `<u-button>` in the card's `#header` slot, right-aligned via
+  `justify-between` — `BoardShow.vue`'s "Your current task" and "Selected
+  tile" cards, and `BingoClaimModal.vue`'s task header, all three carried
+  the identical anti-pattern.
+
+- [x] ~~**Snakes & Ladders task tiles had no claim/approve flow — the open
+  question from 2026-08-25 above, now decided and built.**~~ "I can
+  currently simply complete a tile without providing proof. This is an
+  issue touching an existing backlog that stuff needs approval guard."
+  Answered the "extend `completed_tiles` or accept the asymmetry" question
+  from the writeup above: extended it, mirroring `bingo_completions`
+  column-for-column (`status`, `proof_url`, `note`, `marked_by`,
+  `reviewed_by`, `reviewed_at`, `review_note` — migration
+  `2026_08_29_120000_add_review_to_boards_and_completed_tiles`) and adding
+  the matching `boards.requires_approval` next to `bingo_cards.requires_approval`.
+  Both default `true` — a board nobody configures should not be the
+  self-trusting one.
+  * `PlayerBoardController::toggleTile()` is now a claim endpoint, not a
+    plain self-toggle: on a board that requires approval, a first claim
+    lands PENDING (optional `proof_url`/`note`, same as bingo — not
+    required server-side, same reasoning bingo's own claim() already
+    settled), and only APPROVED counts toward `completedTileIds`/`canRoll`.
+    Withdrawing your own still-pending claim is allowed; touching one a
+    host already ruled on is refused (`board.already_reviewed`), same
+    restriction bingo enforces.
+  * New `PlayerBoardController::review()` (`PATCH
+    /events/{event}/tiles/completions/{completedTile}`), host-only,
+    approve/reject with a note — same shape as `BingoController::review()`.
+  * New `BoardReviewService` mirrors `BingoService`'s two review-facing
+    methods: `pendingQueue()` for the host's dialog, `claimsVersion()` — a
+    cheap hash folded into `SnakesLaddersChannel`'s fingerprint/payload so a
+    host approving a claim while the claimant still has the page open
+    reaches them live, the same `claims_version` → `router.reload({only:
+    [...]})` pattern `Bingo.vue` already uses. Getting this wrong was the
+    exact bug fixed above the same day (a live channel silently overwriting
+    correct props with a narrower shape) — worth naming directly since it
+    is the same class of mistake this new code could have repeated.
+  * Two new Vue components, `TileClaimModal.vue`/`TileReviewModal.vue`,
+    close mirrors of `BingoClaimModal.vue`/`BingoReviewModal.vue` — the
+    "table question" research deliberately kept the two schemas separate,
+    and that held here too rather than trying to genericize one claim
+    dialog over both shapes.
+  * `BoardShow.vue`'s "Your current task" card now branches on
+    `requiresApproval`: claim/pending/approved/rejected states behind the
+    new modal when on, the original direct complete/uncomplete button when
+    off — verified both paths live, including flipping the setting on an
+    existing board and confirming the old plain-toggle button reappears
+    unchanged.
+  * `BoardSettings/FormatFields.vue` gained the same `u-switch` bingo's
+    Format tab already has, now shown for both `isBingo` and `hasBoard`
+    (was bingo-only) — the create/edit payload-scoping logic in
+    `BoardSettingsModal.vue` had `requires_approval` deleted for every
+    non-bingo type, so it had to move out of that guard alongside the
+    board-only fields.
+  Verified live end to end: claimed a tile with a proof link → "Waiting for
+  review" state, Manage menu badge, dice card explaining why rolling is
+  blocked → reviewed and approved from the host dialog → claim state, board
+  tint and dice availability all updated without a manual reload → confirmed
+  requires_approval:false reverts to the exact original single-click
+  complete/uncomplete behaviour. Full suite still green (740 backend / 174
+  frontend); both bundles rebuilt, SSR restarted.
+
+## Two real bugs found testing the claim/approve flow above — 2026-08-30
+
+Both reported directly ("I can submit an empty claim now") or found while
+verifying the fix, not filed and left.
+
+- [x] ~~**A claim could be submitted with no proof at all.**~~ `proof_url`
+  was `nullable` in both `PlayerBoardController::toggleTile()` and
+  `BingoController::claim()` — copied straight from bingo's own precedent,
+  which itself allowed it ("Optional, but a claim without proof is likely
+  to be rejected"). Reported as an empty submission succeeding, and once
+  named it was obviously wrong on both: a review queue exists so a host has
+  something to check a claim against, and a blank one gives them nothing.
+  Fixed on both controllers: `proof_url` is now `required` whenever the
+  board/card requires approval, `nullable` when it doesn't (nothing to
+  check it against there). Had to reorder both methods — the validation ran
+  before the existing-claim check, so requiring proof up front would have
+  rejected every *withdrawal* too, since a withdrawal is a bare POST with
+  no body. Moved validation to after the withdraw branch in both. Frontend:
+  both claim modals mark the field required and disable Submit until it's
+  filled in, rather than only reporting the error after a round trip.
+  Several existing Bingo tests posted bare claims relying on the old
+  nullable behaviour and needed a `proof_url` added to stay meaningful
+  (`BingoTest`, `BingoReviewTest`, `BingoClaimWithdrawalTest`, `EventPauseTest`).
+
+- [x] ~~**A rejected S&L claim permanently bricked the board — found while
+  verifying the fix above, not yet reported.**~~ Mirroring bingo's
+  `already_reviewed` lock (any non-PENDING claim is the host's to change,
+  not the claimant's) is wrong for this board type specifically: a bingo
+  square is optional, so a stuck one still lets the card finish, but an S&L
+  tile is the one the player is standing on — `canRoll` only unlocks once
+  it's APPROVED, so a REJECTED claim with no way back meant that player
+  could never roll again, on that board, ever. Changed
+  `PlayerBoardController::toggleTile()`'s lock to only APPROVED (a host's
+  positive ruling stands); a REJECTED claim can be cleared by the player and
+  resubmitted with better proof, same endpoint. `TileClaimModal.vue` now
+  shows a "Try again" action instead of "Withdraw" for a rejected claim,
+  left open on success (rather than closed) so the same dialog turns
+  straight into the fresh submission form — trying again is one continuous
+  flow, not a close-then-reopen. Deliberately NOT changed on bingo's side:
+  the asymmetry is the point, not an oversight (see the note in the code).
+  Verified live: rejected a fresh claim, confirmed "Mark as complete" was
+  gone and the tile permanently blocked before the fix; after it, "Try
+  again" clears the rejection, the form reopens in place, a fresh claim
+  with new proof lands PENDING, and approving it unblocks rolling again.
+  Also re-verified bingo's own claim flow end to end as a real SOLO
+  participant (join → claim → pending) since the validation reorder touched
+  that controller too.
+
+Two new PHPUnit tests for the rejection fix, four existing Bingo tests
+updated for the proof requirement. Full suite green (745 backend / 174
+frontend); both bundles rebuilt, SSR restarted.
+
+- [x] ~~**A RuneLite "soon" teaser on both claim forms.**~~ Asked directly,
+  offered as one of two options ("or improve labels") — picked the teaser.
+  A disabled, greyed-out block below the note field in both
+  `TileClaimModal.vue` and `BingoClaimModal.vue`: a puzzle icon, "RuneLite
+  plugin" plus a "Soon" badge, and a disabled input reading "Detected
+  automatically — no screenshot needed". Previews Phase 4's plan
+  (`docs/runelite-plugin.md`, `ROADMAP.md`) — `completed_via` has carried a
+  `RUNELITE` case in the schema since the very first migration with nowhere
+  in the UI that ever said so. Deliberately inert (`disabled`,
+  `pointer-events-none`, no click handler at all): nothing here should look
+  clickable before the plugin exists to answer it.

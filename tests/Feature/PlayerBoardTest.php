@@ -335,10 +335,15 @@ class PlayerBoardTest extends TestCase
 
     // ----------------------------------------------------------- ticking a tile
 
+    /**
+     * On a board that trusts self-toggles (requires_approval off), a claim
+     * still needs no proof — there is nothing for a host to check it
+     * against.
+     */
     #[Test]
     public function a_player_can_tick_a_tile_off_and_back_on(): void
     {
-        [$owner, $event] = $this->board();
+        [$owner, $event] = $this->board(['board' => ['requires_approval' => false]]);
         $this->fillTiles($event->board);
 
         $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
@@ -348,6 +353,126 @@ class PlayerBoardTest extends TestCase
 
         $this->actingAs($owner)->post("/events/{$event->id}/tiles/{$tile->id}/toggle");
         $this->assertSame(0, CompletedTile::where('tile_id', $tile->id)->count());
+    }
+
+    /**
+     * A board that requires approval refuses a claim with no proof — the
+     * whole point of the review queue is something for a host to check.
+     */
+    #[Test]
+    public function a_claim_without_proof_is_refused_when_approval_is_required(): void
+    {
+        [$owner, $event] = $this->board(['board' => ['requires_approval' => true]]);
+        $this->fillTiles($event->board);
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        $this->actingAs($owner)
+            ->post("/events/{$event->id}/tiles/{$tile->id}/toggle")
+            ->assertSessionHasErrors('proof_url');
+
+        $this->assertSame(0, CompletedTile::where('tile_id', $tile->id)->count());
+    }
+
+    /** With proof supplied, a board that requires approval lands the claim PENDING, not scored yet. */
+    #[Test]
+    public function a_claim_with_proof_lands_pending_on_a_board_that_requires_approval(): void
+    {
+        [$owner, $event] = $this->board(['board' => ['requires_approval' => true]]);
+        $this->fillTiles($event->board);
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        $this->actingAs($owner)
+            ->post("/events/{$event->id}/tiles/{$tile->id}/toggle", ['proof_url' => 'https://imgur.com/abc'])
+            ->assertRedirect();
+
+        $completed = CompletedTile::where('tile_id', $tile->id)->firstOrFail();
+        $this->assertSame('PENDING', $completed->status);
+        $this->assertSame('https://imgur.com/abc', $completed->proof_url);
+    }
+
+    /** Withdrawing a still-pending claim needs no proof — it's a bare POST clearing the row. */
+    #[Test]
+    public function a_pending_claim_can_be_withdrawn_without_proof(): void
+    {
+        [$owner, $event] = $this->board(['board' => ['requires_approval' => true]]);
+        $this->fillTiles($event->board);
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles/{$tile->id}/toggle", ['proof_url' => 'https://imgur.com/abc']);
+        $this->assertSame(1, CompletedTile::where('tile_id', $tile->id)->count());
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles/{$tile->id}/toggle")->assertRedirect();
+        $this->assertSame(0, CompletedTile::where('tile_id', $tile->id)->count());
+    }
+
+    /**
+     * A rejected claim must NOT lock a player out the way an approved one
+     * does — unlike a bingo square, this tile is the one they are standing
+     * on, and refusing a retry would brick the entire board for them:
+     * nothing past it is reachable without completing it first.
+     */
+    #[Test]
+    public function a_rejected_claim_can_be_cleared_and_retried(): void
+    {
+        [$owner, $event] = $this->board(['board' => ['requires_approval' => true]]);
+        $this->fillTiles($event->board);
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        $completed = CompletedTile::create([
+            'id' => (string) str()->uuid(),
+            'player_board_id' => PlayerBoard::firstOrCreate(
+                ['user_id' => $owner->id, 'board_id' => $event->board->id],
+                ['id' => (string) str()->uuid(), 'current_position' => 0],
+            )->id,
+            'tile_id' => $tile->id,
+            'completed_via' => 'MANUAL',
+            'status' => 'REJECTED',
+            'reviewed_at' => now(),
+        ]);
+
+        // Clearing it out — same endpoint, empty body, same as withdrawing a pending one.
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles/{$tile->id}/toggle")->assertRedirect();
+        $this->assertSame(0, CompletedTile::where('id', $completed->id)->count());
+
+        // Then submitting fresh.
+        $this->actingAs($owner)
+            ->post("/events/{$event->id}/tiles/{$tile->id}/toggle", ['proof_url' => 'https://imgur.com/retry.png'])
+            ->assertRedirect();
+
+        $fresh = CompletedTile::where('tile_id', $tile->id)->firstOrFail();
+        $this->assertSame('PENDING', $fresh->status);
+    }
+
+    /** Undoing an APPROVAL is the host's call — the one status a player cannot clear themselves. */
+    #[Test]
+    public function an_approved_claim_cannot_be_cleared_by_the_player(): void
+    {
+        [$owner, $event] = $this->board(['board' => ['requires_approval' => true]]);
+        $this->fillTiles($event->board);
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        CompletedTile::create([
+            'id' => (string) str()->uuid(),
+            'player_board_id' => PlayerBoard::firstOrCreate(
+                ['user_id' => $owner->id, 'board_id' => $event->board->id],
+                ['id' => (string) str()->uuid(), 'current_position' => 0],
+            )->id,
+            'tile_id' => $tile->id,
+            'completed_via' => 'MANUAL',
+            'status' => 'APPROVED',
+            'reviewed_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->post("/events/{$event->id}/tiles/{$tile->id}/toggle")
+            ->assertSessionHas('board-save-error');
+
+        $this->assertSame(1, CompletedTile::where('tile_id', $tile->id)->count());
     }
 
     /**

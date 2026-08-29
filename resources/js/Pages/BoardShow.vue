@@ -6,13 +6,28 @@
     <u-main>
         <u-page>
             <u-container class="py-12">
+                <u-breadcrumb :items="breadcrumbs" class="mb-4" />
+
                 <!-- u-page-header dropped entirely, not just its title slot:
                      it styles everything inside #title as a title, so the
                      description came out in the same uppercase display face
                      as the heading. A plain flex row instead, matching the
                      bingo and race pages so all three announce themselves the
                      same way. -->
-                <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+                <!-- `flex-col sm:flex-row`, not `flex flex-wrap`: with a
+                     `flex-1` first child and `justify-between`, the browser
+                     decides whether to wrap using each child's HYPOTHETICAL
+                     size — `flex-1`'s basis is 0, so the heading "wants" 0px
+                     going into that decision, the action bar's own auto
+                     width (its widest wrapped line) already fits beside it,
+                     and the row never wraps at all. What actually happens at
+                     375px: the action bar claims ~320 of 343px and the
+                     heading is squeezed to ~5px, so its title renders one
+                     character per line. Measured, not guessed — a real
+                     event page, real viewport. `flex-col` below `sm`
+                     sidesteps the whole heuristic: the two stack, full width
+                     each, no wrap decision to get wrong. -->
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                     <event-type-heading
                         :event="liveBoard"
                         :can-edit="canEdit"
@@ -224,57 +239,36 @@
                     </div>
 
                     <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
-                        <!-- Ported from Sidebar.vue: the dice roller only appears once the
-                             CURRENT tile is marked complete — rolling isn't always available,
-                             it's the reward for finishing what you're standing on. This isn't
-                             enforced server-side either (old or new backend) — it's a UI pace,
-                             not a hard rule — but the UI gate itself was missing entirely here. -->
-                        <!-- Shown whether or not you may roll yet, and saying
-                             which. Hiding the card until the current tile was
-                             ticked off made the board look like it was
-                             missing its main control — reported as "where is
-                             the dice, snakes and ladders does not work at
-                             all", which is the correct reading of a page with
-                             no way to play on it. The gate is a pace, not a
-                             secret. -->
-                        <u-card v-if="playerBoard">
-                            <template #header>
-                                <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
-                            </template>
-
-                            <dice-roller
-                                v-if="canRoll && !isPaused && !isEnded"
-                                :rolling="rolling"
-                                :last-roll="lastRoll"
-                                :rolls-today="playerBoard?.dice_rolls_today ?? 0"
-                                :roll-limit="liveBoard.dice_roll_limit"
-                                @roll="roll"
-                            />
-
-                            <!-- Paused/ended both refuse the roll server-side
-                                 either way; taking the dice away is so that
-                                 the refusal is not the way anyone finds out. -->
-                            <p v-else class="text-sm text-muted">
-                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : $t('board.roll_needs_current_tile')) }}
-                            </p>
-                        </u-card>
-
-                        <!-- No board of your own yet. Rolling still creates
-                             one — playing is joining — so the dice stay, with
-                             the deliberate way in above them. -->
-                        <u-card v-if="!playerBoard">
-                            <p class="text-sm text-muted">
-                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (joined ? $t('board.get_started_desc') : $t('events.join_hint'))) }}
-                            </p>
-                            <div v-if="!isPaused && !isEnded" class="mt-3 flex flex-col gap-3">
-                                <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
-                                <dice-roller :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
-                            </div>
-                        </u-card>
-
+                        <!-- The thing to do comes first. This card used to sit
+                             below "Roll the dice", whose own disabled-state
+                             copy says "Mark it complete above" — a lie by
+                             position, since the task card was the one BELOW
+                             it. Reported directly. Swapped order rather than
+                             reworded the copy: the task is what a player
+                             actually acts on next, the dice are the reward
+                             for finishing it (see the comment on that card,
+                             now following this one), so "above" is what the
+                             text should have said all along, not "below". -->
                         <u-card v-if="currentTile">
                             <template #header>
-                                <span class="font-semibold">{{ $t('board.your_task') }}</span>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-semibold">{{ $t('board.your_task') }}</span>
+                                    <!-- A proper button, not a small icon
+                                         tucked beside the title — a wiki link
+                                         is the one external action on this
+                                         card and deserves to read as one. -->
+                                    <u-button
+                                        v-if="currentTile.task?.wiki_url"
+                                        :href="currentTile.task.wiki_url"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        size="xs"
+                                        color="neutral"
+                                        variant="outline"
+                                        trailing-icon="i-lucide-external-link"
+                                        :label="$t('tile_editor.open_wiki_page')"
+                                    />
+                                </div>
                             </template>
                             <div class="flex items-start gap-3">
                                 <img
@@ -297,35 +291,148 @@
                                 </div>
                             </div>
 
-                            <div v-if="!isPaused && !isEnded" class="mt-3">
-                                <u-button
-                                    v-if="!currentTileCompleted"
-                                    color="success"
-                                    variant="solid"
-                                    size="sm"
-                                    icon="i-lucide-check"
-                                    block
-                                    :label="$t('board.complete_tile')"
-                                    @click="toggleTile(currentTile)"
-                                />
-                                <u-button
-                                    v-else
-                                    color="neutral"
-                                    variant="outline"
-                                    size="sm"
-                                    icon="i-lucide-x"
-                                    block
-                                    :label="$t('board.uncomplete_tile')"
-                                    @click="toggleTile(currentTile)"
-                                />
+                            <!-- Joining before the start date creates a
+                                 PlayerBoard at tile 0 (EventParticipationService
+                                 ::join() doesn't gate on isUpcoming, only the
+                                 dice do) — so this card, and the tick button
+                                 on it, is reachable the same way the dice
+                                 were. Same fix. -->
+                            <div v-if="!isPaused && !isEnded && !isUpcoming" class="mt-3">
+                                <!-- Same trust problem bingo solved, applied
+                                     here: on a board that requires approval a
+                                     click opens the claim dialog (proof, then
+                                     wait on a host) instead of scoring itself.
+                                     See docs/backlog.md, "Snakes & Ladders
+                                     task tiles have no claim/approve flow". -->
+                                <template v-if="requiresApproval">
+                                    <u-button
+                                        v-if="!currentClaim"
+                                        color="success"
+                                        variant="solid"
+                                        size="sm"
+                                        icon="i-lucide-check"
+                                        block
+                                        :label="$t('board.complete_tile')"
+                                        @click="showClaimModal = true"
+                                    />
+                                    <div v-else class="space-y-2">
+                                        <div class="flex items-center gap-2 text-sm">
+                                            <u-icon :name="claimStatusIcon" class="size-4 shrink-0" :class="claimStatusClass" />
+                                            <span :class="claimStatusClass">{{ $t(`board.status_${currentClaim.status.toLowerCase()}`) }}</span>
+                                        </div>
+                                        <u-button
+                                            size="sm"
+                                            variant="outline"
+                                            color="neutral"
+                                            block
+                                            :label="$t('board.view_claim')"
+                                            @click="showClaimModal = true"
+                                        />
+                                    </div>
+                                </template>
+                                <template v-else>
+                                    <u-button
+                                        v-if="!currentTileCompleted"
+                                        color="success"
+                                        variant="solid"
+                                        size="sm"
+                                        icon="i-lucide-check"
+                                        block
+                                        :label="$t('board.complete_tile')"
+                                        @click="toggleTile(currentTile)"
+                                    />
+                                    <u-button
+                                        v-else
+                                        color="neutral"
+                                        variant="outline"
+                                        size="sm"
+                                        icon="i-lucide-x"
+                                        block
+                                        :label="$t('board.uncomplete_tile')"
+                                        @click="toggleTile(currentTile)"
+                                    />
+                                </template>
+                            </div>
+                        </u-card>
+
+                        <!-- Ported from Sidebar.vue: the dice roller only appears once the
+                             CURRENT tile is marked complete — rolling isn't always available,
+                             it's the reward for finishing what you're standing on. This isn't
+                             enforced server-side either (old or new backend) — it's a UI pace,
+                             not a hard rule — but the UI gate itself was missing entirely here. -->
+                        <!-- Shown whether or not you may roll yet, and saying
+                             which. Hiding the card until the current tile was
+                             ticked off made the board look like it was
+                             missing its main control — reported as "where is
+                             the dice, snakes and ladders does not work at
+                             all", which is the correct reading of a page with
+                             no way to play on it. The gate is a pace, not a
+                             secret. -->
+                        <u-card v-if="playerBoard">
+                            <template #header>
+                                <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
+                            </template>
+
+                            <dice-roller
+                                v-if="canRoll && !isPaused && !isEnded && !isUpcoming"
+                                :rolling="rolling"
+                                :last-roll="lastRoll"
+                                :rolls-today="playerBoard?.dice_rolls_today ?? 0"
+                                :roll-limit="liveBoard.dice_roll_limit"
+                                @roll="roll"
+                            />
+
+                            <!-- Paused/ended/upcoming all refuse the roll
+                                 server-side either way; taking the dice away
+                                 is so that the refusal is not the way anyone
+                                 finds out. Upcoming used to be missing from
+                                 both sides of this — the dice showed and
+                                 worked on a board dated to start next month,
+                                 reported directly from exactly that page. -->
+                            <p v-else class="text-sm text-muted">
+                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (isUpcoming ? $t('events.not_started') : (currentClaim?.status === 'PENDING' ? $t('board.roll_awaiting_review') : $t('board.roll_needs_current_tile')))) }}
+                            </p>
+                        </u-card>
+
+                        <!-- No board of your own yet. Rolling still creates
+                             one — playing is joining — so the dice stay, with
+                             the deliberate way in above them.
+
+                             Joining itself stays open while upcoming — that's
+                             signing up ahead of the start, which is normal
+                             and is what the header's own join button already
+                             allows (EventParticipationService::join() has
+                             never checked isUpcoming, only isPaused). Only
+                             the dice — actually playing — wait for the start
+                             date, same as everywhere else this pass touched. -->
+                        <u-card v-if="!playerBoard">
+                            <p class="text-sm text-muted">
+                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (isUpcoming ? $t('events.not_started') : (joined ? $t('board.get_started_desc') : $t('events.join_hint')))) }}
+                            </p>
+                            <div v-if="!isPaused && !isEnded" class="mt-3 flex flex-col gap-3">
+                                <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
+                                <dice-roller v-if="!isUpcoming" :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
                             </div>
                         </u-card>
 
                         <u-card v-if="clickedTile && clickedTile.position !== playerBoard?.current_position">
                             <template #header>
-                                <div class="flex items-center justify-between">
+                                <div class="flex items-center justify-between gap-2">
                                     <span class="font-semibold">{{ $t('board.tile_info') }}</span>
-                                    <u-button size="xs" variant="ghost" color="neutral" icon="i-lucide-x" :aria-label="$t('common.close')" @click="clickedTile = null" />
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <u-button
+                                            v-if="clickedTile.task?.wiki_url"
+                                            :href="clickedTile.task.wiki_url"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            size="xs"
+                                            color="neutral"
+                                            variant="outline"
+                                            trailing-icon="i-lucide-external-link"
+                                            :label="$t('tile_editor.open_wiki_page')"
+                                        />
+                                        <u-button size="xs" variant="ghost" color="neutral" icon="i-lucide-x" :aria-label="$t('common.close')" @click="clickedTile = null" />
+                                    </div>
                                 </div>
                             </template>
                             <div class="flex items-start gap-3">
@@ -387,7 +494,31 @@
                                 >
                                     {{ liveBoard.mode === 'TEAM' ? $t('board.mode_team') : $t('board.mode_solo') }}
                                 </u-badge>
+                                <u-badge
+                                    color="neutral"
+                                    variant="subtle"
+                                    :icon="requiresApproval ? 'i-lucide-gavel' : 'i-lucide-zap'"
+                                    :title="requiresApproval ? $t('board.info_reviewed') : $t('board.info_instant')"
+                                >
+                                    {{ requiresApproval ? $t('board.info_reviewed') : $t('board.info_instant') }}
+                                </u-badge>
                             </div>
+
+                            <!-- Same placement bingo uses: the fact that
+                                 claims wait for a host sits right beside the
+                                 button that acts on it. -->
+                            <u-button
+                                v-if="canEdit && requiresApproval"
+                                :color="livePending.length ? 'warning' : 'neutral'"
+                                variant="outline"
+                                size="xs"
+                                icon="i-lucide-gavel"
+                                class="mt-3"
+                                :label="livePending.length
+                                    ? $t('bingo.review_pending_count', { count: livePending.length })
+                                    : $t('bingo.review_nothing_waiting')"
+                                @click="showReviewModal = true"
+                            />
                         </u-card>
 
                         <u-card v-if="livePlayers.length">
@@ -474,6 +605,15 @@
                 :tile="editingTile.id ? editingTile : null"
                 @update:open="(v) => !v && (editingTile = null)"
             />
+            <tile-claim-modal
+                v-if="currentTile"
+                v-model:open="showClaimModal"
+                :event-id="liveBoard.id"
+                :tile="currentTile"
+                :tile-title="currentTileTitle"
+                :claim="currentClaim"
+            />
+            <tile-review-modal v-model:open="showReviewModal" :event-id="liveBoard.id" :claims="livePending" />
         </client-only>
     </u-main>
 </template>
@@ -493,6 +633,8 @@ import { useEventStream } from '@/Composables/useEventStream';
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 const TileListEditor = defineAsyncComponent(() => import('@/Components/TileListEditor.vue'));
 const TileEditModal = defineAsyncComponent(() => import('@/Components/TileEditModal.vue'));
+const TileClaimModal = defineAsyncComponent(() => import('@/Components/TileClaimModal.vue'));
+const TileReviewModal = defineAsyncComponent(() => import('@/Components/TileReviewModal.vue'));
 
 const props = defineProps({
     board: { type: Object, required: true },
@@ -509,6 +651,9 @@ const props = defineProps({
     // part of the event payload.
     webhookUrl: { type: String, default: null },
     joined: { type: Boolean, default: false },
+    // The host's review queue — see BoardReviewService::pendingQueue(). Empty
+    // for anyone else, so asking for it costs a player nothing.
+    pending: { type: Array, default: () => [] },
 });
 
 /**
@@ -524,11 +669,20 @@ watch(() => props.board, (value) => (liveBoard.value = { ...value }));
 // rather than a second copy of the same lookup.
 const sizeLabel = computed(() => formatBoardSize(liveBoard.value.size));
 
+// Computed, not a static array — the title comes from the live channel too,
+// and a host renaming the event mid-visit should not leave a stale trail.
+const breadcrumbs = computed(() => [
+    { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },
+    { label: trans('nav.events'), href: '/events' },
+    { label: liveBoard.value.title },
+]);
+
 // Everyone's positions, seeded from the render and then kept current by the
 // board's own channel — a roll moves one player and everybody watching should
 // see it, the same as a bingo square being ticked.
 const livePlayers = ref([...props.players]);
 const liveTiles = ref([...props.tiles]);
+const livePending = ref([...props.pending]);
 /**
  * A copy of a prop only stays right if something copies it again.
  *
@@ -540,6 +694,32 @@ const liveTiles = ref([...props.tiles]);
  */
 watch(() => props.players, (value) => (livePlayers.value = [...value]));
 watch(() => props.tiles, (value) => (liveTiles.value = [...value]));
+watch(() => props.pending, (value) => (livePending.value = [...value]));
+
+/**
+ * Claim state, as the server last saw it — same pattern Bingo.vue's
+ * applyClaimsVersion() uses, for the same reason: what a host decided about
+ * YOUR claim is yours, and cannot ride a channel every viewer shares. Held
+ * from the first message rather than from the page, so a reconnect (every
+ * 45 seconds by design) never counts as a change.
+ */
+let claimsVersion = null;
+
+function applyClaimsVersion(version) {
+    if (claimsVersion === null) {
+        claimsVersion = version;
+
+        return;
+    }
+
+    if (version === claimsVersion) return;
+
+    claimsVersion = version;
+
+    // `pending` is the host's review queue; it comes back empty for anyone
+    // else, so asking for it costs a player nothing.
+    router.reload({ only: ['playerBoard', 'pending'] });
+}
 
 // Destructured now, because the status dot in the heading reports the
 // connection — see EventTypeHeading. This page never showed a live indicator
@@ -559,12 +739,18 @@ const { streaming, stale } = useEventStream({
         // squares always did. Guarded because an older SSR bundle may still
         // be streaming payloads without them.
         if (payload.tiles) liveTiles.value = payload.tiles;
+
+        // What a host decided about a claim — approved, rejected — only
+        // when it actually changed, rather than on every push.
+        if (payload.claims_version) applyClaimsVersion(payload.claims_version);
     },
 });
 
 
 const showSettingsModal = ref(false);
 const editingTile = ref(null);
+const showClaimModal = ref(false);
+const showReviewModal = ref(false);
 
 // Opened automatically on ?setup=tiles — the redirect a freshly created
 // event arrives on. onMounted because `location` does not exist during SSR.
@@ -617,6 +803,22 @@ const currentTile = computed(() => {
 const currentTileTitle = computed(() => currentTile.value?.title_override ?? currentTile.value?.task?.title ?? trans('tile_editor.no_task'));
 const currentTileCompleted = computed(() => !!currentTile.value && (props.playerBoard?.completedTileIds.includes(currentTile.value.id) ?? false));
 
+// Whether this board makes you prove it — same setting bingo cards carry,
+// read off the live event so a host flipping it mid-event reaches an open
+// board through the stream.
+const requiresApproval = computed(() => Boolean(liveBoard.value.requires_approval));
+
+// This player's own claim on the tile they are standing on, whatever its
+// state — see PlayerBoard.claims (keyed by tile id) in BoardController::show.
+const currentClaim = computed(() => (
+    currentTile.value ? (props.playerBoard?.claims?.[currentTile.value.id] ?? null) : null
+));
+
+const CLAIM_STATUS_ICON = { PENDING: 'i-lucide-clock', APPROVED: 'i-lucide-circle-check', REJECTED: 'i-lucide-circle-x' };
+const CLAIM_STATUS_CLASS = { PENDING: 'text-warning', APPROVED: 'text-success', REJECTED: 'text-error' };
+const claimStatusIcon = computed(() => CLAIM_STATUS_ICON[currentClaim.value?.status] ?? 'i-lucide-circle-dot');
+const claimStatusClass = computed(() => CLAIM_STATUS_CLASS[currentClaim.value?.status] ?? 'text-muted');
+
 /**
  * Whether the square you are standing on actually asks for anything.
  *
@@ -650,17 +852,25 @@ const isPaused = computed(() => Boolean(liveBoard.value.paused_at));
 // because they only ever checked isPaused. Ended events must refuse both.
 const isEnded = computed(() => eventStatus(liveBoard.value) === 'ended');
 
+// Same class of gap as isEnded's own comment above, a second time: the badge
+// already says "Upcoming" for a board dated to start next month, but the
+// dice and the tick-tile button worked anyway, because neither checked the
+// start date at all. Reported directly from exactly that state.
+const isUpcoming = computed(() => eventStatus(liveBoard.value) === 'upcoming');
+
 /** The host's tools, in one menu — see EventManageMenu. */
 const manageItems = computed(() => [
     { key: 'edit', label: editMode.value ? trans('bingo.editing_tiles') : trans('bingo.edit_tiles'), icon: 'i-lucide-grid-2x2-plus', active: editMode.value },
     { key: 'tiles', label: trans('tile_list.open'), icon: 'i-lucide-list-checks' },
     { key: 'settings', label: trans('board.event_settings'), icon: 'i-lucide-settings' },
+    ...(requiresApproval.value ? [{ key: 'review', label: trans('bingo.review_queue'), icon: 'i-lucide-gavel', badge: livePending.value.length }] : []),
 ]);
 
 function onManage(key) {
     if (key === 'edit') editMode.value = ! editMode.value;
     if (key === 'tiles') showTileList.value = true;
     if (key === 'settings') showSettingsModal.value = true;
+    if (key === 'review') showReviewModal.value = true;
 }
 
 const clickedTileTitle = computed(() => clickedTile.value?.title_override ?? clickedTile.value?.task?.title ?? trans('tile_editor.no_task'));

@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\BingoCard;
+use App\Models\BingoSquare;
 use App\Models\Board;
 use App\Models\Event;
 use App\Models\BoardAccess;
@@ -9,6 +11,7 @@ use App\Models\BoardAuthor;
 use App\Models\BoardInvite;
 use App\Models\BoardTeam;
 use App\Models\CompletedTile;
+use App\Models\EventParticipant;
 use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\Task;
@@ -57,9 +60,35 @@ class DemoDataSeeder extends Seeder
             $this->seedBoard($spec);
         }
 
+        // Site-wide, same reasoning as the bingo backfill below: a board
+        // outside boardSpecs()' own nine titles — "Starts next month" was
+        // created by hand through the app, the same way the pre-existing
+        // bingo cards were — never got touched by the per-board version
+        // this used to be, so it sat with every tile empty through two
+        // separate task-filling passes. Reported directly from exactly
+        // that board.
+        $this->backfillAllTileTasks();
+
         $this->seedSkillRace();
 
-        $this->command->info('Demo data seeded: '.$this->users->count().' users, '.$this->teams->count().' teams, '.count($this->boardSpecs()).' boards.');
+        // No BINGO event existed anywhere in this seeder — DatabaseSeeder's
+        // own board is Snakes & Ladders, and boardSpecs() only ever produces
+        // that type too. Every bingo event in a fresh clone's dev database
+        // up to now was created by hand through the app itself, which is
+        // also why none of them had a single task on a square: nothing
+        // filled one in until a host did.
+        foreach ($this->bingoSpecs() as $spec) {
+            $this->seedBingoCard($spec);
+        }
+
+        // Site-wide, not scoped to the specs above on purpose — it also
+        // catches every ad-hoc bingo card already sitting in this database
+        // from manual testing, which is most of what prompted this pass:
+        // "every seeded S&L and bingo board" meant filling what's already
+        // here too, not just what this seeder creates going forward.
+        $this->backfillBingoSquareTasks();
+
+        $this->command->info('Demo data seeded: '.$this->users->count().' users, '.$this->teams->count().' teams, '.count($this->boardSpecs()).' boards, '.count($this->bingoSpecs()).' bingo cards.');
     }
 
     /** @return Collection<int, User> */
@@ -103,70 +132,289 @@ class DemoDataSeeder extends Seeder
         // and hardcoded here — not a live fetch at seed time (no network call
         // happens when this runs), just a stable URL a real wiki-search feature
         // (TileEditModal, not yet built — see docs/backlog.md) would have
-        // stored the same way.
+        // stored the same way. wiki_url is the plain /w/ page link — that's
+        // what WikiController::importTask stores on a real wiki-sourced task,
+        // and what the "your task" card and the bingo claim dialog link out
+        // to (see docs/backlog.md, "Active bingo/S&L tasks need a wiki link").
+        //
+        // Deliberately more entries than any one board has NORMAL tiles for
+        // (9x9 is the largest at ~73): seedTiles() assigns one to every
+        // NORMAL tile now instead of ~30% of them, and a demo board with 73
+        // tiles drawing from 14 tasks read as the same handful of cows and
+        // shrimp repeated six times over.
         $tasks = [
             'Kill 50 cows' => [
                 'description' => 'Head to Lumbridge or Falador and rack up 50 cow kills.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Cow_%281%29.png/100px-Cow_%281%29.png?52ebb',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Cow_%281%29.png/100px-Cow_%281%29.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Cow',
             ],
             'Fish 100 shrimp' => [
                 'description' => 'Small net fishing at any beginner spot — Lumbridge Swamp works.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Raw_shrimps_detail.png/100px-Raw_shrimps_detail.png?39387',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Raw_shrimps_detail.png/100px-Raw_shrimps_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Shrimps',
             ],
             'Chop 300 logs' => [
                 'description' => 'Any tree counts. Bring an axe you can actually swing.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Logs_detail.png/100px-Logs_detail.png?6c104',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Logs_detail.png/100px-Logs_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Woodcutting',
             ],
             'Mine 200 iron ore' => [
                 'description' => 'The Al Kharid mine is usually the least crowded.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Iron_ore_detail.png/100px-Iron_ore_detail.png?3b050',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Iron_ore_detail.png/100px-Iron_ore_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Iron_ore',
             ],
             'Cook 100 trout' => [
                 'description' => "Don't forget a fire or range nearby — raw trout doesn't count.",
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Raw_trout_detail.png/100px-Raw_trout_detail.png?57af3',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Raw_trout_detail.png/100px-Raw_trout_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Trout',
             ],
             'Craft 30 gold rings' => [
                 'description' => 'Needs a furnace and gold bars — Crafting level 5.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Gold_ring_detail.png/100px-Gold_ring_detail.png?8793d',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Gold_ring_detail.png/100px-Gold_ring_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Gold_ring',
             ],
             'Fletch 200 arrows' => [
                 'description' => 'Headless arrows + feathers at a fletching table, or from scratch.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Headless_arrow_detail.png/100px-Headless_arrow_detail.png?e9975',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Headless_arrow_detail.png/100px-Headless_arrow_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Headless_arrow',
             ],
             'Smith 50 bronze bars' => [
                 'description' => 'Smithing 1 — bronze bars from tin and copper ore.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Bronze_bar_detail.png/100px-Bronze_bar_detail.png?603dc',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Bronze_bar_detail.png/100px-Bronze_bar_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Bronze_bar',
             ],
             'Complete a clue scroll' => [
                 'description' => 'Any difficulty counts. Screenshot the reward.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Clue_scroll_%28easy%29_detail.png/100px-Clue_scroll_%28easy%29_detail.png?87067',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Clue_scroll_%28easy%29_detail.png/100px-Clue_scroll_%28easy%29_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Clue_scroll',
             ],
             'Reach level 50 Woodcutting' => [
                 'description' => 'Grinding maples is the usual mid-level route.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Maple_logs_detail.png/100px-Maple_logs_detail.png?ab464',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Maple_logs_detail.png/100px-Maple_logs_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Woodcutting',
             ],
             'Kill the Giant Mole' => [
                 'description' => "Falador Park's secret entrance. Bring a spade to find it.",
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Giant_Mole.png/100px-Giant_Mole.png?3f58a',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Giant_Mole.png/100px-Giant_Mole.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Giant_Mole',
             ],
             'Complete a Barbarian Assault wave' => [
                 'description' => 'Solo or in a team — any completed wave counts.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Barbarian_Assault_gameplay.png/100px-Barbarian_Assault_gameplay.png?bac6b',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Barbarian_Assault_gameplay.png/100px-Barbarian_Assault_gameplay.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Barbarian_Assault',
             ],
             'Catch 50 lobsters' => [
                 'description' => 'Lobster pot fishing, Fishing level 40 required.',
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Lobster_detail.png/100px-Lobster_detail.png?68b64',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Lobster_detail.png/100px-Lobster_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Lobster',
             ],
             'Enchant 20 sapphire rings' => [
                 'description' => "Lvl-1 Enchant — cheapest jewelry enchant in the game.",
-                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Sapphire_ring_detail.png/100px-Sapphire_ring_detail.png?61508',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Sapphire_ring_detail.png/100px-Sapphire_ring_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Lvl-1_Enchant',
+            ],
+
+            // Bossing.
+            'Kill Vorkath once' => [
+                'description' => 'Song of the Elves required. Anti-fire and ranged gear recommended.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Vorkath.png/100px-Vorkath.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Vorkath',
+            ],
+            'Kill 5 Zulrah' => [
+                'description' => 'Learn the rotation or bring a guide — it changes phase on you.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Zulrah.png/100px-Zulrah.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Zulrah',
+            ],
+            'Kill the Kraken' => [
+                'description' => 'Kraken Cove, south of the Fossil Island entrance. Whirlpool phase counts.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Kraken.png/100px-Kraken.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Kraken',
+            ],
+            'Kill General Graardor' => [
+                'description' => 'Bandos, God Wars Dungeon. Bring a team or a lot of food.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/General_Graardor.png/100px-General_Graardor.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/General_Graardor',
+            ],
+            'Kill Cerberus once' => [
+                'description' => 'Taverley Dungeon. Watch the lava pools and the ghost phases.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Cerberus.png/100px-Cerberus.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Cerberus',
+            ],
+            'Defeat the Corporeal Beast' => [
+                'description' => "A team boss — solo is possible but slow. Spectral spirit shield helps.",
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Corporeal_Beast.png/100px-Corporeal_Beast.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Corporeal_Beast',
+            ],
+            'Kill King Black Dragon' => [
+                'description' => 'Wilderness or the King Black Dragon Lair — bring anti-fire either way.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/King_Black_Dragon.png/100px-King_Black_Dragon.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/King_Black_Dragon',
+            ],
+            'Complete a Chambers of Xeric raid' => [
+                'description' => 'Solo or with a team — any completed raid counts, points aside.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Chambers_of_Xeric',
+            ],
+            'Kill TzTok-Jad' => [
+                'description' => 'The Fight Cave. Fire cape is the proof.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/TzTok-Jad.png/100px-TzTok-Jad.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/TzTok-Jad',
+            ],
+            'Kill the Alchemical Hydra' => [
+                'description' => 'Karuulm Slayer Dungeon, level 95 Slayer. Four phases, watch the attack switches.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Alchemical_Hydra.png/100px-Alchemical_Hydra.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Alchemical_Hydra',
+            ],
+
+            // Slayer.
+            'Complete a Slayer task' => [
+                'description' => 'Any assigned task, from any Slayer master, finished start to end.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Slayer',
+            ],
+            'Kill 50 monsters on a single Slayer task' => [
+                'description' => "Doesn't need to finish the task — 50 kills against the assigned monster is enough.",
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Slayer',
+            ],
+
+            // Clues.
+            'Complete a medium clue scroll' => [
+                'description' => 'Screenshot the reward, same as the easy one.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Clue_scroll_%28medium%29_detail.png/100px-Clue_scroll_%28medium%29_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Clue_scroll_(medium)',
+            ],
+            'Complete a hard clue scroll' => [
+                'description' => 'Screenshot the reward, same as the easy one.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Clue_scroll_%28hard%29_detail.png/100px-Clue_scroll_%28hard%29_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Clue_scroll_(hard)',
+            ],
+            'Complete an elite clue scroll' => [
+                'description' => 'Screenshot the reward, same as the easy one.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Clue_scroll_%28elite%29_detail.png/100px-Clue_scroll_%28elite%29_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Clue_scroll_(elite)',
+            ],
+
+            // Minigames.
+            'Complete a game of Pest Control' => [
+                'description' => 'Void Knight outpost. Win or lose, a completed game counts.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Pest_Control',
+            ],
+            'Win a game of Castle Wars' => [
+                'description' => 'Either team, either flag captured or barricade defended to a win.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Castle_Wars',
+            ],
+            'Complete a Tempoross kill' => [
+                'description' => 'Southwest of Land\'s End. Reward pool spinning counts as complete.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Tempoross.png/100px-Tempoross.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Tempoross',
+            ],
+            'Complete a Wintertodt kill' => [
+                'description' => 'Ver Sinhaza, north of the Feldip Hills. Any subdued Wintertodt counts.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Wintertodt.png/100px-Wintertodt.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Wintertodt',
+            ],
+            'Catch a Guardian at Zalcano' => [
+                'description' => "Song of the Elves required. A fight that ends in a kill counts.",
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Zalcano.png/100px-Zalcano.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Zalcano',
+            ],
+            'Complete a Nightmare Zone session' => [
+                'description' => 'Any length session, any bosses picked, points spent or not.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Nightmare_Zone',
+            ],
+            'Win a game of Last Man Standing' => [
+                'description' => 'Any map, any bracket — the win is the proof.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Last_Man_Standing',
+            ],
+            'Complete a Fishing Trawler trip' => [
+                'description' => 'Port Khazard. The boat has to actually stay afloat.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Fishing_Trawler',
+            ],
+            'Complete a Barrows run' => [
+                'description' => "All six brothers, chest opened — reward roll doesn't matter.",
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Barrows',
+            ],
+            'Complete a game of Trouble Brewing' => [
+                'description' => 'Braindeath Island. Either crew, any finished round.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Trouble_Brewing',
+            ],
+
+            // Skilling, beyond the starter set above.
+            'Reach level 40 Herblore' => [
+                'description' => 'Unlocks Super Attack and a good chunk of the useful potions.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Herblore',
+            ],
+            'Make 50 prayer potions' => [
+                'description' => 'Ranarr weed + snape grass, Herblore level 38.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Prayer_potion%284%29_detail.png/100px-Prayer_potion%284%29_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Prayer_potion',
+            ],
+            'Cast High Level Alchemy 100 times' => [
+                'description' => 'Level 55 Magic. An alchemy staff or a bank of nature runes helps.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/High_Level_Alchemy',
+            ],
+            'Craft 50 nature runes' => [
+                'description' => 'The Runecrafting Guild or the Abyss, Runecrafting level 44.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Nature_rune_detail.png/100px-Nature_rune_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Nature_rune',
+            ],
+            'Complete 20 laps of a rooftop agility course' => [
+                'description' => 'Any single rooftop course, any level — Draynor to Ardougne all count.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Agility',
+            ],
+            'Catch 30 implings' => [
+                'description' => 'Puro-Puro or the open world — any impling jar counts.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Impling_jar_detail.png/100px-Impling_jar_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Hunter',
+            ],
+            'Build a room in a player-owned house' => [
+                'description' => 'Any room, any furniture — a house with one more room than it started with.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Construction',
+            ],
+            'Grow a full patch of herbs' => [
+                'description' => 'Plant, protect and harvest one herb patch start to finish.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Farming',
+            ],
+            'Bake 50 chocolate cakes' => [
+                'description' => 'Cooking level 5. A range beats a fire for the burn rate.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Chocolate_cake_detail.png/100px-Chocolate_cake_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Chocolate_cake',
+            ],
+            'Spin 100 bow strings' => [
+                'description' => 'Flax at a spinning wheel — Lumbridge or Seers\' Village both work.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Bow_string_detail.png/100px-Bow_string_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Bow_string',
+            ],
+            'Kill 20 Hill Giants' => [
+                'description' => 'Edgeville Dungeon is the usual spot. Big bones are the tell.',
+                'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Big_bones_detail.png/100px-Big_bones_detail.png',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Hill_Giant',
+            ],
+
+            // Quests & diaries.
+            'Complete Dragon Slayer I' => [
+                'description' => 'The quest that unlocks rune platebody and green dragonhide.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Dragon_Slayer_I',
+            ],
+            'Complete an Achievement Diary tier' => [
+                'description' => 'Any region, any tier — Easy through Elite all count.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Achievement_Diary',
+            ],
+            'Complete Monkey Madness II' => [
+                'description' => 'One of the longest quests in the game — budget a real session for it.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Monkey_Madness_II',
+            ],
+            'Complete Recipe for Disaster' => [
+                'description' => 'Every subquest finished, Culinaromancer freed.',
+                'wiki_url' => 'https://oldschool.runescape.wiki/w/Recipe_for_Disaster',
             ],
         ];
 
         // firstOrNew + manual save (not updateOrCreate) so an existing row's
         // 'id' is never included in the update payload — updateOrCreate would
         // otherwise try to overwrite the primary key with a fresh uuid() on
-        // every single re-run.
+        // every single re-run. Filling every re-run (not just on create) is
+        // what backfills wiki_url onto rows seeded before that column was
+        // read here — a plain firstOrCreate would leave those permanently
+        // null.
         return collect($tasks)->map(function ($data, $title) {
             $task = Task::firstOrNew(['title' => $title]);
             if (! $task->exists) {
@@ -375,6 +623,12 @@ class DemoDataSeeder extends Seeder
         // The owner enters under their own name; the rest borrow a demo
         // account each, since a standing belongs to a user.
         $standings->enter($event, $owner);
+        // See seedPlayerBoard()'s note on the same call — EventStandingsService::
+        // enter() alone doesn't write one either; only the real join flow does.
+        EventParticipant::firstOrCreate(
+            ['event_id' => $event->id, 'user_id' => $owner->id],
+            ['id' => (string) str()->uuid()],
+        );
 
         // One entry per RSN per race is enforced now, so re-running this has
         // to check what is already in the race rather than reassigning names
@@ -397,9 +651,194 @@ class DemoDataSeeder extends Seeder
             $user = $candidates->shift();
             $user->update(['osrs_username' => $name]);
             $standings->enter($event, $user);
+            EventParticipant::firstOrCreate(
+                ['event_id' => $event->id, 'user_id' => $user->id],
+                ['id' => (string) str()->uuid()],
+            );
         }
 
         $this->command->info("Seeded skill race {$event->id} — run `php artisan events:sync-standings` to fill it in.");
+    }
+
+    private function bingoSpecs(): array
+    {
+        // Three, not nine like boardSpecs() — bingo's own state variety
+        // (solo/team, open/invite, running/ended) is already covered by
+        // whatever's sitting in this database from manual testing, which
+        // backfillBingoSquareTasks() fixes up regardless. These exist so a
+        // completely fresh clone has at least one of each shape to look at,
+        // not to re-enumerate every combination a second time.
+        return [
+            [
+                'title' => 'Community Bingo Board', 'size' => 5, 'winCondition' => 'LINE', 'mode' => 'SOLO', 'access_mode' => 'OPEN',
+                'description' => 'A quick 5x5 card open to the whole clan — first line wins.',
+                'players' => 6, 'start_date' => now()->subDays(3), 'end_date' => now()->addDays(4), 'requires_approval' => true,
+            ],
+            [
+                'title' => 'Clan Championship Bingo', 'size' => 7, 'winCondition' => 'FULL_HOUSE', 'mode' => 'TEAM', 'access_mode' => 'OPEN',
+                'description' => 'Full-house team bingo — every square counts before anyone wins.',
+                'teams' => 3, 'start_date' => now()->subWeek(), 'end_date' => now()->addWeek(), 'requires_approval' => true,
+            ],
+            [
+                'title' => 'VIP Bingo Night', 'size' => 5, 'winCondition' => 'LINE', 'mode' => 'SOLO', 'access_mode' => 'INVITE',
+                'description' => 'Invite-only bingo card for testing new squares before a public launch.',
+                'players' => 3, 'start_date' => null, 'end_date' => null, 'requires_approval' => false,
+                'coauthor' => true, 'invites' => [['max_uses' => 5, 'expires' => null]],
+            ],
+        ];
+    }
+
+    private function seedBingoCard(array $spec): void
+    {
+        $isNewEvent = Event::where('title', $spec['title'])->doesntExist();
+        $owner = $this->users->random();
+
+        $event = Event::firstOrCreate(
+            ['title' => $spec['title']],
+            [
+                'id' => (string) str()->uuid(),
+                'type' => 'BINGO',
+                'description' => $spec['description'],
+                'mode' => $spec['mode'],
+                'access_mode' => $spec['access_mode'],
+                'is_listed' => true,
+                'start_date' => $spec['start_date'],
+                'end_date' => $spec['end_date'],
+            ],
+        );
+
+        $card = BingoCard::firstOrCreate(
+            ['event_id' => $event->id],
+            [
+                'id' => (string) str()->uuid(),
+                'size' => $spec['size'],
+                'win_condition' => $spec['winCondition'],
+                'line_bonus' => 0,
+                'requires_approval' => $spec['requires_approval'],
+            ],
+        );
+
+        if ($isNewEvent) {
+            BoardAuthor::create([
+                'id' => (string) str()->uuid(), 'event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true,
+            ]);
+
+            if ($spec['coauthor'] ?? false) {
+                $coauthor = $this->users->where('id', '!=', $owner->id)->random();
+                BoardAuthor::create([
+                    'id' => (string) str()->uuid(), 'event_id' => $event->id, 'user_id' => $coauthor->id, 'is_owner' => false,
+                ]);
+            }
+        }
+
+        if ($event->access_mode === 'INVITE') {
+            $this->seedInvites($event, $owner, $spec['invites'] ?? []);
+        }
+
+        // Repair-on-run, same reasoning as seedBoard()'s tile check: a card
+        // row can exist with no squares yet (BingoCard::firstOrCreate isn't
+        // wrapped in the same transaction as the insert below).
+        if ($card->squares()->count() === 0) {
+            $this->seedBingoSquares($card);
+        }
+
+        $this->seedBingoPlayers($event, $spec);
+    }
+
+    private function seedBingoSquares(BingoCard $card): void
+    {
+        $total = $card->squareCount();
+
+        // One wildcard is enough at these sizes — more than that and
+        // "every square asks for something" stops being true of the card.
+        $wildcardPosition = random_int(0, $total - 1);
+
+        // Shuffled and cycled rather than drawn at random per square, same
+        // reasoning as seedTiles(): a random draw with replacement clusters
+        // the same task on the same card far more than it should.
+        $shuffledTasks = $this->tasks->shuffle()->values();
+
+        $squares = collect(range(0, $total - 1))->map(fn (int $position) => [
+            'id' => (string) str()->uuid(),
+            'bingo_card_id' => $card->id,
+            'position' => $position,
+            'task_id' => $position === $wildcardPosition ? null : $shuffledTasks[$position % $shuffledTasks->count()]->id,
+            'title_override' => null,
+            'points' => 1,
+            'is_wildcard' => $position === $wildcardPosition,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        BingoSquare::insert($squares->all());
+    }
+
+    /**
+     * Fills in the task on any bingo square that doesn't have one and isn't
+     * a wildcard — every card that already existed in this database before
+     * this pass, seeded by this class or clicked together by hand, plus
+     * anything the specs above left behind on an earlier partial run.
+     * Site-wide by design; see the call site for why.
+     */
+    private function backfillBingoSquareTasks(): void
+    {
+        $empty = BingoSquare::whereNull('task_id')->where('is_wildcard', false)->get();
+
+        if ($empty->isEmpty()) {
+            return;
+        }
+
+        $shuffledTasks = $this->tasks->shuffle()->values();
+
+        $empty->each(function (BingoSquare $square, int $i) use ($shuffledTasks) {
+            $square->update(['task_id' => $shuffledTasks[$i % $shuffledTasks->count()]->id]);
+        });
+
+        $this->command->info("Backfilled tasks onto {$empty->count()} empty bingo squares.");
+    }
+
+    /**
+     * Takes the event alone, not the card — a bingo card has no per-player
+     * row the way a board's PlayerBoard is one; taking part is the
+     * EventParticipant row and nothing else.
+     */
+    private function seedBingoPlayers(Event $event, array $spec): void
+    {
+        if ($event->mode === 'TEAM') {
+            $existingTeams = $event->eventTeams()->with('team.members')->get()->pluck('team');
+            $teams = $existingTeams->isNotEmpty()
+                ? $existingTeams
+                : $this->teams->random(min($spec['teams'], $this->teams->count()));
+
+            foreach ($teams as $team) {
+                if (! BoardTeam::where(['event_id' => $event->id, 'team_id' => $team->id])->exists()) {
+                    BoardTeam::create(['id' => (string) str()->uuid(), 'event_id' => $event->id, 'team_id' => $team->id]);
+                }
+
+                foreach ($team->members as $member) {
+                    $this->grantEventAccess($event, $member->user);
+                    EventParticipant::firstOrCreate(
+                        ['event_id' => $event->id, 'user_id' => $member->user_id],
+                        ['id' => (string) str()->uuid()],
+                    );
+                }
+            }
+
+            return;
+        }
+
+        $existingParticipantIds = EventParticipant::where('event_id', $event->id)->pluck('user_id');
+        $players = $existingParticipantIds->isNotEmpty()
+            ? $this->users->whereIn('id', $existingParticipantIds)
+            : $this->users->random(min($spec['players'], $this->users->count()));
+
+        foreach ($players as $user) {
+            $this->grantEventAccess($event, $user);
+            EventParticipant::firstOrCreate(
+                ['event_id' => $event->id, 'user_id' => $user->id],
+                ['id' => (string) str()->uuid()],
+            );
+        }
     }
 
     private function seedBoard(array $spec): void
@@ -473,7 +912,9 @@ class DemoDataSeeder extends Seeder
         // committed with no tiles (Board::firstOrCreate isn't wrapped in the
         // same transaction as the tiles insert below). Backfill regardless
         // of $isNewBoard rather than trusting the board's mere existence to
-        // mean it's complete.
+        // mean it's complete. Any tile that's still missing a task after
+        // this — an older board, or the ~30%-of-tiles rule this used to run
+        // under — is caught by backfillAllTileTasks() below, site-wide.
         if ($board->tiles()->count() === 0) {
             $this->seedTiles($board);
         }
@@ -490,7 +931,14 @@ class DemoDataSeeder extends Seeder
         $specialPositions = collect(range(1, $total - 2))->shuffle()->take($specialCount * 2);
         [$snakePositions, $ladderPositions] = [$specialPositions->take($specialCount), $specialPositions->skip($specialCount)->take($specialCount)];
 
-        $tiles = collect(range(0, $total - 1))->map(function (int $position) use ($board, $total, $snakePositions, $ladderPositions) {
+        // Shuffled and cycled rather than drawn at random per tile: a random
+        // draw with replacement clusters the same task on the same board far
+        // more than it should, and a board is exactly the surface where
+        // players would notice "Kill 50 cows" three tiles in a row.
+        $shuffledTasks = $this->tasks->shuffle()->values();
+        $taskCursor = 0;
+
+        $tiles = collect(range(0, $total - 1))->map(function (int $position) use ($total, $board, $snakePositions, $ladderPositions, $shuffledTasks, &$taskCursor) {
             $type = match (true) {
                 $snakePositions->contains($position) => 'SNAKE',
                 $ladderPositions->contains($position) => 'LADDER',
@@ -503,12 +951,14 @@ class DemoDataSeeder extends Seeder
                 default => null,
             };
 
-            // Occasional flavour: a task-linked tile, or a one-off custom
-            // label, otherwise the client falls back to a generic position
-            // label — three distinct tile-content states, all represented.
-            $roll = random_int(1, 10);
-            $taskId = $type === 'NORMAL' && $roll <= 3 ? $this->tasks->random()->id : null;
-            $titleOverride = $type === 'NORMAL' && $taskId === null && $roll === 4 ? 'Community choice tile' : null;
+            // Every NORMAL tile carries a real task now — a seeded board is
+            // meant to demo a finished event, and a grid mostly showing
+            // generic position labels never looked like one.
+            $taskId = null;
+            if ($type === 'NORMAL') {
+                $taskId = $shuffledTasks[$taskCursor % $shuffledTasks->count()]->id;
+                $taskCursor++;
+            }
 
             return [
                 'id' => (string) str()->uuid(),
@@ -518,7 +968,7 @@ class DemoDataSeeder extends Seeder
                 'board_id' => $board->id,
                 'position' => $position,
                 'task_id' => $taskId,
-                'title_override' => $titleOverride,
+                'title_override' => null,
                 'type' => $type,
                 'target_position' => $target,
                 'created_at' => now(),
@@ -527,6 +977,37 @@ class DemoDataSeeder extends Seeder
         });
 
         Tile::insert($tiles->all());
+    }
+
+    /**
+     * Fills in the task on any NORMAL tile that doesn't have one, on any
+     * board — the old ~30%-of-tiles rule this used to run under, seeded
+     * boards from before the task pool grew past its original fourteen
+     * rows, and (the point of making this site-wide rather than scoped to
+     * boardSpecs()) every board created by hand through the app itself.
+     * "Starts next month" — one of DatabaseSeeder's own age-old boards, not
+     * one of boardSpecs()' nine — sat with every tile empty through the
+     * first two task-filling passes for exactly this reason: this method
+     * used to take a `Board $board` and only ever got called from inside
+     * seedBoard(), so nothing outside that fixed nine-board list was ever
+     * reachable. Same fix `backfillBingoSquareTasks()` already got, applied
+     * a second time to the surface it was supposed to cover the first time.
+     */
+    private function backfillAllTileTasks(): void
+    {
+        $empty = Tile::where('type', 'NORMAL')->whereNull('task_id')->get();
+
+        if ($empty->isEmpty()) {
+            return;
+        }
+
+        $shuffledTasks = $this->tasks->shuffle()->values();
+
+        $empty->each(function (Tile $tile, int $i) use ($shuffledTasks) {
+            $tile->update(['task_id' => $shuffledTasks[$i % $shuffledTasks->count()]->id]);
+        });
+
+        $this->command->info("Backfilled tasks onto {$empty->count()} empty NORMAL tiles.");
     }
 
     private function seedGuildMembership(Event $event): void
@@ -664,6 +1145,16 @@ class DemoDataSeeder extends Seeder
         );
 
         $this->grantEventAccess($board->event, $user);
+
+        // A real join (EventParticipationService::join()) always writes one
+        // of these; this seeder creates the PlayerBoard row directly and
+        // skipped it, which undercounted `/my-events`' new participant
+        // total on every demo board — discovered while building that
+        // feature, not a live bug (real joins go through the service).
+        EventParticipant::firstOrCreate(
+            ['event_id' => $board->event_id, 'user_id' => $user->id],
+            ['id' => (string) str()->uuid()],
+        );
 
         if ($playerBoard->completedTiles()->count() > 0) {
             return;

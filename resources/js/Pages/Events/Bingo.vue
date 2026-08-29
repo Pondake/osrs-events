@@ -4,7 +4,16 @@
     <u-main>
         <u-page>
             <u-container class="py-8 sm:py-12">
-                <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+                <u-breadcrumb :items="breadcrumbs" class="mb-4" />
+
+                <!-- `flex-col sm:flex-row`, not `flex flex-wrap` — see the
+                     identical note on this row in BoardShow.vue. `flex-1`'s
+                     zero flex-basis makes the browser's wrap decision think
+                     the heading wants no space at all, so at 375px it never
+                     wrapped and instead got squeezed to ~5px — its title
+                     rendered one letter per line. Stacking below `sm`
+                     sidesteps the heuristic instead of fighting it. -->
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                     <event-type-heading
                         :event="liveEvent"
                         :can-edit="canEdit"
@@ -467,6 +476,12 @@ watch(() => props.event, (value) => (liveEvent.value = { ...value }));
 
 const status = computed(() => eventStatus(liveEvent.value));
 
+const breadcrumbs = computed(() => [
+    { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },
+    { label: trans('nav.events'), href: '/events' },
+    { label: liveEvent.value.title },
+]);
+
 // From the live event, not the initial prop: a host pausing mid-event reaches
 // every open card through the stream, which carries paused_at in its
 // fingerprint (see SignalsEventEdits).
@@ -797,6 +812,12 @@ function onSquareClick(square) {
     // refuses both (BingoController::claim) and the banner above the card has
     // already said why, so a dialog that can only end in a toast is noise.
     if (isPaused.value) return;
+
+    // Same reasoning as isPaused above — BingoController::claim() already
+    // refuses a claim before the event's own start date, but nothing here
+    // checked it, so a click still opened the claim dialog on a card dated
+    // to start next month. Same gap PlayerBoardController::roll() had.
+    if (status.value === 'upcoming') return;
 
     // An existing claim always opens the dialog, whatever the card's review
     // setting. Withdrawing used to happen on a bare second click — no hover

@@ -179,6 +179,28 @@ h3 {
     animation: dice-shake 1.4s ease-in-out;
 }
 
+/* ── Page transitions ──────────────────────────────────────────────────
+   Wired up in AppRoot.vue via router.on('start'/'finish') toggling
+   `.page-navigating` on the page wrapper — NOT a Vue `<Transition>` around
+   the routed component. That was the first attempt, and it broke real
+   navigation: `mode="out-in"` blocks mounting the next page until a
+   transitionend fires for the leaving one, and something in this
+   particular mount/unmount chain (Inertia swapping `page`/`pageProps`
+   under a keyed `<component :is>`) never fired it — a click into an event
+   and the browser's Back button both landed on a blank page, stuck
+   waiting on an end event that was never coming. Reverted the same session
+   it shipped.
+
+   This version can't hang the same way: the page component is never
+   unmounted or re-keyed, so there is no lifecycle event to wait on. It's a
+   plain class toggle plus a CSS transition — worst case if something goes
+   wrong, the class fails to toggle and the page has no fade, not a page
+   that fails to render at all. */
+.page-navigating {
+    opacity: 0.4;
+    transition: opacity 0.1s ease;
+}
+
 /* Brand fill and brand TEXT split apart.
    `--ui-primary` drives both, and amber-500 as text measures 2.13:1 on white
    and 1.96:1 on a light panel — under the 4.5:1 WCAG AA floor for normal
@@ -342,6 +364,14 @@ html:not(.dark) .landing-page :where(.rounded-xl, .rounded-lg):where([class*='ri
 @media (prefers-reduced-motion: reduce) {
     .landing-chrome::after {
         opacity: .25;
+    }
+
+    /* No lifecycle event depends on this one finishing (see the class's own
+       comment above) — turning it off outright is safe here, unlike a real
+       Vue `<Transition>`. */
+    .page-navigating {
+        opacity: 1;
+        transition: none;
     }
 }
 

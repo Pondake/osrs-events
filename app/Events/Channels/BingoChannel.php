@@ -133,7 +133,14 @@ class BingoChannel implements EventChannel
             ];
         }
 
-        $card->load('squares.task:id,title,icon_url');
+        // Same restriction BoardController::bingo()'s initial page load had
+        // until it was fixed for the description/wiki-link work — this live
+        // channel was the other half of the same bug, missed at the time:
+        // the first SSE update after page load overwrote the correct
+        // initial props with this narrower shape, so the claim dialog's
+        // task header lost its description and wiki link moments after the
+        // page rendered them correctly.
+        $card->load('squares.task:id,title,description,icon_url,wiki_url');
 
         return [
             'event_version' => $this->eventVersion($event),

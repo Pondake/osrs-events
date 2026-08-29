@@ -4,7 +4,16 @@
     <u-main>
         <u-page>
             <u-container class="py-8 sm:py-12">
-                <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+                <u-breadcrumb :items="breadcrumbs" class="mb-4" />
+
+                <!-- `flex-col sm:flex-row`, not `flex flex-wrap` — see the
+                     identical note on this row in BoardShow.vue. `flex-1`'s
+                     zero flex-basis makes the browser's wrap decision think
+                     the heading wants no space at all, so at 375px it never
+                     wrapped and instead got squeezed to ~5px — its title
+                     rendered one letter per line. Stacking below `sm`
+                     sidesteps the heuristic instead of fighting it. -->
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                     <event-type-heading
                         :event="liveEvent"
                         :can-edit="canEdit"
@@ -222,7 +231,7 @@
                                          there for a boss race that has no
                                          icon to lean on. -->
                                     <span v-else-if="entry.syncedAt" class="text-sm font-medium text-highlighted tabular-nums inline-flex items-center gap-1.5 shrink-0">
-                                        +{{ formatXp(entry.gained) }}
+                                        +{{ formatMetricValue(entry.gained) }}
                                         <img v-if="metricIcon" :src="metricIcon" alt="" class="size-4 object-contain">
                                         <span v-else class="text-xs text-muted">{{ $t(isBossRace ? 'events.unit_kills' : 'events.unit_xp') }}</span>
                                     </span>
@@ -300,7 +309,7 @@ import JoinEventButton from '@/Components/JoinEventButton.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
 import { eventStatus, formatDate } from '@/Support/board';
-import { metricIconUrl, metricLabel, rankedByLabel } from '@/Support/metrics';
+import { formatMetricValue, metricIconUrl, metricLabel, rankedByLabel } from '@/Support/metrics';
 import { useEventStream } from '@/Composables/useEventStream';
 
 // Async, exactly as BoardShow loads it: the modal reaches @nuxt/ui
@@ -424,18 +433,17 @@ const metricIcon = computed(() => metricIconUrl(liveEvent.value.metric, liveEven
 
 const status = computed(() => eventStatus(liveEvent.value));
 
+const breadcrumbs = computed(() => [
+    { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },
+    { label: trans('nav.events'), href: '/events' },
+    { label: liveEvent.value.title },
+]);
 
 const dateRange = computed(() => {
     if (!liveEvent.value.start_date && !liveEvent.value.end_date) return trans('boards.no_dates');
 
     return `${formatDate(liveEvent.value.start_date)} – ${formatDate(liveEvent.value.end_date)}`;
 });
-
-// Grouped thousands: XP gains run into the millions and an unbroken run of
-// digits can't be read at a glance.
-function formatXp(value) {
-    return new Intl.NumberFormat('en-GB').format(value ?? 0);
-}
 
 function goToProfile() {
     router.visit('/settings/profile');

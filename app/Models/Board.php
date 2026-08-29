@@ -11,7 +11,11 @@ class Board extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['event_id', 'size', 'dice_roll_limit'];
+    protected $fillable = ['event_id', 'size', 'dice_roll_limit', 'requires_approval'];
+
+    protected $casts = [
+        'requires_approval' => 'boolean',
+    ];
 
     /**
      * How many tiles each size has.

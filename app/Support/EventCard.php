@@ -37,6 +37,9 @@ final class EventCard
             'metricKind' => $event->metricKind(),
             'size' => $event->board?->size,
             'dice_roll_limit' => $event->board?->dice_roll_limit,
+            // Whether a tile claim needs a host's sign-off before it counts
+            // — the S&L half of the same setting bingo's card carries.
+            'requires_approval' => $event->board?->requires_approval,
             // Bingo's grid is a side length, not a size enum — a separate
             // field so a card never has to guess which kind of grid it holds.
             'bingo_size' => $event->bingoCard?->size,

@@ -174,7 +174,7 @@ class BingoReviewTest extends TestCase
         $square = $this->card($event)->squares()->first();
         $user = $this->player();
 
-        $this->actingAs($user)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim");
+        $this->actingAs($user)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim", ['proof_url' => 'https://i.imgur.com/x.png']);
         $this->actingAs($user)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim");
 
         $this->assertSame(0, BingoCompletion::count());

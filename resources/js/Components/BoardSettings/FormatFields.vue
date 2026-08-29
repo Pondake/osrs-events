@@ -117,6 +117,13 @@
                     />
                 </div>
             </u-form-field>
+
+            <!-- Same setting bingo cards carry, same reason: a plain
+                 self-toggle on a task tile is the same trust problem a
+                 bingo square was, unsolved on this board type until now. -->
+            <u-form-field :description="$t('board.requires_approval_desc')">
+                <u-switch v-model="form.requires_approval" :label="$t('board.requires_approval')" />
+            </u-form-field>
         </template>
 
         <!-- Every type ends up here eventually; saying so is better than an

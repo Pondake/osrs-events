@@ -879,12 +879,18 @@ function submit() {
                 delete payload.win_condition;
                 delete payload.win_lines;
                 delete payload.line_bonus;
-                delete payload.requires_approval;
             }
 
             if (data.type !== 'SNAKES_LADDERS') {
                 delete payload.size;
                 delete payload.dice_roll_limit;
+            }
+
+            // Claim approval is the one card/board setting both a bingo
+            // card and an S&L board actually have — only a race type has
+            // nothing for it to gate.
+            if (data.type !== 'BINGO' && data.type !== 'SNAKES_LADDERS') {
+                delete payload.requires_approval;
             }
 
             if (data.mode !== 'TEAM') delete payload.team_ids;
