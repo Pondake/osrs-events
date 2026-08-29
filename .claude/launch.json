@@ -14,6 +14,7 @@
       "runtimeArgs": ["dev"],
       "cwd": ".",
       "port": 5173,
+      "autoPort": true,
       "url": "http://osrs-events.test"
     }
   ]
