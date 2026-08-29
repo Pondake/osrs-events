@@ -4,6 +4,7 @@ namespace App\Events\Channels;
 
 use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\Event;
+use App\Services\BoardReviewService;
 use App\Support\EventCard;
 
 /**
@@ -45,10 +46,19 @@ class SnakesLaddersChannel implements EventChannel
             ->get(['position', 'task_id', 'title_override', 'type', 'target_position'])
             ?? collect();
 
+        // Claim state, same reason bingo's fingerprint carries
+        // claimsVersion(): a host approving a claim while a player still has
+        // the page open is exactly the kind of change this channel exists
+        // to reach, and it was previously invisible to it entirely — a
+        // reviewed claim only ever showed up on the next full reload.
+        $claimsVersion = $event->board === null ? '' : app(BoardReviewService::class)->claimsVersion($event->board);
+
         return md5(
             $rows->map(fn ($r) => "{$r->id}:{$r->current_position}")->implode('|')
             .'#'
             .$tiles->map(fn ($t) => "{$t->position}:{$t->task_id}:{$t->title_override}:{$t->type}:{$t->target_position}")->implode('|')
+            .'#'
+            .$claimsVersion
             .'#'
             .$this->eventVersion($event)
         );
@@ -74,6 +84,12 @@ class SnakesLaddersChannel implements EventChannel
             // queues behind this very stream — the edit showed up thirty
             // seconds late, and the delay looked like the feature.
             'event' => EventCard::fresh($event),
+            // A public hash, not the claims themselves — what a host
+            // decided about YOUR claim is yours, and cannot ride a channel
+            // every viewer shares. The page watches this and re-fetches its
+            // own copy only when it actually changes, same pattern as
+            // BingoChannel's claims_version.
+            'claims_version' => $event->board === null ? null : app(BoardReviewService::class)->claimsVersion($event->board),
             'players' => $players->map(fn ($pb) => [
                 ...$pb->only(['id', 'user_id', 'team_id', 'current_position']),
                 'user' => $pb->user,
@@ -81,9 +97,18 @@ class SnakesLaddersChannel implements EventChannel
             ])->all(),
             // Shaped exactly as BoardController::show sends them, so the page
             // can swap one list for the other without knowing where it came
-            // from.
+            // from — this select list wasn't actually keeping that promise:
+            // BoardController::show() eager-loads the full Task via
+            // 'board.tiles.task' with no column restriction, so the initial
+            // page load had description and wiki_url; this channel dropped
+            // both the moment the first live update landed and overwrote
+            // liveTiles with it — which on a fast connection is almost
+            // immediately. Reported directly: the current-task card showed a
+            // title and nothing else, no description, no wiki link, despite
+            // both being set on the task. Same class of bug already fixed
+            // once on BingoChannel's squares.task select.
             'tiles' => $event->board()->first()?->tiles()
-                ->with('task:id,title,icon_url')
+                ->with('task:id,title,description,icon_url,wiki_url')
                 ->orderBy('position')
                 ->get()
                 ->all() ?? [],

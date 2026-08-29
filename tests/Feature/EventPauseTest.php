@@ -237,7 +237,7 @@ class EventPauseTest extends TestCase
         $host = $this->host($event);
         $player = $this->participant($event);
 
-        $this->actingAs($player)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim");
+        $this->actingAs($player)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim", ['proof_url' => 'https://i.imgur.com/x.png']);
         $claim = $square->completions()->firstOrFail();
 
         $event->forceFill(['paused_at' => Carbon::now()])->save();

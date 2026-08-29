@@ -13,6 +13,7 @@
     "devDependencies": {
         "@dava96/osrs-icons": "^1.0.29",
         "@iconify-json/lucide": "^1.2.124",
+        "@iconify-json/mdi": "^1.2.3",
         "@iconify-json/simple-icons": "^1.2.93",
         "@inertiajs/vue3": "^2.0.0",
         "@tailwindcss/vite": "^4.0.0",

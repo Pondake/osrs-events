@@ -187,6 +187,8 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::post('/events/{event}/tiles/{tile}/toggle', [PlayerBoardController::class, 'toggleTile'])
         ->middleware('throttle:60,1')
         ->name('events.tiles.toggle');
+    Route::patch('/events/{event}/tiles/completions/{completedTile}', [PlayerBoardController::class, 'review'])
+        ->name('events.tiles.review');
     // Joining, for every type. Not the same as access: a public event lets
     // anyone look, and this is the person saying they are playing.
     Route::post('/events/{event}/join', [EventParticipationController::class, 'store'])

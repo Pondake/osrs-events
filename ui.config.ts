@@ -8,7 +8,7 @@ export const uiConfig = {
             // 44px minimum on phones, whatever size the button asks for.
             //
             // Measured on a real event page at 375px: the action row
-            // ("Who is playing", "Leave event", "Event settings") renders at
+            // ("Participants", "Leave event", "Event settings") renders at
             // `size="sm"` = 28px tall, and the header's icon buttons at 32px.
             // Apple's floor is 44 and Android's is 48; six 28px targets
             // wrapping over two lines is a mikado game with a thumb.

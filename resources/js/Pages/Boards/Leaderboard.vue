@@ -4,6 +4,8 @@
     <u-main>
         <u-page>
             <u-container class="py-12 max-w-2xl">
+                <u-breadcrumb :items="breadcrumbs" class="mb-4" />
+
                 <!-- Stacks on a phone. Side by side, the title block was left
                      with a ~150px column and the description broke into
                      four ragged lines beside a button that needed none of
@@ -47,11 +49,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 
-defineProps({
+const props = defineProps({
     board: { type: Object, required: true },
     totalTiles: { type: Number, required: true },
     entries: { type: Array, required: true },
 });
+
+const breadcrumbs = computed(() => [
+    { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },
+    { label: trans('nav.events'), href: '/events' },
+    { label: props.board.title, href: `/events/${props.board.id}` },
+    { label: trans('boards.leaderboard') },
+]);
 </script>

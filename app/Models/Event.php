@@ -101,6 +101,27 @@ class Event extends Model
     }
 
     /**
+     * Not open yet: nothing anyone does on it should count until its own
+     * start date arrives.
+     *
+     * Same mirror-of-the-JS reasoning as isEnded() — boardEventStatus()
+     * already shows the "Upcoming" badge from this same date, but nothing on
+     * the server enforced it: PlayerBoardController::roll() checked isPaused()
+     * and isEnded() and stopped there, so a board dated to start next month
+     * could be rolled on today, the moment the event exists — reported
+     * directly, from exactly that state (a "Starts next month" board with a
+     * working dice button). startOfDay(), not a bare isFuture(): the mirror
+     * image of isEnded()'s endOfDay() — the start date's own day already
+     * counts as started, not upcoming, so a board due today is live from
+     * midnight, the same instant boardEventStatus() stops calling it
+     * "Upcoming".
+     */
+    public function isUpcoming(): bool
+    {
+        return $this->start_date !== null && $this->start_date->copy()->startOfDay()->isFuture();
+    }
+
+    /**
      * The fields a standing is measured against.
      *
      * Change any of them and every row on the event describes a window that

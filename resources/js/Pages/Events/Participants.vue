@@ -9,6 +9,8 @@
     <u-main>
         <u-page>
             <u-container class="py-12">
+                <u-breadcrumb :items="breadcrumbs" class="mb-4" />
+
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-8">
                     <div class="min-w-0">
                         <a :href="`/events/${event.id}`" class="text-sm text-muted hover:text-primary transition-colors inline-flex items-center gap-1.5">
@@ -151,10 +153,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 
-defineProps({
+const props = defineProps({
     event: { type: Object, required: true },
     teams: { type: Array, default: () => [] },
     participants: { type: Array, default: () => [] },
@@ -166,4 +169,11 @@ defineProps({
 });
 
 const expanded = ref(null);
+
+const breadcrumbs = computed(() => [
+    { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },
+    { label: trans('nav.events'), href: '/events' },
+    { label: props.event.title, href: `/events/${props.event.id}` },
+    { label: trans('participants.heading') },
+]);
 </script>

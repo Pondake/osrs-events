@@ -6,6 +6,8 @@
     <u-main>
         <u-page>
             <u-container class="py-12">
+                <u-breadcrumb :items="breadcrumbs" class="mb-4" />
+
                 <!-- Stacks on a phone. Side by side, the title block was left
                      with a ~150px column and the description broke into
                      four ragged lines beside a button that needed none of
@@ -92,6 +94,16 @@
                                     <u-icon name="i-lucide-grid-3x3" class="size-3.5" />
                                     {{ sizeLabel(entry.board.size) }}
                                 </span>
+                                <!-- Bingo had no entry in this row at all —
+                                     a board said its grid size, a race said
+                                     what it ranked on, and a bingo event said
+                                     nothing, which is the same "one type
+                                     quietly does less" gap the preview slot
+                                     had. -->
+                                <span v-else-if="entry.kind === 'bingo' && entry.board.bingo_size" class="inline-flex items-center gap-1">
+                                    <u-icon name="i-lucide-grid-3x3" class="size-3.5" />
+                                    {{ $t('boards.bingo_card', { size: entry.board.bingo_size }) }}
+                                </span>
                                 <span v-else-if="entry.kind === 'race'" class="inline-flex items-center gap-1">
                                     <u-icon name="i-lucide-trophy" class="size-3.5" />
                                     {{ rankedBy(entry.board) }}
@@ -100,11 +112,26 @@
                                     <u-icon name="i-lucide-calendar" class="size-3.5" />
                                     {{ dateRange(entry.board) }}
                                 </span>
+                                <!-- The one fact every kind has, unlike the
+                                     kind-specific one before it — a race
+                                     already says this inside RacePreview
+                                     once you've entered, but a host-only
+                                     entry (any kind) had nowhere on the row
+                                     saying how many people are actually in
+                                     it. -->
+                                <span v-if="entry.participants" class="inline-flex items-center gap-1">
+                                    <u-icon name="i-lucide-users" class="size-3.5" />
+                                    {{ $t('participants.count', { count: entry.participants }) }}
+                                </span>
                             </div>
 
-                            <!-- A board has a position to advance; a race has a
-                                 placing among others. Neither reads as the
-                                 other, so they do not share a widget. -->
+                            <!-- A board has a position to advance — a race's
+                                 equivalent (rank, participants, XP gained) now
+                                 lives in RacePreview instead, in the same slot
+                                 every other event kind uses for its preview.
+                                 It used to be repeated here too, which is
+                                 exactly the "same fact, two places, laid out
+                                 differently each time" this pass was about. -->
                             <div v-if="entry.progress" class="mt-4">
                                 <div class="flex items-center justify-between text-xs mb-1">
                                     <span class="text-muted">{{ $t('boards.progress_tile', { current: entry.progress.current, total: entry.progress.total }) }}</span>
@@ -113,29 +140,21 @@
                                 <u-progress :model-value="entry.progress.pct" size="sm" />
                             </div>
 
-                            <div v-else-if="entry.standing" class="mt-4 flex items-center gap-4 flex-wrap">
-                                <div v-if="entry.standing.rank" class="flex items-baseline gap-1.5">
-                                    <span class="text-2xl font-bold text-primary tabular-nums">#{{ entry.standing.rank }}</span>
-                                    <span class="text-xs text-muted">{{ $t('events.of_participants', { count: entry.standing.participants }) }}</span>
-                                </div>
-                                <span v-else-if="entry.standing.error" class="text-sm text-muted inline-flex items-center gap-1">
-                                    <u-icon name="i-lucide-circle-help" class="size-4" />
-                                    {{ $t(`events.error_${entry.standing.error}`) }}
-                                </span>
-                                <span v-else class="text-sm text-muted">{{ $t('events.pending_sync') }}</span>
-
-                                <span v-if="entry.standing.syncedAt && !entry.standing.error" class="text-sm text-highlighted tabular-nums">
-                                    +{{ formatXp(entry.standing.gained) }}
-                                </span>
-                            </div>
-
                             <div class="flex items-center gap-2 mt-4 pt-4 border-t border-default">
+                                <!-- One label, one icon, regardless of kind.
+                                     "Continue" vs "Play" vs "View standings"
+                                     all went to the exact same href — the
+                                     wording differed, the destination never
+                                     did, so the extra words were saying
+                                     something about the row that wasn't
+                                     actually true of it: three kinds of
+                                     button, one kind of action. -->
                                 <u-button
                                     :href="`/events/${entry.board.id}`"
                                     size="sm"
                                     color="primary"
-                                    :icon="entry.kind === 'board' ? 'i-lucide-play' : 'i-lucide-trophy'"
-                                    :label="entry.kind === 'board' ? $t('boards.continue') : $t('events.view_standings')"
+                                    icon="i-lucide-arrow-right"
+                                    :label="$t('common.open')"
                                 />
                                 <u-button
                                     v-if="entry.kind === 'board'"
@@ -149,22 +168,62 @@
                             </div>
                         </div>
 
-                        <!-- Capped when it stacks: below lg this sat full width,
-                             which turned a 9x9 grid into most of the screen.
-                             A race has no board to preview at all — bingo
-                             does, and used to get nothing. -->
-                        <div v-if="entry.kind === 'board' && entry.preview" class="w-full max-w-64 mx-auto lg:mx-0 lg:w-64 shrink-0">
+                        <!-- Every entry gets this slot now, whatever its
+                             kind — a race used to have nothing beside it
+                             while a board or bingo entry got a real preview,
+                             which made the same page read as three different
+                             layouts wearing one wrapper. One container size
+                             (`w-64`, was `w-64` for a board and `w-56` for
+                             bingo — two more numbers that had no reason to
+                             differ) and exactly one of the three below
+                             always renders into it.
+
+                             Capped when it stacks: below lg this sat full
+                             width, which turned a 9x9 grid into most of the
+                             screen.
+
+                             A real `Link`, not a decorative box: the board
+                             preview reuses BoardPreview's tile styling
+                             (app.css's `.board-tile`, including its hover
+                             scale-up), which is built for a real, clickable
+                             board — so it already LOOKED interactive here
+                             even though nothing happened when you clicked
+                             it. Reported directly. Rather than strip the
+                             hover cue, made the thing it was promising
+                             true: the whole preview now goes to the same
+                             place the title and the Open button do. -->
+                        <Link
+                            :href="`/events/${entry.board.id}`"
+                            class="block w-full max-w-64 mx-auto lg:mx-0 lg:w-64 shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                            <!-- Played: the real board, your real position.
+                                 Hosted but not played: BoardPreview's own
+                                 illustrative mode (no specialTiles/position
+                                 given) — the same placeholder the create-event
+                                 form shows, rather than an empty box. -->
                             <board-preview
+                                v-if="entry.kind === 'board' && entry.preview"
                                 :size="entry.preview.size"
                                 :special-tiles="entry.preview.specialTiles"
                                 :current-position="entry.preview.currentPosition"
                                 :completed-positions="entry.preview.completedPositions"
                             />
-                        </div>
+                            <board-preview v-else-if="entry.kind === 'board'" :size="entry.board.size" />
 
-                        <div v-else-if="entry.card" class="w-full max-w-56 mx-auto lg:mx-0 lg:w-56 shrink-0">
-                            <bingo-preview :size="entry.card.size" :completed="entry.card.completed" />
-                        </div>
+                            <bingo-preview v-else-if="entry.kind === 'bingo' && entry.card" :size="entry.card.size" :completed="entry.card.completed" />
+
+                            <race-preview v-else-if="entry.kind === 'race'" :standing="entry.standing" />
+
+                            <!-- Only reachable if a BINGO event somehow has
+                                 no bingoCard row yet — the controller creates
+                                 one on first visit, so this is a safety net
+                                 for the gap between "event created" and
+                                 "anyone opened it," not an expected state. -->
+                            <div v-else class="aspect-square rounded-lg ring ring-default bg-default p-4 flex flex-col items-center justify-center gap-1 text-center">
+                                <u-icon name="i-lucide-image-off" class="size-8 text-dimmed" />
+                                <span class="text-xs text-muted">{{ $t('events.preview_unavailable') }}</span>
+                            </div>
+                        </Link>
                     </div>
                 </div>
             </u-container>
@@ -178,12 +237,13 @@
 
 <script setup>
 import { computed, defineAsyncComponent, ref } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import BingoPreview from '@/Components/BingoPreview.vue';
 import BoardPreview from '@/Components/BoardPreview.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import RacePreview from '@/Components/RacePreview.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, eventStatus, formatDate } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import { metricKindFor, rankedByLabel } from '@/Support/metrics';
@@ -191,13 +251,18 @@ import { metricKindFor, rankedByLabel } from '@/Support/metrics';
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
 
 const props = defineProps({
-    // One shape per event, with the detail blocks present only where the
-    // event type has them:
-    //   kind      - 'board' | 'race' | 'bingo', for the icon and meta line
+    // One shape per event, matching BoardController::mine():
+    //   kind      - 'board' | 'race' | 'bingo' — server-computed from
+    //               event type, and now what the preview slot branches on
+    //               too, not just the icon and meta line.
     //   progress  - a board you are playing: { current, total, pct }
-    //   standing  - a race you entered: { rank, gained, syncedAt, error, participants }
-    // An event you only host has neither, and renders as just the event —
-    // which is why the template branches on the data rather than on `kind`.
+    //   preview   - a board you are playing: shape for BoardPreview
+    //   card      - a bingo event's card: shape for BingoPreview
+    //   standing  - a race you entered: { rank, gained, syncedAt, error, participants } | null
+    // An event you only host but haven't played/entered still has a `kind`,
+    // just none of the data blocks that come from actually participating —
+    // the preview slot covers that gap itself now (see RacePreview's
+    // "not entered" state, and BoardPreview's illustrative mode).
     boards: { type: Array, required: true },
     filter: { type: String, default: 'all' },
     counts: { type: Object, default: () => ({ all: 0, hosted: 0, playing: 0 }) },
@@ -205,11 +270,11 @@ const props = defineProps({
 
 const typeMeta = (board) => eventTypeMeta(board.type);
 
-// Grouped thousands, same as the standings page: XP gains run into the
-// millions and an unbroken run of digits cannot be read at a glance.
-function formatXp(value) {
-    return new Intl.NumberFormat('en-GB').format(value ?? 0);
-}
+const breadcrumbs = [
+    { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },
+    { label: trans('nav.events'), href: '/events' },
+    { label: trans('boards.mine_title') },
+];
 
 // A drop race counts kills, a skill race XP — the noun comes from the type.
 function rankedBy(board) {

@@ -130,9 +130,15 @@
 
         <!-- display:contents, so the wrapper is a hook for the panel
              styling and nothing else — it generates no box and the page
-             lays out exactly as it did without it. -->
+             lays out exactly as it did without it.
+
+             `page-navigating` (see app.css) is bound on the component
+             itself, not this wrapper: `display: contents` elements have
+             historically inconsistent browser support for `opacity`, and
+             the page component's own rendered root is a real box either
+             way, so there's nothing to gain from risking it on this one. -->
         <div :class="isLanding ? 'contents landing-page' : 'contents'">
-            <component :is="page" v-bind="pageProps" />
+            <component :is="page" :class="{ 'page-navigating': navigating }" v-bind="pageProps" />
         </div>
         <app-footer v-if="showSiteChrome" />
 
@@ -284,6 +290,28 @@ router.on('success', (event) => {
     raise(flash?.boardSave, 'board-save', 'success');
     raise(flash?.boardSaveError, 'board-save-error', 'error');
 });
+
+/**
+ * The page dims a little while a visit is in flight, and un-dims when it
+ * lands — the "vet transitions" ask, kept snappy and, more importantly,
+ * kept safe. An earlier attempt wrapped `<component :is="page">` itself in
+ * a Vue `<Transition mode="out-in">`, keyed on the URL: real navigation and
+ * the browser's Back button both landed on a blank page, stuck waiting for
+ * a `transitionend` that never fired. That approach unmounts and remounts
+ * the page component on every visit, and `out-in` mode refuses to mount
+ * the next one until the CSS contract finishes — when it doesn't, for
+ * whatever reason, the app is just gone.
+ *
+ * This can't fail that way: the page component is never removed from the
+ * DOM, `navigating` is a plain boolean, and `finish` fires whether the
+ * visit succeeded, failed, or was cancelled — so the dim always clears.
+ * Worst case if something's off, the opacity class doesn't toggle and the
+ * page has no visual transition; it is never unrenderable.
+ */
+const navigating = ref(false);
+
+router.on('start', () => { navigating.value = true; });
+router.on('finish', () => { navigating.value = false; });
 
 /**
  * Pages that render without the site header, footer and announcement banner.

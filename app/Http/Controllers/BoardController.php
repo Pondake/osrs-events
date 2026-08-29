@@ -20,6 +20,7 @@ use App\Services\DiscordAnnouncer;
 use App\Services\EventNotificationService;
 use App\Services\EventParticipationService;
 use App\Services\EventStandingsService;
+use App\Services\BoardReviewService;
 use App\Services\PlayerBoardService;
 use App\Support\EventCard;
 use Illuminate\Http\JsonResponse;
@@ -40,7 +41,7 @@ class BoardController extends Controller
 
     private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'discord_webhook_url'];
 
-    private const BOARD_FIELDS = ['size', 'dice_roll_limit'];
+    private const BOARD_FIELDS = ['size', 'dice_roll_limit', 'requires_approval'];
 
     /**
      * The author's user is loaded by column, not whole.
@@ -156,6 +157,11 @@ class BoardController extends Controller
 
         $events = $query
             ->with([...self::EVENT_WITH, 'board.tiles:id,board_id,position,type', 'bingoCard'])
+            // One count per event via a subquery rather than N calls to
+            // participants()->count() in the map() below — the difference
+            // between one query and one-per-row on a page that can list
+            // dozens of events.
+            ->withCount('participants')
             ->orderByDesc('start_date')
             ->get();
 
@@ -179,6 +185,11 @@ class BoardController extends Controller
                 },
                 'board' => EventCard::for($event),
                 'isHost' => $event->authors->contains(fn ($a) => $a->user_id === $user->id),
+                // From withCount('participants') above — a fact every kind
+                // has, unlike progress/standing which only exist once you've
+                // actually played, so it's the one number this row can
+                // always show.
+                'participants' => $event->participants_count,
                 'progress' => null,
                 'standing' => null,
             ];
@@ -296,7 +307,11 @@ class BoardController extends Controller
         // thing as playing it: every passer-by turned up in the player list
         // and on the leaderboard at square one. Joining is an explicit action
         // now and it is what creates the row — see EventParticipationService.
-        $playerBoard = $playerBoards->find($event, $user)?->load('completedTiles:id,player_board_id,tile_id');
+        $playerBoard = $playerBoards->find($event, $user)?->load(
+            'completedTiles:id,player_board_id,tile_id,status,proof_url,note,review_note,reviewed_at',
+        );
+
+        $canEdit = $user->canEditEvent($event);
 
         // Every player/team on the board with their current position — feeds
         // BoardShow.vue's "show other players" avatar stacks on tiles and the
@@ -330,7 +345,22 @@ class BoardController extends Controller
             'tiles' => $tiles,
             'playerBoard' => $playerBoard === null ? null : [
                 ...$playerBoard->only(['id', 'current_position', 'dice_rolls_today']),
-                'completedTileIds' => $playerBoard->completedTiles->pluck('tile_id'),
+                // Only APPROVED counts toward progress — a pending claim
+                // does not yet unlock the next roll. Same "only approved
+                // scores" rule bingo's standings enforce.
+                'completedTileIds' => $playerBoard->completedTiles->filter->isApproved()->pluck('tile_id')->values(),
+                // Every claim this player made, whatever its state, keyed
+                // by tile — they need to see their own pending or rejected
+                // claim, or they will submit it again. Same shape bingo's
+                // 'claims' prop uses.
+                'claims' => $playerBoard->completedTiles->mapWithKeys(fn ($c) => [$c->tile_id => [
+                    'id' => $c->id,
+                    'status' => $c->status,
+                    'proofUrl' => $c->proof_url,
+                    'note' => $c->note,
+                    'reviewNote' => $c->review_note,
+                    'reviewedAt' => $c->reviewed_at?->toIso8601String(),
+                ]]),
             ],
             'players' => $players,
             // TEAM boards where the user isn't on any assigned team can't
@@ -338,15 +368,21 @@ class BoardController extends Controller
             // this board" empty state instead of the grid for this case.
             'hasTeam' => $playerBoards->hasTeam($event, $user),
             'joined' => app(EventParticipationService::class)->has($user, $event),
-            'canEdit' => $user->canEditEvent($event),
+            'canEdit' => $canEdit,
             // Only to somebody who may edit the event. A webhook URL is a
             // capability, not a setting: anyone holding it can post into that
             // Discord channel, so it must never ride along in EventCard,
             // which every viewer of a public event receives — and which the
             // live channel pushes to all of them every few seconds.
-            'webhookUrl' => $user->canEditEvent($event) ? $event->discord_webhook_url : null,
+            'webhookUrl' => $canEdit ? $event->discord_webhook_url : null,
             'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
             'adminEditUrl' => $this->adminEditUrl($user, $event),
+            // Hosts get the review queue on the same page as the board —
+            // same reasoning as bingo's 'pending': leaving the thing you are
+            // judging to judge it is the wrong shape.
+            'pending' => $canEdit && $event->board
+                ? app(BoardReviewService::class)->pendingQueue($event->board)
+                : [],
         ]);
     }
 
@@ -389,7 +425,7 @@ class BoardController extends Controller
             $bingo->ensureSquares($card);
         }
 
-        $card->load('squares.task:id,title,icon_url');
+        $card->load('squares.task:id,title,icon_url,description,wiki_url');
 
         $user = Auth::user();
         $canEdit = $user->canEditEvent($event);

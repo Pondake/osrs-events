@@ -71,7 +71,7 @@ class BingoClaimWithdrawalTest extends TestCase
         [$player, $event, $card] = $this->card();
         $square = $card->squares()->where('position', 0)->firstOrFail();
 
-        $this->actingAs($player)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim");
+        $this->actingAs($player)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim", ['proof_url' => 'https://i.imgur.com/x.png']);
         $this->actingAs($player)->post("/events/{$event->id}/bingo/squares/{$square->id}/claim")->assertRedirect();
 
         $this->assertSame(0, $square->completions()->count());

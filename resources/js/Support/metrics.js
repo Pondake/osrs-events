@@ -46,6 +46,16 @@ export function rankedByLabel(metric, kind) {
 }
 
 /**
+ * Grouped thousands for a race's gained value — XP runs into the millions
+ * (and boss KC into the hundreds) and an unbroken run of digits can't be
+ * read at a glance. Shared by SkillRace.vue, Boards/Mine.vue and
+ * RacePreview.vue, which each had their own copy of the same one-liner.
+ */
+export function formatMetricValue(value) {
+    return new Intl.NumberFormat('en-GB').format(value ?? 0);
+}
+
+/**
  * The OSRS icon for a metric, or null when there isn't one.
  *
  * Files are committed under public/images/osrs/skills/, named by the Wise

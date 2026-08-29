@@ -43,19 +43,18 @@ class BingoController extends Controller
         $card = $event->bingoCard;
         abort_unless($card !== null && $square->bingo_card_id === $card->id, 404);
 
-        $data = $request->validate([
-            // A URL, not an upload: clans already post screenshots to Discord
-            // or Imgur, and becoming an image host to duplicate that is a
-            // whole other set of problems.
-            'proof_url' => ['nullable', 'url', 'max:2048'],
-            'note' => ['nullable', 'string', 'max:255'],
-        ]);
-
         // Late claims are refused rather than quietly accepted. Every guide on
         // running these says the cutoff is the thing hosts most need enforced,
         // and "submitted after it ended" is not a judgement call.
         if ($event->end_date !== null && $event->end_date->endOfDay()->isPast()) {
             return back()->with('board-save-error', trans('bingo.event_ended'));
+        }
+
+        // Same gap PlayerBoardController::roll() had — nothing here checked
+        // the start date, so a card dated to start next month could be
+        // claimed on today.
+        if ($event->isUpcoming()) {
+            return back()->with('board-save-error', trans('bingo.event_not_started'));
         }
 
         // A pause stops claims for the same reason but temporarily, and only
@@ -100,6 +99,18 @@ class BingoController extends Controller
 
             return back()->with('board-save', trans('bingo.square_cleared'));
         }
+
+        // Validated here, not up front — a withdrawal above is a bare POST
+        // with no body, and requiring proof up front would have rejected
+        // every withdrawal before it ever reached that check. Required only
+        // when a host actually reviews claims: a card with nothing to check
+        // it against has no use for it. Submitting every field blank used to
+        // silently create a PENDING claim with nothing for a host to judge —
+        // the whole point of the review queue, unmet by its own form.
+        $data = $request->validate([
+            'proof_url' => [$card->requires_approval ? 'required' : 'nullable', 'url', 'max:2048'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ]);
 
         $completion = BingoCompletion::create([
             ...$competitor,
