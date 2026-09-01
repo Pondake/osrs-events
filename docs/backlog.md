@@ -449,13 +449,20 @@ tweede partij nodig hebben.
   `nexling` en de rest gewoon liggen — er was geen wiki-scrape nodig, alleen
   een mapping. `scripts/extract-osrs-icons.mjs` heeft er een `BOSS_PETS`-map
   bij en schrijft nu twee mappen in plaats van één.
-  **56 van de 71 bossen hebben een icon.** De overige vijftien zijn geen gat
-  dat nog dichtgemaakt moet worden maar twee soorten antwoord: acht bossen
-  droppen geen pet (Barrows, Bryophyta, Hespori, de Mimic, Obor, Lunar Chests,
-  beide archaeologists) en zeven zijn nieuw genoeg dat hun pet nog niet in de
-  package zit (`brutus`, `doom_of_mokhaiotl`, `mad_angel`, `maggot_king`,
-  `shellbane_gryphon`, `the_royal_titans`, `yama`). Allebei renderen als geen
-  icon, want een verkeerd icon is erger dan geen.
+  **61 van de 71 bossen hebben een icon.** De eerste ronde bleef op 56 steken
+  omdat ik van de zeven nieuwste bossen aannam dat ze geen pet hadden; de
+  eigenaar wees erop dat die wel degelijk op de wiki staan, en dat klopte.
+  Nagekeken tegen de pet-lijst van de OSRS-wiki in plaats van uit het hoofd:
+  Beef (Brutus), Dom (Doom of Mokhaiotl), Maggot marquess (Maggot King),
+  Gull (Shellbane Gryphon) en Yami (Yama) zaten gewoon in de package onder
+  díé namen. **De sprites zijn met het oog gecontroleerd** — `beef` staat er
+  naast `beefFillet` en dat had makkelijk een lapje vlees kunnen zijn.
+  De tien die overblijven zijn twee soorten antwoord. Acht droppen geen pet,
+  nu geverifieerd tegen dezelfde wiki-lijst: Barrows, Bryophyta, Hespori, de
+  Mimic, Obor, Lunar Chests en beide archaeologists. Twee **hebben** er wel
+  een — Aggy (Mad Angel) en Bran (The Royal Titans) — maar die heeft de
+  package nog niet uitgebracht. Allebei renderen als geen icon, want een
+  verkeerd icon is erger dan geen.
   Een `null` in die map is dus een uitspraak, geen ontbrekende regel — het
   script slaat hem stil over en meldt alleen een exportnaam die níét oplost,
   want dat is een upstream-hernoeming en die moet luid zijn.
@@ -469,10 +476,14 @@ tweede partij nodig hebben.
   "Ranked by Zulrah kills" en in elke standings-rij.
 - [ ] **Boss-icons: de CRUD en de watcher.** De twee helften die de icons
   zelf niet oplossen, en ze worden pas urgent zodra er bossen bijkomen.
-  Een CRUD onder `/admin` voor de bosslijst en het icon per boss, zodat de
-  zeven nieuwe bossen hierboven met de hand te vullen zijn zonder op de
-  package te wachten — nu kan dat alleen door `BOSS_PETS` te bewerken en het
-  script opnieuw te draaien, wat een deploy vraagt voor wat een plaatje is.
+  Een CRUD onder `/admin` voor de bosslijst en het icon per boss, zodat Aggy
+  en Bran met de hand te vullen zijn zonder op een package-release te
+  wachten — nu kan dat alleen door `BOSS_PETS` te bewerken en het script
+  opnieuw te draaien, wat een deploy vraagt voor wat een plaatje is.
+  **Overweeg daarbij een wiki-URL toe te staan naast een lokaal bestand**:
+  de app kan al wiki-afbeeldingen opzoeken (`WikiController::searchGlobal()`,
+  `WikiIconPicker.vue`) voor taak- en teamicons, en dat is precies de route
+  om een pet te gebruiken die de package nog niet heeft.
   Daarna een geplande job die de bosslijst van de wiki (of van Wise Old Man,
   die de lijst tenslotte al levert) leest en meldt wat deze app nog niet kent,
   per mail of notificatie. Volautomatische import daar bovenop, pas zodra de
