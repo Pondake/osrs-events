@@ -499,13 +499,27 @@ tweede partij nodig hebben.
   Eén test slaagde eerst om de verkeerde reden — `actingAs()` blijft gelden
   voor de rest van een testmethode, dus de "uitgelogde" call mat nog steeds de
   ingelogde sessie. Nu een eigen test.
-- [ ] **Boss-icons: de watcher.** De helft die nog open staat, en pas urgent
-  zodra er bossen bijkomen. Een geplande job die de bosslijst leest — van de
-  wiki, of van Wise Old Man die hem toch al levert — en meldt wat deze app
-  nog niet kent, per mail of notificatie. Volautomatische import daar bovenop,
-  pas zodra de mapping een tijd met de hand goed is geweest.
-  Nu is het pas zichtbaar als iemand een drop race voor een nieuwe boss maakt
-  en er geen plaatje staat.
+- [x] ~~**Boss-icons: de watcher.**~~ — gebouwd 2026-09-02.
+  `php artisan boss-icons:suggest`, wekelijks ingepland (maandag 04:00, met
+  `ScheduleHeartbeat` zoals de andere twee jobs). Zoekt voor elke boss zonder
+  icoon een wiki-afbeelding en zet die **als voorstel** neer, bovenaan de
+  CRUD onder "Waiting on you".
+  **Voorstellen, nooit toepassen** — dat was al de regel in dit item vóórdat
+  er iets van gebouwd was, en hij houdt: een verkeerd icoon op een live
+  eventpagina is erger dan een leeg vakje. Een `suggested_url` wordt pas een
+  `icon_url` als iemand op "Use this" klikt.
+  Het zoekt op de náám van de boss, niet van de pet — die pet-naam is precies
+  wat niemand weet bij een boss van vorige week, en dat is de reden dat het
+  vakje leeg staat. Het voorstel is dus soms de boss zelf in plaats van zijn
+  pet, en dat is prima: wie goedkeurt ziet het plaatje, en afwijzen kost één
+  klik. Voor de acht bossen zonder pet is een plaatje van de boss zelf
+  waarschijnlijk juist het goede antwoord.
+  **Een afwijzing wordt onthouden** (`dismissed_url`), anders staat hetzelfde
+  plaatje volgende maandag weer in de rij en wordt de wachtrij ruis die
+  niemand meer leest. Een *ander* plaatje voor dezelfde boss mag wel opnieuw.
+  Live doorlopen: acht voorstellen opgehaald, Barrows goedgekeurd (icoon
+  staat), Bryophyta afgewezen, en een tweede run stelde niets voor met
+  "same image was already turned down". Vier tests dekken de vier standen.
 - [x] ~~**Wise Old Man API-key per host.**~~ — gebouwd 2026-08-30 en
   **teruggedraaid 2026-08-31 op verzoek van Wise Old Man zelf.** De eigenaar
   legde het voor; hun antwoord, en het is het juiste antwoord:

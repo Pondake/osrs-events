@@ -424,6 +424,11 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::get('/boss-icons', [BossIconController::class, 'index'])->name('boss-icons');
         Route::put('/boss-icons', [BossIconController::class, 'update'])->name('boss-icons.update');
         Route::delete('/boss-icons/{metric}', [BossIconController::class, 'destroy'])->name('boss-icons.destroy');
+        // The weekly check proposes; these two are how a proposal becomes
+        // an icon or goes away. See SuggestBossIcons for why it never
+        // applies one itself.
+        Route::post('/boss-icons/{metric}/approve', [BossIconController::class, 'approve'])->name('boss-icons.approve');
+        Route::post('/boss-icons/{metric}/dismiss', [BossIconController::class, 'dismiss'])->name('boss-icons.dismiss');
 
         // Gated on canCreateBoards, not isAdmin — see the controller.
         Route::get('/blueprints', [AdminEventBlueprintController::class, 'index'])->name('blueprints');
