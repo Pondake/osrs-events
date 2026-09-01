@@ -25,6 +25,8 @@ From here on, new work gets an entry as it lands.
 - An announcement can be shown on the lock screen, off by default.
 - The backlog was reopened: 5432 lines archived, open work rewritten, ideas and
   SSR gotchas split into their own documents.
+- Bosses have icons: 56 of 71 now show their pet, from the same package the
+  skill icons come from. The rest drop no pet, or are too new for it.
 
 ## 2026-08-30 — Host approval for tiles
 

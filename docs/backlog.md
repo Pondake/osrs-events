@@ -443,21 +443,43 @@ tweede partij nodig hebben.
   dates", terwijl `eeacce6` juist gating op afgelopen events bracht). Weg,
   zelfde afweging als bij de wees-`terms.*`-sleutels eerder.
   755 backend / 174 frontend groen.
-- [ ] **Boss-icons via pets, plus een CRUD en een watcher.** Skills hebben alle
-  24 icons; bosses geen enkele, omdat de iconset uit wiki-*item*- en
-  categorieafbeeldingen komt en er geen "Zulrah-icon" bestaat — alleen Zulrah's
-  scales en Zulrah's pet. **Pets zijn het antwoord**: een echte inventorysprite,
-  ondubbelzinnig, één per boss. Twee dingen om omheen te ontwerpen in plaats van
-  te ontdekken: de pet van een gloednieuwe boss staat vaak een tijd niet op de
-  wiki (een leeg vakje is dus een normale, tijdelijke toestand en geen fout), en
-  de bosslijst groeit met elke game-update. In volgorde van nut: een CRUD onder
-  `/admin` voor de bosslijst en het icon per boss, zodat een gat altijd met de
-  hand te vullen is; een geplande job die de bosslijst van de wiki leest en
-  meldt wat deze app nog niet kent; en volautomatische import daar bovenop,
-  zodra de mapping een tijd met de hand goed is geweest.
-  `scripts/extract-osrs-icons.mjs` doet de extract-en-commit-helft al voor
-  skills en is de voor de hand liggende plek om dit te laten groeien.
-  *(Stond twee keer in de oude backlog.)*
+- [x] ~~**Boss-icons via pets — de icons zelf.**~~ — gedaan 2026-08-31, en de
+  aanname klopte: de pets zaten al in dezelfde package als de skill-icons.
+  `@dava96/osrs-icons` heeft `petSnakeling`, `hellpuppy`, `vorki`, `olmlet`,
+  `nexling` en de rest gewoon liggen — er was geen wiki-scrape nodig, alleen
+  een mapping. `scripts/extract-osrs-icons.mjs` heeft er een `BOSS_PETS`-map
+  bij en schrijft nu twee mappen in plaats van één.
+  **56 van de 71 bossen hebben een icon.** De overige vijftien zijn geen gat
+  dat nog dichtgemaakt moet worden maar twee soorten antwoord: acht bossen
+  droppen geen pet (Barrows, Bryophyta, Hespori, de Mimic, Obor, Lunar Chests,
+  beide archaeologists) en zeven zijn nieuw genoeg dat hun pet nog niet in de
+  package zit (`brutus`, `doom_of_mokhaiotl`, `mad_angel`, `maggot_king`,
+  `shellbane_gryphon`, `the_royal_titans`, `yama`). Allebei renderen als geen
+  icon, want een verkeerd icon is erger dan geen.
+  Een `null` in die map is dus een uitspraak, geen ontbrekende regel — het
+  script slaat hem stil over en meldt alleen een exportnaam die níét oplost,
+  want dat is een upstream-hernoeming en die moet luid zijn.
+  Frontend: `metricIconUrl()` gaf bij `kind === 'boss'` altijd `null` terug en
+  kent nu het bossenpad. Het script genereert `Support/bossIcons.js` met de
+  56 die een bestand hebben — nodig omdat vragen om een PNG die nooit
+  geschreven is een 404 en een gebroken plaatje in de pagina oplevert.
+  Zelfde afspraak die `Support/iconCatalog.js` al met `vite.config.js` heeft:
+  de build maakt het antwoord waar.
+  Live gecontroleerd op een drop race: het pet-snakeling-sprite staat naast
+  "Ranked by Zulrah kills" en in elke standings-rij.
+- [ ] **Boss-icons: de CRUD en de watcher.** De twee helften die de icons
+  zelf niet oplossen, en ze worden pas urgent zodra er bossen bijkomen.
+  Een CRUD onder `/admin` voor de bosslijst en het icon per boss, zodat de
+  zeven nieuwe bossen hierboven met de hand te vullen zijn zonder op de
+  package te wachten — nu kan dat alleen door `BOSS_PETS` te bewerken en het
+  script opnieuw te draaien, wat een deploy vraagt voor wat een plaatje is.
+  Daarna een geplande job die de bosslijst van de wiki (of van Wise Old Man,
+  die de lijst tenslotte al levert) leest en meldt wat deze app nog niet kent,
+  per mail of notificatie. Volautomatische import daar bovenop, pas zodra de
+  mapping een tijd met de hand goed is geweest.
+  Let bij het bouwen op het ontwerp dat er al ligt: **een leeg vakje is een
+  normale, tijdelijke toestand en geen fout**, en de bosslijst groeit met elke
+  game-update.
 - [x] ~~**Wise Old Man API-key per host.**~~ — gebouwd 2026-08-30 en
   **teruggedraaid 2026-08-31 op verzoek van Wise Old Man zelf.** De eigenaar
   legde het voor; hun antwoord, en het is het juiste antwoord:

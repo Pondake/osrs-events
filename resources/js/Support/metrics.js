@@ -1,4 +1,5 @@
 import { trans } from 'laravel-vue-i18n';
+import { BOSSES_WITH_ICONS } from '@/Support/bossIcons';
 
 /**
  * Which Wise Old Man vocabulary an event type races on.
@@ -58,18 +59,26 @@ export function formatMetricValue(value) {
 /**
  * The OSRS icon for a metric, or null when there isn't one.
  *
- * Files are committed under public/images/osrs/skills/, named by the Wise
- * Old Man metric so no second lookup table stands between the stored value
- * and the file — see scripts/extract-osrs-icons.mjs, which writes them.
+ * Files are committed under public/images/osrs/{skills,bosses}/, named by the
+ * Wise Old Man metric so no second lookup table stands between the stored
+ * value and the file — see scripts/extract-osrs-icons.mjs, which writes them.
  *
- * Skills only. The icon set is built from OSRS Wiki item and category
- * images, and bosses are neither: there is no "Zulrah icon", only Zulrah's
- * scales and Zulrah's pet, and picking a signature drop for each of ~70
- * bosses by hand is a mapping that would be quietly wrong in places. Better
- * no icon than the wrong one; tracked in docs/backlog.md.
+ * Bosses were the long-standing gap: the icon set is built from wiki item and
+ * category images, and there is no "Zulrah icon" — only Zulrah's scales and
+ * Zulrah's pet. **The pet is the answer.** One sprite per boss, unambiguous,
+ * and already in the same package the skills come from.
+ *
+ * Not every boss has one, which is why the membership test is here rather
+ * than a bare path: fifteen drop no pet at all, or are new enough that the
+ * package has not caught up. Asking for a file that was never written is a
+ * 404 and a broken image, so those answer null and render as no icon.
  */
 export function metricIconUrl(metric, kind) {
-    if (!metric || kind === 'boss') return null;
+    if (!metric) return null;
+
+    if (kind === 'boss') {
+        return BOSSES_WITH_ICONS.has(metric) ? `/images/osrs/bosses/${metric}.png` : null;
+    }
 
     return `/images/osrs/skills/${metric}.png`;
 }

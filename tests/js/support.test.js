@@ -165,12 +165,24 @@ describe('metricIconUrl', () => {
     });
 
     /**
-     * Bosses have none — the icon set is built from wiki item and category
-     * images and there is no "Zulrah icon". Better no icon than the wrong
-     * one; see scripts/extract-osrs-icons.mjs.
+     * Bosses had none for a long time: the icon set is built from wiki item
+     * and category images and there is no "Zulrah icon". The PET is the
+     * answer — one sprite per boss, unambiguous. See BOSS_PETS in
+     * scripts/extract-osrs-icons.mjs.
      */
-    it('has nothing for a boss', () => {
-        expect(metricIconUrl('zulrah', 'boss')).toBeNull();
+    it('points at the committed pet sprite for a boss', () => {
+        expect(metricIconUrl('zulrah', 'boss')).toBe('/images/osrs/bosses/zulrah.png');
+    });
+
+    /**
+     * Not every boss has one — Barrows and the Mimic drop no pet at all, and
+     * the newest bosses are not in the package yet. Those must answer null
+     * rather than point at a file that was never written, which would render
+     * as a broken image.
+     */
+    it('has nothing for a boss without a pet', () => {
+        expect(metricIconUrl('barrows_chests', 'boss')).toBeNull();
+        expect(metricIconUrl('mimic', 'boss')).toBeNull();
     });
 
     it('has nothing for no metric', () => {
