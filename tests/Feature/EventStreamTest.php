@@ -96,10 +96,29 @@ class EventStreamTest extends TestCase
 
     // -------------------------------------------------------- access rules
 
+    /**
+     * Open to the same readers as the page, since 2026-08-31.
+     *
+     * The stream is one public channel shared by every viewer and can carry
+     * no per-viewer state, so it cannot anonymise itself for some readers —
+     * which means it follows canSeeParticipants(), not canView(). An OPEN
+     * event's names are public, so a signed-out reader gets its live channel;
+     * the test below covers the other half.
+     */
     #[Test]
-    public function the_stream_requires_a_login(): void
+    public function the_stream_is_open_on_an_open_event_without_a_login(): void
     {
-        $this->get("/events/{$this->event('BINGO')->id}/stream")->assertRedirect();
+        $this->get("/events/{$this->event('BINGO')->id}/stream")->assertOk();
+    }
+
+    /** A listed invite-only event streams to the people who may see names. */
+    #[Test]
+    public function the_stream_is_refused_signed_out_when_names_are_not_public(): void
+    {
+        $event = $this->event('BINGO');
+        $event->update(['access_mode' => 'INVITE']);
+
+        $this->get("/events/{$event->id}/stream")->assertForbidden();
     }
 
     /**

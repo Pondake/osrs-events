@@ -104,9 +104,85 @@ class BoardAccessService
     }
 
     /**
+     * Whether this person may READ the event page.
+     *
+     * Deliberately not the same question as hasAccess() below, which is about
+     * taking part. `access_mode` decides who may JOIN — it was never meant to
+     * decide who may look, and treating the two as one thing produced a real
+     * contradiction: `/events` lists public events to signed-out visitors,
+     * complete with clickable cards, and every one of those clicks landed on
+     * a login redirect because `events.show` sat behind `auth`. A list you
+     * can browse and cannot open is worse than no list.
+     *
+     * `is_listed` is the switch that already means "strangers may see this"
+     * — it is what puts the event in the public index in the first place — so
+     * it is what opens the page too. An unlisted event stays exactly as
+     * private as it is today: nothing about it is public, so nothing about it
+     * becomes readable by a passer-by.
+     *
+     * A listed INVITE event is therefore readable but not joinable, which is
+     * the point: the host chose to advertise it, and "you need an invite" is
+     * something a visitor can only be told on a page they are allowed to
+     * open.
+     */
+    public function canView(?User $user, Event $event): bool
+    {
+        if ($event->is_listed) {
+            return true;
+        }
+
+        return $user !== null && $this->hasAccess($user, $event);
+    }
+
+    /**
+     * Whether this reader is looking at an invite-only event they are not in
+     * yet — i.e. whether the page should offer them a way to hand in a code.
+     *
+     * Exists because a listed INVITE event no longer renders the AccessGate
+     * (see canView): the page opens, so the code field has to live on the
+     * page. A signed-out reader gets the same answer — they need an account
+     * before a code can be used, which is a thing the page can say.
+     */
+    public function needsInvite(?User $user, Event $event): bool
+    {
+        if ($event->access_mode !== 'INVITE') {
+            return false;
+        }
+
+        return $user === null || ! $this->hasAccess($user, $event);
+    }
+
+    /**
+     * Whether this reader may see WHO is playing, as opposed to how far
+     * along they are.
+     *
+     * Three questions, not two, decided 2026-08-31. Reading the event
+     * (canView) and taking part in it (hasAccess) were already separate; this
+     * is the middle one, and it exists because a listed event can be
+     * invite-only. Such a host advertised that the event exists — they did
+     * not publish their clan's roster.
+     *
+     * So: progress is public on any listed event, because a board with no
+     * pieces on it is not the event anyone came to look at. Identities are
+     * public only on an OPEN event, where anybody could have joined anyway,
+     * or to somebody who is actually in this one.
+     */
+    public function canSeeParticipants(?User $user, Event $event): bool
+    {
+        if ($event->access_mode === 'OPEN') {
+            return true;
+        }
+
+        return $user !== null && $this->hasAccess($user, $event);
+    }
+
+    /**
      * Whether the user already has confirmed access — true if a BoardAccess
      * record exists, they're a board author, or the board is OPEN (OPEN
      * boards never need a BoardAccess row; access is implicit).
+     *
+     * This is the TAKING PART question. See canView() for reading and
+     * canSeeParticipants() for the middle case.
      */
     public function hasAccess(User $user, Event $event): bool
     {

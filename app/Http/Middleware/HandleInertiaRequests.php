@@ -99,7 +99,15 @@ class HandleInertiaRequests extends Middleware
                 // WHICH door this is so the copy doesn't offer a shared
                 // password that full lockdown will refuse anyway.
                 'fullLockdown' => fn () => (bool) Setting::get('admin_lockdown_enabled'),
-                'announcement' => fn () => ! EnsureSiteUnlocked::isShutFor($request) ? Setting::get('announcement') : null,
+                // Two ways to qualify: this visitor is past the door, or the
+                // announcement has been marked public on purpose (added
+                // 2026-08-30 for the beta — see Setting::DEFAULTS). Still
+                // WITHHELD rather than hidden client-side in every other
+                // case: a prop that reaches the browser has already been
+                // disclosed, whatever the template does with it afterwards.
+                'announcement' => fn () => ! EnsureSiteUnlocked::isShutFor($request) || Setting::get('announcement_public')
+                    ? Setting::get('announcement')
+                    : null,
                 'announcementType' => Setting::get('announcement_type'),
                 'defaultBoardSize' => Setting::get('default_board_size'),
                 'defaultDiceRollLimit' => Setting::get('default_dice_roll_limit'),

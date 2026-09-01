@@ -180,6 +180,7 @@ class EventDurationTest extends TestCase
             'kofi_url' => 'https://ko-fi.com/pondake',
             'announcement' => null,
             'announcement_type' => 'info',
+            'announcement_public' => false,
             'discord_webhooks_enabled' => false,
             'site_lock_enabled' => false,
             'site_lock_password' => '',

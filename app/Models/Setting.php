@@ -50,6 +50,21 @@ class Setting extends Model
         'default_event_duration' => '2w',
         'announcement' => null,
         'announcement_type' => 'info',
+        // Whether the announcement is shown to somebody who has NOT passed
+        // the pre-launch door.
+        //
+        // Off by default, and that default is the safe one: an announcement
+        // is normally written for the people already using the site ("summer
+        // bingo starts Friday, sign up in #events"), and the lock screen is
+        // the one page a stranger can reach — so a banner that always showed
+        // was the one thing leaking past a door built to leak nothing.
+        //
+        // On, it is the opposite kind of message and the reason this exists:
+        // a launch date, a "we are looking for beta testers" line, a link to
+        // the Discord. Without it the door can say nothing at all, which
+        // makes announcing the site to strangers pointless — they arrive at
+        // a password box with no reason to come back.
+        'announcement_public' => false,
         // Whether a host may wire an event up to a Discord channel at all.
         //
         // Off by default and deliberately so: it makes the app POST to a URL

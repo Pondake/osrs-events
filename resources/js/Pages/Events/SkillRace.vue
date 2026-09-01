@@ -124,6 +124,13 @@
                     </div>
                 </div>
 
+                <!-- The way in, for a listed invite-only event. Since
+                     2026-08-31 such an event opens for everyone, so it no
+                     longer renders Boards/AccessGate — and the code field
+                     lived there. Directly under the header, because it is the
+                     first thing a reader without access needs. -->
+                <invite-code-card v-if="needsInvite" :event-id="event.id" class="mb-6" />
+
                 <!-- Without an RSN there is nothing to look up on the hiscores, so
                      this person is not in the race no matter that they joined. Said
                      plainly, at the top, with the fix one click away. -->
@@ -201,10 +208,14 @@
                                         :class="entry.rank !== null && entry.rank <= 3 && entry.gained > 0 ? 'text-primary' : 'text-muted'"
                                     >{{ entry.rank ?? '—' }}</span>
 
-                                    <u-avatar :src="entry.avatarUrl ?? undefined" :alt="entry.name" size="sm" class="shrink-0" />
+                                    <u-avatar :src="entry.avatarUrl ?? undefined" :alt="entry.name ?? $t('events.anonymous_player')" size="sm" class="shrink-0" />
 
                                     <div class="flex-1 min-w-0">
-                                        <p class="truncate font-medium">{{ entry.name }}</p>
+                                        <!-- Faceless on purpose when the roster is
+                                             not public — see Bingo.vue for the rule. -->
+                                        <p class="truncate font-medium" :class="entry.name === null ? 'text-muted italic font-normal' : ''">
+                                            {{ entry.name ?? $t('events.anonymous_player') }}
+                                        </p>
                                         <p v-if="entry.displayName" class="truncate text-xs text-muted">{{ entry.displayName }}</p>
                                     </div>
 
@@ -305,6 +316,7 @@ import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
@@ -346,6 +358,9 @@ function syncStandings() {
 
 
 const props = defineProps({
+    // True when this reader is looking at an invite-only event they are
+    // not in yet — the code field lives on the page now, not on a gate.
+    needsInvite: { type: Boolean, default: false },
     event: { type: Object, required: true },
     standings: { type: Array, default: () => [] },
     osrsUsername: { type: String, default: null },

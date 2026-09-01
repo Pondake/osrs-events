@@ -204,12 +204,13 @@ class SkillRaceControllerTest extends TestCase
             ->assertForbidden();
     }
 
+    /** Same rule as the page: an OPEN event's live channel is public too. */
     #[Test]
-    public function the_stream_requires_a_login(): void
+    public function the_stream_is_open_on_an_open_race_without_a_login(): void
     {
         $event = $this->race();
 
-        $this->get("/events/{$event->id}/stream")->assertRedirect();
+        $this->get("/events/{$event->id}/stream")->assertOk();
     }
 
     // --------------------------------------------------------------- page

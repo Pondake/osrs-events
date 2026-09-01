@@ -65,6 +65,13 @@
                     </div>
                 </div>
 
+                <!-- The way in, for a listed invite-only event. Since
+                     2026-08-31 such an event opens for everyone, so it no
+                     longer renders Boards/AccessGate — and the code field
+                     lived there. Directly under the header, because it is the
+                     first thing a reader without access needs. -->
+                <invite-code-card v-if="needsInvite" :event-id="event.id" class="mb-6" />
+
                 <!-- A rejected claim used to explain itself only in the
                      square's `title` attribute — invisible on touch, and a
                      hover away from being missed anywhere else. It is the
@@ -322,9 +329,16 @@
                                     <span class="w-6 text-sm font-semibold tabular-nums" :class="index < 3 ? 'text-primary' : 'text-muted'">
                                         {{ index + 1 }}
                                     </span>
-                                    <u-avatar :src="row.avatarUrl ?? undefined" :alt="row.name" size="sm" />
+                                    <u-avatar :src="row.avatarUrl ?? undefined" :alt="row.name ?? $t('events.anonymous_player')" size="sm" />
                                     <div class="flex-1 min-w-0">
-                                        <p class="truncate">{{ row.name }}</p>
+                                        <!-- A null name is not a missing one: on a
+                                             listed invite-only event the progress is
+                                             public and the roster is not, so the row
+                                             is deliberately faceless. See
+                                             BoardAccessService::canSeeParticipants(). -->
+                                        <p class="truncate" :class="row.name === null ? 'text-muted italic' : ''">
+                                            {{ row.name ?? $t('events.anonymous_player') }}
+                                        </p>
                                         <p class="text-xs text-muted">
                                             {{ $t('bingo.lines_done', { count: row.lines }) }} · {{ row.squares }}
                                         </p>
@@ -430,6 +444,7 @@ import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 
 const BingoSquareModal = defineAsyncComponent(() => import('@/Components/BingoSquareModal.vue'));
@@ -439,6 +454,9 @@ const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/Board
 const TileListEditor = defineAsyncComponent(() => import('@/Components/TileListEditor.vue'));
 
 const props = defineProps({
+    // True when this reader is looking at an invite-only event they are
+    // not in yet — the code field lives on the page now, not on a gate.
+    needsInvite: { type: Boolean, default: false },
     event: { type: Object, required: true },
     card: { type: Object, required: true },
     claims: { type: Object, default: () => ({}) },

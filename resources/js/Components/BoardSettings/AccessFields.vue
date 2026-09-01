@@ -186,7 +186,12 @@ const accessOptions = [
     },
 ];
 
-const guildOptions = computed(() => props.guilds.map((guild) => ({ label: guild.name, value: guild.id })));
+// Always an avatar, initials when there is no icon — see TeamSettingsModal.
+const guildOptions = computed(() => props.guilds.map((guild) => ({
+    label: guild.name,
+    value: guild.id,
+    avatar: { src: guild.icon_url ?? undefined, alt: guild.name },
+})));
 
 // Three states, three sentences: still loading, loaded and empty, loaded and
 // populated. An empty picker with a "pick one" placeholder is the version

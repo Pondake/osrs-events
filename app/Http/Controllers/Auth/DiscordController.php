@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureSiteUnlocked;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
@@ -176,7 +177,7 @@ class DiscordController extends Controller
         // locked only the first is on offer — a shut door that hands out keys
         // is not shut. An account that already exists signs in as normal, so
         // whoever is building the site is not locked out of their own login.
-        if ($this->registrationClosed() && ! User::where('discord_id', $discordId)->exists()) {
+        if ($this->registrationClosed($request) && ! User::where('discord_id', $discordId)->exists()) {
             return redirect('/login')->with('board-save-error', trans('lock.registration_closed'));
         }
 
@@ -238,26 +239,57 @@ class DiscordController extends Controller
     /**
      * Whether the site is shut to newcomers, for any of three reasons.
      *
-     * The two locks are two of them — full lockdown as much as the
-     * pre-launch door, since neither is meant to hand out fresh accounts
-     * while it's on, only let existing ones through. `registration_open` is
-     * the third — an admin switch that has always gated the email/password
-     * form and, until this method, nothing else: turning it off closed the
-     * front door and left Discord wide open, which is not what a switch
-     * labelled "registration" says.
-     *
      * Not `EnsureSiteUnlocked::isShutFor()`: that asks whether THIS visitor
      * may use the site at all, and a request arriving here has already been
      * let through as a sign-in route (both locks carve out `auth/discord/*`
      * on purpose, or nobody could sign in through it). This asks the
      * narrower question of whether the account being signed into is allowed
      * to be a NEW one.
+     *
+     * The three reasons, in the order they are checked:
+     *
+     * 1. **`registration_open`** — an admin switch that has always gated the
+     *    email/password form and, until this method existed, nothing else:
+     *    turning it off closed the front door and left Discord wide open,
+     *    which is not what a switch labelled "registration" says. Checked
+     *    first because an explicit no from an admin outranks everything
+     *    below it, the shared password included.
+     *
+     * 2. **Full lockdown** — "nothing but an admin session gets through"
+     *    means exactly that, and an admin has no use for a registration
+     *    route. Never softened, by anything.
+     *
+     * 3. **The pre-launch door** — shut to STRANGERS, and somebody who typed
+     *    the shared password is not one. That is the change made 2026-08-30,
+     *    for the beta: without it a tester who had already been let through
+     *    the door was still refused at "Continue with Discord", while the
+     *    same person could register through the email form unimpeded (the
+     *    middleware stops intercepting once the flag is set, and
+     *    `RegisteredUserController` only ever checked `registration_open`).
+     *    One person, one password, two different answers — this makes the
+     *    two routes agree.
+     *
+     *    It grants nothing new: whoever holds the password can already walk
+     *    through the door, read the whole app, and make an account by email.
+     *    The flag itself is only ever written server-side by
+     *    `SiteLockController` after the password matches, so it cannot be
+     *    forged from the browser.
      */
-    private function registrationClosed(): bool
+    private function registrationClosed(Request $request): bool
     {
-        return Setting::get('site_lock_enabled')
-            || Setting::get('admin_lockdown_enabled')
-            || ! Setting::get('registration_open');
+        if (! Setting::get('registration_open')) {
+            return true;
+        }
+
+        if (Setting::get('admin_lockdown_enabled')) {
+            return true;
+        }
+
+        if (! Setting::get('site_lock_enabled')) {
+            return false;
+        }
+
+        return $request->session()->get(EnsureSiteUnlocked::SESSION_KEY) !== true;
     }
 
     private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl, ?string $globalName): User

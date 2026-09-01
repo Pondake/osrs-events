@@ -70,6 +70,7 @@ class SiteSettingsController extends Controller
             }],
             'announcement' => ['nullable', 'string', 'max:280'],
             'announcement_type' => ['required', Rule::in(Setting::ANNOUNCEMENT_TYPES)],
+            'announcement_public' => ['required', 'boolean'],
             // http/https only, matching what the page renderer's safeHref()
             // will accept anyway — better to reject it at the form than to
             // store a value that silently renders as no button at all.

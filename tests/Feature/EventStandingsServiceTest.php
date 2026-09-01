@@ -305,6 +305,50 @@ class EventStandingsServiceTest extends TestCase
         $this->assertNotSame($before, $this->standings()->fingerprint($event));
     }
 
+    // -------------------------------------------------------- rate limiting
+
+    /**
+     * A 429 is ours, not the player's.
+     *
+     * It used to fall through the same `return null` as "no data", which the
+     * caller wrote as `sync_error = 'not_tracked'` — and that message tells
+     * the player to go and search their own name on wiseoldman.net. Wrong
+     * advice, about an account that is tracked perfectly well, blaming them
+     * for our pacing.
+     */
+    #[Test]
+    public function a_rate_limited_lookup_is_not_reported_as_an_untracked_player(): void
+    {
+        Http::fake(['api.wiseoldman.net/v2/players/*/gained*' => Http::response('', 429)]);
+
+        $event = $this->race();
+        $row = $this->seedRow($event, 'Pondake', gained: 0, synced: false);
+
+        $this->standings()->refresh($event, $row);
+
+        $this->assertSame('rate_limited', $row->refresh()->sync_error);
+    }
+
+    /**
+     * And it must not look answered.
+     *
+     * refreshAll() and the scheduled command both order never-synced and
+     * failing rows first; stamping synced_at here would put a row we never
+     * actually asked about at the back of the queue.
+     */
+    #[Test]
+    public function a_rate_limited_row_stays_unsynced_so_the_next_run_retries_it(): void
+    {
+        Http::fake(['api.wiseoldman.net/v2/players/*/gained*' => Http::response('', 429)]);
+
+        $event = $this->race();
+        $row = $this->seedRow($event, 'Pondake', gained: 0, synced: false);
+
+        $this->standings()->refresh($event, $row);
+
+        $this->assertNull($row->refresh()->synced_at);
+    }
+
     private function seedRow(Event $event, string $name, int $gained, ?string $error = null, bool $synced = true): EventStanding
     {
         return EventStanding::create([

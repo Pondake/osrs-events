@@ -241,6 +241,20 @@
                     </u-select>
                 </u-form-field>
 
+                <!-- Only does anything while the pre-launch door is shut, so
+                     it says so rather than sitting there looking inert on an
+                     open site. Off by default: an announcement is normally
+                     written for people already using the site, and the lock
+                     screen is the one page a stranger can reach. -->
+                <u-form-field
+                    :label="$t('admin.site_announcement_public')"
+                    :description="$t('admin.site_announcement_public_desc')"
+                    :error="form.errors.announcement_public"
+                    class="mt-4"
+                >
+                    <u-switch v-model="form.announcement_public" :label="$t('admin.site_announcement_public_label')" />
+                </u-form-field>
+
                 <!-- Shows exactly what a visitor would see, since a banner
                      that's live site-wide is worth previewing before saving.
                      Styling comes from the same map the real banner uses and
@@ -288,6 +302,7 @@ const form = useForm({
     kofi_url: props.settings.kofi_url ?? '',
     announcement: props.settings.announcement ?? '',
     announcement_type: props.settings.announcement_type ?? 'info',
+    announcement_public: props.settings.announcement_public ?? false,
     discord_webhooks_enabled: props.settings.discord_webhooks_enabled ?? false,
     site_lock_enabled: props.settings.site_lock_enabled ?? false,
     admin_lockdown_enabled: props.settings.admin_lockdown_enabled ?? false,

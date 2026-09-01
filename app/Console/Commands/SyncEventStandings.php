@@ -55,6 +55,9 @@ class SyncEventStandings extends Command
             return self::SUCCESS;
         }
 
+        $synced = 0;
+        $failed = 0;
+
         // Every outbound call — the --track write included — is followed by a
         // pause. Sleeping per request rather than per participant is what
         // keeps --track under the same ceiling instead of doubling the rate.
@@ -62,9 +65,6 @@ class SyncEventStandings extends Command
         $perRequestDelay = $wom->shouldThrottle()
             ? intdiv(60 * 1_000_000, $wom->requestsPerMinute())
             : 0;
-
-        $synced = 0;
-        $failed = 0;
 
         foreach ($events as $event) {
             // Cheap and local — catches anyone who renamed since entering, so

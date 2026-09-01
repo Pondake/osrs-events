@@ -98,6 +98,13 @@
                     </div>
                 </div>
 
+                <!-- The way in, for a listed invite-only event. Since
+                     2026-08-31 such an event opens for everyone, so it no
+                     longer renders Boards/AccessGate — and the code field
+                     lived there. Directly under the header, because it is the
+                     first thing a reader without access needs. -->
+                <invite-code-card v-if="needsInvite" :event-id="liveBoard.id" class="mb-6" />
+
                 <u-card v-if="!hasTeam" class="mt-8">
                     <div class="flex flex-col items-center text-center gap-3 py-6">
                         <u-icon name="i-lucide-users" class="size-10 text-muted" />
@@ -549,8 +556,8 @@
                                     >
                                         {{ p.team.name.slice(0, 2).toUpperCase() }}
                                     </span>
-                                    <u-avatar v-else :src="p.user?.avatar_url ?? undefined" :alt="p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? $t('common.deleted_user')" size="xs" class="shrink-0" />
-                                    <span class="flex-1 min-w-0 truncate font-medium">{{ p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? $t('common.deleted_user') }}</span>
+                                    <u-avatar v-else :src="p.user?.avatar_url ?? undefined" :alt="playerName(p)" size="xs" class="shrink-0" />
+                                    <span class="flex-1 min-w-0 truncate font-medium" :class="namesArePublic ? '' : 'text-muted italic'">{{ playerName(p) }}</span>
                                     <span class="text-xs text-muted shrink-0">#{{ p.current_position + 1 }}</span>
                                     <span
                                         class="text-xs font-semibold w-10 text-right shrink-0"
@@ -624,6 +631,7 @@ import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
@@ -637,10 +645,19 @@ const TileClaimModal = defineAsyncComponent(() => import('@/Components/TileClaim
 const TileReviewModal = defineAsyncComponent(() => import('@/Components/TileReviewModal.vue'));
 
 const props = defineProps({
+    // True when this reader is looking at an invite-only event they are
+    // not in yet — the code field lives on the page now, not on a gate.
+    needsInvite: { type: Boolean, default: false },
     board: { type: Object, required: true },
     tiles: { type: Array, required: true },
     playerBoard: { type: Object, default: null },
     players: { type: Array, default: () => [] },
+    // Whether the pieces on this board may be named. False on a listed
+    // invite-only event, where the progress is public and the roster is
+    // not — see BoardAccessService::canSeeParticipants(). Sent as its own
+    // flag because a row with no user is otherwise indistinguishable from
+    // a deleted account, which is a different thing to say.
+    namesArePublic: { type: Boolean, default: true },
     hasTeam: { type: Boolean, default: true },
     canEdit: { type: Boolean, default: false },
     // True only when a site admin is reading a private event they were never
@@ -681,6 +698,20 @@ const breadcrumbs = computed(() => [
 // board's own channel — a roll moves one player and everybody watching should
 // see it, the same as a bingo square being ticked.
 const livePlayers = ref([...props.players]);
+/**
+ * A player's label: their name, or the anonymous stand-in.
+ *
+ * Three states, not two. A named player, a genuinely deleted account, and a
+ * player whose name this reader is not entitled to — the last one is new
+ * (2026-08-31) and must not borrow the "deleted" wording, which would tell
+ * every visitor to a listed invite-only board that its whole roster left.
+ */
+function playerName(p) {
+    if (!props.namesArePublic) return trans('events.anonymous_player');
+
+    return p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? trans('common.deleted_user');
+}
+
 const liveTiles = ref([...props.tiles]);
 const livePending = ref([...props.pending]);
 /**
@@ -893,7 +924,7 @@ function playersOnTile(position) {
             // Falls through to the deleted-player label rather than a hardcoded
             // 'Player': a board keeps the space somebody occupied after
             // they close their account, and an unlabelled row reads as a bug.
-            name: p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? trans('common.deleted_user'),
+            name: playerName(p),
             avatarUrl: p.team?.icon_url ?? p.user?.avatar_url ?? null,
         }));
 }

@@ -61,6 +61,10 @@ const groups = computed(() => {
             items: [
                 { key: 'profile', to: '/settings/profile', icon: 'i-lucide-user-circle', label: trans('settings.nav_profile') },
                 { key: 'account', to: '/settings/account', icon: 'i-lucide-shield', label: trans('settings.nav_account') },
+                // Split off Account 2026-08-30: which outside services this
+                // account talks to is a different question from how it is
+                // signed into, and one page was answering both.
+                { key: 'connections', to: '/settings/connections', icon: 'i-lucide-plug', label: trans('settings.nav_connections') },
                 { key: 'notifications', to: '/settings/notifications', icon: 'i-lucide-bell', label: trans('settings.nav_notifications') },
             ],
         },
