@@ -36,18 +36,51 @@ class SuggestBossIcons extends Command
 
     public function handle(BossIconService $icons, OsrsWikiService $wiki): int
     {
-        $missing = collect($icons->all())->where('source', 'none');
+        $all = collect($icons->all());
+
+        $proposed = 0;
+        $skipped = 0;
+
+        // The package catching up, noticed at runtime without reading the
+        // package. The extraction script writes a PNG when a pet finally
+        // ships; this sees the file appear and offers to hand the boss back
+        // to it. A hand-set wiki image stays in force until somebody agrees,
+        // because an override was a decision and the package is not entitled
+        // to overrule it silently.
+        foreach ($all->where('source', 'custom') as $entry) {
+            $metric = $entry['metric'];
+            $sprite = $icons->spriteUrl($metric);
+
+            if ($sprite === null || $entry['suggested'] !== null) {
+                continue;
+            }
+
+            $row = BossIcon::where('metric', $metric)->first();
+
+            if ($row?->dismissed_url === $sprite) {
+                continue;
+            }
+
+            $this->line("  {$metric}: the package now ships a pet sprite");
+
+            if (! $this->option('dry-run')) {
+                $row->update(['suggested_url' => $sprite]);
+            }
+
+            $proposed++;
+        }
+
+        $missing = $all->where('source', 'none');
 
         if ($missing->isEmpty()) {
-            $this->info('Every boss has an icon. Nothing to propose.');
+            $this->info($proposed === 0
+                ? 'Every boss has an icon. Nothing to propose.'
+                : "Proposed {$proposed}. Approve them at /admin/boss-icons.");
 
             return self::SUCCESS;
         }
 
         $this->info("{$missing->count()} boss(es) without an icon.");
-
-        $proposed = 0;
-        $skipped = 0;
 
         foreach ($missing as $entry) {
             $metric = $entry['metric'];

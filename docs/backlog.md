@@ -519,7 +519,23 @@ tweede partij nodig hebben.
   niemand meer leest. Een *ander* plaatje voor dezelfde boss mag wel opnieuw.
   Live doorlopen: acht voorstellen opgehaald, Barrows goedgekeurd (icoon
   staat), Bryophyta afgewezen, en een tweede run stelde niets voor met
-  "same image was already turned down". Vier tests dekken de vier standen.
+  "same image was already turned down".
+  **De cron pikt ook op wanneer het pakket bijtrekt** (gevraagd 2026-09-02),
+  zonder het pakket te lezen — dat kan niet: hij draait op de server, waar
+  `@dava96/osrs-icons` niet geïnstalleerd staat en zijn output gecommitte
+  bestanden zijn. Hij kijkt naar het bestánd. Verschijnt er een sprite voor
+  een boss die nu een wiki-override draagt, dan stelt hij voor die boss
+  terug te geven aan het pakket. Goedkeuren **verwijdert** dan de override
+  in plaats van het sprite-pad als handmatige waarde op te slaan — anders
+  toont de boss het goede plaatje om de verkeerde reden en volgt hij het
+  pakket daarna niet meer.
+  De andere kant van dat loopje zit in `scripts/extract-osrs-icons.mjs`:
+  `AWAITED_PETS` houdt de namen bij die het pakket nog mist (Aggy, Bran) en
+  het script meldt bij elke run of ze er inmiddels in zitten. Dat is het
+  enige moment waarop iemand dat kan weten, want het draait waar het
+  pakket wél staat.
+  Negen tests dekken de standen, waaronder dat een boss die het pakket al
+  volgt nooit iets gevraagd wordt.
 - [x] ~~**Wise Old Man API-key per host.**~~ — gebouwd 2026-08-30 en
   **teruggedraaid 2026-08-31 op verzoek van Wise Old Man zelf.** De eigenaar
   legde het voor; hun antwoord, en het is het juiste antwoord:

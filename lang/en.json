@@ -107,6 +107,7 @@
     "admin.boss_icons_dismiss": "Not this one",
     "admin.boss_icons_would_fill": "This boss has no icon yet",
     "admin.boss_icons_would_replace": "Would replace the icon it shows now",
+    "admin.boss_icons_would_restore": "The icon package now ships a pet for this one — use it instead of your image?",
     "admin.board_size_option": ":size (:tiles tiles)",
     "admin.board_title": "Event title",
     "admin.board_title_desc": "The name players will see in the events list and on the event page.",

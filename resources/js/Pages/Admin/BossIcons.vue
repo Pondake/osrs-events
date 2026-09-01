@@ -29,7 +29,7 @@
                                  over a real pet sprite is a different decision
                                  from filling a blank. -->
                             <p class="text-xs text-muted">
-                                {{ boss.url ? $t('admin.boss_icons_would_replace') : $t('admin.boss_icons_would_fill') }}
+                                {{ suggestionLabel(boss) }}
                             </p>
 
                             <div class="flex items-center gap-2 mt-2">
@@ -162,6 +162,17 @@ const error = ref(null);
 
 function label(metric) {
     return metricLabel(metric, 'boss');
+}
+
+/**
+ * Three proposals, three sentences. Handing a boss back to the package is not
+ * the same decision as replacing one hand-set image with another, and a blank
+ * being filled is neither.
+ */
+function suggestionLabel(boss) {
+    if (boss.suggestedIsSprite) return trans('admin.boss_icons_would_restore');
+
+    return boss.url ? trans('admin.boss_icons_would_replace') : trans('admin.boss_icons_would_fill');
 }
 
 function sourceLabel(source) {

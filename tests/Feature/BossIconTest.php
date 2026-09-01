@@ -231,6 +231,95 @@ class BossIconTest extends TestCase
         $this->assertNull(BossIcon::where('metric', 'obor')->first()->suggested_url);
     }
 
+    /**
+     * The package catching up, and the hand-off back to it.
+     *
+     * This is the one thing the scheduled check cannot learn from the package
+     * itself — it runs on the server, where the package is not installed and
+     * its output is committed files. So it watches for the FILE, which the
+     * extraction script writes when a pet finally ships.
+     *
+     * A hand-set image is not overruled silently: the sprite is proposed, and
+     * somebody agrees.
+     */
+    #[Test]
+    public function a_newly_shipped_sprite_is_offered_in_place_of_a_hand_set_image(): void
+    {
+        BossIcon::create(['metric' => 'obor', 'icon_url' => 'https://example.com/obor-by-hand.png']);
+        $this->withSprite('obor');
+
+        $this->artisan('boss-icons:suggest')->assertSuccessful();
+
+        $this->assertSame(
+            '/images/osrs/bosses/obor.png',
+            BossIcon::where('metric', 'obor')->first()->suggested_url,
+        );
+    }
+
+    /**
+     * Accepting it REMOVES the override rather than storing the sprite's path
+     * as one — otherwise the boss shows the right picture for the wrong
+     * reason and stops following the package next time the sprite changes.
+     */
+    #[Test]
+    public function accepting_the_sprite_drops_the_override_rather_than_copying_it(): void
+    {
+        BossIcon::create([
+            'metric' => 'obor',
+            'icon_url' => 'https://example.com/obor-by-hand.png',
+            'suggested_url' => '/images/osrs/bosses/obor.png',
+        ]);
+        $this->withSprite('obor');
+
+        $this->actingAs($this->admin())->post('/admin/boss-icons/obor/approve');
+
+        $row = BossIcon::where('metric', 'obor')->first();
+        $this->assertNull($row->icon_url);
+        $this->assertNull($row->suggested_url);
+        $this->assertSame('sprite', $this->entryFor('obor')['source']);
+    }
+
+    /** A boss that already follows the package is never asked about. */
+    #[Test]
+    public function a_boss_already_on_its_sprite_is_not_proposed_anything(): void
+    {
+        $this->artisan('boss-icons:suggest')->assertSuccessful();
+
+        $this->assertNull(BossIcon::where('metric', 'zulrah')->first());
+    }
+
+    /**
+     * A stand-in PNG for a boss that ships without one, removed again in
+     * tearDown. Writing into public/ is what the service actually reads, and
+     * faking the filesystem would test the fake.
+     */
+    private function withSprite(string $metric): void
+    {
+        $path = public_path("images/osrs/bosses/{$metric}.png");
+
+        // A real one-pixel PNG, so anything that looks at the bytes is not
+        // surprised later.
+        file_put_contents($path, base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        ));
+
+        $this->temporarySprites[] = $path;
+    }
+
+    /** @var array<int, string> */
+    private array $temporarySprites = [];
+
+    protected function tearDown(): void
+    {
+        foreach ($this->temporarySprites as $path) {
+            @unlink($path);
+        }
+
+        $this->temporarySprites = [];
+
+        parent::tearDown();
+    }
+
     /** Only an admin rules on the queue. */
     #[Test]
     public function approving_is_shut_to_an_ordinary_player(): void

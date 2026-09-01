@@ -59,6 +59,12 @@ class BossIconService
                 // is not in force, and the page has to be able to show both
                 // what is showing now and what is being offered instead.
                 'suggested' => $row?->suggested_url,
+                // What KIND of proposal it is, because the two are
+                // different decisions: filling a blank, replacing a
+                // hand-set image, or handing a boss back to the package
+                // now that it ships a sprite.
+                'suggestedIsSprite' => $row?->suggested_url !== null
+                    && $row->suggested_url === $sprite,
             ];
         }, Event::BOSS_METRICS);
     }
