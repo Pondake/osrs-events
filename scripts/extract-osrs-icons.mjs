@@ -85,11 +85,14 @@ const SKILL_ICONS = {
  * Zulrah. The backlog carried this as a deliberate gap for exactly that
  * reason; pets are what closed it.
  *
- * **A null is a real answer, not a hole.** Several of these bosses drop no pet
- * at all (Barrows, Bryophyta, Hespori, the Mimic, Obor, the archaeologists,
- * Lunar Chests), and several are recent enough that their pet is not in this
- * package yet. Both render as no icon, which is the honest outcome — an
- * admin can fill a gap by hand, and a wrong icon would be worse than none.
+ * **A null is a real answer, not a hole**, and it means one of two things.
+ * Eight of these bosses drop no pet at all — Barrows, Bryophyta, Hespori,
+ * the Mimic, Obor, Lunar Chests and both archaeologists — checked against
+ * the wiki's own pet list rather than assumed. Two more (Aggy for the Mad
+ * Angel, Bran for the Royal Titans) DO have a pet on the wiki that this
+ * package has not shipped yet, and are marked as such where they sit.
+ * Both render as no icon, which is the honest outcome — a wrong icon would
+ * be worse than none.
  *
  * Where a pet exists only as phase variants, one is chosen and said so: any
  * of them reads as that pet, and the alternative is no icon at all.
@@ -103,7 +106,10 @@ const BOSS_PETS = {
     // Artio and Callisto are the same bear, and share the one cub.
     artio: 'callistoCub',
     barrows_chests: null,
-    brutus: null,
+    // The wiki's pet list names this one "Beef". The package has a bare
+    // `beef` alongside `beefFillet`; the first is a dark creature sprite and
+    // the second is a cut of meat, checked by eye rather than assumed.
+    brutus: 'beef',
     bryophyta: null,
     callisto: 'callistoCub',
     // Calvar'ion is Vet'ion's solo form; same pet.
@@ -121,7 +127,7 @@ const BOSS_PETS = {
     dagannoth_rex: 'petDagannothRex',
     dagannoth_supreme: 'petDagannothSupreme',
     deranged_archaeologist: null,
-    doom_of_mokhaiotl: null,
+    doom_of_mokhaiotl: 'dom',
     duke_sucellus: 'baron',
     general_graardor: 'petGeneralGraardor',
     giant_mole: 'babyMole',
@@ -134,8 +140,11 @@ const BOSS_PETS = {
     kreearra: 'petKreearra',
     kril_tsutsaroth: 'petKrilTsutsaroth',
     lunar_chests: null,
+    // Aggy. On the wiki, not in the package — see the CRUD item in the
+    // backlog, which exists so a gap like this can be filled without waiting
+    // on an upstream release.
     mad_angel: null,
-    maggot_king: null,
+    maggot_king: 'maggotMarquess',
     mimic: null,
     nex: 'nexling',
     nightmare: 'littleNightmare',
@@ -146,7 +155,8 @@ const BOSS_PETS = {
     sarachnis: 'sraracha',
     scorpia: 'scorpiasOffspring',
     scurrius: 'scurry',
-    shellbane_gryphon: null,
+    // `gullPet`, not `gull` — the bare name is the bird, this is the pet.
+    shellbane_gryphon: 'gullPet',
     skotizo: 'skotos',
     sol_heredit: 'smolHeredit',
     // Spindel is Venenatis's solo form; same spiderling.
@@ -156,6 +166,7 @@ const BOSS_PETS = {
     the_corrupted_gauntlet: 'corruptedYoungllef',
     the_hueycoatl: 'huberte',
     the_leviathan: 'lilviathan',
+    // Bran. Same story as mad_angel above.
     the_royal_titans: null,
     the_whisperer: 'wisp',
     theatre_of_blood: 'lilZik',
@@ -170,7 +181,7 @@ const BOSS_PETS = {
     vetion: 'vetionJr',
     vorkath: 'vorki',
     wintertodt: 'phoenix',
-    yama: null,
+    yama: 'yami',
     zalcano: 'smolcano',
     zulrah: 'petSnakeling',
 };
