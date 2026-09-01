@@ -46,11 +46,49 @@ osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.
 ├── routes/web.php
 ├── ui.config.ts          Nuxt UI theme (colors, component overrides) — wired into vite.config.js
 ├── lang/en.json           flat dotted-key translations (see i18n below)
-└── docs/backlog.md         living priority list — SSR gotchas, what's done, what's not
+├── docs/backlog.md         living priority list — only what is still open
+├── docs/ideas.md           thought through, not scheduled
+├── docs/ssr-gotchas.md     sixteen render traps, every one hit for real
+├── docs/discord.md         how the own Discord server is laid out
+└── docs/backlog-archive-2026-08.md   the old backlog, kept whole
 ```
 
 Stack: Laravel 13 · Inertia.js v2 · Vue 3 · `@nuxt/ui` v4 · Tailwind v4 ·
 Eloquent/PostgreSQL · Laravel Socialite (Discord OAuth).
+
+### Which doc gets what — decide this, don't invent a new file
+
+Reorganised 2026-08-30, when the old backlog hit 5432 lines and its open work
+became unfindable. The split only holds if new findings land in the right one,
+so: **write it into one of these, never into a new document.**
+
+| It is… | It goes in |
+|---|---|
+| still to do, and will actually be picked up | `docs/backlog.md` |
+| a real idea, thought through, not scheduled | `docs/ideas.md` |
+| a render/SSR trap that bit us once | `docs/ssr-gotchas.md` |
+| a fact about how the own Discord server is set up | `docs/discord.md` |
+| finished — `[x]` plus what was built | stays put in `docs/backlog.md` |
+
+Three rules that are easy to get wrong:
+
+- **Finished items stay.** Mark `[x]` with a note on what was built and leave
+  it in place. A `[x]` is "I built it", which is not the same claim as "it
+  works" — only the owner deletes a line, after verifying it. Never tidy them
+  away on your own initiative.
+- **`docs/backlog-archive-2026-08.md` is closed.** Read it for history and for
+  the reasoning behind a decision; don't add to it, don't delete from it. Code
+  comments across `app/`, `database/` and `resources/js` that cite
+  `docs/backlog.md` as provenance mean that archive — same convention as the
+  deleted `stale/` paths.
+- **Moving an item between backlog and ideas is normal.** Something that keeps
+  getting skipped belongs in `ideas.md`; something whose turn has come moves
+  back. That is the mechanism, not a failure of planning.
+
+`docs/PROGRESS.md` and `docs/ROADMAP.md` are the historical record of the old
+NestJS/Nuxt stack plus the product roadmap; `docs/legal-review.md`,
+`docs/runelite-plugin.md` and `docs/bingo-research.md` are single-subject
+references. None of those four are places to file new work.
 
 ---
 
@@ -89,7 +127,7 @@ Do not extract prematurely. Inline logic is fine for small-to-medium components.
 - **In `<template>`**: use the global property directly — `$t('boards.title')`. No import needed.
 - **In `<script setup>`**: `$t` is a Vue globalProperty and is NOT reachable from script —
   `import { trans } from 'laravel-vue-i18n'` and call `trans('key')` instead. This is the
-  same class of gotcha as Ziggy's `route()` (see SSR gotchas in `docs/backlog.md`): a
+  same class of gotcha as Ziggy's `route()` (see `docs/ssr-gotchas.md`): a
   template-only global helper that silently doesn't exist in script scope.
 - **Placeholders use Laravel's `:name` syntax**, not vue-i18n's `{name}` —
   `trans('validation.title_too_long', { max: 100 })` for a string stored as
@@ -125,7 +163,7 @@ Do not extract prematurely. Inline logic is fine for small-to-medium components.
 - Edit (`entityId` set): renders `u-tabs` for free navigation between sections.
 - Never create a dedicated `/*/create` page for entities that have a modal edit flow.
 
-## SSR — read `docs/backlog.md`'s "SSR gotchas" list before touching anything render-related
+## SSR — read `docs/ssr-gotchas.md` before touching anything render-related
 That list documents real, previously-hit bugs (Nuxt UI's `#imports` barrel crashing SSR
 startup, `<ClientOnly>` requirements for interactive `@nuxt/ui` components, Ziggy's
 `route()` script-vs-template split, JSON-LD via Blade not Inertia's `<Head>`, etc.).
@@ -295,4 +333,4 @@ php artisan push:sweep --dry-run   # what the time-based sweep would send
 - Do not call `route()` or `$t()` from `<script setup>` JS — both are template-only globals;
   use `trans()` (i18n) directly, and restructure around `route()`'s template-only requirement
 - Do not add `ssr.noExternal` for `@nuxt/ui` in `vite.config.js` — it silently breaks Vue's
-  component resolution globally instead of crashing loudly (see `docs/backlog.md`)
+  component resolution globally instead of crashing loudly (see `docs/ssr-gotchas.md`)
