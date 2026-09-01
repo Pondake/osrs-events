@@ -30,6 +30,8 @@ From here on, new work gets an entry as it lands.
   new admin page. The remaining eight drop no pet at all.
 - Admin: a boss icon can be set by hand, sourced from the OSRS Wiki, without
   waiting on a package release.
+- A weekly check proposes wiki images for bosses without an icon. It never
+  applies one — proposals queue for approval, and a dismissal is remembered.
 
 ## 2026-08-30 — Host approval for tiles
 

@@ -8,6 +8,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\BossIconService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -153,6 +155,91 @@ class BossIconTest extends TestCase
         ])->assertSessionHasErrors('icon_url');
 
         $this->assertSame(0, BossIcon::count());
+    }
+
+    // ------------------------------------------------- the weekly suggestion
+
+    /**
+     * The check proposes and never applies.
+     *
+     * That is the rule the backlog set before any of this existed, and it is
+     * the whole reason there is an approval queue rather than a job that
+     * writes icons: a wrong picture on a live event page is worse than a
+     * blank one.
+     */
+    #[Test]
+    public function the_check_proposes_rather_than_applies(): void
+    {
+        Http::fake(['oldschool.runescape.wiki/*' => Http::response(['query' => ['pages' => [[
+            'pageid' => 1,
+            'title' => 'Obor',
+            'thumbnail' => ['source' => 'https://oldschool.runescape.wiki/images/Obor.png'],
+            'fullurl' => 'https://oldschool.runescape.wiki/w/Obor',
+        ]]]])]);
+
+        $this->artisan('boss-icons:suggest')->assertSuccessful();
+
+        $row = BossIcon::where('metric', 'obor')->first();
+
+        $this->assertNotNull($row->suggested_url);
+        $this->assertNull($row->icon_url, 'a proposal must not become the icon on its own');
+        $this->assertSame('none', $this->entryFor('obor')['source']);
+    }
+
+    #[Test]
+    public function approving_a_proposal_puts_it_in_force(): void
+    {
+        BossIcon::create(['metric' => 'obor', 'suggested_url' => 'https://example.com/obor.png']);
+
+        $this->actingAs($this->admin())
+            ->post('/admin/boss-icons/obor/approve')
+            ->assertSessionHasNoErrors();
+
+        $row = BossIcon::where('metric', 'obor')->first();
+
+        $this->assertSame('https://example.com/obor.png', $row->icon_url);
+        // Cleared, or the row would sit in the queue forever.
+        $this->assertNull($row->suggested_url);
+    }
+
+    /**
+     * A dismissal has to be remembered, or the same picture comes back every
+     * Monday and the queue becomes noise somebody stops reading.
+     */
+    #[Test]
+    public function a_dismissed_proposal_is_not_offered_again(): void
+    {
+        Http::fake(['oldschool.runescape.wiki/*' => Http::response(['query' => ['pages' => [[
+            'pageid' => 1,
+            'title' => 'Obor',
+            'thumbnail' => ['source' => 'https://oldschool.runescape.wiki/images/Obor.png'],
+            'fullurl' => 'https://oldschool.runescape.wiki/w/Obor',
+        ]]]])]);
+
+        $this->artisan('boss-icons:suggest')->assertSuccessful();
+
+        $this->actingAs($this->admin())->post('/admin/boss-icons/obor/dismiss');
+
+        $row = BossIcon::where('metric', 'obor')->first();
+        $this->assertNull($row->suggested_url);
+        $this->assertSame('https://oldschool.runescape.wiki/images/Obor.png', $row->dismissed_url);
+
+        // The wiki answers with the same image; nothing should be proposed.
+        Cache::flush();
+        $this->artisan('boss-icons:suggest')->assertSuccessful();
+
+        $this->assertNull(BossIcon::where('metric', 'obor')->first()->suggested_url);
+    }
+
+    /** Only an admin rules on the queue. */
+    #[Test]
+    public function approving_is_shut_to_an_ordinary_player(): void
+    {
+        BossIcon::create(['metric' => 'obor', 'suggested_url' => 'https://example.com/obor.png']);
+        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+
+        $this->actingAs($player)->post('/admin/boss-icons/obor/approve')->assertForbidden();
+        $this->assertNull(BossIcon::where('metric', 'obor')->first()->icon_url);
     }
 
     #[Test]

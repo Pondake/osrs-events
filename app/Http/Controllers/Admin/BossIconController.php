@@ -64,6 +64,45 @@ class BossIconController extends Controller
     }
 
     /**
+     * Accept a proposal from the weekly check, putting it in force.
+     *
+     * The proposal is moved rather than copied: once it is the icon it is no
+     * longer waiting on anybody, and leaving it in both columns would keep the
+     * row at the top of the queue forever.
+     */
+    public function approve(Request $request, string $metric): RedirectResponse
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        $row = BossIcon::where('metric', $metric)->whereNotNull('suggested_url')->firstOrFail();
+
+        $row->update(['icon_url' => $row->suggested_url, 'suggested_url' => null]);
+
+        return back()->with('board-save', trans('admin.boss_icon_saved'));
+    }
+
+    /**
+     * Turn a proposal down, and remember which one.
+     *
+     * The URL is kept in `dismissed_url` so the weekly check does not offer
+     * the same picture again next Monday. A different one for the same boss
+     * still can — the memory is of an image, not of a decision to stop
+     * looking.
+     */
+    public function dismiss(Request $request, string $metric): RedirectResponse
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        $row = BossIcon::where('metric', $metric)->whereNotNull('suggested_url')->firstOrFail();
+
+        $row->update(['dismissed_url' => $row->suggested_url, 'suggested_url' => null]);
+
+        // Nothing left on the row at all: no icon, no proposal. Keeping it
+        // would only be keeping the dismissal, which is the point.
+        return back()->with('board-save', trans('admin.boss_icon_dismissed'));
+    }
+
+    /**
      * Drop an override, falling back to the committed sprite.
      *
      * Not "clear the icon": deleting the row restores whatever the package

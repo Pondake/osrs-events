@@ -7,6 +7,41 @@
             <p class="text-sm text-muted mt-1 max-w-3xl">{{ $t('admin.boss_icons_desc') }}</p>
         </div>
 
+        <!-- Proposals first, and visually apart, because they are the only
+             thing on this page that is waiting on somebody. Everything below
+             is already settled and is here to be corrected, not read. -->
+        <section v-if="suggested.length" class="mb-8">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-muted mb-2">
+                {{ $t('admin.boss_icons_pending', { count: suggested.length }) }}
+            </h2>
+            <p class="text-sm text-muted mb-3 max-w-3xl">{{ $t('admin.boss_icons_pending_desc') }}</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <u-card v-for="boss in suggested" :key="boss.metric" :ui="{ root: 'ring-primary/40' }">
+                    <div class="flex items-start gap-3">
+                        <div class="size-10 shrink-0 rounded-md bg-elevated flex items-center justify-center overflow-hidden">
+                            <img :src="boss.suggested" alt="" class="max-size-full object-contain">
+                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            <p class="font-medium text-highlighted truncate">{{ label(boss.metric) }}</p>
+                            <!-- Says what it would replace, because approving
+                                 over a real pet sprite is a different decision
+                                 from filling a blank. -->
+                            <p class="text-xs text-muted">
+                                {{ boss.url ? $t('admin.boss_icons_would_replace') : $t('admin.boss_icons_would_fill') }}
+                            </p>
+
+                            <div class="flex items-center gap-2 mt-2">
+                                <u-button size="xs" color="primary" icon="i-lucide-check" :label="$t('admin.boss_icons_approve')" @click="approve(boss)" />
+                                <u-button size="xs" color="neutral" variant="ghost" :label="$t('admin.boss_icons_dismiss')" @click="dismiss(boss)" />
+                            </div>
+                        </div>
+                    </div>
+                </u-card>
+            </div>
+        </section>
+
         <!-- The ones without an icon first, because they are the only reason
              to open this page. Everything else is already right and is here to
              be corrected, not to be found. -->
@@ -113,6 +148,9 @@ const props = defineProps({
     bosses: { type: Array, default: () => [] },
 });
 
+// Anything the weekly check has proposed and nobody has ruled on yet.
+const suggested = computed(() => props.bosses.filter((boss) => boss.suggested));
+
 const search = ref('');
 const onlyMissing = ref(false);
 
@@ -161,6 +199,14 @@ function save() {
         onError: (errors) => { error.value = errors.icon_url ?? errors.metric ?? null; },
         onFinish: () => { saving.value = false; },
     });
+}
+
+function approve(boss) {
+    router.post(`/admin/boss-icons/${boss.metric}/approve`, {}, { preserveScroll: true });
+}
+
+function dismiss(boss) {
+    router.post(`/admin/boss-icons/${boss.metric}/dismiss`, {}, { preserveScroll: true });
 }
 
 /**

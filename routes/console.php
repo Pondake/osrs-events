@@ -60,3 +60,18 @@ Schedule::command('push:sweep')
     ->onOneServer()
     ->runInBackground()
     ->onSuccess(fn () => ScheduleHeartbeat::record('push:sweep'));
+
+/**
+ * New bosses arrive with every game update, and the icon package lags them.
+ *
+ * Weekly rather than daily: the thing it watches for moves on Jagex's release
+ * cadence, not ours, and every run is a handful of requests to somebody else's
+ * wiki. It proposes and never applies — see SuggestBossIcons for why that is
+ * the rule and not caution.
+ */
+Schedule::command('boss-icons:suggest')
+    ->weeklyOn(1, '04:00')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->runInBackground()
+    ->onSuccess(fn () => ScheduleHeartbeat::record('boss-icons:suggest'));

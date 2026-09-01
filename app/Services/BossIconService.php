@@ -37,21 +37,28 @@ class BossIconService
      * an icon or not — the ones without are exactly what somebody opens that
      * page to fix.
      *
-     * @return array<int, array{metric: string, url: string|null, source: string}>
+     * @return array<int, array{metric: string, url: string|null, source: string, suggested: string|null}>
      */
     public function all(): array
     {
-        $overrides = BossIcon::pluck('icon_url', 'metric');
+        $rows = BossIcon::get(['metric', 'icon_url', 'suggested_url'])->keyBy('metric');
 
-        return array_map(function (string $metric) use ($overrides) {
-            if ($url = $overrides->get($metric)) {
-                return ['metric' => $metric, 'url' => $url, 'source' => 'custom'];
-            }
+        return array_map(function (string $metric) use ($rows) {
+            $row = $rows->get($metric);
+            $sprite = $this->spriteUrl($metric);
 
             return [
                 'metric' => $metric,
-                'url' => $this->spriteUrl($metric),
-                'source' => $this->spriteUrl($metric) === null ? 'none' : 'sprite',
+                'url' => $row?->icon_url ?? $sprite,
+                'source' => match (true) {
+                    $row?->icon_url !== null => 'custom',
+                    $sprite !== null => 'sprite',
+                    default => 'none',
+                },
+                // Carried alongside rather than folded into `url`: a proposal
+                // is not in force, and the page has to be able to show both
+                // what is showing now and what is being offered instead.
+                'suggested' => $row?->suggested_url,
             ];
         }, Event::BOSS_METRICS);
     }
