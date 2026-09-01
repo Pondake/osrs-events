@@ -53,7 +53,10 @@ class LandingPageFaqTest extends TestCase
 
     #[Test]
     #[DataProvider('guidePaths')]
-    public function the_page_itself_still_renders_without_any_row(string $path): void
+    // `$slug` is unused here and declared anyway: the provider is shared with
+    // the test above, and PHPUnit 12 warns (and exits non-zero) on a data set
+    // wider than the method that receives it.
+    public function the_page_itself_still_renders_without_any_row(string $path, string $slug): void
     {
         $this->get($path)->assertOk();
     }

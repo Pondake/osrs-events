@@ -42,7 +42,10 @@ class NewGuidePagesTest extends TestCase
 
     #[Test]
     #[DataProvider('guides')]
-    public function its_faq_reaches_the_json_ld(string $path): void
+    // `$component` is unused here and declared anyway — see the same shape in
+    // LandingPageFaqTest: a shared provider wider than the method it feeds is
+    // a PHPUnit 12 warning, and a warning makes the suite exit non-zero.
+    public function its_faq_reaches_the_json_ld(string $path, string $component): void
     {
         $html = $this->get($path)->getContent();
 
