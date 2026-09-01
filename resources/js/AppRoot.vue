@@ -160,7 +160,7 @@ import AppHeader from '@/Components/AppHeader.vue';
 import AppFooter from '@/Components/AppFooter.vue';
 import RichText from '@/Components/RichText.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
-import { styleFor } from '@/Support/announcement';
+import { bannerBgFor, bannerIconFor, styleFor } from '@/Support/announcement';
 import { isLandingPage } from '@/Support/landing';
 import { CURRENT_PAGE } from '@/Support/pageState';
 import { usePush } from '@/Composables/usePush';
@@ -401,23 +401,10 @@ function dismissAnnouncement() {
 }
 const bannerStyle = computed(() => styleFor(inertiaPage.value.props?.site?.announcementType));
 
-// Written out per colour rather than built as `bg-${color}/10`: Tailwind
-// scans source text for class names, so an interpolated one is never
-// generated and the banner would render with no background at all.
-const BANNER_BG = {
-    primary: 'bg-primary/10',
-    success: 'bg-success/10',
-    warning: 'bg-warning/10',
-    error: 'bg-error/10',
-};
-const BANNER_ICON = {
-    primary: 'text-primary',
-    success: 'text-success',
-    warning: 'text-warning',
-    error: 'text-error',
-};
-const bannerClass = computed(() => BANNER_BG[bannerStyle.value.color]);
-const bannerIconClass = computed(() => BANNER_ICON[bannerStyle.value.color]);
+// Both maps moved to Support/announcement.js when the lock screen became a
+// third renderer of this same banner — see the note there.
+const bannerClass = computed(() => bannerBgFor(inertiaPage.value.props?.site?.announcementType));
+const bannerIconClass = computed(() => bannerIconFor(inertiaPage.value.props?.site?.announcementType));
 
 // Local ref seeded from the shared prop rather than bound straight to it:
 // the modal writes to this on close, and the server prop only flips after

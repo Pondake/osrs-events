@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Setting;
 use Closure;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -141,7 +142,23 @@ class EnsureSiteUnlocked
             abort(423, trans('lock.locked'));
         }
 
-        return redirect()->route('site-lock.show');
+        // A HARD navigation, not an Inertia page swap.
+        //
+        // Reported 2026-08-31 from staging: somebody had the site open before
+        // the lock went on, so their tab was still holding props from when it
+        // was unlocked — full nav, user menu, the lot. Their next click was an
+        // Inertia visit, and Inertia deliberately leaves the current page on
+        // screen until the response lands, so the whole signed-in site sat
+        // there for the length of the request before the lock screen replaced
+        // it. The condition was never late; the CLIENT was stale.
+        //
+        // Inertia::location() answers an Inertia request with 409 +
+        // X-Inertia-Location, which the client turns into a real browser
+        // navigation — the stale page is torn down rather than re-rendered
+        // around. A plain request still gets an ordinary 302, so nothing else
+        // changes. Same mechanism DiscordController::redirect() uses, for a
+        // different reason.
+        return Inertia::location(route('site-lock.show'));
     }
 
     /**

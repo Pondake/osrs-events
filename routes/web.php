@@ -30,6 +30,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\Settings\AccountController;
+use App\Http\Controllers\Settings\ConnectionsController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\SiteLockController;
@@ -142,19 +143,29 @@ Route::get('/events/all', [BoardController::class, 'all'])->name('events.all');
 Route::get('/my-events', [BoardController::class, 'mine'])
     ->middleware(['auth', 'require-osrs-username'])
     ->name('events.mine');
-Route::get('/events/{event}', [BoardController::class, 'show'])
-    ->middleware(['auth', 'require-osrs-username'])
-    ->name('events.show');
+// Readable without an account, deliberately — see
+// BoardAccessService::canView(). `/events` lists public events to strangers
+// and every card on it is a link, so gating the page those links point at
+// behind `auth` made the index a list of dead ends. The controller decides
+// what a signed-out visitor may open; the middleware cannot, because it
+// cannot see the event.
+//
+// `require-osrs-username` goes with it for the same reason: it exists to stop
+// somebody PLAYING without a name to score, and reading is not playing. Every
+// endpoint that acts on an event still carries both — see the group below.
+Route::get('/events/{event}', [BoardController::class, 'show'])->name('events.show');
 Route::get('/events/{event}/leaderboard', [LeaderboardController::class, 'show'])
-    ->middleware(['auth', 'require-osrs-username'])
     ->name('events.leaderboard');
 
 // Server-sent events, not a normal endpoint: it holds a PHP worker open for
 // ~45 seconds per connected viewer. One route for every event type — the
 // controller resolves a channel by type and knows nothing else. See
 // EventStreamController for why SSE over WebSockets and what it costs.
+// Open to the same readers as the page it belongs to: the channel is public
+// by design (one stream shared by every viewer, never carrying per-viewer
+// state — see EventStreamController), and a public event page whose live
+// indicator 403s would report itself broken to every signed-out visitor.
 Route::get('/events/{event}/stream', EventStreamController::class)
-    ->middleware(['auth', 'require-osrs-username'])
     ->name('events.stream');
 Route::get('/events/{event}/join/{token}', [BoardController::class, 'joinByLink'])->name('events.join-link');
 
@@ -294,6 +305,9 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::put('/settings/account/password', [AccountController::class, 'updatePassword'])
         ->middleware('throttle:5,1')
         ->name('settings.account.password');
+    // The services this account is wired to, on their own page — see
+    // ConnectionsController for why this is not part of Account.
+    Route::get('/settings/connections', [ConnectionsController::class, 'show'])->name('settings.connections');
 
     // Linking flow reuses DiscordController's existing redirect()/callback() OAuth
     // plumbing rather than a parallel implementation — connect() just stashes

@@ -101,7 +101,12 @@ const loadingGuilds = ref(false);
 /** "Just me" first — a format is personal until somebody says otherwise. */
 const guildOptions = computed(() => [
     { value: '', label: trans('blueprints.who_for_me') },
-    ...guilds.value.map((guild) => ({ value: guild.id, label: guild.name })),
+    // Always an avatar, initials when there is no icon — see TeamSettingsModal.
+    ...guilds.value.map((guild) => ({
+        value: guild.id,
+        label: guild.name,
+        avatar: { src: guild.icon_url ?? undefined, alt: guild.name },
+    })),
 ]);
 
 function open() {

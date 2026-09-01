@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureSiteUnlocked;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,6 +69,69 @@ class DiscordRegistrationLockTest extends TestCase
         Mockery::close();
 
         parent::tearDown();
+    }
+
+    /**
+     * The beta case, added 2026-08-30.
+     *
+     * Somebody who typed the shared password is not a stranger any more —
+     * the door already let them in, and they could already register through
+     * the email form, which stops at `registration_open` and nothing else.
+     * Refusing them at "Continue with Discord" gave one person two different
+     * answers depending on which button they pressed, and Discord is the
+     * button a clan actually uses.
+     */
+    #[Test]
+    public function the_shared_password_lets_a_newcomer_in_through_discord(): void
+    {
+        $this->lock();
+        $this->discordAnswers('123123123');
+
+        // What SiteLockController writes once the password matches. Set
+        // directly rather than by POSTing the form: this test is about what
+        // the callback does with the flag, and SiteLockTest already proves
+        // the flag gets written.
+        $this->withSession([EnsureSiteUnlocked::SESSION_KEY => true]);
+
+        $this->get('/auth/discord/callback?code=whatever')->assertRedirect();
+
+        $this->assertNotNull(User::where('discord_id', '123123123')->first());
+        $this->assertAuthenticated();
+    }
+
+    /**
+     * Full lockdown is not softened by anything, the shared password
+     * included — "nothing but an admin session gets through" has to stay
+     * literally true, or the stricter switch is weaker than the looser one.
+     */
+    #[Test]
+    public function full_lockdown_refuses_discord_even_with_the_unlock_flag(): void
+    {
+        Setting::setMany(['admin_lockdown_enabled' => true]);
+        $this->discordAnswers('321321321');
+
+        $this->withSession([EnsureSiteUnlocked::SESSION_KEY => true]);
+
+        $this->get('/auth/discord/callback?code=whatever')->assertRedirect('/login');
+
+        $this->assertNull(User::where('discord_id', '321321321')->first());
+        $this->assertGuest();
+    }
+
+    /** An admin's explicit "no" outranks the door password. */
+    #[Test]
+    public function a_closed_registration_switch_outranks_the_unlock_flag(): void
+    {
+        $this->lock();
+        Setting::setMany(['registration_open' => false]);
+        $this->discordAnswers('456456456');
+
+        $this->withSession([EnsureSiteUnlocked::SESSION_KEY => true]);
+
+        $this->get('/auth/discord/callback?code=whatever')->assertRedirect('/login');
+
+        $this->assertNull(User::where('discord_id', '456456456')->first());
+        $this->assertGuest();
     }
 
     #[Test]

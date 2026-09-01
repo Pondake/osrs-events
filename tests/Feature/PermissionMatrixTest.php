@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BingoCompletion;
 use App\Models\BoardAuthor;
 use App\Models\Event;
 use App\Models\Permission;
@@ -9,6 +10,7 @@ use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\BingoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -146,11 +148,27 @@ class PermissionMatrixTest extends TestCase
         ]);
     }
 
+    /**
+     * A listed event opens for everyone, signed in or not — changed
+     * 2026-08-31. `/events` had always advertised these to strangers with
+     * clickable cards, and every one of those clicks hit a login redirect.
+     */
     #[Test]
-    public function an_event_page_needs_a_login_and_nothing_more(): void
+    public function a_listed_event_page_is_open_to_everyone(): void
     {
         $this->assertMatrix('GET', "/events/{$this->event->id}", [
-            'guest' => 'redirect', 'player' => 200, 'co-host' => 200, 'owner' => 200, 'admin' => 200,
+            'guest' => 200, 'player' => 200, 'co-host' => 200, 'owner' => 200, 'admin' => 200,
+        ]);
+    }
+
+    /** An unlisted one still asks who you are. Nothing about it was public. */
+    #[Test]
+    public function an_unlisted_event_page_still_needs_a_login(): void
+    {
+        $this->event->update(['is_listed' => false]);
+
+        $this->assertMatrix('GET', "/events/{$this->event->id}", [
+            'guest' => 'redirect', 'owner' => 200, 'admin' => 200,
         ]);
     }
 
@@ -163,7 +181,11 @@ class PermissionMatrixTest extends TestCase
     #[Test]
     public function a_private_event_shows_the_gate_to_a_stranger(): void
     {
-        $this->event->update(['access_mode' => 'INVITE']);
+        // Unlisted as well as invite-only: since 2026-08-31 a LISTED
+        // invite-only event is readable by anyone, with the roster withheld
+        // rather than the page — the gate is what an unadvertised event
+        // shows.
+        $this->event->update(['access_mode' => 'INVITE', 'is_listed' => false]);
 
         $this->actingAs($this->player('Stranger'))
             ->get("/events/{$this->event->id}")
@@ -437,6 +459,113 @@ class PermissionMatrixTest extends TestCase
         }
     }
 
+    // ------------------------------------- progress is public, names are not
+
+    /**
+     * The rule set 2026-08-31, in the owner's own words: a public event may
+     * be read and its player progression seen, but if the access mode is not
+     * OPEN the players are anonymous — progress yes, roster no.
+     *
+     * Listing an event advertises that it exists. It does not publish the
+     * clan's roster, and a host who set INVITE said so twice.
+     */
+    #[Test]
+    public function a_listed_invite_only_event_shows_progress_without_names(): void
+    {
+        $this->event->update(['access_mode' => 'INVITE']);
+
+        // A real approved claim, because "every row is anonymous" is
+        // vacuously true of an empty table — the first version of this test
+        // passed without a single standings row in it.
+        $this->approvedClaim();
+
+        $this->get("/events/{$this->event->id}")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                // Every standings row keeps its score and loses its identity.
+                ->where('standings', fn ($rows) => collect($rows)->every(
+                    fn ($row) => $row['name'] === null && $row['avatarUrl'] === null && $row['id'] === null,
+                )));
+    }
+
+    /** On an OPEN event the same reader sees who is playing. */
+    #[Test]
+    public function a_listed_open_event_shows_who_is_playing(): void
+    {
+        $claimant = $this->approvedClaim();
+
+        $this->get("/events/{$this->event->id}")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('standings', fn ($rows) => collect($rows)->contains(
+                    fn ($row) => $row['name'] === $claimant->displayName(),
+                )));
+    }
+
+    /** One approved square, so the standings table has something in it. */
+    private function approvedClaim(): User
+    {
+        $claimant = $this->player('Claimant');
+
+        // The card is created bare in setUp; the controller fills it in on
+        // render, which is too late for a claim made here.
+        app(BingoService::class)->ensureSquares($this->event->bingoCard);
+
+        $square = $this->event->bingoCard->squares()->orderBy('position')->first();
+
+        BingoCompletion::create([
+            'bingo_square_id' => $square->id,
+            'user_id' => $claimant->id,
+            'marked_by' => $claimant->id,
+            'status' => 'APPROVED',
+        ]);
+
+        return $claimant;
+    }
+
+    /**
+     * The way into a listed invite-only event, on the event page itself.
+     *
+     * Boards/AccessGate used to hold the code field, and a listed invite-only
+     * event no longer renders it (see canView) — so without this the only
+     * route in was an invite LINK, and anyone holding a bare code had nowhere
+     * to type it.
+     */
+    #[Test]
+    public function a_listed_invite_only_event_offers_a_code_field_to_outsiders(): void
+    {
+        $this->event->update(['access_mode' => 'INVITE']);
+
+        // Signed out: the card appears and tells them to sign in first, since
+        // the join endpoint is behind auth.
+        $this->get("/events/{$this->event->id}")
+            ->assertInertia(fn ($page) => $page->where('needsInvite', true));
+
+        // Signed in, not in the event: same card, with the field.
+        $this->actingAs($this->player('Stranger'))
+            ->get("/events/{$this->event->id}")
+            ->assertInertia(fn ($page) => $page->where('needsInvite', true));
+    }
+
+    /** Nobody who is already in it should be asked for a code. */
+    #[Test]
+    public function the_code_field_is_not_shown_to_people_already_in_the_event(): void
+    {
+        $this->event->update(['access_mode' => 'INVITE']);
+
+        $this->actingAs($this->owner)
+            ->get("/events/{$this->event->id}")
+            ->assertInertia(fn ($page) => $page->where('needsInvite', false));
+    }
+
+    /** And an OPEN event never asks — there is nothing to hand in. */
+    #[Test]
+    public function an_open_event_never_asks_for_a_code(): void
+    {
+        $this->get("/events/{$this->event->id}")
+            ->assertInertia(fn ($page) => $page->where('needsInvite', false));
+    }
+
     /**
      * The one gate that stands in front of everything else: an account with
      * no OSRS name is sent to the page that asks for one, whatever it was
@@ -454,7 +583,12 @@ class PermissionMatrixTest extends TestCase
         $newcomer = User::factory()->create(['osrs_username' => null, 'onboarding_completed_at' => now()]);
 
         $this->actingAs($newcomer)->get('/my-events')->assertRedirect('/welcome/osrs-username');
-        $this->actingAs($newcomer)->get("/events/{$this->event->id}")->assertRedirect('/welcome/osrs-username');
+
+        // Reading an event is the exception, since 2026-08-31: the gate
+        // exists to stop somebody PLAYING without a name to score, and a
+        // listed event is readable by strangers with no account at all — so
+        // demanding one from a signed-in reader made no sense.
+        $this->actingAs($newcomer)->get("/events/{$this->event->id}")->assertOk();
 
         // And is not locked inside it: the page that asks is reachable, and
         // so is the way out. `from()` gives the POST a session to invalidate,

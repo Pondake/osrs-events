@@ -53,6 +53,37 @@ class SiteLockTest extends TestCase
         $this->get('/events')->assertRedirect('/locked');
     }
 
+    /**
+     * A stale tab is sent away by the browser, not by Inertia.
+     *
+     * Reported from staging 2026-08-31: somebody had the site open before the
+     * lock went on, so their client still held unlocked props — full nav, user
+     * menu, the lot. Inertia leaves the current page on screen until a visit
+     * resolves, so their next click showed the whole signed-in site for the
+     * length of the request before the lock screen replaced it.
+     *
+     * 409 + X-Inertia-Location is what makes the client do a real navigation
+     * and throw that stale page away. An ordinary request still gets a 302 —
+     * the test above covers that half.
+     */
+    #[Test]
+    public function an_inertia_visit_to_a_locked_route_forces_a_full_navigation(): void
+    {
+        $this->lock();
+
+        // The version header matters: without it Inertia sees an asset
+        // mismatch and answers with its OWN 409 pointing back at the
+        // requested URL, which would make this pass for the wrong reason.
+        // (Worth knowing on its own — after a deploy that check already
+        // forces the hard navigation. The gap this closes is a lock toggled
+        // WITHOUT a deploy, which is exactly how it was reported.)
+        $version = app(\App\Http\Middleware\HandleInertiaRequests::class)->version(request());
+
+        $this->get('/events', ['X-Inertia' => 'true', 'X-Inertia-Version' => $version])
+            ->assertStatus(409)
+            ->assertHeader('X-Inertia-Location', url('/locked'));
+    }
+
     #[Test]
     public function the_lock_screen_and_the_login_page_stay_reachable(): void
     {
@@ -138,6 +169,58 @@ class SiteLockTest extends TestCase
         ])->assertRedirect('/locked');
 
         $this->assertNull(User::where('email', 'new@example.com')->first());
+    }
+
+    /**
+     * The beta question, asked 2026-08-30: does typing the shared password
+     * let a stranger make an account?
+     *
+     * For the email form, yes — and that is worth pinning rather than
+     * discovering. `isShutFor()` returns false once the session flag is set,
+     * so the middleware stops intercepting anything, and
+     * `RegisteredUserController` only ever checked `registration_open`. The
+     * password IS the invitation here, which is exactly what a closed beta
+     * wants. Discord signup is the half that does NOT work this way — see
+     * DiscordRegistrationLockTest.
+     */
+    #[Test]
+    public function the_shared_password_lets_a_newcomer_register(): void
+    {
+        $this->lock();
+
+        $this->post('/locked', ['password' => 'clan-secret'])->assertRedirect();
+
+        $this->get('/register')->assertOk();
+
+        $this->post('/register', [
+            'nickname' => 'Newcomer',
+            'osrs_username' => 'BetaTester',
+            'email' => 'beta@example.com',
+            'password' => 'Correct-horse-1',
+            'password_confirmation' => 'Correct-horse-1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertNotNull(User::where('email', 'beta@example.com')->first());
+    }
+
+    /** The admin switch still outranks the door — an explicit no is a no. */
+    #[Test]
+    public function the_shared_password_does_not_beat_a_closed_registration_switch(): void
+    {
+        $this->lock();
+        Setting::setMany(['registration_open' => false]);
+
+        $this->post('/locked', ['password' => 'clan-secret'])->assertRedirect();
+
+        $this->post('/register', [
+            'nickname' => 'Newcomer',
+            'osrs_username' => 'BetaTester',
+            'email' => 'nope@example.com',
+            'password' => 'Correct-horse-1',
+            'password_confirmation' => 'Correct-horse-1',
+        ])->assertForbidden();
+
+        $this->assertNull(User::where('email', 'nope@example.com')->first());
     }
 
     #[Test]
@@ -466,6 +549,59 @@ class SiteLockTest extends TestCase
         $this->assertTrue($settings['site_lock_has_password']);
     }
 
+    // ------------------------------------------------ the public announcement
+
+    /**
+     * The default, and the reason the switch exists at all: an announcement
+     * is normally written for the people already using the site ("summer
+     * bingo starts Friday, sign up in #events"), and the lock screen is the
+     * one page a stranger can reach.
+     *
+     * Withheld, not hidden: the prop must be null, because a value that
+     * reaches the browser has already been disclosed whatever the template
+     * does with it.
+     */
+    #[Test]
+    public function an_announcement_is_withheld_from_a_locked_stranger_by_default(): void
+    {
+        $this->lock();
+        Setting::setMany(['announcement' => 'Summer bingo starts Friday']);
+
+        $this->get('/locked')->assertInertia(
+            fn ($page) => $page->where('site.announcement', null),
+        );
+    }
+
+    /**
+     * Marked public, it is the one thing the door may say — a launch date, a
+     * call for beta testers, a Discord link. Without this the door can say
+     * nothing at all, which makes announcing the site to strangers
+     * pointless: they arrive at a password box with no reason to come back.
+     */
+    #[Test]
+    public function a_public_announcement_reaches_a_locked_stranger(): void
+    {
+        $this->lock();
+        Setting::setMany([
+            'announcement' => 'Looking for beta testers — join the Discord',
+            'announcement_public' => true,
+        ]);
+
+        $this->get('/locked')->assertInertia(
+            fn ($page) => $page->where('site.announcement', 'Looking for beta testers — join the Discord'),
+        );
+    }
+
+    /** Making it public does not make anything ELSE public. */
+    #[Test]
+    public function a_public_announcement_does_not_open_the_door(): void
+    {
+        $this->lock();
+        Setting::setMany(['announcement' => 'Beta soon', 'announcement_public' => true]);
+
+        $this->get('/events')->assertRedirect('/locked');
+    }
+
     /**
      * Saving any other setting used to be the moment a blank password field
      * would have wiped the lock. Blank means unchanged.
@@ -479,17 +615,26 @@ class SiteLockTest extends TestCase
         $admin = User::factory()->create(['osrs_username' => 'TheAdmin']);
         $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
+        // The payload has to be COMPLETE, and the assertion has to be
+        // assertSessionHasNoErrors rather than assertRedirect. This test used
+        // to omit three required fields and assert only a redirect — and a
+        // validation failure is a redirect too, so it passed without the form
+        // ever saving. Found 2026-08-30 by adding a fourth required field and
+        // watching a different test fail while this one stayed green.
         $this->actingAs($admin)->put('/admin/site', [
             'registration_open' => true,
             'default_board_size' => 'SIZE_7X7',
             'default_dice_roll_limit' => 1,
+            'default_event_duration' => '2w',
             'announcement' => null,
             'announcement_type' => 'info',
+            'announcement_public' => false,
+            'discord_webhooks_enabled' => false,
             'kofi_url' => 'https://ko-fi.com/pondake',
             'site_lock_enabled' => true,
             'site_lock_password' => '',
             'admin_lockdown_enabled' => false,
-        ])->assertRedirect();
+        ])->assertSessionHasNoErrors();
 
         $this->assertSame($before, Setting::get('site_lock_password'));
     }
@@ -501,12 +646,17 @@ class SiteLockTest extends TestCase
         $admin = User::factory()->create(['osrs_username' => 'TheAdmin']);
         $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
+        // Complete but for the password, so the error this asserts is the
+        // only one the form could have produced — see the note above.
         $this->actingAs($admin)->put('/admin/site', [
             'registration_open' => true,
             'default_board_size' => 'SIZE_7X7',
             'default_dice_roll_limit' => 1,
+            'default_event_duration' => '2w',
             'announcement' => null,
             'announcement_type' => 'info',
+            'announcement_public' => false,
+            'discord_webhooks_enabled' => false,
             'kofi_url' => 'https://ko-fi.com/pondake',
             'site_lock_enabled' => true,
             'site_lock_password' => '',

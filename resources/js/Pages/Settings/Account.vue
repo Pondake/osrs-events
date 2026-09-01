@@ -4,29 +4,6 @@
     <settings-layout current="account">
         <u-card>
             <template #header>
-                <span class="font-semibold">{{ $t('profile.discord_account') }}</span>
-            </template>
-
-            <div class="flex items-center justify-between gap-4 flex-wrap">
-                <p class="text-sm text-muted">
-                    {{ hasDiscord ? $t('profile.discord_connected_as', { name: user.discordUsername }) : $t('profile.no_discord_desc') }}
-                </p>
-                <u-button
-                    v-if="hasDiscord"
-                    :disabled="!hasPassword"
-                    color="neutral"
-                    variant="outline"
-                    size="sm"
-                    :label="$t('profile.disconnect_discord')"
-                    :title="!hasPassword ? $t('profile.discord_disconnect_needs_password') : undefined"
-                    @click="disconnectDiscord"
-                />
-                <u-button v-else :href="route('settings.discord.connect')" color="primary" variant="outline" size="sm" icon="i-simple-icons-discord" :label="$t('profile.connect_discord')" />
-            </div>
-        </u-card>
-
-        <u-card>
-            <template #header>
                 <span class="font-semibold">{{ $t('profile.email_address') }}</span>
             </template>
 
@@ -328,7 +305,6 @@
 import { computed, ref } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { useAuth } from '@/Composables/useAuth';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import ConfirmPopover from '@/Components/ConfirmPopover.vue';
@@ -336,15 +312,12 @@ import ConfirmPopover from '@/Components/ConfirmPopover.vue';
 const props = defineProps({
     email: { type: String, default: null },
     hasPassword: { type: Boolean, required: true },
-    hasDiscord: { type: Boolean, required: true },
     deletionPhrase: { type: String, default: '' },
     deletion: {
         type: Object,
         default: () => ({ events: [], teams: [], keptEvents: 0 }),
     },
 });
-
-const { user } = useAuth();
 
 const emailForm = useForm({ email: props.email ?? '', current_password: '' });
 
@@ -364,10 +337,6 @@ function submitPassword() {
         preserveScroll: true,
         onSuccess: () => passwordForm.reset(),
     });
-}
-
-function disconnectDiscord() {
-    router.delete('/settings/account/discord', { preserveScroll: true });
 }
 
 // --- closing the account -------------------------------------------------

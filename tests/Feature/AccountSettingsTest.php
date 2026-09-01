@@ -219,7 +219,24 @@ class AccountSettingsTest extends TestCase
 
         $this->assertSame('old@example.com', $props['email']);
         $this->assertTrue($props['hasPassword']);
+    }
+
+    /**
+     * Discord moved to Settings → Connections on 2026-08-30, along with the
+     * Wise Old Man key. `hasPassword` comes with it because the disconnect
+     * button is disabled without one — an account whose only way in is
+     * Discord may not unlink it.
+     */
+    #[Test]
+    public function the_connections_page_says_which_services_are_linked(): void
+    {
+        $user = $this->withPassword();
+        $user->update(['discord_id' => '123']);
+
+        $props = $this->actingAs($user)->get('/settings/connections')->viewData('page')['props'];
+
         $this->assertTrue($props['hasDiscord']);
+        $this->assertTrue($props['hasPassword']);
     }
 
     /** The hash itself has no business leaving the server. */
@@ -239,4 +256,5 @@ class AccountSettingsTest extends TestCase
         $this->put('/settings/account/email', ['email' => 'me@example.com'])->assertRedirect('/login');
         $this->put('/settings/account/password', [])->assertRedirect('/login');
     }
+
 }

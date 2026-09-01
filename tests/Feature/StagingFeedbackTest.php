@@ -145,6 +145,68 @@ class StagingFeedbackTest extends TestCase
         $this->actingAs($mine)->getJson('/my-guilds')->assertOk()->assertJsonPath('guilds', []);
     }
 
+    /**
+     * A Discord account in thirty servers got an alphabetical list, so the two
+     * servers it actually runs events in sat wherever the alphabet put them.
+     * Invisible with one guild, which is why nothing here caught it.
+     */
+    #[Test]
+    public function the_guild_picker_puts_servers_this_account_has_used_first(): void
+    {
+        $user = $this->player();
+
+        foreach (['Alpha Clan' => '111', 'Beta Clan' => '222', 'Zulrah Enjoyers' => '333'] as $name => $id) {
+            UserGuild::create(['user_id' => $user->id, 'guild_id' => $id, 'guild_name' => $name]);
+        }
+
+        // Used most recently: a team joined today, linked to Zulrah Enjoyers.
+        $team = Team::create(['name' => 'Snek Squad', 'guild_id' => '333']);
+        TeamMember::create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'role' => 'MEMBER',
+            'created_at' => now(),
+        ]);
+
+        // Used, but longer ago: an event this account authors, on Beta Clan.
+        $event = $this->race(['access_mode' => 'GUILD', 'required_guild_id' => '222']);
+        $event->forceFill(['created_at' => now()->subWeek()])->save();
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $user->id, 'is_owner' => true]);
+
+        // Alpha Clan is untouched, so it falls to the bottom despite winning
+        // the alphabet — which is the whole point.
+        $this->actingAs($user)
+            ->getJson('/my-guilds')
+            ->assertOk()
+            ->assertJsonPath('guilds.0.name', 'Zulrah Enjoyers')
+            ->assertJsonPath('guilds.1.name', 'Beta Clan')
+            ->assertJsonPath('guilds.2.name', 'Alpha Clan');
+    }
+
+    /**
+     * `guild_icon` holds Discord's hash, not a URL. Three components render
+     * this list and none of them should have to know that.
+     */
+    #[Test]
+    public function a_guild_icon_hash_becomes_a_usable_cdn_url(): void
+    {
+        $user = $this->player();
+
+        UserGuild::create(['user_id' => $user->id, 'guild_id' => '111', 'guild_name' => 'A Static', 'guild_icon' => 'abc123']);
+        UserGuild::create(['user_id' => $user->id, 'guild_id' => '222', 'guild_name' => 'B Animated', 'guild_icon' => 'a_def456']);
+        UserGuild::create(['user_id' => $user->id, 'guild_id' => '333', 'guild_name' => 'C None', 'guild_icon' => null]);
+
+        $this->actingAs($user)
+            ->getJson('/my-guilds')
+            ->assertOk()
+            ->assertJsonPath('guilds.0.icon_url', 'https://cdn.discordapp.com/icons/111/abc123.png?size=64')
+            // An `a_` prefix means an animated icon, which is only served as a
+            // gif — asking for the png gives a 404, not a still frame.
+            ->assertJsonPath('guilds.1.icon_url', 'https://cdn.discordapp.com/icons/222/a_def456.gif?size=64')
+            // No icon is a normal state for a Discord server, not an error.
+            ->assertJsonPath('guilds.2.icon_url', null);
+    }
+
     // ---------------------------------------------------- participation cap
 
     /**

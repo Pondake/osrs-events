@@ -16,7 +16,15 @@ use InvalidArgumentException;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/** Auth-method settings — linked accounts and password. See ProfileController for the display side. */
+/**
+ * How you get into this account, and how you close it: email, password,
+ * deletion.
+ *
+ * Linked services (Discord, Wise Old Man) moved to ConnectionsController on
+ * 2026-08-30 — this page was doing two unrelated jobs, and which outside
+ * services an account talks to is a different question from how it is signed
+ * into. See ProfileController for the display side.
+ */
 class AccountController extends Controller
 {
     public function show(AccountDeletionService $deletion): Response
@@ -26,7 +34,6 @@ class AccountController extends Controller
         return Inertia::render('Settings/Account', [
             'email' => $user->email,
             'hasPassword' => $user->password !== null,
-            'hasDiscord' => $user->discord_id !== null,
 
             // What closing the account would still need decided. Loaded with
             // the page rather than behind a button: somebody weighing whether

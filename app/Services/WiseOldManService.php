@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\WiseOldManRateLimited;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -46,6 +47,11 @@ class WiseOldManService
      * Read rather than assumed constant: pacing every install at the
      * anonymous rate means an operator who went and got a key still waits
      * three seconds a participant for no reason.
+     *
+     * One key for the whole deployment, and Wise Old Man asked for it that
+     * way (2026-08-31): per-user keys would mean this site collecting other
+     * people's credentials, and one backend key is also how they can see
+     * what this site is doing request-wise. See the backlog entry.
      */
     public function requestsPerMinute(): int
     {
@@ -169,6 +175,18 @@ class WiseOldManService
             // tracked this name. The caller turns it into a message telling
             // the participant to look themselves up once.
             return null;
+        }
+
+        // Separated from the failure below on purpose. Falling through to
+        // `return null` here made the caller write `sync_error =
+        // 'not_tracked'`, whose message sends the player to wiseoldman.net to
+        // look up a name that is already tracked perfectly well — wrong
+        // advice, and it blames them for our pacing. Thrown rather than
+        // returned so it cannot be mistaken for an answer.
+        if ($response->status() === 429) {
+            Log::warning('Wise Old Man rate limit reached', ['username' => $username]);
+
+            throw new WiseOldManRateLimited($username);
         }
 
         if (! $response->successful()) {

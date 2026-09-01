@@ -67,7 +67,15 @@ class EventStreamController extends Controller
         // connection — holding a worker open for an event that can never push
         // anything is pure cost.
         abort_if($channel === null, 404);
-        abort_unless($access->hasAccess($request->user(), $event), 403);
+        // canSeeParticipants, not canView, and the difference matters here
+        // more than anywhere else: one stream is shared by every viewer and
+        // can never carry per-viewer state, so it cannot anonymise itself for
+        // some readers and not others. On a listed invite-only event that
+        // leaves one honest answer — the people who may see who is playing
+        // get the live channel, and a stranger reads a page that does not
+        // update itself. An OPEN event is unchanged: its names are public, so
+        // its stream is too.
+        abort_unless($access->canSeeParticipants($request->user(), $event), 403);
 
         // EventSource resends the id of the last event it received, so a
         // reconnect can skip re-sending state the browser already has. Absent

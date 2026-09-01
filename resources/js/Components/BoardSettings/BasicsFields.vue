@@ -20,32 +20,36 @@
              status badge, every standings range and the bingo cutoff key off
              one — so the form starts with a sensible one instead of asking
              for something nobody has an opinion about yet. -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <u-form-field
-                :label="$t('admin.start_date')"
-                :description="$t('admin.start_date_desc')"
-                :error="form.errors.start_date"
-                required
-            >
-                <u-input v-model="form.start_date" type="date" class="w-full" />
-            </u-form-field>
+        <!-- One field, not two. The old pair of `<input type="date">` boxes
+             asked for two decisions where a host is making one, and an end
+             before a start was only caught by `min` on the second box (and by
+             the server) rather than being unreachable. A range calendar
+             cannot express that order at all.
 
-            <u-form-field
-                :label="$t('admin.end_date')"
-                :error="form.errors.end_date"
-                :description="$t('admin.end_date_desc')"
-                required
-            >
-                <!-- min, not just a validation rule: the picker itself stops
-                     offering a day before the start, so the invalid choice is
-                     never on screen to be made. -->
-                <u-input v-model="form.end_date" type="date" :min="form.start_date || undefined" class="w-full" />
-            </u-form-field>
-        </div>
+             Both errors are surfaced under the one control: the server still
+             validates start_date and end_date separately, so either can come
+             back, and hiding one of them because the inputs merged would lose
+             a message the host needs. -->
+        <u-form-field
+            :label="$t('admin.event_window')"
+            :description="$t('admin.event_window_desc')"
+            :error="form.errors.start_date || form.errors.end_date"
+            required
+        >
+            <event-date-range
+                :start="form.start_date"
+                :end="form.end_date"
+                :has-error="!!(form.errors.start_date || form.errors.end_date)"
+                @update:start="form.start_date = $event"
+                @update:end="form.end_date = $event"
+            />
+        </u-form-field>
     </div>
 </template>
 
 <script setup>
+import EventDateRange from '@/Components/EventDateRange.vue';
+
 defineProps({
     // The parent's useForm instance. Passed as a shared store rather than
     // decomposed into a dozen value props with matching emits — every field

@@ -161,12 +161,25 @@ class LeaderboardTest extends TestCase
         $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->assertForbidden();
     }
 
+    /**
+     * Readable signed out since 2026-08-31 — a ranking is part of reading a
+     * listed event, and `/events` has always advertised these to strangers.
+     */
     #[Test]
-    public function it_is_not_readable_signed_out(): void
+    public function a_listed_boards_leaderboard_is_readable_signed_out(): void
     {
         [, $event] = $this->board();
 
-        $this->get("/events/{$event->id}/leaderboard")->assertRedirect('/login');
+        $this->get("/events/{$event->id}/leaderboard")->assertOk();
+    }
+
+    /** An unlisted one still is not: nothing about it was ever public. */
+    #[Test]
+    public function an_unlisted_boards_leaderboard_is_still_refused_signed_out(): void
+    {
+        [, $event] = $this->board(['is_listed' => false]);
+
+        $this->get("/events/{$event->id}/leaderboard")->assertForbidden();
     }
 
     /** An empty grid must not produce a negative "tiles remaining". */

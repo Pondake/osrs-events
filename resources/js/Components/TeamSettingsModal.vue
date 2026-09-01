@@ -35,6 +35,7 @@
                         v-if="guildOptions.length > 1"
                         v-model="form.guild_id"
                         :items="guildOptions"
+                        :avatar="selectedGuildAvatar"
                         :loading="loadingGuilds"
                         class="w-full"
                     />
@@ -94,10 +95,30 @@ const form = useForm(blank());
 const guilds = ref([]);
 const loadingGuilds = ref(false);
 
+// Every server gets an `avatar`, even one with no icon — `src: undefined`
+// makes UAvatar fall back to initials from `alt` rather than render a broken
+// image. Guild icons are optional on Discord's side, and Discord itself shows
+// initials for a server without one, so this matches where the names come
+// from. Skipping the avatar entirely for those (the first version of this)
+// left them flush against the edge while every other row was indented by the
+// avatar slot — visible the moment a real list was on screen.
 const guildOptions = computed(() => [
     { label: trans('teams.no_guild'), value: '' },
-    ...guilds.value.map((guild) => ({ label: guild.name, value: guild.id })),
+    ...guilds.value.map((guild) => ({
+        label: guild.name,
+        value: guild.id,
+        avatar: { src: guild.icon_url ?? undefined, alt: guild.name },
+    })),
 ]);
+
+// The closed select renders its OWN `avatar` prop, never the selected item's
+// (Select.vue's trigger checks `props.avatar`; only the dropdown list reads
+// `item.avatar`). Without this, opening an existing team shows the server's
+// name but not its icon — which is most of what "show the linked server"
+// asks for.
+const selectedGuildAvatar = computed(
+    () => guildOptions.value.find((option) => option.value === form.guild_id)?.avatar,
+);
 
 onMounted(async () => {
     loadingGuilds.value = true;

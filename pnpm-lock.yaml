@@ -11,6 +11,9 @@ importers:
 
   .:
     dependencies:
+      '@internationalized/date':
+        specifier: ^3.12.3
+        version: 3.12.3
       '@nuxt/ui':
         specifier: ^4.10.0
         version: 4.10.0(7fe849c53c264a701f3bc2250e3ee16e)

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\WiseOldManRateLimited;
 use App\Models\Event;
 use App\Models\EventStanding;
 use App\Models\User;
@@ -310,13 +311,25 @@ class EventStandingsService
         // Never ask past "now": a still-running event's end_date is in the
         // future, and their API answers a future window with whatever the
         // latest snapshot happens to be.
-        $delta = $this->wom->gained(
-            $standing->username,
-            $event->metric,
-            $event->metricKind() ?? 'skill',
-            $start,
-            $end->isFuture() ? Carbon::now() : $end,
-        );
+        try {
+            $delta = $this->wom->gained(
+                $standing->username,
+                $event->metric,
+                $event->metricKind() ?? 'skill',
+                $start,
+                $end->isFuture() ? Carbon::now() : $end,
+            );
+        } catch (WiseOldManRateLimited) {
+            // Deliberately NOT stamping synced_at. Every other outcome here
+            // is an answer of some kind, so the row is done being asked; this
+            // one is us not having asked yet, and a row that looks synced is a
+            // row the next run has no reason to prioritise (refreshAll orders
+            // never-synced and failing rows first). Leaving it unstamped is
+            // what makes the retry happen on its own.
+            $standing->forceFill(['sync_error' => 'rate_limited'])->save();
+
+            return;
+        }
 
         if ($delta === null) {
             $standing->forceFill([

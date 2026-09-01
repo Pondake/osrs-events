@@ -15,7 +15,10 @@ class LeaderboardController extends Controller
 {
     public function show(Event $event, BoardAccessService $access): Response|RedirectResponse
     {
-        abort_unless($access->hasAccess(Auth::user(), $event), 403);
+        // canView, not hasAccess: a ranking is part of reading the event,
+        // and a listed event is readable by anyone. Taking part is still
+        // gated everywhere it is actually done.
+        abort_unless($access->canView(Auth::user(), $event), 403);
 
         // This page IS the Snakes & Ladders ranking — who is furthest along
         // the track, and whether a snake or a ladder is coming. An event with

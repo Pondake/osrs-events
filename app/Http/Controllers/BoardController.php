@@ -26,6 +26,7 @@ use App\Support\EventCard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -272,11 +273,21 @@ class BoardController extends Controller
      * view any board). GUILD/INVITE boards the user hasn't joined render
      * Boards/AccessGate instead of the board itself.
      */
-    public function show(Event $event, BoardAccessService $access, PlayerBoardService $playerBoards): Response
+    public function show(Event $event, BoardAccessService $access, PlayerBoardService $playerBoards): Response|RedirectResponse
     {
         $user = Auth::user();
 
-        if (! $access->hasAccess($user, $event)) {
+        // Reading, not taking part — see BoardAccessService::canView(). A
+        // listed event opens for anyone, including signed-out visitors, which
+        // is what `/events` has been promising strangers all along.
+        if (! $access->canView($user, $event)) {
+            // Not a refusal, a question: an unlisted event may well be theirs
+            // to see once they are signed in, and the login page sends them
+            // back here afterwards.
+            if ($user === null) {
+                return redirect()->guest(route('login'));
+            }
+
             $canJoin = $access->canJoin($user, $event);
 
             return Inertia::render('Boards/AccessGate', [
@@ -307,11 +318,15 @@ class BoardController extends Controller
         // thing as playing it: every passer-by turned up in the player list
         // and on the leaderboard at square one. Joining is an explicit action
         // now and it is what creates the row — see EventParticipationService.
-        $playerBoard = $playerBoards->find($event, $user)?->load(
+        // Null for a signed-out visitor, who has no progress to load and
+        // is here to look. PlayerBoardService::find() types a real User,
+        // so the guard is here rather than inside it — reading an event is
+        // the only path that reaches these services without one.
+        $playerBoard = $user === null ? null : $playerBoards->find($event, $user)?->load(
             'completedTiles:id,player_board_id,tile_id,status,proof_url,note,review_note,reviewed_at',
         );
 
-        $canEdit = $user->canEditEvent($event);
+        $canEdit = $user?->canEditEvent($event) ?? false;
 
         // Every player/team on the board with their current position — feeds
         // BoardShow.vue's "show other players" avatar stacks on tiles and the
@@ -320,19 +335,27 @@ class BoardController extends Controller
         // extracted — it's a handful of lines with exactly two call sites).
         $tiles = $event->board?->tiles ?? collect();
         $maxPosition = $tiles->count() - 1;
+        $namesArePublic = $access->canSeeParticipants($user, $event);
         $players = $event->playerBoards()
             ->with(['user:id,discord_username,nickname,avatar_url', 'team:id,name,icon_url'])
             ->orderByDesc('player_boards.current_position')
             // Qualified: playerBoards() is a hasManyThrough, so the join
             // brings boards' own id into scope and bare names are ambiguous.
             ->get(['player_boards.id', 'player_boards.user_id', 'player_boards.team_id', 'player_boards.current_position'])
-            ->map(function ($pb) use ($tiles, $maxPosition) {
+            ->map(function ($pb) use ($tiles, $maxPosition, $namesArePublic) {
                 $pathTiles = $tiles->filter(fn ($t) => $t->position > $pb->current_position && $t->position <= $maxPosition);
 
                 return [
-                    ...$pb->only(['id', 'user_id', 'team_id', 'current_position']),
-                    'user' => $pb->user,
-                    'team' => $pb->team,
+                    ...$pb->only(['id', 'current_position']),
+                    // Identity only where it is public — see
+                    // BoardAccessService::canSeeParticipants(). On a listed
+                    // invite-only event a stranger sees the pieces move and
+                    // not whose they are, so user_id and team_id are dropped
+                    // too: an id is an identity to anyone who can look it up.
+                    'user_id' => $namesArePublic ? $pb->user_id : null,
+                    'team_id' => $namesArePublic ? $pb->team_id : null,
+                    'user' => $namesArePublic ? $pb->user : null,
+                    'team' => $namesArePublic ? $pb->team : null,
                     'tilesRemaining' => $maxPosition - $pb->current_position,
                     'pathHasLadder' => $pathTiles->contains(fn ($t) => $t->type === 'LADDER' && $t->target_position !== null),
                     'pathHasSnake' => $pathTiles->contains(fn ($t) => $t->type === 'SNAKE' && $t->target_position !== null),
@@ -363,11 +386,18 @@ class BoardController extends Controller
                 ]]),
             ],
             'players' => $players,
+            // Said explicitly rather than inferred from a null user: a row
+            // with no user is otherwise indistinguishable from a deleted
+            // account, and the page would label anonymous players as gone.
+            'namesArePublic' => $namesArePublic,
+            // A listed invite-only event opens for everyone now, so the
+            // code field moved onto the page — see InviteCodeCard.
+            'needsInvite' => $access->needsInvite($user, $event),
             // TEAM boards where the user isn't on any assigned team can't
             // play at all — BoardShow.vue renders a dedicated "no team on
             // this board" empty state instead of the grid for this case.
-            'hasTeam' => $playerBoards->hasTeam($event, $user),
-            'joined' => app(EventParticipationService::class)->has($user, $event),
+            'hasTeam' => $user !== null && $playerBoards->hasTeam($event, $user),
+            'joined' => $user !== null && app(EventParticipationService::class)->has($user, $event),
             'canEdit' => $canEdit,
             // Only to somebody who may edit the event. A webhook URL is a
             // capability, not a setting: anyone holding it can post into that
@@ -375,8 +405,8 @@ class BoardController extends Controller
             // which every viewer of a public event receives — and which the
             // live channel pushes to all of them every few seconds.
             'webhookUrl' => $canEdit ? $event->discord_webhook_url : null,
-            'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
-            'adminEditUrl' => $this->adminEditUrl($user, $event),
+            'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
+            'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
             // Hosts get the review queue on the same page as the board —
             // same reasoning as bingo's 'pending': leaving the thing you are
             // judging to judge it is the wrong shape.
@@ -384,6 +414,43 @@ class BoardController extends Controller
                 ? app(BoardReviewService::class)->pendingQueue($event->board)
                 : [],
         ]);
+    }
+
+    /**
+     * Strip identities out of a payload while keeping the progress in it.
+     *
+     * The rule these two serve, decided 2026-08-31: a listed event's progress
+     * is public — a board with no pieces on it is not the event anyone came
+     * to look at — but its roster is not, unless the event is OPEN or the
+     * reader is in it. See BoardAccessService::canSeeParticipants().
+     *
+     * Names are dropped rather than replaced with a placeholder here; the
+     * pages render their own anonymous label, because "Player" is copy and
+     * belongs in lang/en.json rather than in a controller.
+     */
+    private static function withoutHolderNames(array $bySquare): array
+    {
+        return array_map(fn (array $square) => [
+            ...$square,
+            'holders' => array_map(fn (array $holder) => [
+                ...$holder,
+                'name' => null,
+                'avatarUrl' => null,
+            ], $square['holders']),
+        ], $bySquare);
+    }
+
+    /** Same rule, for a standings table: keep the score, drop the who. */
+    private static function withoutCompetitorNames(Collection $rows): Collection
+    {
+        return $rows->map(fn (array $row) => [
+            ...$row,
+            // The id goes too — it identifies a user or team to anyone who
+            // can look one up, which is the thing being withheld.
+            'id' => null,
+            'name' => null,
+            'avatarUrl' => null,
+        ])->values();
     }
 
     /**
@@ -428,8 +495,15 @@ class BoardController extends Controller
         $card->load('squares.task:id,title,icon_url,description,wiki_url');
 
         $user = Auth::user();
-        $canEdit = $user->canEditEvent($event);
-        $competitor = $bingo->competitorFor($event, $user);
+        $canEdit = $user?->canEditEvent($event) ?? false;
+        // Same guard as BoardShow's player board: a signed-out reader is
+        // not a competitor, and competitorFor() types a real User.
+        $competitor = $user === null ? null : $bingo->competitorFor($event, $user);
+
+        // Progress is public on any listed event; who made it is not,
+        // unless the event is OPEN or this reader is in it. See
+        // BoardAccessService::canSeeParticipants().
+        $bingoNamesArePublic = app(BoardAccessService::class)->canSeeParticipants($user, $event);
 
         // Every claim this viewer has made, whatever its state — they need to
         // see their own pending square sitting in the queue, or they will
@@ -480,20 +554,25 @@ class BoardController extends Controller
             // Who holds each square, for the faces on the grid. Same source
             // the live channel pushes, so a card that updates mid-event does
             // not disagree with the one that was rendered.
-            'approvedBy' => $bingo->approvedBy($card),
+            'needsInvite' => app(BoardAccessService::class)->needsInvite($user, $event),
+            'approvedBy' => $bingoNamesArePublic
+                ? $bingo->approvedBy($card)
+                : self::withoutHolderNames($bingo->approvedBy($card)),
             'completedLines' => $bingo->completedLines($card->size, $approved, $card->winLines()),
             'hasWon' => $bingo->hasWon($card, $approved),
             'canPlay' => $competitor !== null,
             'joined' => app(EventParticipationService::class)->has($user, $event),
-            'standings' => $bingo->standings($event, $card),
+            'standings' => $bingoNamesArePublic
+                ? $bingo->standings($event, $card)
+                : self::withoutCompetitorNames($bingo->standings($event, $card)),
             // Hosts get the review queue on the same page as the card — a
             // separate screen for it would mean leaving the thing you are
             // judging to judge it.
             'pending' => $canEdit ? $bingo->pendingQueue($card) : [],
             'canEdit' => $canEdit,
             'webhookUrl' => $canEdit ? $event->discord_webhook_url : null,
-            'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
-            'adminEditUrl' => $this->adminEditUrl($user, $event),
+            'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
+            'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
         ]);
     }
 
@@ -507,7 +586,10 @@ class BoardController extends Controller
             // this is a snapshot rather than the only delivery — and it means
             // the page is complete before any JavaScript runs, which matters
             // for SSR and for anyone the stream never reaches.
-            'standings' => $standings->forEvent($event),
+            'needsInvite' => app(BoardAccessService::class)->needsInvite($user, $event),
+            'standings' => app(BoardAccessService::class)->canSeeParticipants($user, $event)
+                ? $standings->forEvent($event)
+                : self::withoutCompetitorNames($standings->forEvent($event)),
             // Nothing to rank without an RSN — the hiscores are keyed by it.
             // The page prompts for one instead of silently leaving someone off
             // a leaderboard they think they entered.
@@ -516,8 +598,8 @@ class BoardController extends Controller
                 || $event->standings()->where('user_id', $user?->id)->exists(),
             'canEdit' => $user?->canEditEvent($event) ?? false,
             'webhookUrl' => $user?->canEditEvent($event) ? $event->discord_webhook_url : null,
-            'viewingAsAdmin' => app(BoardAccessService::class)->isAdminOnlyView($user, $event),
-            'adminEditUrl' => $this->adminEditUrl($user, $event),
+            'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
+            'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
         ]);
     }
 
@@ -1063,18 +1145,109 @@ class BoardController extends Controller
      * snowflake nobody knows by heart, for a value already synced on every
      * Discord login. JSON over fetch() rather than an Inertia prop because
      * only one tab of one modal ever needs it.
+     *
+     * Ordered by what this account has actually used, most recent first, then
+     * alphabetically for the rest — a Discord account in thirty servers gets
+     * an alphabetical list where the two servers they run events in are
+     * wherever the alphabet put them. See guildRecency().
+     *
+     * `icon_url` is built here rather than in the three components that render
+     * this list, because the CDN path is a fact about Discord and not about
+     * any one picker. `guild_icon` stores the hash Discord's guild payload
+     * carries, not a URL — an animated icon is prefixed `a_` and served as a
+     * gif, everything else as a png.
      */
     public function myGuilds(Request $request): JsonResponse
     {
-        $guilds = UserGuild::where('user_id', $request->user()->id)
+        $recency = $this->guildRecency($request->user()->id);
+
+        // Used servers first, most recent at the top; the untouched remainder
+        // keeps the alphabetical order the query already gave it.
+        [$used, $untouched] = UserGuild::where('user_id', $request->user()->id)
             ->orderBy('guild_name')
             ->get(['guild_id', 'guild_name', 'guild_icon'])
+            ->partition(fn (UserGuild $guild) => isset($recency[$guild->guild_id]));
+
+        $guilds = $used
+            ->sortByDesc(fn (UserGuild $guild) => $recency[$guild->guild_id])
+            ->concat($untouched)
+            ->values()
             ->map(fn (UserGuild $guild) => [
                 'id' => $guild->guild_id,
                 'name' => $guild->guild_name,
                 'icon' => $guild->guild_icon,
+                'icon_url' => $this->guildIconUrl($guild->guild_id, $guild->guild_icon),
+                'used_at' => $recency[$guild->guild_id] ?? null,
             ]);
 
         return response()->json(['guilds' => $guilds]);
+    }
+
+    /**
+     * When this account last did something with each Discord server, as a
+     * timestamp string per guild id.
+     *
+     * Three separate signals rather than one, because "used" has three
+     * shapes here and no single table holds them: a team you are in, an event
+     * you author, and a blueprint you saved for a server. Kept as three cheap
+     * keyed lookups merged in PHP instead of a union query — the row counts
+     * are per-user and small, and the merge rule (take the latest) is clearer
+     * written out than expressed in SQL.
+     *
+     * @return array<string, string>
+     */
+    private function guildRecency(string $userId): array
+    {
+        $sources = [
+            // Teams this account belongs to, dated from when it joined.
+            DB::table('team_members')
+                ->join('teams', 'teams.id', '=', 'team_members.team_id')
+                ->where('team_members.user_id', $userId)
+                ->whereNotNull('teams.guild_id')
+                ->pluck('team_members.created_at', 'teams.guild_id'),
+
+            // Events this account authors, dated from when they were created.
+            DB::table('board_authors')
+                ->join('events', 'events.id', '=', 'board_authors.event_id')
+                ->where('board_authors.user_id', $userId)
+                ->whereNotNull('events.required_guild_id')
+                ->pluck('events.created_at', 'events.required_guild_id'),
+
+            // Blueprints this account saved for a specific server.
+            DB::table('event_blueprints')
+                ->where('created_by', $userId)
+                ->whereNotNull('guild_id')
+                ->pluck('created_at', 'guild_id'),
+        ];
+
+        $recency = [];
+
+        foreach ($sources as $source) {
+            foreach ($source as $guildId => $usedAt) {
+                // pluck() keyed by a column keeps only the last row per key,
+                // so each source has already collapsed itself; this only has
+                // to pick a winner across the three.
+                if ($usedAt !== null && (! isset($recency[$guildId]) || $usedAt > $recency[$guildId])) {
+                    $recency[$guildId] = (string) $usedAt;
+                }
+            }
+        }
+
+        return $recency;
+    }
+
+    /**
+     * Discord's CDN path for a guild icon, or null when the server has none
+     * (a real and common state — a guild icon is optional).
+     */
+    private function guildIconUrl(string $guildId, ?string $hash): ?string
+    {
+        if ($hash === null || $hash === '') {
+            return null;
+        }
+
+        $extension = str_starts_with($hash, 'a_') ? 'gif' : 'png';
+
+        return "https://cdn.discordapp.com/icons/{$guildId}/{$hash}.{$extension}?size=64";
     }
 }

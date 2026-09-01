@@ -14,6 +14,22 @@
                 <h1 class="text-2xl font-bold text-highlighted">{{ heading }}</h1>
                 <p class="text-sm text-muted mt-2">{{ body }}</p>
 
+                <!-- The announcement, when an admin has marked it public.
+                     Rendered here rather than by AppRoot's banner because
+                     this page is deliberately chromeless (see AppRoot's
+                     CHROMELESS_PAGES) — the door drops the header, the nav
+                     and the banner along with it.
+
+                     Not gated on a flag here: the prop is already null
+                     unless the visitor is past the door or the announcement
+                     was made public, and that decision belongs on the server
+                     where it cannot be undone by a template. If there is
+                     text, it is text this visitor is allowed to read. -->
+                <div v-if="announcement" class="mt-6 rounded-lg p-3 text-left text-sm" :class="bannerClass">
+                    <u-icon :name="bannerIcon" class="size-4 inline-block align-[-3px] me-1.5" :class="bannerIconClass" />
+                    <rich-text :text="announcement" />
+                </div>
+
                 <!-- Full lockdown refuses the shared password outright — see
                      SiteLockController::unlock(). Offering the form anyway
                      would look like it works right up until it errors, so it
@@ -54,9 +70,11 @@
 
 <script setup>
 import { computed } from 'vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import AppLogo from '@/Components/AppLogo.vue';
+import RichText from '@/Components/RichText.vue';
+import { bannerBgFor, bannerIconFor, styleFor } from '@/Support/announcement';
 
 const props = defineProps({
     fullLockdown: { type: Boolean, default: false },
@@ -64,6 +82,19 @@ const props = defineProps({
 
 const heading = computed(() => (props.fullLockdown ? trans('lock.full_lockdown_heading') : trans('lock.heading')));
 const body = computed(() => (props.fullLockdown ? trans('lock.full_lockdown_body') : trans('lock.body')));
+
+// Read off the shared prop rather than passed in by SiteLockController: the
+// decision about whether this visitor may see the announcement at all lives
+// in HandleInertiaRequests, and asking it in a second place is how the two
+// answers drift apart.
+const page = usePage();
+
+const announcement = computed(() => page.props?.site?.announcement ?? null);
+const announcementType = computed(() => page.props?.site?.announcementType);
+
+const bannerClass = computed(() => bannerBgFor(announcementType.value));
+const bannerIcon = computed(() => styleFor(announcementType.value).icon);
+const bannerIconClass = computed(() => bannerIconFor(announcementType.value));
 
 const form = useForm({ password: '' });
 
