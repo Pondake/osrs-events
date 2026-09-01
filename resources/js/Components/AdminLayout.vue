@@ -136,6 +136,9 @@ const navItems = computed(() => {
             { label: trans('settings.nav_admin_tasks'), icon: 'i-lucide-list-checks', to: '/admin/tasks', active: props.current === 'tasks', show: isAdmin.value || canCreateTiles.value },
             { label: trans('settings.nav_admin_blueprints'), icon: 'i-lucide-shapes', to: '/admin/blueprints', active: props.current === 'blueprints', show: isAdmin.value || canCreateBoards.value },
             { label: trans('settings.nav_admin_invites'), icon: 'i-lucide-ticket', to: '/admin/invites', active: props.current === 'invites', show: isAdmin.value },
+            // Admin-only: a boss icon is site-wide presentation, not
+            // content an editor makes for their own event.
+            { label: trans('settings.nav_admin_boss_icons'), icon: 'i-lucide-image', to: '/admin/boss-icons', active: props.current === 'boss-icons', show: isAdmin.value },
         ],
         [
             { label: trans('settings.nav_admin_content'), icon: 'i-lucide-layout-template', to: '/admin/content', active: props.current === 'content', show: isAdmin.value },

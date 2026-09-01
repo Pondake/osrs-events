@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Event;
 use App\Models\Setting;
+use App\Services\BossIconService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -116,6 +117,12 @@ class HandleInertiaRequests extends Middleware
                 // field at all. Shared for the same reason the board defaults
                 // are: that form opens from three different places.
                 'discordWebhooksEnabled' => (bool) Setting::get('discord_webhooks_enabled'),
+                // Only the ones an admin overrode, keyed by metric. The
+                // committed pet sprites are already known client-side
+                // (Support/bossIcons.js, generated alongside the files), so
+                // sending all 71 would be telling the browser something it
+                // can work out. Normally empty.
+                'bossIconOverrides' => fn () => app(BossIconService::class)->overrides(),
                 // Whether this server could send a push at all. Shared
                 // site-wide because AppRoot decides on every page whether to
                 // offer the "turn notifications on" bar, and a bar whose

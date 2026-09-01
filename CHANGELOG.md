@@ -25,9 +25,11 @@ From here on, new work gets an entry as it lands.
 - An announcement can be shown on the lock screen, off by default.
 - The backlog was reopened: 5432 lines archived, open work rewritten, ideas and
   SSR gotchas split into their own documents.
-- Bosses have icons: 61 of 71 now show their pet, from the same package the
-  skill icons come from. Eight drop no pet at all; two have one the package
-  has not shipped yet.
+- Bosses have icons: 63 of 71 now show their pet. Most come from the package
+  the skill icons come from; Aggy and Bran are set from the wiki through the
+  new admin page. The remaining eight drop no pet at all.
+- Admin: a boss icon can be set by hand, sourced from the OSRS Wiki, without
+  waiting on a package release.
 
 ## 2026-08-30 — Host approval for tiles
 

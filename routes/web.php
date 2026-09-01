@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BoardController as AdminBoardController;
+use App\Http\Controllers\Admin\BossIconController;
 use App\Http\Controllers\Admin\ContentController;
 use App\Http\Controllers\Admin\DiagnosticsController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -417,6 +418,12 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         // 404s on a soft-deleted id, which is exactly the row this route
         // needs to reach.
         Route::post('/tasks/{task}/restore', [AdminTaskController::class, 'restore'])->name('tasks.restore');
+
+        // Admin-only, unlike Tasks above: a boss icon is site-wide
+        // presentation, not content somebody makes for their own event.
+        Route::get('/boss-icons', [BossIconController::class, 'index'])->name('boss-icons');
+        Route::put('/boss-icons', [BossIconController::class, 'update'])->name('boss-icons.update');
+        Route::delete('/boss-icons/{metric}', [BossIconController::class, 'destroy'])->name('boss-icons.destroy');
 
         // Gated on canCreateBoards, not isAdmin — see the controller.
         Route::get('/blueprints', [AdminEventBlueprintController::class, 'index'])->name('blueprints');

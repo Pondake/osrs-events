@@ -35,7 +35,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { metricIconUrl } from '@/Support/metrics';
+import { useMetricIcon } from '@/Composables/useMetricIcon';
 import { trans } from 'laravel-vue-i18n';
 
 /**
@@ -57,13 +57,17 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
+// Through the composable rather than the bare helper, so an admin's override
+// for a boss shows up in the picker too — see Composables/useMetricIcon.js.
+const iconFor = useMetricIcon();
+
 const items = computed(() => props.metrics.map((metric) => ({
     value: metric,
     label: trans(`${props.kind === 'boss' ? 'bosses' : 'skills'}.${metric}`),
-    icon_url: metricIconUrl(metric, props.kind),
+    icon_url: iconFor(metric, props.kind),
 })));
 
 const selected = computed(() => props.modelValue ?? undefined);
 
-const selectedIcon = computed(() => metricIconUrl(props.modelValue, props.kind));
+const selectedIcon = computed(() => iconFor(props.modelValue, props.kind));
 </script>
