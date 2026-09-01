@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\BossIcon;
+use App\Models\Event;
+use App\Services\BossIconService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response;
+
+/**
+ * Setting a boss's icon by hand.
+ *
+ * Exists because the committed pet sprites come from a package, and a package
+ * lags the game: two bosses have a pet on the wiki that has not shipped yet,
+ * and new bosses arrive with every update. Without this, filling one in means
+ * editing a script, re-running it and deploying — for a picture.
+ *
+ * Admin-only, unlike Tasks and Blueprints which an editor reaches: this is
+ * site-wide presentation, not content somebody makes for their own event.
+ */
+class BossIconController extends Controller
+{
+    public function index(BossIconService $icons): Response
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        return Inertia::render('Admin/BossIcons', [
+            'bosses' => $icons->all(),
+        ]);
+    }
+
+    /**
+     * Store or replace one boss's icon.
+     *
+     * Upsert rather than create-or-update by id: the metric is the identity
+     * here, and a form that has to know whether a row already exists is a form
+     * that can get it wrong.
+     */
+    public function update(Request $request, BossIconService $icons): RedirectResponse
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        $data = $request->validate([
+            // Against the real list, so a typo cannot create a row for a boss
+            // that does not exist and then never render anywhere.
+            'metric' => ['required', 'string', Rule::in(Event::BOSS_METRICS)],
+            // http/https only, same rule the Ko-fi URL follows — anything else
+            // either does not load or is a scheme no <img> should be handed.
+            'icon_url' => ['required', 'url:http,https', 'max:2048'],
+        ]);
+
+        BossIcon::updateOrCreate(
+            ['metric' => $data['metric']],
+            ['icon_url' => $data['icon_url']],
+        );
+
+        return back()->with('board-save', trans('admin.boss_icon_saved'));
+    }
+
+    /**
+     * Drop an override, falling back to the committed sprite.
+     *
+     * Not "clear the icon": deleting the row restores whatever the package
+     * ships, which for 61 of these is a real pet. Only the ten without a
+     * sprite actually go blank.
+     */
+    public function destroy(Request $request, string $metric): RedirectResponse
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        BossIcon::where('metric', $metric)->delete();
+
+        return back()->with('board-save', trans('admin.boss_icon_reset'));
+    }
+}

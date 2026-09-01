@@ -474,23 +474,38 @@ tweede partij nodig hebben.
   de build maakt het antwoord waar.
   Live gecontroleerd op een drop race: het pet-snakeling-sprite staat naast
   "Ranked by Zulrah kills" en in elke standings-rij.
-- [ ] **Boss-icons: de CRUD en de watcher.** De twee helften die de icons
-  zelf niet oplossen, en ze worden pas urgent zodra er bossen bijkomen.
-  Een CRUD onder `/admin` voor de bosslijst en het icon per boss, zodat Aggy
-  en Bran met de hand te vullen zijn zonder op een package-release te
-  wachten — nu kan dat alleen door `BOSS_PETS` te bewerken en het script
-  opnieuw te draaien, wat een deploy vraagt voor wat een plaatje is.
-  **Overweeg daarbij een wiki-URL toe te staan naast een lokaal bestand**:
-  de app kan al wiki-afbeeldingen opzoeken (`WikiController::searchGlobal()`,
-  `WikiIconPicker.vue`) voor taak- en teamicons, en dat is precies de route
-  om een pet te gebruiken die de package nog niet heeft.
-  Daarna een geplande job die de bosslijst van de wiki (of van Wise Old Man,
-  die de lijst tenslotte al levert) leest en meldt wat deze app nog niet kent,
-  per mail of notificatie. Volautomatische import daar bovenop, pas zodra de
-  mapping een tijd met de hand goed is geweest.
-  Let bij het bouwen op het ontwerp dat er al ligt: **een leeg vakje is een
-  normale, tijdelijke toestand en geen fout**, en de bosslijst groeit met elke
-  game-update.
+- [x] ~~**Boss-icons: de CRUD.**~~ — gebouwd 2026-09-02. `/admin/boss-icons`
+  toont alle 71 bossen met het icoon dat ze zouden tonen en waar dat vandaan
+  komt, met een zoekveld en een "alleen zonder icoon"-filter — want die
+  laatste groep is de enige reden om die pagina te openen.
+  **De bron is de wiki-picker die er al lag** (`WikiIconPicker`), niet een
+  tweede manier om een plaatje te kiezen: een boss-pet ís een wiki-afbeelding,
+  en een admin een URL laten opzoeken en plakken zou werk zijn dat de app al
+  kan doen. Plakken kan alsnog, in hetzelfde formulier.
+  Resolutievolgorde zit in `BossIconService` en nergens anders: override uit
+  `boss_icons` wint, anders de gecommitte pet-sprite, anders geen icoon.
+  Dat laatste is een antwoord — acht bossen droppen geen pet. "Use default"
+  gooit de override weg en laat de sprite terugkomen, wat voor 61 van de 71
+  een echte pet is.
+  De bestandscheck is een `file_exists` en geen tweede manifest: **de
+  bestanden zíjn het manifest**, en een lijst die de map beschrijft is een
+  lijst die ermee uit de pas kan lopen.
+  Client-side wint een override ook, via `Composables/useMetricIcon.js` —
+  alleen de overrides gaan als prop mee (normaal nul of twee), want welke
+  sprites er zijn weet de browser al uit `Support/bossIcons.js`.
+  **Aggy en Bran staan erin**, via de wiki, wat de aanleiding was: 63 van de
+  71 hebben nu een icoon. Elf tests dekken de volgorde en de CRUD, waaronder
+  dat een onbekende metric en een niet-http-URL geweigerd worden.
+  Eén test slaagde eerst om de verkeerde reden — `actingAs()` blijft gelden
+  voor de rest van een testmethode, dus de "uitgelogde" call mat nog steeds de
+  ingelogde sessie. Nu een eigen test.
+- [ ] **Boss-icons: de watcher.** De helft die nog open staat, en pas urgent
+  zodra er bossen bijkomen. Een geplande job die de bosslijst leest — van de
+  wiki, of van Wise Old Man die hem toch al levert — en meldt wat deze app
+  nog niet kent, per mail of notificatie. Volautomatische import daar bovenop,
+  pas zodra de mapping een tijd met de hand goed is geweest.
+  Nu is het pas zichtbaar als iemand een drop race voor een nieuwe boss maakt
+  en er geen plaatje staat.
 - [x] ~~**Wise Old Man API-key per host.**~~ — gebouwd 2026-08-30 en
   **teruggedraaid 2026-08-31 op verzoek van Wise Old Man zelf.** De eigenaar
   legde het voor; hun antwoord, en het is het juiste antwoord:

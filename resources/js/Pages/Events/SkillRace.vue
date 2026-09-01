@@ -321,7 +321,8 @@ import JoinEventButton from '@/Components/JoinEventButton.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
 import { eventStatus, formatDate } from '@/Support/board';
-import { formatMetricValue, metricIconUrl, metricLabel, rankedByLabel } from '@/Support/metrics';
+import { formatMetricValue, metricLabel, rankedByLabel } from '@/Support/metrics';
+import { useMetricIcon } from '@/Composables/useMetricIcon';
 import { useEventStream } from '@/Composables/useEventStream';
 
 // Async, exactly as BoardShow loads it: the modal reaches @nuxt/ui
@@ -444,7 +445,10 @@ const PARTICIPANTS_WORTH_A_LINK = 10;
 const rankedBy = computed(() => rankedByLabel(liveEvent.value.metric, liveEvent.value.metricKind));
 
 // Null for a boss race, which has no icon to draw — see Support/metrics.js.
-const metricIcon = computed(() => metricIconUrl(liveEvent.value.metric, liveEvent.value.metricKind));
+// Through the composable, not the bare helper: an admin can override a
+// boss icon and that override is a prop, not a committed file.
+const iconFor = useMetricIcon();
+const metricIcon = computed(() => iconFor(liveEvent.value.metric, liveEvent.value.metricKind));
 
 const status = computed(() => eventStatus(liveEvent.value));
 
