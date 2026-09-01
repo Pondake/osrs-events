@@ -70,11 +70,22 @@ class BossIconController extends Controller
      * longer waiting on anybody, and leaving it in both columns would keep the
      * row at the top of the queue forever.
      */
-    public function approve(Request $request, string $metric): RedirectResponse
+    public function approve(Request $request, string $metric, BossIconService $icons): RedirectResponse
     {
         abort_unless(Auth::user()->isAdmin(), 403);
 
         $row = BossIcon::where('metric', $metric)->whereNotNull('suggested_url')->firstOrFail();
+
+        // Accepting the packaged sprite REMOVES the override rather than
+        // storing the sprite's own path as one. Otherwise the boss would show
+        // the right picture for the wrong reason — a hand-set value that
+        // happens to point at the file — and would stop following the package
+        // the next time the sprite changed.
+        if ($row->suggested_url === $icons->spriteUrl($metric)) {
+            $row->update(['icon_url' => null, 'suggested_url' => null]);
+
+            return back()->with('board-save', trans('admin.boss_icon_reset'));
+        }
 
         $row->update(['icon_url' => $row->suggested_url, 'suggested_url' => null]);
 

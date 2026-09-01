@@ -187,6 +187,24 @@ const BOSS_PETS = {
 };
 
 /**
+ * The pets that exist in the game but not (yet) in this package.
+ *
+ * Kept by NAME rather than left as a bare null, so this script can look for
+ * them on every run and say when the package has caught up. That is the one
+ * thing the scheduled check cannot see: it runs on the server, where this
+ * package is not installed and its output is committed files.
+ *
+ * So the loop is: this script notices the package shipped a pet and tells you
+ * here; you map it in BOSS_PETS and re-run; the committed PNG appears; and the
+ * weekly check then offers to hand that boss back to the package on
+ * /admin/boss-icons. Nothing switches by itself.
+ */
+const AWAITED_PETS = {
+    mad_angel: 'Aggy',
+    the_royal_titans: 'Bran',
+};
+
+/**
  * `url('data:image/png;base64,AAAA'), auto` -> a Buffer of the decoded PNG.
  *
  * Note the trailing `, auto`: these are complete CSS `cursor` declarations,
@@ -278,6 +296,22 @@ const generated = [
 await writeFile(join(here, '..', 'resources', 'js', 'Support', 'bossIcons.js'), generated);
 
 console.log(`wrote resources/js/Support/bossIcons.js (${withIcons.length} bosses)`);
+
+// Has the package caught up? Matched case-insensitively on the exact pet
+// name — a near miss would be a guess, and this is the message that makes
+// somebody edit BOSS_PETS.
+const keys = Object.keys(icons);
+
+for (const [metric, pet] of Object.entries(AWAITED_PETS)) {
+    if (BOSS_PETS[metric] !== null) continue;
+
+    const found = keys.find((k) => k.toLowerCase() === pet.toLowerCase()
+        || k.toLowerCase() === `${pet.toLowerCase()}pet`);
+
+    if (found) {
+        console.log(`NEW: the package now has "${found}" for ${metric} (${pet}) — add it to BOSS_PETS`);
+    }
+}
 
 // Loud rather than silent: an upstream rename would otherwise show up much
 // later as one blank icon in a dropdown that nobody connects to this script.
