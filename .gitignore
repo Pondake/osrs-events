@@ -39,3 +39,8 @@ lang/php_*.json
 
 # Editor/LSP scratch files the framework directory collects.
 /storage/framework/lsp-*.php
+
+# Facts about the owner's own Discord server — channel and role ids, invite
+# links, who is who. Useful to keep next to the code and not something to
+# publish with it, so it lives on disk and out of the repo.
+/docs/discord.md

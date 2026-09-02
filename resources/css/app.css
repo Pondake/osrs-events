@@ -97,20 +97,71 @@ h3 {
     grid-template-columns: repeat(9, minmax(0, 1fr));
 }
 
+/* The connector overlay sits UNDER the tiles, on plain DOM order — it comes
+   before the grid and neither is given a z-index, which is what keeps the
+   board out of the root stacking context (a tile that can climb has climbed
+   above a teleported modal before).
+
+   It was briefly lifted between the tile backgrounds and their content, so a
+   connector could cross a tile at full strength with the text still on top of
+   it. The stacking worked; the reading did not. `text-muted` is a mid grey and
+   the artwork's light tones — the ladder's lit edge, the snake's belly — sit
+   at the same luminance, so 12px labels over them measured 1.0–1.6:1 whatever
+   opacity the overlay was given. Nothing in that range was readable, so the
+   connector went back behind the tile. */
+.board-tile__content {
+    position: absolute;
+    inset: 0;
+}
+
 .board-tile {
     position: relative;
-    transition:
-        transform 0.15s ease,
-        opacity 0.15s ease;
+    transition: filter 0.15s ease;
 }
+
+/* Brightness, not scale. A hover that GROWS the tile slides it out from under
+   the connector end lapping onto it — and those two tiles are exactly where
+   the drawing and the grid have to agree. Anything that moves a tile will do
+   this again. */
 .board-tile:hover {
-    transform: scale(1.05);
+    filter: brightness(1.25);
 }
+
+/* Both ends of whichever connector is being pointed at. The far one is the
+   answer to the question — "and where does that put me?" — so it lights up
+   even though the cursor is nowhere near it. */
+.board-tile--linked {
+    outline: 2px solid var(--ui-color-primary-500, #d4a33e);
+}
+
+/* The pointed-at connector fades rather than blinking on. Kept short: this is
+   feedback on a cursor, and feedback that lags behind the pointer reads as the
+   page being slow rather than as the effect being smooth. */
+.sl-flare-enter-active,
+.sl-flare-leave-active {
+    transition: opacity 0.18s ease;
+}
+.sl-flare-enter-from,
+.sl-flare-leave-to {
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sl-flare-enter-active,
+    .sl-flare-leave-active {
+        transition: none;
+    }
+}
+/* Softer than the 2px they used to carry. The connector's own end now laps
+   onto these two tiles, and the corner arrow says which way it sends you, so
+   a hard ring was the third thing on one tile saying the same thing. Kept as
+   a hint rather than dropped: it is the only cue on a tile whose connector
+   runs off past the edge of what you are looking at. */
 .board-tile--snake {
-    outline: 2px solid var(--ui-color-error-500, #ef4444);
+    outline: 1px solid color-mix(in srgb, var(--ui-color-error-500, #ef4444) 55%, transparent);
 }
 .board-tile--ladder {
-    outline: 2px solid var(--ui-color-success-500, #22c55e);
+    outline: 1px solid color-mix(in srgb, var(--ui-color-success-500, #22c55e) 55%, transparent);
 }
 .board-tile--current {
     outline: 2px solid var(--ui-color-primary-500, #d4a33e);
@@ -124,14 +175,25 @@ h3 {
     background: var(--ui-color-primary-500, #d4a33e);
     color: #1c1919;
 }
-.board-tile--completed {
+.board-tile--completed .board-tile__content {
     opacity: 0.85;
 }
-.board-tile--past {
+
+/* Grey out what the tile SAYS, never the tile itself.
+   `opacity` on the button did two things nobody asked for: it made the
+   background translucent, so a connector crossing a tile the player had
+   already passed came through at nearly full strength — the board showed you
+   where you had been more clearly than where you were going — and it created
+   a stacking context, which would trap this very content back underneath the
+   overlay. */
+.board-tile--past .board-tile__content {
     opacity: 0.38;
     filter: grayscale(1);
+    transition:
+        opacity 0.15s ease,
+        filter 0.15s ease;
 }
-.board-tile--past:hover {
+.board-tile--past:hover .board-tile__content {
     opacity: 0.6;
     filter: grayscale(0.5);
 }
@@ -390,4 +452,80 @@ html:not(.dark) .landing-page :where(.rounded-xl, .rounded-lg):where([class*='ri
     .landing-page .text-center {
         text-align: left;
     }
+}
+
+/* The piece in motion. Positioned in the same percentage space as the
+   connector overlay, so "50, 50" is the middle of the grid for both — that is
+   what lets it ride a snake's body instead of cutting its own line between the
+   same two tiles. */
+.board-walker {
+    position: absolute;
+    transform: translate(-50%, -50%) scale(var(--walker-size, 1));
+    pointer-events: none;
+    filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.55));
+}
+
+/* The "you are here" flag waits for the piece to stop. It used to appear on
+   the destination the moment the props updated — while the avatar was still
+   three tiles away and walking towards it, which read as the label being on
+   the wrong tile. */
+.here-label-enter-active {
+    transition:
+        opacity 0.22s ease,
+        transform 0.22s ease;
+}
+.here-label-enter-from {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+.here-label-leave-active {
+    transition: opacity 0.12s ease;
+}
+.here-label-leave-to {
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .here-label-enter-active,
+    .here-label-leave-active {
+        transition: none;
+    }
+}
+
+/* Edit mode, on the board itself.
+   A breathing ring rather than a static one: the mode is a state you are IN
+   and can leave, and a board that is quietly pulsing is hard to forget you
+   left switched on. The tiles keep their own outlines underneath — this sits
+   on the parchment, not on them. */
+@keyframes board-breathe {
+    0%,
+    100% {
+        box-shadow: 0 0 0 2px var(--ui-color-primary-500, #d4a33e), 0 0 18px -6px var(--ui-color-primary-500, #d4a33e);
+    }
+    50% {
+        box-shadow: 0 0 0 4px var(--ui-color-primary-500, #d4a33e), 0 0 34px -2px var(--ui-color-primary-500, #d4a33e);
+    }
+}
+
+.board-editing {
+    animation: board-breathe 2.6s ease-in-out infinite;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+    .board-editing {
+        animation: none;
+        box-shadow: 0 0 0 3px var(--ui-color-primary-500, #d4a33e);
+    }
+}
+
+/* Connectors you have already gone past. Faded, never removed: a snake higher
+   up the board can still put you below one of these, and then it matters
+   again — so this says "not on your way right now", which is the same thing
+   the greyed-out tiles behind you say. */
+.board-svg-overlay g {
+    transition: opacity 0.3s ease;
+}
+.board-svg-overlay g.sl-behind {
+    opacity: 0.4;
 }

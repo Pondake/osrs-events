@@ -47,29 +47,18 @@
 <script setup>
 import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
+import { settingsGroups } from '@/Support/settingsNav';
 
 defineProps({
     current: { type: String, required: true },
 });
 
-/** Personal account settings only — everything admin lives at /admin. */
-const groups = computed(() => {
-    const result = [
-        {
-            key: 'account',
-            label: trans('settings.group_account'),
-            items: [
-                { key: 'profile', to: '/settings/profile', icon: 'i-lucide-user-circle', label: trans('settings.nav_profile') },
-                { key: 'account', to: '/settings/account', icon: 'i-lucide-shield', label: trans('settings.nav_account') },
-                // Split off Account 2026-08-30: which outside services this
-                // account talks to is a different question from how it is
-                // signed into, and one page was answering both.
-                { key: 'connections', to: '/settings/connections', icon: 'i-lucide-plug', label: trans('settings.nav_connections') },
-                { key: 'notifications', to: '/settings/notifications', icon: 'i-lucide-bell', label: trans('settings.nav_notifications') },
-            ],
-        },
-    ];
-
-    return result;
-});
+/**
+ * Personal account settings only — everything admin lives at /admin.
+ *
+ * The list itself comes from Support/settingsNav.js, because the header's user
+ * menu shows the same destinations and the two copies had already drifted
+ * apart twice.
+ */
+const groups = computed(() => settingsGroups());
 </script>

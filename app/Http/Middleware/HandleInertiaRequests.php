@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Event;
 use App\Models\Setting;
 use App\Services\BossIconService;
+use App\Support\DisplayPreference;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -52,6 +53,13 @@ class HandleInertiaRequests extends Middleware
                 // kept separate from boardSave's already-formatted sentence
                 // rather than parsing a number back out of display text.
                 'lastRoll' => fn () => $request->session()->get('last-roll'),
+                // Where the roll actually took the player: the tile the dice
+                // reached, and the tile a snake or ladder then sent them to.
+                // The board animates that move, and the arithmetic behind it
+                // belongs to the one place that already does it — deriving it
+                // a second time in the browser is how the piece ends up
+                // somewhere the score does not agree with.
+                'lastMove' => fn () => $request->session()->get('last-move'),
                 // One-off payload from one action to one page, exactly like
                 // lastRoll above: the admin diagnostics sweep returns command
                 // output rather than a sentence, and a toast is the wrong
@@ -139,6 +147,9 @@ class HandleInertiaRequests extends Middleware
                     'nickname' => $user->nickname,
                     'avatarUrl' => $user->avatar_url,
                     'isAdmin' => $user->isAdmin(),
+                    // Resolved, never raw: a stored list written before a
+                    // setting existed must not read as that setting being off.
+                    'display' => DisplayPreference::resolve($user->display_preferences),
                     'canCreateBoards' => $user->hasPermission('canCreateBoards'),
                     'canCreateTiles' => $user->hasPermission('canCreateTiles'),
                     // Raw role list — needed for AppHeader.vue's nav (isEditor/

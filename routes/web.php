@@ -31,6 +31,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\PlayerBoardController;
 use App\Http\Controllers\Settings\AccountController;
+use App\Http\Controllers\Settings\AnimationController;
 use App\Http\Controllers\Settings\ConnectionsController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
@@ -292,6 +293,8 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::get('/settings/profile', [SettingsProfileController::class, 'show'])->name('settings.profile');
     Route::patch('/settings/profile', [SettingsProfileController::class, 'update'])->name('settings.profile.update');
     Route::put('/settings/profile/osrs', [SettingsProfileController::class, 'updateOsrsUsername'])->name('settings.profile.osrs');
+    Route::get('/settings/animations', [AnimationController::class, 'show'])->name('settings.animations');
+    Route::put('/settings/animations', [AnimationController::class, 'update'])->name('settings.animations.update');
     // Re-checks the stored name against Wise Old Man. Throttled because it is
     // a button anyone can hold down, and it spends a request against a shared
     // public API with a 20/minute ceiling.
