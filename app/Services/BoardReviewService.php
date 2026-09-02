@@ -29,7 +29,7 @@ class BoardReviewService
             ->where('completed_tiles.status', 'PENDING')
             ->with([
                 'playerBoard.user:id,discord_username,nickname,avatar_url',
-                'playerBoard.team:id,name,icon_url',
+                'playerBoard.team:id,name,icon_url,guild_id,guild_icon',
                 // osrs_username too, same reason as bingo's queue: the RSN in
                 // the screenshot is what a host actually matches against.
                 'markedBy:id,discord_username,nickname,avatar_url,osrs_username',
@@ -45,7 +45,7 @@ class BoardReviewService
                 'competitor' => $c->playerBoard?->team?->name
                     ?? ($c->playerBoard?->user?->nickname ?: $c->playerBoard?->user?->discord_username)
                     ?: trans('common.deleted_user'),
-                'competitorAvatar' => $c->playerBoard?->team?->icon_url ?? $c->playerBoard?->user?->avatar_url,
+                'competitorAvatar' => $c->playerBoard?->team?->icon_url ?? $c->playerBoard?->team?->guild_icon_url ?? $c->playerBoard?->user?->avatar_url,
                 'submittedBy' => $c->markedBy?->nickname ?: $c->markedBy?->discord_username,
                 'submittedByAvatar' => $c->markedBy?->avatar_url,
                 'submittedByOsrs' => $c->markedBy?->osrs_username,

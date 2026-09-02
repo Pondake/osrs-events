@@ -39,7 +39,7 @@
                         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             <u-card v-for="team in teams" :key="team.id">
                                 <div class="flex items-center gap-3">
-                                    <u-avatar :src="team.icon_url ?? undefined" :alt="team.name" size="sm" />
+                                    <team-avatar :name="team.name" :icon-url="team.icon_url" :guild-icon-url="team.guild_icon_url" size="sm" />
                                     <div class="min-w-0 flex-1">
                                         <div class="font-semibold truncate">{{ team.name }}</div>
                                         <div class="text-xs text-muted truncate">
@@ -89,6 +89,7 @@
 import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import TeamAvatar from '@/Components/TeamAvatar.vue';
 
 defineProps({
     teams: { type: Array, required: true },

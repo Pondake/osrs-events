@@ -222,7 +222,7 @@ class BingoService
             ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
             ->where('bingo_squares.bingo_card_id', $card->id)
             ->where('bingo_completions.status', 'APPROVED')
-            ->with(['team:id,name,icon_url', 'user:id,discord_username,nickname,avatar_url'])
+            ->with(['team:id,name,icon_url,guild_id,guild_icon', 'user:id,discord_username,nickname,avatar_url'])
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position']);
 
         $wildcards = $this->wildcardPositions($card);
@@ -244,7 +244,7 @@ class BingoService
                 return [
                     'id' => $first->team_id ?? $first->user_id,
                     'name' => $first->team?->name ?? ($first->user?->nickname ?: $first->user?->discord_username) ?: trans('common.deleted_user'),
-                    'avatarUrl' => $first->team?->icon_url ?? $first->user?->avatar_url,
+                    'avatarUrl' => $first->team?->icon_url ?? $first->team?->guild_icon_url ?? $first->user?->avatar_url,
                     'squares' => count($positions),
                     'points' => $this->score($card, $positions, $points),
                     'lines' => count($this->completedLines($card->size, $positions, $card->winLines())),
@@ -268,7 +268,7 @@ class BingoService
             ->where('bingo_squares.bingo_card_id', $card->id)
             ->where('bingo_completions.status', 'PENDING')
             ->with([
-                'team:id,name,icon_url',
+                'team:id,name,icon_url,guild_id,guild_icon',
                 // osrs_username too: the review modal shows both names, so a
                 // host judging a screenshot can match the RSN in it to the
                 // account that submitted it. That is the whole check.
@@ -285,7 +285,7 @@ class BingoService
                 'label' => $c->square?->label(),
                 'iconUrl' => $c->square?->task?->icon_url,
                 'competitor' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username) ?: trans('common.deleted_user'),
-                'competitorAvatar' => $c->team?->icon_url ?? $c->user?->avatar_url,
+                'competitorAvatar' => $c->team?->icon_url ?? $c->team?->guild_icon_url ?? $c->user?->avatar_url,
                 // Both identities, because they are how a host checks a
                 // claim: the Discord name is who is asking, the OSRS name is
                 // what the screenshot will show. Either can be missing — an
@@ -320,7 +320,7 @@ class BingoService
             ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
             ->where('bingo_squares.bingo_card_id', $card->id)
             ->where('bingo_completions.status', 'APPROVED')
-            ->with(['team:id,name,icon_url', 'user:id,discord_username,nickname,avatar_url'])
+            ->with(['team:id,name,icon_url,guild_id,guild_icon', 'user:id,discord_username,nickname,avatar_url'])
             ->orderBy('bingo_completions.created_at')
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
             ->groupBy(fn (BingoCompletion $c) => (int) $c->square_position)
@@ -329,7 +329,7 @@ class BingoService
                     // A team event credits the team, a solo one the player —
                     // the same competitor split competitorFor() makes.
                     'name' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username) ?: trans('common.deleted_user'),
-                    'avatarUrl' => $c->team?->icon_url ?? $c->user?->avatar_url,
+                    'avatarUrl' => $c->team?->icon_url ?? $c->team?->guild_icon_url ?? $c->user?->avatar_url,
                 ])->values()->all(),
                 'total' => $group->count(),
             ])

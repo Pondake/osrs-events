@@ -104,6 +104,7 @@ class ParticipantController extends Controller
                 'id' => $team->id,
                 'name' => $team->name,
                 'iconUrl' => $team->icon_url,
+                'guildIconUrl' => $team->guild_icon_url,
                 'guildName' => $team->guild_name,
                 'memberCount' => $team->members->count(),
                 // Managing a team is decided per team, not per event — a host

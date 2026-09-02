@@ -67,7 +67,7 @@ class SnakesLaddersChannel implements EventChannel
     public function payload(Event $event): array
     {
         $players = $event->playerBoards()
-            ->with(['user:id,discord_username,nickname,avatar_url', 'team:id,name,icon_url'])
+            ->with(['user:id,discord_username,nickname,avatar_url', 'team:id,name,icon_url,guild_id,guild_icon'])
             ->orderByDesc('player_boards.current_position')
             ->get([
                 'player_boards.id',

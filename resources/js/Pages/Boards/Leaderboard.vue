@@ -26,12 +26,10 @@
                             {{ entry.rank }}
                         </div>
 
-                        <u-avatar :src="(entry.team?.icon_url ?? entry.user?.avatar_url) ?? undefined" size="sm" />
+                        <u-avatar :src="avatarFor(entry) ?? undefined" :alt="nameFor(entry)" size="sm" />
 
                         <div class="flex-1 min-w-0">
-                            <div class="font-medium truncate">
-                                {{ entry.team?.name ?? entry.user?.nickname ?? entry.user?.discord_username ?? $t('common.deleted_user') }}
-                            </div>
+                            <div class="font-medium truncate">{{ nameFor(entry) }}</div>
                             <div class="text-xs text-muted">
                                 {{ $t('board.tile', { n: entry.currentPosition + 1 }) }} / {{ totalTiles }} — {{ entry.tilesRemaining }} {{ $t('leaderboard.tiles_left') }}
                             </div>
@@ -58,6 +56,15 @@ const props = defineProps({
     totalTiles: { type: Number, required: true },
     entries: { type: Array, required: true },
 });
+
+// A team borrows its Discord server's icon before falling back to
+// initials, which UAvatar derives from `alt` — so the name has to be passed
+// there as well as printed, and both come from one place to stay in step.
+const nameFor = (entry) =>
+    entry.team?.name ?? entry.user?.nickname ?? entry.user?.discord_username ?? trans('common.deleted_user');
+
+const avatarFor = (entry) =>
+    entry.team?.icon_url ?? entry.team?.guild_icon_url ?? entry.user?.avatar_url ?? null;
 
 const breadcrumbs = computed(() => [
     { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },

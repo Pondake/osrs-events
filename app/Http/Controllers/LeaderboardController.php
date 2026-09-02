@@ -65,6 +65,7 @@ class LeaderboardController extends Controller
                 'team' => $pb->team === null ? null : [
                     'name' => $pb->team->name,
                     'icon_url' => $pb->team->icon_url,
+                    'guild_icon_url' => $pb->team->guild_icon_url,
                 ],
                 'currentPosition' => $pb->current_position,
                 'tilesRemaining' => $maxPosition - $pb->current_position,

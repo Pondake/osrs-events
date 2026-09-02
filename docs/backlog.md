@@ -643,15 +643,33 @@ tweede partij nodig hebben.
   Nog te beslissen: geldt dit alleen voor teams, of ook voor de eigen
   gebruikersavatar (`users.avatar_url`, nu de Discord-avatar)? De opslag- en
   moderatiekant is voor allebei dezelfde, de UI niet.
-- [ ] **Terugval voor een team zonder icoon.** Nu een leeg vak. Twee opties
-  die de eigenaar noemde en die elkaar niet uitsluiten: het icoon van de
-  gekoppelde Discord-server, en initialen van de teamnaam. **Een mix is
-  waarschijnlijk het beste**: initialen als basis (dat werkt altijd, ook
-  zonder Discord), met het servericon eroverheen als er een server gekoppeld
-  is — de bouwstenen liggen er al, want de serverkiezer haalt sinds
-  2026-08-30 `icon_url` op en `UAvatar` doet de initialen-terugval zelf.
-  Beslis wel wat er gebeurt als het team én een eigen icoon én een server
-  heeft: allebei tonen is rommelig, dus waarschijnlijk wint het eigen icoon.
+- [x] ~~**Terugval voor een team zonder icoon.**~~ — gedaan 2026-09-02, als de
+  voorgestelde mix: eigen `icon_url`, dan het icoon van de gekoppelde
+  Discord-server, dan initialen. De open vraag is beantwoord zoals vermoed —
+  **het eigen icoon wint**, het servericon is de terugval en niet iets dat er
+  naast komt te staan.
+  **De helft die er nog niet lag was het servericon zelf.** De serverkiezer
+  haalde die hash wel op, maar de tabel `user_guilds` bevat alleen de servers
+  van accounts die zijn ingelogd — een terugval die daar leest, toont het
+  clanicoon aan een clangenoot en een leeg vak aan een vreemde op hetzelfde
+  publieke event. Een avatar mag niet afhangen van wie er kijkt, dus de hash
+  staat nu op het team (`teams.guild_icon`), geschreven op hetzelfde moment
+  als `guild_name` en langs dezelfde controle: hij komt van Discord, niet uit
+  het formulier. Hij verdwijnt ook mee als het team van de server af gaat.
+  Een tweede migratie vult hem voor teams die al gekoppeld waren; zonder die
+  stap zou het pas werken nadat iemand het team opnieuw opslaat.
+  `DiscordCdn::guildIcon()` (uit `BoardController` gelicht, want er is nu een
+  tweede aanroeper) bouwt de CDN-url, `Team::$appends` hangt hem aan elke
+  payload, en de zes queries die teamkolommen bij naam noemen zijn verbreed —
+  een kolom die je niet selecteert is stil `null`, en dat is precies hoe dit
+  soort terugval ongemerkt niets doet.
+  Aan de clientkant één `Components/TeamAvatar.vue` voor de teamlijst, de
+  communitypagina en de deelnemerslijst; de leaderboardrij kan een team óf een
+  speler zijn en houdt daarom zijn eigen keten — die **miste `alt`, en dat was
+  het gemelde lege vak**: `UAvatar` bouwt zijn initialen uit `alt`, dus zonder
+  die prop is er geen derde stap. In een browser nagemeten op beide takken:
+  een team met servericon toont het plaatje (64×64 geladen), de twee zonder
+  tonen hun initialen. 792 backend / 175 frontend groen.
 - [ ] **Beslissen of `docs/README.md` terug naar de repo-root moet.** Nu
   rendert GitHub geen landings-readme voor de repo.
 
