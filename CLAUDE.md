@@ -49,7 +49,7 @@ osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.
 ├── docs/backlog.md         living priority list — only what is still open
 ├── docs/ideas.md           thought through, not scheduled
 ├── docs/ssr-gotchas.md     sixteen render traps, every one hit for real
-├── docs/discord.md         how the own Discord server is laid out
+├── docs/discord.md         local notes — always gitignored
 └── docs/backlog-archive-2026-08.md   the old backlog, kept whole
 ```
 
@@ -67,7 +67,7 @@ so: **write it into one of these, never into a new document.**
 | still to do, and will actually be picked up | `docs/backlog.md` |
 | a real idea, thought through, not scheduled | `docs/ideas.md` |
 | a render/SSR trap that bit us once | `docs/ssr-gotchas.md` |
-| a fact about how the own Discord server is set up | `docs/discord.md` |
+| a Discord server detail | `docs/discord.md` — always gitignored |
 | finished — `[x]` plus what was built | stays put in `docs/backlog.md` |
 
 Three rules that are easy to get wrong:

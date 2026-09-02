@@ -19,9 +19,8 @@ class DisplayPreference
     public const OTHER_MOVES = 'animate_other_moves';
 
     /**
-     * Both on by default. The animation is how a snake reads as something
-     * that happened TO you rather than a number changing, and somebody who
-     * has never seen it cannot know to turn it on.
+     * Both on by default: somebody who has never seen the animation cannot
+     * know to turn it on.
      *
      * @var array<string, bool>
      */

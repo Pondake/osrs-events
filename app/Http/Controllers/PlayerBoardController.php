@@ -52,16 +52,10 @@ class PlayerBoardController extends Controller
         // board has none.
         $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();
 
-        // The board's SIZE, not how many tiles somebody got round to filling
-        // in. A host configures the squares they care about and leaves the
-        // rest blank; the page renders the whole grid either way, so a 5×5
-        // board with six configured tiles still shows twenty-five.
-        //
-        // Counting rows made the sixth tile the finish line. A player standing
-        // past it was clamped BACK to it on every roll — reported as "I was on
-        // 19, rolled a 1, and landed on 6" — and a player standing on it could
-        // not move at all. The floor at zero stays: a board with no tiles at
-        // all should not walk anyone to position -1.
+        // The board's SIZE, not the number of tiles a host filled in: the page
+        // renders the whole grid either way. Counting rows made the last
+        // configured tile the finish line and clamped players back to it.
+        // Floored at zero so an empty board cannot walk anyone to -1.
         $maxPosition = max(($event->board?->tileCount() ?? 1) - 1, 0);
 
         // Playing is joining. The button is the deliberate way in, but
@@ -89,13 +83,9 @@ class PlayerBoardController extends Controller
 
         $rolled = random_int(1, 6);
 
-        // A forced number, for driving the board's own movement animation
-        // during development — walking six tiles into a snake's head is not
-        // something you can wait for a random d6 to arrange.
-        //
-        // Gated on the environment and not on a role: an admin on production
-        // choosing their own dice would be cheating with extra steps, and
-        // this is not worth a permission that could be granted by mistake.
+        // A forced number for working on the movement animation locally.
+        // Gated on the environment, not a role: a chosen die on production
+        // would be cheating with extra steps.
         if (app()->environment('local') && $request->filled('force')) {
             $forced = (int) $request->input('force');
 
@@ -128,11 +118,9 @@ class PlayerBoardController extends Controller
                 'current_position' => $newPosition,
                 'dice_rolls_today' => $isToday ? $playerBoard->dice_rolls_today + 1 : 1,
                 'last_roll_date' => now(),
-                // The move itself, so the live stream can hand it to everyone
-                // else watching and their board animates it too — see the
-                // migration that added these. The sequence number is what lets
-                // a viewer tell a new move from the same state re-sent, which
-                // matters because two rolls can finish on the same tile.
+                // The move itself, for the live stream. The sequence number is
+                // what lets a viewer tell a new move from the same state
+                // re-sent — two rolls can finish on the same tile.
                 'move_seq' => $playerBoard->move_seq + 1,
                 'last_move_from' => $previousPosition,
                 'last_move_landed' => $landedOn,
@@ -141,17 +129,10 @@ class PlayerBoardController extends Controller
 
             if ($jump === 'snake') {
                 // Everything past where the snake dropped you, not just the
-                // stretch it swallowed.
-                //
-                // The old rule stopped at the snake's head, which is right up
-                // until a ladder has carried somebody past it: complete tile
-                // 19, ride a snake back to the start, climb a ladder to 19
-                // again, and it was still ticked off — a tile finished for a
-                // run that no longer exists. Reported from exactly that board.
-                //
-                // Sliding back means losing the progress you made, and that is
-                // all of it. The tile you land ON goes too: you are standing
-                // there again, so you do it again.
+                // stretch it swallowed: a ladder can carry somebody above the
+                // head, and that tile's completion belongs to a run that no
+                // longer exists. The tile you land on goes too — you are
+                // standing there again, so you do it again.
                 $tileIdsToUncomplete = $tiles
                     ->filter(fn ($t) => $t->position >= $newPosition)
                     ->pluck('id');
@@ -175,9 +156,9 @@ class PlayerBoardController extends Controller
                 'landed' => $landedOn,
                 'to' => $newPosition,
                 'jump' => $jump,
-                // The same sequence number the stream will carry, so the page
-                // that rolled can recognise its own move coming back and not
-                // walk it twice.
+                // The stream carries the same number, so the page that rolled
+                // recognises its own move coming back and does not walk it
+                // twice.
                 'seq' => $playerBoard->fresh()->move_seq,
             ]);
     }
