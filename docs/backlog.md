@@ -616,10 +616,36 @@ tweede partij nodig hebben.
   dat dit project een echte bot wordt die in die server gezet moet worden. Dat
   is een ander product, geen veld erbij — als je het wilt, hoort het als eigen
   item in `docs/ideas.md` en niet als restje van dit.
-- [ ] **Een echte Snakes & Ladders-verbindings-SVG** — dynamische hoogte of een
-  daadwerkelijk gebogen pad tussen de eindpunten van een snake of ladder, in
-  plaats van de huidige rechte connector op percentagecoördinaten. Bewust
-  open: "kijk hoe ver dit goed te krijgen is", geen vaste spec.
+- [x] ~~**Een echte Snakes & Ladders-verbindings-SVG**~~ — gedaan 2026-09-02.
+  **De premisse klopte niet meer:** de connector was al een bezier, geen
+  rechte lijn. Wat er werkelijk stond was voor allebei dezelfde gestippelde
+  pijl met een andere kleur — een legenda, geen tekening. Nu een ladder van
+  twee bomen met sporten ertussen, en een slang met een spits toelopend
+  kronkelend lijf en een kop op de tegel waar je op landt. De taper doet het
+  werk dat de pijlpunt deed: hij zegt welke kant het op gaat zonder er een
+  bij te tekenen.
+  **Onderweg gevonden, en dit was het echte defect:** de overlay stond op de
+  perkamentrand met zijn `p-3`, niet op het grid. Een viewBox-eenheid was dus
+  een fractie van een vak dat 24px breder is dan het bord, en elke connector
+  landde tot tien pixels naast zijn tegel — het ergst aan de randen, waar een
+  slang eruitzag alsof hij buiten het bord begon. Grid en overlay zitten nu in
+  hetzelfde `relative`-vakje.
+  Geometrie in `Support/snakesLadders.js`, buiten de component omdat het
+  rekenwerk is: `tileCenter` (boustrofedon, zelfde afleiding uit `position`
+  als `orderedTiles`, dus ze kunnen niet uit elkaar lopen), `ladderPath`,
+  `snakeBody`, `snakeHead`. De golf is een sinus onder een `sin(πt)`-envelop,
+  wat de zijwaartse uitwijking aan beide uiteinden op nul dwingt: een slang
+  begint en eindigt precies op de twee tegelmiddens, hoeveel golven er
+  tussenin ook passen. Twaalf tests in `tests/js/snakesLadders.test.js`.
+  **De kleuren zijn nagerekend, niet bekeken.** Het bord is amber perkament in
+  light en bijna zwart in dark; green-500 op perkament haalde 1,4:1 en was
+  alleen zichtbaar omdat het tegen een vlak veld afsteekt. De contour draagt nu
+  het contrast (3,4:1 en hoger in beide thema's, de norm van WCAG 1.4.11 voor
+  een graphic) en de vulling blijft doorschijnend, zodat een slang die zes
+  tegels doorkruist de taken eronder niet wegpoetst.
+  Gecontroleerd in een browser op 7×7 en 9×9, in light en dark, en door de
+  SSR-bundel gehaald: de overlay komt met sporten en al uit de server-render.
+  187 frontend groen.
 - [ ] **Team-icoon: een keuze tussen een OSRS-wiki-icoon en een eigen
   upload.** Gevraagd 2026-08-30, en het lost twee dingen tegelijk op.
   Het begon als "ik kan geen icoon voor het team instellen" — maar nagemeten
@@ -670,6 +696,48 @@ tweede partij nodig hebben.
   die prop is er geen derde stap. In een browser nagemeten op beide takken:
   een team met servericon toont het plaatje (64×64 geladen), de twee zonder
   tonen hun initialen. 792 backend / 175 frontend groen.
+- [ ] **Een andere speler teleporteert; alleen wie zelf gooit ziet de
+  animatie.** Vastgesteld 2026-09-02 in een twee-tab-test met de eigenaar: hij
+  zag mij "ineens naar 16" en daarna "van 1 naar 7", zonder één stap.
+  **De oorzaak is dat de stream een positie draagt en geen beweging.**
+  `SnakesLaddersChannel` stuurt `players` met hun `current_position`; de
+  kijker rendert die opnieuw en het stuk staat er gewoon. De loopanimatie
+  hangt aan `lastMove` uit de flash van je eigen worp, en die bestaat per
+  definitie alleen voor degene die gooide.
+  Wat het vraagt: de zet als **feit over het bord** meesturen — van, geland
+  op, naar, en welk type sprong — plus een oplopend zet-id, zodat een kijker
+  een nieuwe zet kan onderscheiden van een gewone hertekening. Dat past
+  binnen de regels van het kanaal: een zet is niet per-kijker, hij is publiek,
+  net als de positie die er nu al in zit. Aan de clientkant moet de walker
+  daarna generiek worden — nu is hij "mijn stuk", en het moet "een stuk"
+  worden.
+  Let op de volgorde: de eigen speler krijgt de zet dan twee keer binnen (uit
+  zijn eigen flash én uit de stream) en mag niet twee keer lopen.
+
+- [ ] **Twintig spelers op één tegel.** Gevraagd 2026-09-02, meteen na het
+  vergroten van de markers. De stapel toont er nu drie plus een `+N`-badge, en
+  die markers zijn 24px met een ring van 2px geworden om überhaupt leesbaar te
+  zijn op een donkere tegel. Op een 9×9 is een tegel ~70px, dus drie ervan
+  plus de badge vullen hem al.
+  Nog te beslissen: minder tonen (twee, of alleen een teller), stapelen met
+  overlap zoals een avatar-groep, of de markers laten krimpen naarmate het
+  drukker wordt — dat laatste botst met de reden dat ze net groter zijn
+  gemaakt. Er is geen scherm waarop twintig gezichten op één vakje passen, dus
+  dit is een keuze over wat je wegneemt, niet over hoe je ze inpast.
+
+- [ ] **Een 9×9 bord op een telefoon is onwerkbaar.** Gemeld 2026-09-02 tijdens
+  het werk aan de connectors: op 375px is een tegel ~36px met twee regels
+  tekst erin, en dat is geen bord maar een raster van afkortingen. 7×7 zit er
+  vlak tegenaan.
+  De richting die de eigenaar noemt is **tegels groter maken en het bord
+  horizontaal laten scrollen** in plaats van het te laten krimpen — het bord
+  zit al in een `overflow-x-auto`, dus het gaat om de `min-w-*`-drempels per
+  formaat, niet om nieuwe machinerie. Nog te bedenken: of dat ook voor 7×7
+  geldt, en wat er dan met de leesbaarheid van de tegeltekst gebeurt.
+  Let op één ding dat hier net omheen gebouwd is: die scroller knipt allebei
+  de assen zodra één ervan niet `visible` is. Alles wat buiten het bord uit
+  wil steken — de edit-pil deed dat — moet erbuiten staan.
+
 - [ ] **Beslissen of `docs/README.md` terug naar de repo-root moet.** Nu
   rendert GitHub geen landings-readme voor de repo.
 

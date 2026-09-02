@@ -27,7 +27,7 @@
                      event page, real viewport. `flex-col` below `sm`
                      sidesteps the whole heuristic: the two stack, full width
                      each, no wrap decision to get wrong. -->
-                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
                     <event-type-heading
                         :event="liveBoard"
                         :can-edit="canEdit"
@@ -55,20 +55,34 @@
                          natural width, so it never wrapped and simply ran
                          off the side — 772px of controls on a 375px screen
                          on the bingo card. It only needs to hold its ground
-                         once there is room for it to. -->
-                    <div class="flex flex-wrap gap-2 sm:shrink-0">
-                            <!-- Two buttons that both sound like "see who
-                                 else is here", so they say what they
-                                 actually do: this one draws everyone's
-                                 marker ON the board, the one beside it opens
-                                 the list of who is taking part. -->
+                         once there is room for it to.
+                         `lg`, not `sm`: five buttons need about 470px, so from
+                         `sm` up they sat beside the title and took nearly all
+                         of it — on a 700px window the heading was squeezed to
+                         one letter per line. There is only room for both from
+                         `lg`, which is also where the title stops needing the
+                         full width. -->
+                    <div class="flex flex-wrap gap-2 lg:shrink-0">
+                            <!-- Two buttons that both sound like "see who else
+                                 is here", so they have to say what they
+                                 actually do: this one draws the other players'
+                                 markers ON the board, the one beside it opens
+                                 the list of who is taking part.
+                                 It used to read "Show on board", which named
+                                 the place and not the subject — and since it
+                                 starts OFF, somebody looking for another player
+                                 saw an empty board and concluded the board was
+                                 broken rather than that a toggle was off.
+                                 Reported exactly that way. The label also names
+                                 what pressing it will do now, rather than
+                                 leaving the state to the button's colour. -->
                             <u-button
                                 v-if="otherPlayers.length > 0"
                                 :color="showOtherPlayers ? 'primary' : 'neutral'"
                                 :variant="showOtherPlayers ? 'subtle' : 'outline'"
                                 size="sm"
                                 icon="i-lucide-map-pin"
-                                :label="$t('board.show_players')"
+                                :label="showOtherPlayers ? $t('board.hide_players') : $t('board.show_players')"
                                 :title="$t('board.show_players_desc')"
                                 @click="showOtherPlayers = !showOtherPlayers"
                             />
@@ -115,12 +129,117 @@
                 </u-card>
 
                 <div v-else class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
-                    <div class="flex-1 w-full min-w-0 overflow-x-auto">
+                    <!-- `isolate` is what makes the pill's z-index below safe.
+                         Without it that z-10 lives in the ROOT stacking context
+                         and climbs over a teleported modal — which it did, on
+                         top of the event settings dialog. This box seals it in:
+                         inside, the pill can outrank the board; outside, the
+                         whole thing is one flat layer that a modal covers like
+                         anything else.
+                         The board used to forbid z-index outright for exactly
+                         this reason. That rule was right about the danger and
+                         wrong about the remedy: DOM order alone cannot put one
+                         element above a later sibling. -->
+                    <div class="flex-1 w-full min-w-0 isolate">
+                        <!-- The way out sits with the thing that changed, not
+                             back in the menu at the far end of the header.
+                             One button, not a save/cancel pair: every tile edit
+                             posts and closes on its own, so there is nothing
+                             held back to save and nothing to throw away — a
+                             cancel here would guard nothing, and a confirm on
+                             it would teach people to click through confirms
+                             that never mattered.
+
+                             It hangs on the board's top border while living
+                             OUTSIDE the scroller, which is the only way to have
+                             both. Inside it, the top was sliced off: the board
+                             needs `overflow-x-auto`, and the moment one axis
+                             stops being `visible` the other does too. Padding
+                             on the scroller cannot buy the room back either —
+                             clipping happens at the padding box, so padding
+                             moves the content and not the edge.
+                             It keeps its own height and the BOARD is pulled up
+                             under it instead, by a negative bottom margin — so
+                             the pill's lower part covers the top border and the
+                             rest stands above it. Do not try the reverse: a
+                             zero-height row with the pill pulled up by half of
+                             itself lines up perfectly on paper and collapses in
+                             practice, because a flex row stretches its children
+                             to the row's height, and that height was zero. It
+                             shipped looking like a sliver with a button
+                             floating next to it.
+                             The board's top padding grows to clear that
+                             overlap — 20px against a 16px dip. Both numbers are
+                             set here, so it is an upper bound rather than a fit
+                             tuned to one screen.
+                             On a phone it sits fully above the board and left
+                             aligned: there it has to clear the tiles anyway,
+                             and the board is wider than the screen, so
+                             centring it on the board would put it off to one
+                             side of what you can actually see. -->
+                        <div v-if="editMode" class="relative z-10 flex justify-start sm:justify-center mb-2 sm:-mb-4">
+                            <div class="inline-flex max-w-full items-center gap-2 rounded-full bg-default ring-1 ring-primary/50 shadow-sm py-1 pl-3 pr-1">
+                                <u-icon name="i-lucide-grid-2x2-plus" class="size-3.5 shrink-0 text-primary" />
+                                <span class="text-xs font-semibold truncate">{{ $t('board.editing_tiles_notice') }}</span>
+                                <!-- Round, and inset from the pill's own edge: a
+                                     square-cornered button flush against a fully
+                                     rounded pill reads as two shapes fighting
+                                     rather than one control. -->
+                                <u-button
+                                    size="xs"
+                                    color="neutral"
+                                    variant="solid"
+                                    class="rounded-full shrink-0"
+                                    icon="i-lucide-check"
+                                    :label="$t('board.done_editing')"
+                                    @click="editMode = false"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
                         <!-- board-parchment/osrs-border ported as Tailwind utilities rather
                              than the old app's custom CSS classes (main.css) — same look,
                              but this codebase's convention is Tailwind-first custom CSS only
                              when Tailwind can't express it, and this can. -->
-                        <div class="relative rounded-xl p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900" :class="minWidthClass">
+                        <!-- While editing, the board itself says so. The mode
+                             lived only in a button at the far end of the header,
+                             so the thing whose behaviour had changed — every
+                             tile — looked identical either way. A breathing
+                             ring rather than a colour change, so the tiles'
+                             own snake/ladder/current states stay readable
+                             underneath it. -->
+                        <div
+                            class="relative rounded-xl p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900"
+                            :class="[minWidthClass, editMode ? 'board-editing sm:pt-5' : '']"
+                        >
+
+                            <!-- The overlay is positioned on THIS box, not on the
+                                 parchment around it: the border's p-3 used to sit
+                                 inside the overlay's inset-0, so a viewBox unit was
+                                 a fraction of a box 24px wider than the grid and
+                                 every connector landed up to ten pixels off its
+                                 tile — worst at the edges, where a snake looked
+                                 like it started outside the board. -->
+                            <div class="relative">
+                            <!-- Percentage-based coordinates (viewBox 0 0 100 100),
+                                 not pixel measurements like the old app's version —
+                                 this grid is fluid-width (Tailwind grid-cols-N +
+                                 aspect-square, no fixed tile size to measure), so a
+                                 percentage overlay scales with it for free with no
+                                 ResizeObserver. Geometry and colours live in
+                                 Support/snakesLadders.js.
+
+                                 TWO passes with the grid between: the whole drawing
+                                 underneath, then the same drawing clipped to each
+                                 connector's own two tiles on top, so its ends grip
+                                 the tiles it is about.
+                                 A third arrangement was built, measured and thrown
+                                 away — lifting the WHOLE drawing between the tile
+                                 backgrounds and their content. The stacking worked;
+                                 the reading did not. See the note above
+                                 .board-tile__content in app.css. -->
+                            <board-connectors :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" />
                             <div :class="gridClass" class="grid gap-1">
                                 <!-- Not gated on playerBoard existing — reaching this
                                      page at all already implies BoardAccess (see
@@ -138,26 +257,39 @@
                                     v-for="tile in orderedTiles"
                                     :key="tile.position"
                                     type="button"
-                                    class="aspect-square rounded-md relative cursor-pointer overflow-hidden hover:scale-105 transition-transform"
+                                    class="aspect-square rounded-md relative cursor-pointer overflow-hidden"
                                     :class="tileClasses(tile)"
                                     :title="tileTitle(tile) ?? trans('board.tile', { n: tile.position + 1 })"
                                     @click="handleTileClick(tile)"
+                                    @mouseenter="highlightConnector(tile)"
+                                    @mouseleave="clearConnector"
+                                    @focus="highlightConnector(tile)"
+                                    @blur="clearConnector"
                                 >
-                                    <!-- No z-index anywhere in here on purpose — see tileClasses()'s
-                                         note. Paint order relies entirely on DOM order (later =
-                                         on top), so nothing here can leak into the root stacking
-                                         context and climb above a teleported modal. -->
+                                    <!-- Everything a tile SHOWS lives in here, so that a tile the
+                                         player has already passed can grey out what it says
+                                         without touching its background. Dimming the button
+                                         itself made the background translucent too, and a
+                                         connector crossing a passed tile then came through at
+                                         nearly full strength — the board showed you where you had
+                                         been more clearly than where you were going.
+                                         No z-index on it: paint order here is still DOM order, so
+                                         nothing can leak into the root stacking context and climb
+                                         above a teleported modal. -->
+                                    <span class="board-tile__content">
                                     <!-- The one tile that gets a top label, not just the
                                          --current ring/tint app.css already applies: the
                                          ring reads as "highlighted" on a screenshot but
                                          doesn't say WHICH highlight it is next to the
                                          --past styling on tiles behind it. -->
-                                    <div
-                                        v-if="isCurrentTile(tile)"
-                                        class="board-tile--here-label absolute top-0 inset-x-0 z-10 text-[6px] sm:text-[7px] font-bold uppercase tracking-wide text-center leading-tight py-0.5 truncate px-0.5"
-                                    >
-                                        {{ $t('board.you_are_here') }}
-                                    </div>
+                                    <transition name="here-label">
+                                        <div
+                                            v-if="isCurrentTile(tile) && !walker && !editMode"
+                                            class="board-tile--here-label absolute top-0 inset-x-0 z-10 text-[8px] sm:text-[10px] font-bold uppercase tracking-wide text-center leading-tight py-0.5 truncate px-0.5"
+                                        >
+                                            {{ $t('board.you_are_here') }}
+                                        </div>
+                                    </transition>
 
                                     <div class="absolute inset-0 flex flex-col items-center justify-center px-1 overflow-hidden">
                                         <img
@@ -188,82 +320,152 @@
                                     </span>
 
                                     <div v-if="playersOnTile(tile.position).length" class="absolute bottom-0.5 right-0.5 flex flex-wrap-reverse justify-end gap-0.5 max-w-[calc(100%-4px)]">
+                                        <!-- A marker has to survive the board it
+                                             sits on. At 3xs with a hairline ring
+                                             it was 16px of grey initials on a
+                                             dark tile — reported as "I can
+                                             barely see you". Bigger, on its own
+                                             solid ground, with a ring that does
+                                             not borrow the tile's own colour. -->
                                         <u-avatar
                                             v-for="p in playersOnTile(tile.position).slice(0, 3)"
                                             :key="p.id"
                                             :src="p.avatarUrl ?? undefined"
                                             :alt="p.name"
-                                            size="3xs"
-                                            class="ring-1 ring-default"
+                                            size="xs"
+                                            class="ring-2 ring-primary bg-elevated shadow-md"
                                         />
                                         <span
                                             v-if="playersOnTile(tile.position).length > 3"
-                                            class="text-[8px] leading-none bg-elevated rounded-full size-3.5 flex items-center justify-center ring-1 ring-default"
+                                            class="text-[10px] font-semibold leading-none bg-elevated rounded-full size-5 flex items-center justify-center ring-2 ring-primary shadow-md"
                                         >
                                             +{{ playersOnTile(tile.position).length - 3 }}
                                         </span>
                                     </div>
+                                    </span>
                                 </button>
                             </div>
 
-                            <!-- Percentage-based coordinates (viewBox 0 0 100 100),
-                                 not pixel measurements like the old app's version —
-                                 this grid is fluid-width (Tailwind grid-cols-N +
-                                 aspect-square, no fixed tile size to measure), so a
-                                 percentage overlay scales with it for free with no
-                                 ResizeObserver. Approximates gap-1.5 as included in
-                                 each cell's share rather than accounted separately;
-                                 close enough at this gap size to not be visually off. -->
-                            <svg
-                                v-if="snakeLadderConnections.length"
-                                class="board-svg-overlay"
-                                viewBox="0 0 100 100"
-                                preserveAspectRatio="none"
-                                xmlns="http://www.w3.org/2000/svg"
+                            <board-connectors :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" clip-ends />
+
+                            <!-- The piece that moves. Bigger than the avatars
+                                 stacked on a tile, and drawn after the top
+                                 connector pass so it rides ON the snake rather
+                                 than under it. -->
+                            <div
+                                v-for="piece in movingPieces"
+                                :key="piece.id"
+                                class="board-walker"
+                                :style="{ left: `${piece.at.x}%`, top: `${piece.at.y}%`, '--walker-size': piece.at.size }"
                                 aria-hidden="true"
                             >
-                                <defs>
-                                    <marker id="arrow-snake" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
-                                        <path d="M0,0 L0,5 L5,2.5 z" fill="rgba(239,68,68,0.55)" />
-                                    </marker>
-                                    <marker id="arrow-ladder" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
-                                        <path d="M0,0 L0,5 L5,2.5 z" fill="rgba(34,197,94,0.55)" />
-                                    </marker>
-                                </defs>
-                                <path
-                                    v-for="(conn, i) in snakeLadderConnections"
-                                    :key="i"
-                                    :d="connectionPath(conn)"
-                                    :stroke="conn.type === 'SNAKE' ? 'rgba(239,68,68,0.4)' : 'rgba(34,197,94,0.4)'"
-                                    stroke-width="0.5"
-                                    stroke-dasharray="2,1.2"
-                                    :marker-end="conn.type === 'SNAKE' ? 'url(#arrow-snake)' : 'url(#arrow-ladder)'"
-                                    fill="none"
-                                    stroke-linecap="round"
-                                />
-                            </svg>
+                                <u-avatar :src="piece.avatarUrl ?? undefined" :alt="piece.name" size="md" class="ring-2 ring-primary" />
+                            </div>
+                            </div>
+                        </div>
                         </div>
                     </div>
 
                     <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
-                        <!-- The thing to do comes first. This card used to sit
-                             below "Roll the dice", whose own disabled-state
-                             copy says "Mark it complete above" — a lie by
-                             position, since the task card was the one BELOW
-                             it. Reported directly. Swapped order rather than
-                             reworded the copy: the task is what a player
-                             actually acts on next, the dice are the reward
-                             for finishing it (see the comment on that card,
-                             now following this one), so "above" is what the
-                             text should have said all along, not "below". -->
+
+                        <!-- Ported from Sidebar.vue: the dice roller only appears once the
+                             CURRENT tile is marked complete — rolling isn't always available,
+                             it's the reward for finishing what you're standing on. This isn't
+                             enforced server-side either (old or new backend) — it's a UI pace,
+                             not a hard rule — but the UI gate itself was missing entirely here. -->
+                        <!-- Shown whether or not you may roll yet, and saying
+                             which. Hiding the card until the current tile was
+                             ticked off made the board look like it was
+                             missing its main control — reported as "where is
+                             the dice, snakes and ladders does not work at
+                             all", which is the correct reading of a page with
+                             no way to play on it. The gate is a pace, not a
+                             secret. -->
+                        <u-card v-if="playerBoard">
+                            <template #header>
+                                <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
+                            </template>
+
+                            <!-- Local only. Rolling a six into a snake's head on
+                                 demand is the only practical way to work on the
+                                 movement animation. -->
+                            <div v-if="canForceRoll" class="flex flex-wrap items-center justify-center gap-1 mb-3">
+                                <span class="text-[10px] uppercase tracking-wide text-muted w-full text-center">dev: force roll</span>
+                                <u-button
+                                    v-for="face in 6"
+                                    :key="face"
+                                    size="xs"
+                                    color="neutral"
+                                    variant="outline"
+                                    :disabled="rolling"
+                                    @click="roll(face)"
+                                >
+                                    {{ face }}
+                                </u-button>
+                            </div>
+
+                            <dice-roller
+                                v-if="canRoll && !isPaused && !isEnded && !isUpcoming"
+                                :rolling="rolling"
+                                :last-roll="lastRoll"
+                                :rolls-today="playerBoard?.dice_rolls_today ?? 0"
+                                :roll-limit="liveBoard.dice_roll_limit"
+                                @roll="roll"
+                            />
+
+                            <!-- Paused/ended/upcoming all refuse the roll
+                                 server-side either way; taking the dice away
+                                 is so that the refusal is not the way anyone
+                                 finds out. Upcoming used to be missing from
+                                 both sides of this — the dice showed and
+                                 worked on a board dated to start next month,
+                                 reported directly from exactly that page. -->
+                            <p v-else class="text-sm text-muted">
+                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (isUpcoming ? $t('events.not_started') : (currentClaim?.status === 'PENDING' ? $t('board.roll_awaiting_review') : $t('board.roll_needs_current_tile')))) }}
+                            </p>
+                        </u-card>
+
+                        <!-- No board of your own yet. Rolling still creates
+                             one — playing is joining — so the dice stay, with
+                             the deliberate way in above them.
+
+                             Joining itself stays open while upcoming — that's
+                             signing up ahead of the start, which is normal
+                             and is what the header's own join button already
+                             allows (EventParticipationService::join() has
+                             never checked isUpcoming, only isPaused). Only
+                             the dice — actually playing — wait for the start
+                             date, same as everywhere else this pass touched. -->
+                        <u-card v-if="!playerBoard">
+                            <p class="text-sm text-muted">
+                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (isUpcoming ? $t('events.not_started') : (joined ? $t('board.get_started_desc') : $t('events.join_hint')))) }}
+                            </p>
+                            <div v-if="!isPaused && !isEnded" class="mt-3 flex flex-col gap-3">
+                                <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
+                                <dice-roller v-if="!isUpcoming" :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
+                            </div>
+                        </u-card>
+
+                        <!-- Below the dice, by the owner's call: the action goes
+                             at the top of the column.
+                             These two cards have now been swapped twice, both
+                             times because the roll card's disabled copy pointed
+                             at this one by direction — "mark it complete above"
+                             was a lie the first time round and would be one
+                             again now. The copy no longer says where: it names
+                             the card instead, so the order is free to change
+                             without the text going stale a third time. -->
                         <u-card v-if="currentTile">
                             <template #header>
                                 <div class="flex items-center justify-between gap-2">
                                     <span class="font-semibold">{{ $t('board.your_task') }}</span>
-                                    <!-- A proper button, not a small icon
-                                         tucked beside the title — a wiki link
-                                         is the one external action on this
-                                         card and deserves to read as one. -->
+                                    <!-- A button rather than a bare icon — a wiki
+                                         link is the one external action on this
+                                         card and should read as one — but a short
+                                         one. "Open the wiki page" beside the title
+                                         in a 256px column left the heading three
+                                         words on three lines. The full sentence
+                                         stays as the accessible name. -->
                                     <u-button
                                         v-if="currentTile.task?.wiki_url"
                                         :href="currentTile.task.wiki_url"
@@ -272,8 +474,11 @@
                                         size="xs"
                                         color="neutral"
                                         variant="outline"
+                                        class="shrink-0"
                                         trailing-icon="i-lucide-external-link"
-                                        :label="$t('tile_editor.open_wiki_page')"
+                                        :label="$t('tile_editor.wiki')"
+                                        :title="$t('tile_editor.open_wiki_page')"
+                                        :aria-label="$t('tile_editor.open_wiki_page')"
                                     />
                                 </div>
                             </template>
@@ -359,66 +564,6 @@
                                         @click="toggleTile(currentTile)"
                                     />
                                 </template>
-                            </div>
-                        </u-card>
-
-                        <!-- Ported from Sidebar.vue: the dice roller only appears once the
-                             CURRENT tile is marked complete — rolling isn't always available,
-                             it's the reward for finishing what you're standing on. This isn't
-                             enforced server-side either (old or new backend) — it's a UI pace,
-                             not a hard rule — but the UI gate itself was missing entirely here. -->
-                        <!-- Shown whether or not you may roll yet, and saying
-                             which. Hiding the card until the current tile was
-                             ticked off made the board look like it was
-                             missing its main control — reported as "where is
-                             the dice, snakes and ladders does not work at
-                             all", which is the correct reading of a page with
-                             no way to play on it. The gate is a pace, not a
-                             secret. -->
-                        <u-card v-if="playerBoard">
-                            <template #header>
-                                <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
-                            </template>
-
-                            <dice-roller
-                                v-if="canRoll && !isPaused && !isEnded && !isUpcoming"
-                                :rolling="rolling"
-                                :last-roll="lastRoll"
-                                :rolls-today="playerBoard?.dice_rolls_today ?? 0"
-                                :roll-limit="liveBoard.dice_roll_limit"
-                                @roll="roll"
-                            />
-
-                            <!-- Paused/ended/upcoming all refuse the roll
-                                 server-side either way; taking the dice away
-                                 is so that the refusal is not the way anyone
-                                 finds out. Upcoming used to be missing from
-                                 both sides of this — the dice showed and
-                                 worked on a board dated to start next month,
-                                 reported directly from exactly that page. -->
-                            <p v-else class="text-sm text-muted">
-                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (isUpcoming ? $t('events.not_started') : (currentClaim?.status === 'PENDING' ? $t('board.roll_awaiting_review') : $t('board.roll_needs_current_tile')))) }}
-                            </p>
-                        </u-card>
-
-                        <!-- No board of your own yet. Rolling still creates
-                             one — playing is joining — so the dice stay, with
-                             the deliberate way in above them.
-
-                             Joining itself stays open while upcoming — that's
-                             signing up ahead of the start, which is normal
-                             and is what the header's own join button already
-                             allows (EventParticipationService::join() has
-                             never checked isUpcoming, only isPaused). Only
-                             the dice — actually playing — wait for the start
-                             date, same as everywhere else this pass touched. -->
-                        <u-card v-if="!playerBoard">
-                            <p class="text-sm text-muted">
-                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (isUpcoming ? $t('events.not_started') : (joined ? $t('board.get_started_desc') : $t('events.join_hint')))) }}
-                            </p>
-                            <div v-if="!isPaused && !isEnded" class="mt-3 flex flex-col gap-3">
-                                <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
-                                <dice-roller v-if="!isUpcoming" :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
                             </div>
                         </u-card>
 
@@ -630,12 +775,14 @@ import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import BoardConnectors from '@/Components/BoardConnectors.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
 import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate, eventStatus } from '@/Support/board';
+import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';
 import { useEventStream } from '@/Composables/useEventStream';
 
 const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/BoardSettingsModal.vue'));
@@ -648,6 +795,8 @@ const props = defineProps({
     // True when this reader is looking at an invite-only event they are
     // not in yet — the code field lives on the page now, not on a gate.
     needsInvite: { type: Boolean, default: false },
+    // Local development only — see BoardController::show.
+    canForceRoll: { type: Boolean, default: false },
     board: { type: Object, required: true },
     tiles: { type: Array, required: true },
     playerBoard: { type: Object, default: null },
@@ -916,9 +1065,317 @@ const otherPlayers = computed(() => livePlayers.value.filter((p) => !isMyPlayerR
 // open board rather than only after a refresh.
 const visiblePlayers = computed(() => livePlayers.value.filter((p) => isMyPlayerRow(p) || showOtherPlayers.value));
 
+/**
+ * The player piece that actually moves, and how it gets from tile to tile.
+ *
+ * A roll is two motions, not one: the walk the dice bought, and — if that
+ * lands on a snake's head or a ladder's foot — the ride that follows. They
+ * are paced differently on purpose. Walking is the player's own doing and
+ * reads at a step per tile; the ride is the board doing something TO them,
+ * and dawdling through it makes a snake feel like a lift.
+ */
+const WALK_MS_PER_TILE = 300;
+const HOP_MS_PER_RUNG = 105;
+const SLIDE_MS_PER_UNIT = 11;
+const SLIDE_MIN_MS = 420;
+const LIFT_MS = 220;
+const LAND_MS = 260;
+
+/**
+ * Every piece currently in motion, keyed by its player board id.
+ *
+ * A map rather than one piece, because a move no longer belongs only to the
+ * person who rolled: the stream carries everybody's, and two people can be
+ * walking at once on a busy board.
+ */
+const walkers = ref(new Map());
+
+/** The viewer's own piece, which is the one the roll button drives. */
+const walker = computed(() => walkers.value.get(props.playerBoard?.id) ?? null);
+
+/** Every piece in motion, with the face to draw for it. */
+const movingPieces = computed(() =>
+    [...walkers.value.entries()].map(([id, at]) => {
+        const player = livePlayers.value.find((p) => p.id === id);
+
+        return {
+            id,
+            at,
+            name: player ? playerName(player) : '',
+            avatarUrl: player?.team?.icon_url ?? player?.team?.guild_icon_url ?? player?.user?.avatar_url ?? null,
+        };
+    }),
+);
+
+const prefersReducedMotion = () =>
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Ease the piece into and out of every leg, so it does not jerk at corners. */
+const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+
+/**
+ * Run the piece along a list of points over `duration`, and resolve at the end.
+ *
+ * `sizeAt` is what turns a slide into a step: swelling the piece through the
+ * middle of a leg and settling it at the end reads, from directly above, as
+ * leaving the ground and coming back down. There is no other way to show a hop
+ * on a board seen in plan view.
+ */
+function glide(id, points, duration, sizeAt = null) {
+    return new Promise((resolve) => {
+        if (points.length === 0) {
+            resolve();
+
+            return;
+        }
+
+        const start = performance.now();
+
+        const frame = (now) => {
+            const t = Math.min(1, (now - start) / duration);
+            const at = easeInOut(t) * (points.length - 1);
+            const i = Math.min(points.length - 1, Math.floor(at));
+            const next = points[Math.min(points.length - 1, i + 1)];
+            const f = at - i;
+
+            place(id, {
+                x: points[i].x + (next.x - points[i].x) * f,
+                y: points[i].y + (next.y - points[i].y) * f,
+                size: sizeAt ? sizeAt(t) : 1,
+            });
+
+            if (t < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                resolve();
+            }
+        };
+
+        requestAnimationFrame(frame);
+    });
+}
+
+/** Reassigns the map so Vue sees the change — a Map mutation is invisible. */
+function place(id, at) {
+    const next = new Map(walkers.value);
+
+    if (at === null) {
+        next.delete(id);
+    } else {
+        next.set(id, at);
+    }
+
+    walkers.value = next;
+}
+
+/** A step: a small bob, so a walk reads as footfalls rather than a drift. */
+const stepSize = (t) => 1 + 0.1 * Math.sin(Math.PI * t);
+
+/** A hop: a real one, because a ladder is climbed rung by rung. */
+const hopSize = (t) => 1 + 0.34 * Math.sin(Math.PI * t);
+
+/** Where a tile's avatar stack sits, which is where a piece rests. */
+function restingSpot(position) {
+    const n = cols.value;
+    const centre = tileCenter(position, n);
+    const cell = 100 / n;
+
+    return { centre, corner: { x: centre.x + cell * 0.3, y: centre.y + cell * 0.3 } };
+}
+
+/** The size a resting marker is drawn at, relative to the moving piece. */
+const RESTING_SIZE = 0.42;
+
+/**
+ * Stand up off the tile before setting off.
+ *
+ * The mirror of land(). Without it the piece appears at full size on the
+ * first frame while the small marker disappears from the corner — two things
+ * happening at once that are meant to be one thing moving.
+ */
+async function lift(id, position) {
+    const { centre, corner } = restingSpot(position);
+
+    await glide(id, [corner, centre], LIFT_MS, (t) => RESTING_SIZE + (1 - RESTING_SIZE) * t);
+}
+
+/**
+ * Settle onto the destination: shrink and slide into the corner where the
+ * tile's avatar stack sits, so the piece becomes the marker instead of
+ * vanishing and a small one appearing somewhere else on the same frame.
+ */
+async function land(id, position) {
+    const { centre, corner } = restingSpot(position);
+
+    await glide(id, [centre, corner], LAND_MS, (t) => 1 - (1 - RESTING_SIZE) * t);
+}
+
+/**
+ * Walk the dice, then ride whatever was waiting.
+ *
+ * Driven by what the server flashed back, not by arithmetic repeated here.
+ * Where a roll lands and where a snake then sends you is the one thing the
+ * board must not get wrong twice — and the first version of this did re-derive
+ * it in the browser, which was both a second source of truth and, as it turned
+ * out, quietly broken.
+ */
+/**
+ * Which move is currently being played.
+ *
+ * A second roll landing mid-animation used to start a second playMove over the
+ * top of the first: two loops writing the same piece's position, so it jumped
+ * between two routes and finished wherever the loser happened to stop. Each
+ * run takes a token and stands down as soon as a newer one exists.
+ */
+/**
+ * The two animation switches, from the account's display preferences.
+ *
+ * Read here rather than passed as props: they belong to the person, not to
+ * this board, and every page already receives them on `auth.user`.
+ */
+const ownAnimationOn = computed(() => authUser.value?.display?.animate_own_moves ?? true);
+const othersAnimationOn = computed(() => authUser.value?.display?.animate_other_moves ?? true);
+
+const moveTokens = new Map();
+
+/**
+ * The newest move sequence already accounted for, per piece.
+ *
+ * Seeded from the first render rather than left empty: without a baseline the
+ * first stream tick after opening the page reads every player's last move as
+ * new, and the board replays a roll that happened before anyone was watching.
+ */
+const seenMoves = new Map();
+
+async function playMove(id, { from, landed, to, jump }) {
+    if (prefersReducedMotion()) {
+        return;
+    }
+
+    const token = (moveTokens.get(id) ?? 0) + 1;
+    moveTokens.set(id, token);
+    const current = () => moveTokens.get(id) === token;
+
+    const n = cols.value;
+    const cell = 100 / n;
+
+    await lift(id, from);
+
+    if (!current()) {
+        return;
+    }
+
+    for (let position = from + 1; position <= landed && current(); position++) {
+        // eslint-disable-next-line no-await-in-loop -- a walk is sequential
+        await glide(id, [tileCenter(position - 1, n), tileCenter(position, n)], WALK_MS_PER_TILE, stepSize);
+    }
+
+    if (jump && current()) {
+        const points = travelPath(landed, to, n, jump === 'snake' ? 'SNAKE' : 'LADDER');
+        const length = points.reduce(
+            (sum, p, i) => (i === 0 ? 0 : sum + Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y)),
+            0,
+        );
+
+        if (jump === 'snake') {
+            // A slide, in one motion. Nobody takes steps down a snake.
+            await glide(id, points, Math.max(SLIDE_MIN_MS, length * SLIDE_MS_PER_UNIT), stepSize);
+        } else {
+            // Rung by rung. Spaced the same way the ladder's own rungs are, so
+            // the piece lands on them rather than passing over them — one long
+            // glide up a ladder was the one part of this that looked like a
+            // line being drawn instead of somebody climbing.
+            const hops = Math.max(2, Math.round(length / (cell * 0.42)));
+
+            for (let i = 1; i <= hops && current(); i++) {
+                const at = (k) => points[Math.min(points.length - 1, Math.round(((points.length - 1) * k) / hops))];
+
+                // eslint-disable-next-line no-await-in-loop -- a climb is sequential
+                await glide(id, [at(i - 1), at(i)], HOP_MS_PER_RUNG, hopSize);
+            }
+        }
+    }
+
+    if (!current()) {
+        return;
+    }
+
+    await wait(120);
+    await land(id, to);
+
+    // Only the run that is still current clears the piece — otherwise a
+    // superseded one wipes the walker out from under its replacement.
+    if (current()) {
+        place(id, null);
+    }
+}
+
+/**
+ * Play everybody else's moves, off the live stream.
+ *
+ * The stream carries a position and — since the migration that added them —
+ * the move that produced it. Without this a second viewer saw the piece
+ * appear on its destination: the animation belonged to whoever rolled,
+ * because it hung off their own response.
+ *
+ * Driven by the sequence number rather than by the position changing. Two
+ * rolls can finish on the same tile (walk onto a snake's head, slide back to
+ * where you started), and that is exactly the move most worth watching.
+ */
+watch(
+    () => livePlayers.value.map((p) => `${p.id}:${p.move_seq ?? 0}`).join(','),
+    () => {
+        for (const player of livePlayers.value) {
+            const seq = player.move_seq ?? 0;
+            const seen = seenMoves.get(player.id);
+
+            seenMoves.set(player.id, seq);
+
+            // First sight of a piece is a baseline, not a move — otherwise
+            // opening the page replays whatever everyone did last.
+            if (seen === undefined || seq <= seen || player.last_move_from === null) {
+                continue;
+            }
+
+            if (isMyPlayerRow(player) ? !ownAnimationOn.value : !othersAnimationOn.value) {
+                continue;
+            }
+
+            playMove(player.id, {
+                from: player.last_move_from,
+                landed: player.last_move_landed,
+                to: player.current_position,
+                jump: player.last_move_jump,
+            });
+        }
+    },
+    { immediate: true },
+);
+
+// Local development only, alongside the dice-forcing buttons: the movement
+// animation is the one part of a roll that has nothing to do with the server,
+// and driving it straight from the console beats waiting for a round trip.
+if (typeof window !== 'undefined' && props.canForceRoll) {
+    window.__boardPlayMove = (move) => playMove(props.playerBoard?.id ?? 'dev', move);
+}
+
 function playersOnTile(position) {
+    // Nobody's piece while editing: the tiles are being rewritten, and a stack
+    // of avatars on a tile you are about to change is noise about a game that
+    // is paused for the moment.
+    if (editMode.value) {
+        return [];
+    }
+
     return visiblePlayers.value
         .filter((p) => p.current_position === position)
+        // While a piece is walking it is drawn by the walker instead, so it
+        // is not also sitting on the tile it is leaving.
+        // A piece that is walking is drawn by the walker instead, so it is
+        // not also sitting on the tile it is leaving.
+        .filter((p) => !walkers.value.has(p.id))
         .map((p) => ({
             id: p.team?.id ?? p.user_id,
             // Falls through to the deleted-player label rather than a hardcoded
@@ -955,38 +1412,85 @@ const orderedTiles = computed(() => {
     return result;
 });
 
-// Ported from the old Board/SnakeLadder.vue, converted from pixel to
-// percentage coordinates — see the template's comment on why.
-const snakeLadderConnections = computed(() =>
-    // The live copy, so a ladder moved mid-event redraws on every open board
-    // rather than only after a reload.
-    liveTiles.value
-        .filter((t) => (t.type === 'SNAKE' || t.type === 'LADDER') && t.target_position !== null)
-        .map((t) => ({ from: t.position, to: t.target_position, type: t.type })),
-);
-
-function tileCenterPercent(position) {
+// The shapes are built here rather than in the template, so a board with a
+// dozen connectors walks its tiles once per change instead of once per render
+// — and both overlay layers read the same computed array.
+//
+// The live copy, so a ladder moved mid-event redraws on every open board
+// rather than only after a reload.
+const snakeLadderConnections = computed(() => {
     const n = cols.value;
-    const row = Math.floor(position / n);
-    const col = position % n;
-    const adjustedCol = row % 2 === 0 ? col : n - 1 - col;
-    const visualRow = n - 1 - row;
-    const cellSize = 100 / n;
 
-    return { x: adjustedCol * cellSize + cellSize / 2, y: visualRow * cellSize + cellSize / 2 };
+    return liveTiles.value
+        .filter((t) => (t.type === 'SNAKE' || t.type === 'LADDER') && t.target_position !== null)
+        .map((t) => {
+            // Null for a tile pointing at itself — bad data rather than a
+            // connector, and there is no shape to draw for it.
+            const conn = connection(t.position, t.target_position, n);
+
+            if (conn === null) {
+                return null;
+            }
+
+            return {
+                // Position, not index: a stable key across a tile being
+                // added or removed.
+                key: `${t.type}-${t.position}`,
+                type: t.type,
+                // A jump along a row gets a bridge instead of a ladder —
+                // see isSameRow() for why that case is different in kind.
+                parts: t.type === 'SNAKE'
+                    ? snakeParts(conn)
+                    : isSameRow(t.position, t.target_position, n)
+                        ? bridgeParts(conn)
+                        : ladderParts(conn),
+                // The two tiles this connector belongs to. The top pass clips
+                // itself to them, which is what lets its ends come out over
+                // the grid while the rest of it stays behind.
+                ends: endTiles(t.position, t.target_position, n),
+                // Which tiles light this connector up when pointed at.
+                tiles: [t.position, t.target_position],
+                // Where you get on. Kept on the shape so the overlay can dim
+                // what is behind you without the shapes being rebuilt every
+                // time somebody moves.
+                from: t.position,
+            };
+        })
+        .filter(Boolean);
+});
+
+/**
+ * The connector the reader is pointing at, and the tiles that point at one.
+ *
+ * Pointing at either end lights the whole thing, not just the end you touched
+ * — the question a person asks of a snake is always "and where does that put
+ * me?", which is about the OTHER tile.
+ */
+const activeConnector = ref(null);
+
+const connectorByTile = computed(() => {
+    const map = new Map();
+
+    for (const conn of snakeLadderConnections.value) {
+        for (const position of conn.tiles) {
+            map.set(position, conn.key);
+        }
+    }
+
+    return map;
+});
+
+function highlightConnector(tile) {
+    activeConnector.value = connectorByTile.value.get(tile.position) ?? null;
 }
 
-// Gentle quadratic bezier — same 0.18 curvature the old app used to keep
-// lines subtle and clearly directed without cluttering the board.
-function connectionPath(conn) {
-    const start = tileCenterPercent(conn.from);
-    const end = tileCenterPercent(conn.to);
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const cx = (start.x + end.x) / 2 - dy * 0.18;
-    const cy = (start.y + end.y) / 2 + dx * 0.18;
+function clearConnector() {
+    activeConnector.value = null;
+}
 
-    return `M ${start.x} ${start.y} Q ${cx} ${cy} ${end.x} ${end.y}`;
+/** True for both ends of whichever connector is lit. */
+function isLinkedTile(tile) {
+    return activeConnector.value !== null && connectorByTile.value.get(tile.position) === activeConnector.value;
 }
 
 // Ported 1:1 from the old BoardTile.vue's tileClass computed: an unconfigured
@@ -1017,7 +1521,15 @@ function isCurrentTile(tile) {
 
 function tileClasses(tile) {
     const current = props.playerBoard?.current_position;
-    const classes = ['board-tile', isTileEmpty(tile) ? 'bg-muted/30' : 'bg-primary/5 dark:bg-primary/10'];
+
+    // The ground the connector shows through, at the 80% the owner picked:
+    // enough that a task stays fully legible, little enough that a snake
+    // crossing the tile is still visible behind it.
+    const ground = isTileEmpty(tile)
+        ? 'bg-stone-200/80 dark:bg-stone-800/80'
+        : 'bg-amber-100/80 dark:bg-stone-800/80';
+
+    const classes = ['board-tile', ground, 'backdrop-blur-[2px]'];
 
     if (tile.type === 'SNAKE') classes.push('board-tile--snake');
     if (tile.type === 'LADDER') classes.push('board-tile--ladder');
@@ -1028,6 +1540,8 @@ function tileClasses(tile) {
     }
 
     if (isTileCompleted(tile)) classes.push('board-tile--completed');
+
+    if (isLinkedTile(tile)) classes.push('board-tile--linked');
 
     return classes;
 }
@@ -1046,9 +1560,33 @@ function handleTileClick(tile) {
     clickedTile.value = tile;
 }
 
-function roll() {
+function roll(force = null) {
     rolling.value = true;
-    router.post(`/events/${liveBoard.value.id}/roll`, {}, { preserveScroll: true, onFinish: () => (rolling.value = false) });
+
+    router.post(
+        `/events/${liveBoard.value.id}/roll`,
+        force ? { force } : {},
+        {
+            preserveScroll: true,
+            onFinish: () => (rolling.value = false),
+            // The page Inertia hands the callback, not usePage() — that one
+            // is read too early here and comes back with the previous visit's
+            // flash, which is how this silently animated nothing at all.
+            onSuccess: (page) => {
+                const move = page?.props?.flash?.lastMove;
+
+                if (move && props.playerBoard) {
+                    // Remembered so the same move arriving on the stream a
+                    // moment later is not walked a second time.
+                    seenMoves.set(props.playerBoard.id, move.seq);
+
+                    if (ownAnimationOn.value) {
+                        playMove(props.playerBoard.id, move);
+                    }
+                }
+            },
+        },
+    );
 }
 
 // Ported from the old useBoardPage's onCompleteTile: completing the tile at

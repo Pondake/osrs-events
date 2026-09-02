@@ -61,6 +61,134 @@ class PlayerBoardTest extends TestCase
 
     // ------------------------------------------------------------------ rolling
 
+    /**
+     * A snake takes back everything above where it drops you — including work
+     * done beyond its own head.
+     *
+     * You cannot normally complete a tile you have not stood on, so "above the
+     * head" sounds unreachable. A ladder makes it reachable: finish tile 19,
+     * slide to the start, climb back to 19, and under the old rule it was
+     * still ticked off — credit carried over from a run that no longer exists.
+     */
+    #[Test]
+    public function a_snake_clears_progress_above_where_it_drops_you(): void
+    {
+        [$owner, $event] = $this->board();
+        $this->fillTiles($event->board);
+
+        // Every tile the first roll can reach is a snake back to the start,
+        // because the die cannot be forced outside the local environment.
+        Tile::where('board_id', $event->board->id)
+            ->whereBetween('position', [1, 6])
+            ->update(['type' => 'SNAKE', 'target_position' => 0]);
+
+        $player = PlayerBoard::create([
+            'board_id' => $event->board->id,
+            'user_id' => $owner->id,
+            'current_position' => 0,
+        ]);
+
+        // Two completions: one inside the snake's own span, one well past its
+        // head — the sort a ladder leaves behind.
+        foreach ([2, 19] as $position) {
+            CompletedTile::create([
+                'player_board_id' => $player->id,
+                'tile_id' => Tile::where('board_id', $event->board->id)->where('position', $position)->value('id'),
+            ]);
+        }
+
+        $this->actingAs($owner)->post("/events/{$event->id}/roll")->assertRedirect();
+
+        $this->assertSame(0, $player->fresh()->current_position, 'expected the snake to have been hit');
+        $this->assertSame(0, CompletedTile::where('player_board_id', $player->id)->count());
+    }
+
+    /**
+     * A host fills in the squares they care about and leaves the rest blank.
+     * The page renders the whole grid regardless, so the finish line has to be
+     * the board's size — not the number of tiles that happen to exist.
+     *
+     * Reported from a 5×5 board with six configured tiles: a player standing
+     * on 19 rolled a 1 and was put on 6, because six rows made position 5 the
+     * end of the board and every roll clamped them back to it.
+     */
+    #[Test]
+    public function a_sparsely_configured_board_still_runs_its_whole_grid(): void
+    {
+        [$owner, $event] = $this->board();
+
+        // Six tiles on a twenty-five square board, none of them near the end.
+        foreach ([0, 1, 2, 7, 17, 20] as $position) {
+            Tile::create(['board_id' => $event->board->id, 'position' => $position, 'type' => 'NORMAL']);
+        }
+
+        $player = PlayerBoard::create([
+            'board_id' => $event->board->id,
+            'user_id' => $owner->id,
+            'current_position' => 18,
+        ]);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/roll")->assertRedirect();
+
+        $this->assertGreaterThan(18, $player->fresh()->current_position);
+    }
+
+    /** And the floor still holds on a board with nothing on it at all. */
+    #[Test]
+    public function an_empty_board_does_not_walk_anybody_off_the_front(): void
+    {
+        [$owner, $event] = $this->board();
+
+        $this->actingAs($owner)->post("/events/{$event->id}/roll")->assertRedirect();
+
+        $this->assertGreaterThanOrEqual(0, PlayerBoard::where('board_id', $event->board->id)->firstOrFail()->current_position);
+    }
+
+    /**
+     * The board animates the move, and the piece has to travel the same route
+     * the score took. So the roll reports where it started, where the dice
+     * reached, and where a snake or ladder then dropped the player — rather
+     * than leaving the browser to work that out again from a position and a
+     * number, which is a second place for it to be wrong.
+     *
+     * Every reachable tile is a ladder here, because the die cannot be forced:
+     * the `force` parameter only exists in the local environment, and tests do
+     * not run there. That gate is deliberate — a forced roll on production
+     * would be cheating with extra steps — so a test that leaned on it would
+     * be testing something no deployment has.
+     */
+    #[Test]
+    public function a_roll_reports_the_whole_move_and_not_just_the_number(): void
+    {
+        [$owner, $event] = $this->board();
+        $this->fillTiles($event->board);
+
+        Tile::where('board_id', $event->board->id)
+            ->whereBetween('position', [1, 6])
+            ->update(['type' => 'LADDER', 'target_position' => 20]);
+
+        $this->actingAs($owner)
+            ->post("/events/{$event->id}/roll")
+            ->assertSessionHas('last-move', fn (array $move) => $move['from'] === 0
+                && $move['landed'] >= 1 && $move['landed'] <= 6
+                && $move['to'] === 20
+                && $move['jump'] === 'ladder');
+    }
+
+    /** A plain move says so, rather than leaving `jump` to be guessed at. */
+    #[Test]
+    public function a_move_that_lands_on_nothing_reports_no_jump(): void
+    {
+        [$owner, $event] = $this->board();
+        $this->fillTiles($event->board);
+
+        $this->actingAs($owner)
+            ->post("/events/{$event->id}/roll")
+            ->assertSessionHas('last-move', fn (array $move) => $move['from'] === 0
+                && $move['to'] === $move['landed']
+                && $move['jump'] === null);
+    }
+
     #[Test]
     public function a_roll_moves_the_player_forward_by_one_to_six(): void
     {

@@ -921,12 +921,21 @@ function submit() {
             delete payload.win_condition;
             delete payload.win_lines;
             delete payload.line_bonus;
-            delete payload.requires_approval;
         }
 
         if (data.type !== 'SNAKES_LADDERS') {
             delete payload.size;
             delete payload.dice_roll_limit;
+        }
+
+        // Same rule as the create path: claim approval is the one setting
+        // both a bingo card and an S&L board have, so only a race type has
+        // nothing for it to gate. Dropping it for everything non-bingo meant
+        // an S&L host could flip the toggle off, save, and have the field
+        // never leave the browser — the board stayed on approval and the
+        // reopened modal read the unchanged value back as "on".
+        if (data.type !== 'BINGO' && data.type !== 'SNAKES_LADDERS') {
+            delete payload.requires_approval;
         }
 
         return payload;

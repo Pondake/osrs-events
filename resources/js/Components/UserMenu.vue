@@ -35,6 +35,7 @@ import { computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
+import { settingsItems } from '@/Support/settingsNav';
 
 const { user, isAuthenticated, isAdmin, canCreateTiles } = useAuth();
 
@@ -68,13 +69,17 @@ const primaryRole = computed(() => {
 
 const roleClass = computed(() => ROLE_CLASS[primaryRole.value] ?? 'text-muted');
 
+/**
+ * The settings rows come from the same list the settings sidebar prints.
+ *
+ * They used to be typed out again here, and fell behind twice — Connections
+ * and then Animations existed in the sidebar and were missing from this menu,
+ * which is the one most people open first. Only the wrapping is this menu's
+ * own: the name on top, admin and logout underneath.
+ */
 const items = computed(() => [
     [{ label: user.value?.nickname ?? user.value?.discordUsername, disabled: true }],
-    [
-        { label: trans('settings.nav_profile'), icon: 'i-lucide-user-circle', to: '/settings/profile' },
-        { label: trans('settings.nav_account'), icon: 'i-lucide-shield', to: '/settings/account' },
-        { label: trans('settings.nav_notifications'), icon: 'i-lucide-bell', to: '/settings/notifications' },
-    ],
+    settingsItems().map(({ label, icon, to }) => ({ label, icon, to })),
     ...(canReachAdmin.value
         ? [[{ label: trans('admin.nav_admin_area'), icon: 'i-lucide-layout-dashboard', to: '/admin' }]]
         : []),

@@ -342,12 +342,25 @@ class BoardController extends Controller
             ->orderByDesc('player_boards.current_position')
             // Qualified: playerBoards() is a hasManyThrough, so the join
             // brings boards' own id into scope and bare names are ambiguous.
-            ->get(['player_boards.id', 'player_boards.user_id', 'player_boards.team_id', 'player_boards.current_position'])
+            ->get([
+                'player_boards.id',
+                'player_boards.user_id',
+                'player_boards.team_id',
+                'player_boards.current_position',
+                // Sent on the first load too, not only on the stream: without
+                // a baseline sequence the first update after opening the page
+                // looks like a brand new move and replays one that happened
+                // before anyone was watching.
+                'player_boards.move_seq',
+                'player_boards.last_move_from',
+                'player_boards.last_move_landed',
+                'player_boards.last_move_jump',
+            ])
             ->map(function ($pb) use ($tiles, $maxPosition, $namesArePublic) {
                 $pathTiles = $tiles->filter(fn ($t) => $t->position > $pb->current_position && $t->position <= $maxPosition);
 
                 return [
-                    ...$pb->only(['id', 'current_position']),
+                    ...$pb->only(['id', 'current_position', 'move_seq', 'last_move_from', 'last_move_landed', 'last_move_jump']),
                     // Identity only where it is public — see
                     // BoardAccessService::canSeeParticipants(). On a listed
                     // invite-only event a stranger sees the pieces move and
@@ -366,6 +379,9 @@ class BoardController extends Controller
         return Inertia::render('BoardShow', [
             // Flattened for the same reason the cards are — see EventCard.
             'board' => EventCard::for($event),
+            // Shows the dice-forcing control, for working on the movement
+            // animation. Environment, not role — see PlayerBoardController.
+            'canForceRoll' => app()->environment('local'),
             'tiles' => $tiles,
             'playerBoard' => $playerBoard === null ? null : [
                 ...$playerBoard->only(['id', 'current_position', 'dice_rolls_today']),

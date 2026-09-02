@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['discord_id', 'discord_username', 'nickname', 'osrs_username', 'osrs_verified_at', 'avatar_url', 'email', 'password', 'onboarding_completed_at', 'notification_preferences', 'push_opted_out_at'])]
+#[Fillable(['discord_id', 'discord_username', 'nickname', 'osrs_username', 'osrs_verified_at', 'avatar_url', 'email', 'password', 'onboarding_completed_at', 'notification_preferences', 'display_preferences', 'push_opted_out_at'])]
 #[Hidden(['remember_token', 'password'])]
 class User extends Authenticatable
 {
@@ -36,6 +36,7 @@ class User extends Authenticatable
             'onboarding_completed_at' => 'datetime',
             'osrs_verified_at' => 'datetime',
             'notification_preferences' => 'array',
+            'display_preferences' => 'array',
             'push_opted_out_at' => 'datetime',
         ];
     }

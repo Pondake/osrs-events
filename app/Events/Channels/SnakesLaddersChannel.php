@@ -28,9 +28,13 @@ class SnakesLaddersChannel implements EventChannel
         // Qualified column names throughout: playerBoards() is a
         // hasManyThrough, so the join brings boards' own columns into scope
         // and a bare name is ambiguous. That has caused a real 500 here.
+        // move_seq alongside the position: two rolls can finish on the same
+        // tile — walk onto a snake's head and slide back to where you were —
+        // and without the sequence that is indistinguishable from nothing
+        // having happened, so nobody watching would see the slide.
         $rows = $event->playerBoards()
             ->orderBy('player_boards.id')
-            ->get(['player_boards.id', 'player_boards.current_position']);
+            ->get(['player_boards.id', 'player_boards.current_position', 'player_boards.move_seq']);
 
         // The board itself, not only who is standing where. A host editing a
         // tile mid-event — putting a task on it, moving a ladder — is as
@@ -54,7 +58,7 @@ class SnakesLaddersChannel implements EventChannel
         $claimsVersion = $event->board === null ? '' : app(BoardReviewService::class)->claimsVersion($event->board);
 
         return md5(
-            $rows->map(fn ($r) => "{$r->id}:{$r->current_position}")->implode('|')
+            $rows->map(fn ($r) => "{$r->id}:{$r->current_position}:{$r->move_seq}")->implode('|')
             .'#'
             .$tiles->map(fn ($t) => "{$t->position}:{$t->task_id}:{$t->title_override}:{$t->type}:{$t->target_position}")->implode('|')
             .'#'
@@ -74,6 +78,14 @@ class SnakesLaddersChannel implements EventChannel
                 'player_boards.user_id',
                 'player_boards.team_id',
                 'player_boards.current_position',
+                // The move that put them there, so every open board can play
+                // it rather than snapping the piece to its destination. A move
+                // is a fact about the board, not about a viewer, so it is at
+                // home on a channel every viewer shares.
+                'player_boards.move_seq',
+                'player_boards.last_move_from',
+                'player_boards.last_move_landed',
+                'player_boards.last_move_jump',
             ]);
 
         return [
@@ -91,7 +103,7 @@ class SnakesLaddersChannel implements EventChannel
             // BingoChannel's claims_version.
             'claims_version' => $event->board === null ? null : app(BoardReviewService::class)->claimsVersion($event->board),
             'players' => $players->map(fn ($pb) => [
-                ...$pb->only(['id', 'user_id', 'team_id', 'current_position']),
+                ...$pb->only(['id', 'user_id', 'team_id', 'current_position', 'move_seq', 'last_move_from', 'last_move_landed', 'last_move_jump']),
                 'user' => $pb->user,
                 'team' => $pb->team,
             ])->all(),

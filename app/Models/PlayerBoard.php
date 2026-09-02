@@ -11,7 +11,7 @@ class PlayerBoard extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['user_id', 'board_id', 'team_id', 'current_position', 'dice_rolls_today', 'last_roll_date'];
+    protected $fillable = ['user_id', 'board_id', 'team_id', 'current_position', 'dice_rolls_today', 'last_roll_date', 'move_seq', 'last_move_from', 'last_move_landed', 'last_move_jump'];
 
     protected $casts = [
         'last_roll_date' => 'datetime',
