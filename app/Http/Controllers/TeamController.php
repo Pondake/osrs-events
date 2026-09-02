@@ -47,7 +47,7 @@ class TeamController extends Controller
         // answer is three booleans per team, decided here by the same
         // methods the write endpoints re-check with.
         $teams = $query->get()->map(fn (Team $team) => [
-            ...$team->only(['id', 'name', 'icon_url', 'guild_id', 'guild_name']),
+            ...$team->only(['id', 'name', 'icon_url', 'guild_icon_url', 'guild_id', 'guild_name']),
             'members' => $team->members->map(fn (TeamMember $member) => [
                 'id' => $member->id,
                 'role' => $member->role,
@@ -132,17 +132,27 @@ class TeamController extends Controller
      * name with no id behind it is the same unverified claim by another
      * route.
      *
-     * @return array{guild_name: string|null}
+     * The icon hash rides along for the same reason and is stored rather than
+     * looked up later: `user_guilds` only holds the servers of accounts that
+     * have logged in, so a fallback read from there would show the server icon
+     * to a clan mate and an empty box to a stranger on the same public event.
+     *
+     * @return array{guild_name: string|null, guild_icon: string|null}
      */
     private function guildLabel(Request $request, ?string $guildId): array
     {
         if ($guildId === null) {
-            return ['guild_name' => null];
+            return ['guild_name' => null, 'guild_icon' => null];
         }
 
-        return ['guild_name' => UserGuild::where('user_id', $request->user()->id)
+        $guild = UserGuild::where('user_id', $request->user()->id)
             ->where('guild_id', $guildId)
-            ->value('guild_name')];
+            ->first();
+
+        return [
+            'guild_name' => $guild?->guild_name,
+            'guild_icon' => $guild?->guild_icon,
+        ];
     }
 
     public function store(Request $request): RedirectResponse

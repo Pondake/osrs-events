@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\DiscordCdn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -11,11 +12,31 @@ class Team extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['name', 'icon_url', 'guild_id', 'guild_name'];
+    protected $fillable = ['name', 'icon_url', 'guild_id', 'guild_name', 'guild_icon'];
+
+    /**
+     * Appended so every payload that ships `icon_url` gets the fallback with
+     * it, without each controller remembering to build the URL itself.
+     *
+     * `$appends` only fires on a model that actually has the column loaded,
+     * and several queries here select columns by name (`team:id,name,icon_url`)
+     * — those get `null`, which is exactly the pre-existing behaviour rather
+     * than an error.
+     */
+    protected $appends = ['guild_icon_url'];
 
     public function members(): HasMany
     {
         return $this->hasMany(TeamMember::class);
+    }
+
+    /**
+     * The linked Discord server's icon — the second choice for a team avatar,
+     * behind the team's own `icon_url` and ahead of its initials.
+     */
+    public function getGuildIconUrlAttribute(): ?string
+    {
+        return DiscordCdn::guildIcon($this->guild_id, $this->guild_icon);
     }
 
     /**

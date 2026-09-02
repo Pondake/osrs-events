@@ -544,8 +544,8 @@
                                 >
                                     <span class="w-4 text-center text-xs font-bold shrink-0" :class="i < 3 ? 'text-primary' : 'text-muted'">{{ i + 1 }}</span>
                                     <img
-                                        v-if="p.team?.icon_url"
-                                        :src="p.team.icon_url"
+                                        v-if="p.team?.icon_url || p.team?.guild_icon_url"
+                                        :src="p.team.icon_url || p.team.guild_icon_url"
                                         :alt="p.team.name"
                                         class="size-6 object-contain shrink-0"
                                         style="image-rendering: pixelated"
@@ -925,7 +925,7 @@ function playersOnTile(position) {
             // 'Player': a board keeps the space somebody occupied after
             // they close their account, and an unlabelled row reads as a bug.
             name: playerName(p),
-            avatarUrl: p.team?.icon_url ?? p.user?.avatar_url ?? null,
+            avatarUrl: p.team?.icon_url ?? p.team?.guild_icon_url ?? p.user?.avatar_url ?? null,
         }));
 }
 

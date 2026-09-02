@@ -32,7 +32,7 @@ class CommunityController extends Controller
             ->orderBy('name');
 
         $teams = (clone $query)->take(self::HUB_SLICE)->get()->map(fn (Team $team) => [
-            ...$team->only(['id', 'name', 'icon_url', 'guild_name']),
+            ...$team->only(['id', 'name', 'icon_url', 'guild_icon_url', 'guild_name']),
             'memberCount' => $team->members->count(),
             'viewerRole' => $team->roleFor($user),
         ]);

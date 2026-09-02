@@ -62,7 +62,7 @@
                                     class="w-full flex items-center gap-3 px-4 py-3 hover:bg-elevated transition-colors text-left"
                                     @click="expanded = expanded === team.id ? null : team.id"
                                 >
-                                    <u-avatar :src="team.iconUrl ?? undefined" :alt="team.name" size="sm" />
+                                    <team-avatar :name="team.name" :icon-url="team.iconUrl" :guild-icon-url="team.guildIconUrl" size="sm" />
                                     <span class="min-w-0 flex-1">
                                         <span class="block font-medium truncate">{{ team.name }}</span>
                                         <span class="block text-xs text-muted truncate">
@@ -156,6 +156,7 @@
 import { computed, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import TeamAvatar from '@/Components/TeamAvatar.vue';
 
 const props = defineProps({
     event: { type: Object, required: true },

@@ -52,7 +52,7 @@
                             <u-card v-for="team in group.teams" :key="team.id" class="break-inside-avoid mb-6">
                         <template #header>
                             <div class="flex items-center gap-3">
-                                <u-avatar :src="team.icon_url ?? undefined" :alt="team.name" size="sm" />
+                                <team-avatar :name="team.name" :icon-url="team.icon_url" :guild-icon-url="team.guild_icon_url" size="sm" />
                                 <div class="min-w-0">
                                     <div class="font-semibold truncate">{{ team.name }}</div>
                                     <div v-if="team.guild_name" class="text-xs text-muted truncate">{{ team.guild_name }}</div>
@@ -135,6 +135,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import ConfirmPopover from '@/Components/ConfirmPopover.vue';
+import TeamAvatar from '@/Components/TeamAvatar.vue';
 
 const TeamSettingsModal = defineAsyncComponent(() => import('@/Components/TeamSettingsModal.vue'));
 const TeamMembersModal = defineAsyncComponent(() => import('@/Components/TeamMembersModal.vue'));

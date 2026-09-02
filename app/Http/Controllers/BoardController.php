@@ -22,6 +22,7 @@ use App\Services\EventParticipationService;
 use App\Services\EventStandingsService;
 use App\Services\BoardReviewService;
 use App\Services\PlayerBoardService;
+use App\Support\DiscordCdn;
 use App\Support\EventCard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -337,7 +338,7 @@ class BoardController extends Controller
         $maxPosition = $tiles->count() - 1;
         $namesArePublic = $access->canSeeParticipants($user, $event);
         $players = $event->playerBoards()
-            ->with(['user:id,discord_username,nickname,avatar_url', 'team:id,name,icon_url'])
+            ->with(['user:id,discord_username,nickname,avatar_url', 'team:id,name,icon_url,guild_id,guild_icon'])
             ->orderByDesc('player_boards.current_position')
             // Qualified: playerBoards() is a hasManyThrough, so the join
             // brings boards' own id into scope and bare names are ambiguous.
@@ -1176,7 +1177,7 @@ class BoardController extends Controller
                 'id' => $guild->guild_id,
                 'name' => $guild->guild_name,
                 'icon' => $guild->guild_icon,
-                'icon_url' => $this->guildIconUrl($guild->guild_id, $guild->guild_icon),
+                'icon_url' => DiscordCdn::guildIcon($guild->guild_id, $guild->guild_icon),
                 'used_at' => $recency[$guild->guild_id] ?? null,
             ]);
 
@@ -1234,20 +1235,5 @@ class BoardController extends Controller
         }
 
         return $recency;
-    }
-
-    /**
-     * Discord's CDN path for a guild icon, or null when the server has none
-     * (a real and common state — a guild icon is optional).
-     */
-    private function guildIconUrl(string $guildId, ?string $hash): ?string
-    {
-        if ($hash === null || $hash === '') {
-            return null;
-        }
-
-        $extension = str_starts_with($hash, 'a_') ? 'gif' : 'png';
-
-        return "https://cdn.discordapp.com/icons/{$guildId}/{$hash}.{$extension}?size=64";
     }
 }
