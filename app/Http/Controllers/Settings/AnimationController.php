@@ -9,14 +9,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-/**
- * How the board draws movement, for this account.
- *
- * Its own page rather than a card on the profile: a profile is who you are,
- * and this is how the game behaves while you watch it. It is also the setting
- * most likely to grow — a board full of pieces walking at once is exactly the
- * sort of thing people want dialled down in more than one way.
- */
+/** How the board draws movement, for this account. */
 class AnimationController extends Controller
 {
     public function show(Request $request): Response
@@ -29,11 +22,7 @@ class AnimationController extends Controller
         ]);
     }
 
-    /**
-     * Whitelisted against the catalogue rather than stored as sent — an
-     * unknown key would sit in the JSON forever, doing nothing and looking
-     * like a setting somebody removed the UI for.
-     */
+    /** Whitelisted against the catalogue, so a stray key is not stored. */
     public function update(Request $request): RedirectResponse
     {
         $data = $request->validate([

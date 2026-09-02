@@ -8,11 +8,8 @@
         aria-hidden="true"
     >
         <defs v-if="clipEnds">
-            <!-- Real <rect> elements, not v-html: setting innerHTML on a
-                 <clipPath> leaves it empty, and an empty clip hides everything
-                 it is applied to. The board showed no grip at all until this
-                 was found — the shapes were being drawn and then clipped into
-                 nothing. -->
+            <!-- Real elements, not v-html: innerHTML on a <clipPath> leaves
+                 it empty, and an empty clip hides everything it applies to. -->
             <clipPath v-for="conn in connections" :id="`sl-ends-${uid}-${conn.key}`" :key="conn.key">
                 <rect
                     v-for="(r, i) in conn.ends"
@@ -69,19 +66,13 @@ import { computed, useId } from 'vue';
 import { PALETTE } from '@/Support/snakesLadders';
 
 /**
- * One layer of the snake/ladder overlay on a Snakes & Ladders board.
+ * One layer of the snake/ladder overlay. BoardShow renders it twice with the
+ * grid between: the plain pass runs under every tile, the `clip-ends` pass
+ * draws the same shapes on top clipped to each connector's own two tiles.
  *
- * BoardShow renders it twice with the grid between. The plain pass runs under
- * every tile, so a connector is a hint behind the tasks it crosses and never
- * covers one. The `clip-ends` pass draws the same shapes again on top, clipped
- * to each connector's own two tiles, so its two ends come back out and grip
- * them.
- *
- * The shapes arrive as ready-made SVG strings from Support/snakesLadders.js.
- * They are built there rather than as elements here because a 9×9 board with
- * eight connectors is well over a thousand rects, and a v-for per rect costs
- * a component-sized amount of bookkeeping for markup that never changes on
- * its own — it is recomputed wholesale whenever a tile moves.
+ * Shapes arrive as SVG strings from Support/snakesLadders.js — a 9×9 board is
+ * over a thousand rects, and a v-for per rect is bookkeeping for markup that
+ * only ever changes wholesale.
  */
 const props = defineProps({
     connections: { type: Array, required: true },
@@ -96,13 +87,10 @@ const props = defineProps({
 });
 
 /**
- * The connector being pointed at, drawn a second time without a clip.
- *
- * It covers the tasks it crosses — deliberately, and only while someone is
- * pointing at it. Permanent ink can be strong enough to answer "where does
- * this go?" or it can spare the labels, never both; that was measured three
- * different ways. Ink on demand can do both, because nobody is reading those
- * labels at the moment they ask the question.
+ * The connector being pointed at, drawn again without a clip so it comes
+ * forward whole. It covers the tasks it crosses, deliberately and only while
+ * someone is pointing at it: permanent ink can be strong enough to answer
+ * "where does this go?" or spare the labels, not both.
  */
 const active = computed(() => props.connections.find((conn) => conn.key === props.activeKey) ?? null);
 

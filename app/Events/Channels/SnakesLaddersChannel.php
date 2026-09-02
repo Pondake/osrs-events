@@ -29,9 +29,7 @@ class SnakesLaddersChannel implements EventChannel
         // hasManyThrough, so the join brings boards' own columns into scope
         // and a bare name is ambiguous. That has caused a real 500 here.
         // move_seq alongside the position: two rolls can finish on the same
-        // tile — walk onto a snake's head and slide back to where you were —
-        // and without the sequence that is indistinguishable from nothing
-        // having happened, so nobody watching would see the slide.
+        // tile, and without it that looks like nothing happened.
         $rows = $event->playerBoards()
             ->orderBy('player_boards.id')
             ->get(['player_boards.id', 'player_boards.current_position', 'player_boards.move_seq']);
@@ -78,10 +76,9 @@ class SnakesLaddersChannel implements EventChannel
                 'player_boards.user_id',
                 'player_boards.team_id',
                 'player_boards.current_position',
-                // The move that put them there, so every open board can play
-                // it rather than snapping the piece to its destination. A move
-                // is a fact about the board, not about a viewer, so it is at
-                // home on a channel every viewer shares.
+                // The move that put them there, so every open board can play it
+                // rather than snapping the piece across. A move is a fact
+                // about the board, so it belongs on a shared channel.
                 'player_boards.move_seq',
                 'player_boards.last_move_from',
                 'player_boards.last_move_landed',

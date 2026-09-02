@@ -63,19 +63,12 @@
                          `lg`, which is also where the title stops needing the
                          full width. -->
                     <div class="flex flex-wrap gap-2 lg:shrink-0">
-                            <!-- Two buttons that both sound like "see who else
-                                 is here", so they have to say what they
-                                 actually do: this one draws the other players'
-                                 markers ON the board, the one beside it opens
-                                 the list of who is taking part.
-                                 It used to read "Show on board", which named
-                                 the place and not the subject — and since it
-                                 starts OFF, somebody looking for another player
-                                 saw an empty board and concluded the board was
-                                 broken rather than that a toggle was off.
-                                 Reported exactly that way. The label also names
-                                 what pressing it will do now, rather than
-                                 leaving the state to the button's colour. -->
+                            <!-- Two buttons that both sound like "see who else is
+                                 here", so each says what it does: this one draws
+                                 the other players' markers on the board, the next
+                                 opens the list. The label names what pressing it
+                                 will do, since it starts off and an empty board
+                                 otherwise reads as broken. -->
                             <u-button
                                 v-if="otherPlayers.length > 0"
                                 :color="showOtherPlayers ? 'primary' : 'neutral'"
@@ -129,54 +122,29 @@
                 </u-card>
 
                 <div v-else class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
-                    <!-- `isolate` is what makes the pill's z-index below safe.
-                         Without it that z-10 lives in the ROOT stacking context
-                         and climbs over a teleported modal — which it did, on
-                         top of the event settings dialog. This box seals it in:
-                         inside, the pill can outrank the board; outside, the
-                         whole thing is one flat layer that a modal covers like
-                         anything else.
-                         The board used to forbid z-index outright for exactly
-                         this reason. That rule was right about the danger and
-                         wrong about the remedy: DOM order alone cannot put one
-                         element above a later sibling. -->
+                    <!-- `isolate` seals the pill's z-index into this box. Without
+                         it that z-10 sits in the root stacking context and climbs
+                         over a teleported modal. -->
                     <div class="flex-1 w-full min-w-0 isolate">
-                        <!-- The way out sits with the thing that changed, not
-                             back in the menu at the far end of the header.
-                             One button, not a save/cancel pair: every tile edit
-                             posts and closes on its own, so there is nothing
-                             held back to save and nothing to throw away — a
-                             cancel here would guard nothing, and a confirm on
-                             it would teach people to click through confirms
-                             that never mattered.
+                        <!-- One button, not a save/cancel pair: every tile edit
+                             posts and closes on its own, so a cancel here would
+                             guard nothing.
 
-                             It hangs on the board's top border while living
-                             OUTSIDE the scroller, which is the only way to have
-                             both. Inside it, the top was sliced off: the board
-                             needs `overflow-x-auto`, and the moment one axis
-                             stops being `visible` the other does too. Padding
-                             on the scroller cannot buy the room back either —
-                             clipping happens at the padding box, so padding
-                             moves the content and not the edge.
-                             It keeps its own height and the BOARD is pulled up
-                             under it instead, by a negative bottom margin — so
-                             the pill's lower part covers the top border and the
-                             rest stands above it. Do not try the reverse: a
-                             zero-height row with the pill pulled up by half of
-                             itself lines up perfectly on paper and collapses in
-                             practice, because a flex row stretches its children
-                             to the row's height, and that height was zero. It
-                             shipped looking like a sliver with a button
-                             floating next to it.
-                             The board's top padding grows to clear that
-                             overlap — 20px against a 16px dip. Both numbers are
-                             set here, so it is an upper bound rather than a fit
-                             tuned to one screen.
-                             On a phone it sits fully above the board and left
-                             aligned: there it has to clear the tiles anyway,
-                             and the board is wider than the screen, so
-                             centring it on the board would put it off to one
-                             side of what you can actually see. -->
+                             It hangs on the board's top border from OUTSIDE the
+                             scroller, which is the only way to have both: the
+                             board needs `overflow-x-auto`, and once one axis
+                             stops being `visible` the other does too, so an
+                             overhang inside gets sliced. Padding on the scroller
+                             does not buy the room back — clipping happens at the
+                             padding box.
+                             The pill keeps its own height and the BOARD is pulled
+                             up under it; the board's top padding grows to clear
+                             the overlap (20px against a 16px dip), so both
+                             numbers are set here rather than fitted to a screen.
+                             Do not invert it into a zero-height row: a flex row
+                             stretches its children to the row's height.
+                             Left aligned below `sm`, where the board is wider
+                             than the screen. -->
                         <div v-if="editMode" class="relative z-10 flex justify-start sm:justify-center mb-2 sm:-mb-4">
                             <div class="inline-flex max-w-full items-center gap-2 rounded-full bg-default ring-1 ring-primary/50 shadow-sm py-1 pl-3 pr-1">
                                 <u-icon name="i-lucide-grid-2x2-plus" class="size-3.5 shrink-0 text-primary" />
@@ -222,23 +190,14 @@
                                  tile — worst at the edges, where a snake looked
                                  like it started outside the board. -->
                             <div class="relative">
-                            <!-- Percentage-based coordinates (viewBox 0 0 100 100),
-                                 not pixel measurements like the old app's version —
-                                 this grid is fluid-width (Tailwind grid-cols-N +
-                                 aspect-square, no fixed tile size to measure), so a
-                                 percentage overlay scales with it for free with no
-                                 ResizeObserver. Geometry and colours live in
+                            <!-- Percentage coordinates, not pixels: the grid is
+                                 fluid-width, so the overlay scales with it without a
+                                 ResizeObserver. Geometry lives in
                                  Support/snakesLadders.js.
 
-                                 TWO passes with the grid between: the whole drawing
+                                 Two passes with the grid between: the whole drawing
                                  underneath, then the same drawing clipped to each
-                                 connector's own two tiles on top, so its ends grip
-                                 the tiles it is about.
-                                 A third arrangement was built, measured and thrown
-                                 away — lifting the WHOLE drawing between the tile
-                                 backgrounds and their content. The stacking worked;
-                                 the reading did not. See the note above
-                                 .board-tile__content in app.css. -->
+                                 connector's own two tiles on top. -->
                             <board-connectors :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" />
                             <div :class="gridClass" class="grid gap-1">
                                 <!-- Not gated on playerBoard existing — reaching this
@@ -266,16 +225,12 @@
                                     @focus="highlightConnector(tile)"
                                     @blur="clearConnector"
                                 >
-                                    <!-- Everything a tile SHOWS lives in here, so that a tile the
-                                         player has already passed can grey out what it says
-                                         without touching its background. Dimming the button
-                                         itself made the background translucent too, and a
-                                         connector crossing a passed tile then came through at
-                                         nearly full strength — the board showed you where you had
-                                         been more clearly than where you were going.
-                                         No z-index on it: paint order here is still DOM order, so
-                                         nothing can leak into the root stacking context and climb
-                                         above a teleported modal. -->
+                                    <!-- Everything a tile SHOWS lives in here, so a passed
+                                         tile can grey out what it says without its
+                                         background going translucent and letting the
+                                         connector through at full strength.
+                                         No z-index: paint order here stays DOM order, so
+                                         nothing can climb above a teleported modal. -->
                                     <span class="board-tile__content">
                                     <!-- The one tile that gets a top label, not just the
                                          --current ring/tint app.css already applies: the
@@ -320,13 +275,9 @@
                                     </span>
 
                                     <div v-if="playersOnTile(tile.position).length" class="absolute bottom-0.5 right-0.5 flex flex-wrap-reverse justify-end gap-0.5 max-w-[calc(100%-4px)]">
-                                        <!-- A marker has to survive the board it
-                                             sits on. At 3xs with a hairline ring
-                                             it was 16px of grey initials on a
-                                             dark tile — reported as "I can
-                                             barely see you". Bigger, on its own
-                                             solid ground, with a ring that does
-                                             not borrow the tile's own colour. -->
+                                        <!-- A marker has to survive the tile it sits
+                                             on: its own ground and a ring that
+                                             does not borrow the tile's colour. -->
                                         <u-avatar
                                             v-for="p in playersOnTile(tile.position).slice(0, 3)"
                                             :key="p.id"
@@ -386,9 +337,7 @@
                                 <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
                             </template>
 
-                            <!-- Local only. Rolling a six into a snake's head on
-                                 demand is the only practical way to work on the
-                                 movement animation. -->
+                            <!-- Local only: a chosen die, for the animation. -->
                             <div v-if="canForceRoll" class="flex flex-wrap items-center justify-center gap-1 mb-3">
                                 <span class="text-[10px] uppercase tracking-wide text-muted w-full text-center">dev: force roll</span>
                                 <u-button
@@ -1066,13 +1015,9 @@ const otherPlayers = computed(() => livePlayers.value.filter((p) => !isMyPlayerR
 const visiblePlayers = computed(() => livePlayers.value.filter((p) => isMyPlayerRow(p) || showOtherPlayers.value));
 
 /**
- * The player piece that actually moves, and how it gets from tile to tile.
- *
- * A roll is two motions, not one: the walk the dice bought, and — if that
- * lands on a snake's head or a ladder's foot — the ride that follows. They
- * are paced differently on purpose. Walking is the player's own doing and
- * reads at a step per tile; the ride is the board doing something TO them,
- * and dawdling through it makes a snake feel like a lift.
+ * The pieces in motion. A roll is two motions: the walk the dice bought and,
+ * if it lands on one, the ride that follows. Paced differently on purpose —
+ * walking is the player's doing, the ride is the board's.
  */
 const WALK_MS_PER_TILE = 300;
 const HOP_MS_PER_RUNG = 105;
@@ -1116,12 +1061,10 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
 /**
- * Run the piece along a list of points over `duration`, and resolve at the end.
+ * Run a piece along a list of points over `duration`.
  *
- * `sizeAt` is what turns a slide into a step: swelling the piece through the
- * middle of a leg and settling it at the end reads, from directly above, as
- * leaving the ground and coming back down. There is no other way to show a hop
- * on a board seen in plan view.
+ * `sizeAt` turns a slide into a step: swelling through the middle of a leg is
+ * the only way to read as a hop on a board seen from directly above.
  */
 function glide(id, points, duration, sizeAt = null) {
     return new Promise((resolve) => {
@@ -1188,13 +1131,7 @@ function restingSpot(position) {
 /** The size a resting marker is drawn at, relative to the moving piece. */
 const RESTING_SIZE = 0.42;
 
-/**
- * Stand up off the tile before setting off.
- *
- * The mirror of land(). Without it the piece appears at full size on the
- * first frame while the small marker disappears from the corner — two things
- * happening at once that are meant to be one thing moving.
- */
+/** Stand up off the tile before setting off — the mirror of land(). */
 async function lift(id, position) {
     const { centre, corner } = restingSpot(position);
 
@@ -1202,9 +1139,8 @@ async function lift(id, position) {
 }
 
 /**
- * Settle onto the destination: shrink and slide into the corner where the
- * tile's avatar stack sits, so the piece becomes the marker instead of
- * vanishing and a small one appearing somewhere else on the same frame.
+ * Settle onto the destination: shrink into the corner where the tile's marker
+ * stack sits, so the piece becomes the marker rather than swapping with it.
  */
 async function land(id, position) {
     const { centre, corner } = restingSpot(position);
@@ -1222,30 +1158,18 @@ async function land(id, position) {
  * out, quietly broken.
  */
 /**
- * Which move is currently being played.
- *
- * A second roll landing mid-animation used to start a second playMove over the
- * top of the first: two loops writing the same piece's position, so it jumped
- * between two routes and finished wherever the loser happened to stop. Each
- * run takes a token and stands down as soon as a newer one exists.
+ * One token per piece. A second roll landing mid-animation would otherwise run
+ * two loops over the same piece; each run stands down once a newer one exists.
  */
-/**
- * The two animation switches, from the account's display preferences.
- *
- * Read here rather than passed as props: they belong to the person, not to
- * this board, and every page already receives them on `auth.user`.
- */
+/** The two animation switches, from the account's display preferences. */
 const ownAnimationOn = computed(() => authUser.value?.display?.animate_own_moves ?? true);
 const othersAnimationOn = computed(() => authUser.value?.display?.animate_other_moves ?? true);
 
 const moveTokens = new Map();
 
 /**
- * The newest move sequence already accounted for, per piece.
- *
- * Seeded from the first render rather than left empty: without a baseline the
- * first stream tick after opening the page reads every player's last move as
- * new, and the board replays a roll that happened before anyone was watching.
+ * The newest move sequence already accounted for, per piece. Seeded on first
+ * render, or the first stream tick replays everyone's last roll.
  */
 const seenMoves = new Map();
 
@@ -1313,16 +1237,11 @@ async function playMove(id, { from, landed, to, jump }) {
 }
 
 /**
- * Play everybody else's moves, off the live stream.
+ * Play everybody else's moves off the live stream — without this the animation
+ * belongs only to whoever rolled, and every other viewer sees a teleport.
  *
- * The stream carries a position and — since the migration that added them —
- * the move that produced it. Without this a second viewer saw the piece
- * appear on its destination: the animation belonged to whoever rolled,
- * because it hung off their own response.
- *
- * Driven by the sequence number rather than by the position changing. Two
- * rolls can finish on the same tile (walk onto a snake's head, slide back to
- * where you started), and that is exactly the move most worth watching.
+ * Driven by the sequence number, not the position: two rolls can finish on the
+ * same tile, and that is the move most worth watching.
  */
 watch(
     () => livePlayers.value.map((p) => `${p.id}:${p.move_seq ?? 0}`).join(','),
@@ -1354,9 +1273,7 @@ watch(
     { immediate: true },
 );
 
-// Local development only, alongside the dice-forcing buttons: the movement
-// animation is the one part of a roll that has nothing to do with the server,
-// and driving it straight from the console beats waiting for a round trip.
+// Local development only: drive the animation without a round trip.
 if (typeof window !== 'undefined' && props.canForceRoll) {
     window.__boardPlayMove = (move) => playMove(props.playerBoard?.id ?? 'dev', move);
 }
@@ -1460,11 +1377,8 @@ const snakeLadderConnections = computed(() => {
 });
 
 /**
- * The connector the reader is pointing at, and the tiles that point at one.
- *
- * Pointing at either end lights the whole thing, not just the end you touched
- * — the question a person asks of a snake is always "and where does that put
- * me?", which is about the OTHER tile.
+ * The connector being pointed at. Either end lights the whole thing: the
+ * question asked of a snake is always about the other tile.
  */
 const activeConnector = ref(null);
 
@@ -1522,9 +1436,8 @@ function isCurrentTile(tile) {
 function tileClasses(tile) {
     const current = props.playerBoard?.current_position;
 
-    // The ground the connector shows through, at the 80% the owner picked:
-    // enough that a task stays fully legible, little enough that a snake
-    // crossing the tile is still visible behind it.
+    // The ground the connector shows through, at 80%: enough that a task stays
+    // legible, little enough that a snake behind it still reads.
     const ground = isTileEmpty(tile)
         ? 'bg-stone-200/80 dark:bg-stone-800/80'
         : 'bg-amber-100/80 dark:bg-stone-800/80';
