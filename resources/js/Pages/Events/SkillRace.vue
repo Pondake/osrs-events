@@ -16,9 +16,6 @@
                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                     <event-type-heading
                         :event="liveEvent"
-                        :can-edit="canEdit"
-                        :viewing-as-admin="viewingAsAdmin"
-                        :admin-edit-url="adminEditUrl"
                         :streaming="streaming"
                         :stale="stale"
                     >
@@ -123,6 +120,17 @@
                         />
                     </div>
                 </div>
+
+                <!-- Full page width, not the heading's half: these are
+                     page-wide news and used to stop where the action bar
+                     began. -->
+                <event-notices
+                    :event="liveEvent"
+                    :can-edit="canEdit"
+                    :viewing-as-admin="viewingAsAdmin"
+                    :admin-edit-url="adminEditUrl"
+                    class="mb-6"
+                />
 
                 <!-- The way in, for a listed invite-only event. Since
                      2026-08-31 such an event opens for everyone, so it no
@@ -316,6 +324,7 @@ import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import { trans } from 'laravel-vue-i18n';

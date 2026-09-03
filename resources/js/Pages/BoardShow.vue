@@ -30,9 +30,6 @@
                 <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
                     <event-type-heading
                         :event="liveBoard"
-                        :can-edit="canEdit"
-                        :viewing-as-admin="viewingAsAdmin"
-                        :admin-edit-url="adminEditUrl"
                         :streaming="streaming"
                         :stale="stale"
                     >
@@ -104,6 +101,17 @@
                             />
                     </div>
                 </div>
+
+                <!-- Full page width, not the heading's half: these are
+                     page-wide news and used to stop where the action bar
+                     began. -->
+                <event-notices
+                    :event="liveBoard"
+                    :can-edit="canEdit"
+                    :viewing-as-admin="viewingAsAdmin"
+                    :admin-edit-url="adminEditUrl"
+                    class="mb-6"
+                />
 
                 <!-- The way in, for a listed invite-only event. Since
                      2026-08-31 such an event opens for everyone, so it no
@@ -374,9 +382,11 @@
                             </p>
                         </u-card>
 
-                        <!-- No board of your own yet. Rolling still creates
-                             one — playing is joining — so the dice stay, with
-                             the deliberate way in above them.
+                        <!-- No board of your own yet. The dice wait for the
+                             join now: rolling does still create a board, but
+                             offering a passer-by the die made joining look
+                             like the long way round to the same thing, and
+                             put the decision after the act.
 
                              Joining itself stays open while upcoming — that's
                              signing up ahead of the start, which is normal
@@ -391,7 +401,7 @@
                             </p>
                             <div v-if="!isPaused && !isEnded" class="mt-3 flex flex-col gap-3">
                                 <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
-                                <dice-roller v-if="!isUpcoming" :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
+                                <dice-roller v-if="joined && !isUpcoming" :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
                             </div>
                         </u-card>
 
@@ -726,6 +736,7 @@ import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import BoardConnectors from '@/Components/BoardConnectors.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
