@@ -422,6 +422,15 @@
                                 />
                             </div>
                         </u-card>
+
+                        <!-- Handing out a link is running the event, not
+                             configuring it. Renders itself away for anyone
+                             but a host of an invite-only event. -->
+                        <host-invite-card
+                            :event-id="liveEvent.id"
+                            :access-mode="liveEvent.access_mode"
+                            :can-edit="canEdit"
+                        />
                     </div>
                 </div>
             </u-container>
@@ -476,6 +485,7 @@ import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
+import HostInviteCard from '@/Components/HostInviteCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 
 const BingoSquareModal = defineAsyncComponent(() => import('@/Components/BingoSquareModal.vue'));

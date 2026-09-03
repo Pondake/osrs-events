@@ -677,6 +677,15 @@
                             </div>
                         </u-card>
 
+                        <!-- Beside the editors, because handing out a link is
+                             about who is in the event. Renders itself away
+                             for anyone but a host of an invite-only one. -->
+                        <host-invite-card
+                            :event-id="liveBoard.id"
+                            :access-mode="liveBoard.access_mode"
+                            :can-edit="canEdit"
+                        />
+
                         <u-card>
                             <template #header>
                                 <span class="font-semibold">{{ $t('boards.meta') }}</span>
@@ -898,6 +907,7 @@ import BoardConnectors from '@/Components/BoardConnectors.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
+import HostInviteCard from '@/Components/HostInviteCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';

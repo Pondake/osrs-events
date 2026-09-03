@@ -258,6 +258,8 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
+import { useInvites } from '@/Composables/useInvites';
+import { xsrfHeader } from '@/Support/csrf';
 import AccessFields from '@/Components/BoardSettings/AccessFields.vue';
 import BasicsFields from '@/Components/BoardSettings/BasicsFields.vue';
 import FormatFields from '@/Components/BoardSettings/FormatFields.vue';
@@ -618,10 +620,18 @@ const authorSearch = ref('');
 const authorResults = ref([]);
 let authorSearchTimeout = null;
 
-const invites = ref([]);
-const openInvites = ref(0);
-const maxOpenInvites = ref(null);
-const creatingInvite = ref(false);
+// The list and its two actions, shared with the event page's own card —
+// see useInvites(). `eventPath` is passed as a getter because it changes
+// when a different event is opened for editing.
+const {
+    invites,
+    openCount: openInvites,
+    maxOpen: maxOpenInvites,
+    creating: creatingInvite,
+    fetchInvites,
+    createInvite,
+    revokeInvite,
+} = useInvites(eventPath);
 
 // useToast statically imports the virtual '#imports' specifier, and pulling
 // it into the SSR module graph crashes the SSR process at startup for every
@@ -1064,122 +1074,6 @@ function showTabFor(errors) {
     if (tab && tabs.value.some((t) => t.value === tab)) {
         activeTab.value = tab;
     }
-}
-
-// ----------------------------------------------------------------- invites
-//
-// Fetched/created/revoked via plain fetch() rather than Inertia's router — an
-// Inertia visit would re-render the whole underlying board page and, since
-// this modal isn't itself a page component, has no natural way to just
-// refresh its own invites list without closing.
-//
-// No <meta name="csrf-token"> exists in app.blade.php, so the XSRF-TOKEN
-// cookie is read instead — the same encrypted-cookie mechanism
-// VerifyCsrfToken accepts, and what Inertia's own client uses under the hood.
-
-function xsrfHeader() {
-    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-
-    return match ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) } : {};
-}
-
-/**
- * All three endpoints answer with the same shape — the full list plus the
- * open count — so creating and revoking need no separate refetch and the list
- * can never drift from what the server just did.
- */
-function applyInvites(data) {
-    invites.value = Array.isArray(data?.invites) ? data.invites : [];
-    openInvites.value = data?.openCount ?? invites.value.length;
-    maxOpenInvites.value = data?.maxOpen ?? null;
-}
-
-async function inviteRequest(url, options = {}) {
-    let response;
-
-    try {
-        response = await fetch(url, {
-            headers: { Accept: 'application/json', ...xsrfHeader(), ...(options.headers ?? {}) },
-            ...options,
-        });
-    } catch (error) {
-        // The network never answered — a dropped connection or a server that
-        // is not there. Worth saying, because it is the one case where
-        // trying again really is the advice.
-        console.error('invite request could not be sent', url, error);
-        toast?.add({ id: 'invite-error', title: trans('errors.network'), color: 'error' });
-
-        return null;
-    }
-
-    const body = await response.text();
-    let data = null;
-
-    try {
-        data = JSON.parse(body);
-    } catch {
-        data = null;
-    }
-
-    if (!response.ok) {
-        // Everything the next person needs to work out what happened. This
-        // used to be one generic "something went wrong" for every failure —
-        // reported as "invite links do not work", with nothing to go on and
-        // no way to tell a stale session from a permission problem.
-        console.error('invite request failed', { url, status: response.status, body: body.slice(0, 500) });
-
-        toast?.add({ id: 'invite-error', title: inviteError(response, data), color: 'error' });
-
-        return null;
-    }
-
-    applyInvites(data);
-
-    return data;
-}
-
-/**
- * What actually went wrong, said out loud.
- *
- * `data.message` is empty on an `abort_unless`, and absent entirely when the
- * server answered with HTML — a 419 page, a redirect to the lock screen, a
- * 500. All three used to arrive as the same shrug.
- */
-function inviteError(response, data) {
-    if (data?.message) return data.message;
-
-    if (response.status === 419) return trans('errors.session_expired');
-    if (response.status === 403) return trans('errors.forbidden');
-
-    return trans('errors.generic_with_status', { status: response.status });
-}
-
-async function fetchInvites() {
-    await inviteRequest(`${eventPath.value}/invites`);
-}
-
-async function createInvite() {
-    creatingInvite.value = true;
-
-    try {
-        const data = await inviteRequest(`${eventPath.value}/invites`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}),
-        });
-
-        if (data) toast?.add({ id: 'invite-created', title: trans('admin.invite_created'), color: 'success' });
-    } finally {
-        // In a finally so a failure cannot leave the button spinning forever,
-        // which is what a spam-click session turns into otherwise.
-        creatingInvite.value = false;
-    }
-}
-
-async function revokeInvite(invite) {
-    const data = await inviteRequest(`${eventPath.value}/invites/${invite.id}`, { method: 'DELETE' });
-
-    if (data) toast?.add({ id: 'invite-revoked', title: trans('admin.invite_revoked'), color: 'success' });
 }
 
 // The invites tab only exists on an INVITE event, so switching an existing
