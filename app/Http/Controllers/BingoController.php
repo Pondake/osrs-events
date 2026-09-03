@@ -10,6 +10,7 @@ use App\Models\EventParticipant;
 use App\Services\BingoNotifier;
 use App\Services\BingoService;
 use App\Services\BoardAccessService;
+use App\Services\EventFinishService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -32,7 +33,7 @@ class BingoController extends Controller
      * host has ruled on it, changing it is the host's call, not the
      * claimant's.
      */
-    public function claim(Request $request, Event $event, BingoSquare $square, BoardAccessService $access, BingoService $bingo, BingoNotifier $notifier): RedirectResponse
+    public function claim(Request $request, Event $event, BingoSquare $square, BoardAccessService $access, BingoService $bingo, BingoNotifier $notifier, EventFinishService $finishes): RedirectResponse
     {
         abort_unless($event->type === 'BINGO', 404);
         abort_unless($access->hasAccess($request->user(), $event), 403);
@@ -97,6 +98,11 @@ class BingoController extends Controller
 
             $existing->delete();
 
+            // Withdrawing a square can take a line apart again, which
+            // un-wins the card. Answered in both directions by one call —
+            // see EventFinishService.
+            $finishes->evaluateBingo($event, $competitor);
+
             return back()->with('board-save', trans('bingo.square_cleared'));
         }
 
@@ -127,6 +133,13 @@ class BingoController extends Controller
         // pending claim, so this needs no condition of its own.
         $notifier->teamScored($event, $completion->load('square', 'markedBy'));
 
+        // Winning the card is recorded rather than recomputed per viewer:
+        // `hasWon` was true on every page load and stored nowhere, so a card
+        // could be won and won again with no record of who did it first. On
+        // a card that reviews claims this finds a PENDING claim and stamps
+        // nothing — review() is what makes it true.
+        $finishes->evaluateBingo($event, $competitor);
+
         return back()->with('board-save', $card->requires_approval
             ? trans('bingo.claim_submitted')
             : trans('bingo.square_marked'));
@@ -138,7 +151,7 @@ class BingoController extends Controller
      * A rejection keeps the row rather than deleting it, so the claimant can
      * see why and a host can see a pattern of re-submissions.
      */
-    public function review(Request $request, Event $event, BingoCompletion $completion, BingoNotifier $notifier): RedirectResponse
+    public function review(Request $request, Event $event, BingoCompletion $completion, BingoNotifier $notifier, EventFinishService $finishes): RedirectResponse
     {
         abort_unless($event->type === 'BINGO', 404);
         $this->assertCanEditEvent($request->user(), $event);
@@ -168,6 +181,14 @@ class BingoController extends Controller
         $completion->load('square', 'markedBy');
         $notifier->reviewed($event, $completion, $request->user());
         $notifier->teamScored($event, $completion);
+
+        // The host's verdict decides the win, both ways round: approving the
+        // square that completes a line puts that competitor on the podium,
+        // rejecting it later takes them off again.
+        $finishes->evaluateBingo($event, [
+            'team_id' => $completion->team_id,
+            'user_id' => $completion->user_id,
+        ]);
 
         return back()->with('board-save', $data['status'] === 'APPROVED'
             ? trans('bingo.claim_approved')

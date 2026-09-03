@@ -85,7 +85,13 @@ class EventNotificationService
                 // the tap goes to the events list instead of a 404 — the same
                 // reasoning as the mail's missing action button.
                 path: $change === EventStatusChanged::CANCELLED ? '/events' : "/events/{$event->id}",
-                category: NotificationCategory::EVENT_STATUS,
+                // "It is over" is a result, not a status change — the
+                // category people keep switched on to hear how an event they
+                // played in ended. Pausing and cancelling stay on
+                // EVENT_STATUS, which is about the host's housekeeping.
+                category: $change === EventStatusChanged::ENDED
+                    ? NotificationCategory::EVENT_RESULT
+                    : NotificationCategory::EVENT_STATUS,
                 // Per event: four status changes to one event collapse into
                 // one line, but two different events do not hide each other.
                 tag: 'status:'.$event->id,

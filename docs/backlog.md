@@ -336,6 +336,78 @@ tweede partij nodig hebben.
 
 ## 6. Klein werk
 
+- [x] ~~**Een event kon gewonnen worden zonder dat er iets gebeurde.**~~ —
+  gebouwd 2026-09-03. De laatste tegel afvinken zette een ref in de browser en
+  toonde een 🎉-modal die een refresh wiste. Er werd niets opgeslagen: niemand
+  anders hoorde het, de winnaar hield een dobbelsteen die alleen nog zijn
+  dagelijkse worp opsoupeerde (elke worp clampte naar waar hij al stond), en
+  tweede plaats was niet alleen onzichtbaar maar **onkenbaar** — er stond geen
+  tijdstempel om op te sorteren. Bingo had hetzelfde verhaal met een `hasWon`
+  die per request opnieuw werd uitgerekend.
+  Nu: een `event_finishes`-tabel (één rij per competitor, rank afgeleid uit de
+  volgorde, niet opgeslagen), `EventFinishService` als enige plek die beslist
+  wát afmaken betekent — voor S&L de laatste tegel *goedgekeurd*, voor bingo de
+  wincondition van de kaart — en beide richtingen op: een afgekeurde claim of
+  een slang haalt een finish weer weg.
+  **De finish krijgt de tijd van indienen, nooit die van goedkeuren.** Anders
+  wint op een bord met review wie de host toevallig het eerst aanklikt, en zou
+  dezelfde avond een andere uitslag opleveren als hij de wachtrij in
+  omgekeerde volgorde had afgewerkt. Rank volgt daaruit, dus die corrigeert
+  zichzelf terwijl de wachtrij leeggewerkt wordt. Voor STOP is dat niet
+  genoeg — een push kun je niet terugnemen — dus het **sluiten wacht** tot er
+  niemand meer in de wachtrij zit die de koploper nog kan verslaan; tot dan is
+  het event open, wat de eerlijke staat is. In de reviewmodals staat er nu
+  boven zo'n claim wat hij is ("deze claim maakt het bord af", "deze claim
+  wint de kaart") plus, als er meer kandidaten wachten, de hoeveelste hij is —
+  met erbij dat de volgorde van goedkeuren niets uitmaakt.
+  **Onderweg gevonden**: `completed_tiles.completed_at` kwam van de
+  `useCurrent()`-default, dus van de klok van de *database* in de tijdzone van
+  de database. Zolang het een weergavedatum was viel dat niet op; nu het
+  bepaalt wie wint, wordt hij expliciet uit `now()` gezet.
+  **Daarna gemeld, en de kern van dezelfde zaak**: sorteren op indientijd
+  repareert het podium, maar niet wat iedereen te horen krijgt terwijl de
+  wachtrij nog loopt. De host keurde de tweede inzending eerst goed en elke
+  speler kreeg te zien dat dát team eerst thuis was — terwijl de claim die
+  echt won nog ongeopend in de wachtrij stond. Een finish waarvan de plaats
+  nog kan zakken is nu **voorlopig**: `announced_at` blijft leeg, de banner
+  zwijgt, de felicitatiemodal wacht, en de kaart zegt "je run staat" zonder
+  een plaats te noemen. Zodra niemand de koploper meer kan verslaan gaat
+  alles alsnog uit, in de goede volgorde — een afwijzing zet dat net zo goed
+  vast als een goedkeuring.
+  Twee dingen die daarbij bovenkwamen: de eerste plaats kreeg nergens een
+  echte **"je hebt gewonnen"** (team- en solovariant, en alleen als de plaats
+  vaststaat), en `myFinish` stond niet in de reload van de live stream — dus
+  bij een speler wiens winnende claim net was goedgekeurd werkte de banner
+  wel bij en bleef de dobbelsteen staan. Ook `playerBoard.team_id` werd nooit
+  meegestuurd, waardoor op een teamevent nooit te zien was welke rij in het
+  zijbalk-klassement van jou was; die vergelijking liep op `undefined`.
+  **Eén instelling erbij, twee waarden**, op het Format-tabblad en gedeeld door
+  beide types: `finish_rule` = CONTINUE (standaard; het bord blijft open tot de
+  einddatum en het podium vult zich op finishvolgorde) of STOP (de eerste
+  finish sluit het event voor iedereen). STOP stempelt `closed_at`, en omdat
+  `Event::isEnded()` die kolom meeneemt, sluiten rollen, claimen, afvinken en
+  meedoen allemaal mee zonder één nieuwe check — `eventStatus()` in `board.js`
+  spiegelt het aan de clientkant.
+  Het Danger-tabblad heet nu **Status**: bovenaan waar het event staat
+  (upcoming / live / gepauzeerd sinds / geëindigd / gesloten door een winnaar),
+  daaronder dezelfde ladder plus de trede die ontbrak — pauzeren, **nu
+  beëindigen** (met een bevestiging die het podium noemt), verwijderen. Het
+  Manage-menu heeft er een eigen ingang voor, want dat is waar een host het
+  vaakst voor binnenkomt. `POST /events/{event}/close` is de handmatige tweeling
+  van wat de STOP-regel zelf doet: dezelfde kolom, dezelfde audit-actie,
+  dezelfde aankondiging.
+  **Twee echte bugs onderweg**, allebei door de nieuwe tests gevonden: de
+  leaderboard gaf een fatale `null['at']` voor iedereen die nog niet klaar was
+  (dus vrijwel altijd), en de finish-kaart las "1 place" omdat de rank als kaal
+  getal in een `:place place`-string ging — er is nu een `ordinal()` in
+  `board.js` naast `App\Support\Ordinal`, aan beide kanten getest.
+  **En de melding die dit begon**: op een geëindigd event stond nog een kaart
+  met de kop "Roll the dice" — met de dev-force-roll-knoppen eronder, want die
+  zaten alleen achter de omgeving. Die kaart heet nu naar de staat waarin het
+  event staat en biedt niets aan.
+  29 feature-tests in `EventFinishTest`, plus `ordinal`/`closed_at` in
+  `tests/js/support.test.js`.
+
 - [x] ~~**Het volledige menu flitste in beeld nadat het slot aanging.**~~ —
   gefixt 2026-08-31, gemeld vanaf staging. De conditie zat al zo vroeg
   mogelijk (server-side in `EnsureSiteUnlocked`); het probleem was de andere

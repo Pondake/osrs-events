@@ -17,6 +17,7 @@ use App\Notifications\EventStatusChanged;
 use App\Services\BingoService;
 use App\Services\BoardAccessService;
 use App\Services\DiscordAnnouncer;
+use App\Services\EventFinishService;
 use App\Services\EventNotificationService;
 use App\Services\EventParticipationService;
 use App\Services\EventStandingsService;
@@ -41,7 +42,7 @@ class BoardController extends Controller
     /** How many of each kind the hub shows before "view all". */
     private const HUB_SLICE = 3;
 
-    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'discord_webhook_url'];
+    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'finish_rule', 'discord_webhook_url'];
 
     private const BOARD_FIELDS = ['size', 'dice_roll_limit', 'requires_approval'];
 
@@ -274,7 +275,7 @@ class BoardController extends Controller
      * view any board). GUILD/INVITE boards the user hasn't joined render
      * Boards/AccessGate instead of the board itself.
      */
-    public function show(Event $event, BoardAccessService $access, PlayerBoardService $playerBoards): Response|RedirectResponse
+    public function show(Event $event, BoardAccessService $access, PlayerBoardService $playerBoards, EventFinishService $finishes): Response|RedirectResponse
     {
         $user = Auth::user();
 
@@ -311,7 +312,7 @@ class BoardController extends Controller
         }
 
         if ($event->type === 'BINGO') {
-            return $this->showBingo($event, app(BingoService::class));
+            return $this->showBingo($event, app(BingoService::class), $finishes);
         }
 
         // A read, not a get-or-create. This used to hand a player board to
@@ -384,7 +385,14 @@ class BoardController extends Controller
             'canForceRoll' => app()->environment('local'),
             'tiles' => $tiles,
             'playerBoard' => $playerBoard === null ? null : [
-                ...$playerBoard->only(['id', 'current_position', 'dice_rolls_today']),
+                // `team_id` as well as the rest: the sidebar decides which
+                // row is yours by comparing it, and without it the
+                // comparison was against `undefined` — so on a TEAM event
+                // nothing was ever highlighted as your own. Reported as "you
+                // cannot see which team is yours". Your own team on your own
+                // board is not a disclosure: it is the one identity on that
+                // list you already know.
+                ...$playerBoard->only(['id', 'team_id', 'current_position', 'dice_rolls_today']),
                 // Only APPROVED counts toward progress — a pending claim
                 // does not yet unlock the next roll. Same "only approved
                 // scores" rule bingo's standings enforce.
@@ -403,6 +411,24 @@ class BoardController extends Controller
                 ]]),
             ],
             'players' => $players,
+            // The podium, in the order it was earned. Sent to everyone, not
+            // only to the person who finished: "somebody got home" is a fact
+            // about the board, and the browser-side guess this replaces
+            // reached exactly one person and did not survive their refresh.
+            'finishes' => $finishes->places($event, $namesArePublic),
+            // This viewer's own finish, if any — what turns the dice block
+            // into a result card. Read separately from the list above
+            // because on a private event that list is anonymised, and being
+            // told your own name is not a leak.
+            'myFinish' => ($mine = $finishes->finishFor($event, $user)) === null ? null : [
+                'rank' => $event->finishes()->where('finished_at', '<=', $mine->finished_at)->count(),
+                'finishedAt' => $mine->finished_at?->toIso8601String(),
+                // While an earlier claim is still waiting on a host, this
+                // place can still move down — so the page says the run is in
+                // rather than which place it took, and holds the
+                // celebration. See EventFinishService::settleAnnouncements().
+                'provisional' => $finishes->isProvisional($event, $mine->finished_at),
+            ],
             // Said explicitly rather than inferred from a null user: a row
             // with no user is otherwise indistinguishable from a deleted
             // account, and the page would label anonymous players as gone.
@@ -414,6 +440,11 @@ class BoardController extends Controller
             // play at all — BoardShow.vue renders a dedicated "no team on
             // this board" empty state instead of the grid for this case.
             'hasTeam' => $user !== null && $playerBoards->hasTeam($event, $user),
+            // Teams this reader runs that are not in the event yet — what the
+            // join dialog offers when a team event has no team of theirs in
+            // it. Empty for everyone else, including a plain member, who is
+            // pointed at their team's owner instead.
+            'teamOptions' => $user === null ? [] : app(EventParticipationService::class)->enterableTeams($user, $event),
             'joined' => $user !== null && app(EventParticipationService::class)->has($user, $event),
             'canEdit' => $canEdit,
             // Only to somebody who may edit the event. A webhook URL is a
@@ -457,17 +488,33 @@ class BoardController extends Controller
         ], $bySquare);
     }
 
-    /** Same rule, for a standings table: keep the score, drop the who. */
+    /**
+     * Same rule, for a standings table: keep the score, drop the who.
+     *
+     * Every identity key the row happens to carry, not the three one caller
+     * has. Two different row shapes come through here — bingo's standings and
+     * a metric race's — and the race's carries a *second* name: `name` is the
+     * RSN and `displayName` is the Discord one, rendered underneath it. Only
+     * the first was dropped, so a listed invite-only drop race printed
+     * "Anonymous player" in italics with the player's real name directly
+     * below it. Keyed off what is actually in the row, so a third shape
+     * cannot quietly keep a field back.
+     */
     private static function withoutCompetitorNames(Collection $rows): Collection
     {
-        return $rows->map(fn (array $row) => [
-            ...$row,
-            // The id goes too — it identifies a user or team to anyone who
-            // can look one up, which is the thing being withheld.
-            'id' => null,
-            'name' => null,
-            'avatarUrl' => null,
-        ])->values();
+        // The id goes too — it identifies a user or team to anyone who can
+        // look one up, which is the thing being withheld.
+        $identity = ['id', 'name', 'displayName', 'avatarUrl'];
+
+        return $rows->map(function (array $row) use ($identity) {
+            foreach ($identity as $key) {
+                if (array_key_exists($key, $row)) {
+                    $row[$key] = null;
+                }
+            }
+
+            return $row;
+        })->values();
     }
 
     /**
@@ -486,7 +533,7 @@ class BoardController extends Controller
      * assigned team — they can look but not tick, and the page says so
      * rather than offering squares that would silently score against nobody.
      */
-    private function showBingo(Event $event, BingoService $bingo): Response
+    private function showBingo(Event $event, BingoService $bingo, EventFinishService $finishes): Response
     {
         $card = $event->bingoCard;
 
@@ -530,6 +577,16 @@ class BoardController extends Controller
 
         return Inertia::render('Events/Bingo', [
             'event' => EventCard::for($event),
+            // Same two props BoardShow carries, for the same reasons — the
+            // podium is public, your own place in it is yours. `hasWon`
+            // below is still computed live because it drives the card's own
+            // highlighting; this is the recorded, ordered version of it.
+            'finishes' => $finishes->places($event, $bingoNamesArePublic),
+            'myFinish' => ($mine = $finishes->finishFor($event, $user)) === null ? null : [
+                'rank' => $event->finishes()->where('finished_at', '<=', $mine->finished_at)->count(),
+                'finishedAt' => $mine->finished_at?->toIso8601String(),
+                'provisional' => $finishes->isProvisional($event, $mine->finished_at),
+            ],
             'card' => [
                 'size' => $card->size,
                 'winCondition' => $card->win_condition,
@@ -578,6 +635,10 @@ class BoardController extends Controller
             'completedLines' => $bingo->completedLines($card->size, $approved, $card->winLines()),
             'hasWon' => $bingo->hasWon($card, $approved),
             'canPlay' => $competitor !== null,
+            // Same pair the board page carries — a team bingo card is played
+            // per team too, so joining one needs a team the same way.
+            'needsTeam' => $user !== null && app(EventParticipationService::class)->needsTeam($user, $event),
+            'teamOptions' => $user === null ? [] : app(EventParticipationService::class)->enterableTeams($user, $event),
             'joined' => app(EventParticipationService::class)->has($user, $event),
             'standings' => $bingoNamesArePublic
                 ? $bingo->standings($event, $card)
@@ -639,13 +700,13 @@ class BoardController extends Controller
             // The full join, not just the access row. Somebody who followed an
             // invite link has said what they want plainly enough — asking them
             // to press Join on arrival would be asking twice.
-            $needsTeam = $participation->join($request->user(), $event, $token);
+            $participation->join($request->user(), $event, $token);
         } catch (ValidationException $e) {
             return redirect()->route('events.show', $event)->with('board-save-error', collect($e->errors())->flatten()->first() ?? trans('events.join_failed'));
         }
 
         return redirect()->route('events.show', $event)
-            ->with('board-save', trans($needsTeam ? 'events.joined_needs_team' : 'board.joined'));
+            ->with('board-save', trans('board.joined'));
     }
 
     /**
@@ -692,6 +753,11 @@ class BoardController extends Controller
             'win_lines' => ['nullable', 'array', 'min:1'],
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
             'mode' => ['nullable', 'in:SOLO,TEAM'],
+            // What happens when the first competitor gets home. Nullable
+            // rather than defaulted here: the column's own default is
+            // CONTINUE, and a create form that never showed the field for a
+            // metric race should not have to send one.
+            'finish_rule' => ['nullable', Rule::in(Event::FINISH_RULES)],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['nullable', 'boolean'],
             'access_mode' => ['nullable', 'in:OPEN,GUILD,INVITE'],
@@ -726,6 +792,12 @@ class BoardController extends Controller
                 'mode' => $data['mode'] ?? 'SOLO',
                 'is_listed' => $data['is_listed'] ?? true,
                 'access_mode' => $data['access_mode'] ?? 'OPEN',
+                // Named rather than left to the column default, for the same
+                // reason showBingo() names every card column: a freshly
+                // created model carries what was passed to it and nothing
+                // else, so a database default does not reach the instance
+                // this request goes on to render from.
+                'finish_rule' => $data['finish_rule'] ?? 'CONTINUE',
             ]);
 
             // Each type creates its own payload, or none. This is the seam
@@ -859,6 +931,12 @@ class BoardController extends Controller
             'win_lines' => ['sometimes', 'nullable', 'array', 'min:1'],
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
+            // Editable mid-event on purpose: a host who set out to run a
+            // race and finds half the clan still playing can let it run on,
+            // and one who wants to call it can say so. Changing the rule
+            // does NOT reopen an event that a finish already closed — see
+            // EventFinishService.
+            'finish_rule' => ['sometimes', 'nullable', Rule::in(Event::FINISH_RULES)],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['sometimes', 'boolean'],
             'access_mode' => ['sometimes', 'in:OPEN,GUILD,INVITE'],
@@ -909,7 +987,14 @@ class BoardController extends Controller
 
             // Before the write, so `isDirty` compares against what is
             // currently stored rather than against what we just saved.
-            $event->fill(collect($data)->only(self::EVENT_FIELDS)->toArray());
+            $event->fill(collect($data)->only(self::EVENT_FIELDS)
+                // Same null-means-absent rule the card and board fields use
+                // below: one form carries every type's fields, so editing a
+                // skill race submits `finish_rule` as null — and a null
+                // written here would blank a column whose whole job is to
+                // always hold one of two words.
+                ->reject(fn ($value, $key) => $value === null && $key === 'finish_rule')
+                ->toArray());
 
             // A standing is a measurement over a window. Move a date or the
             // metric and every row is still displayed, still ranked, and no
@@ -1008,6 +1093,63 @@ class BoardController extends Controller
             $counts = $notifier->announce(
                 $event,
                 $paused ? EventStatusChanged::PAUSED : EventStatusChanged::RESUMED,
+                $request->user(),
+            );
+
+            $message .= ' '.$this->notifiedSummary($counts);
+        }
+
+        return back()->with('board-save', $message);
+    }
+
+    /**
+     * Call it: results final, nothing more counts.
+     *
+     * The manual twin of what the first finish does on its own under the
+     * STOP rule — same `closed_at` column, same audit action, same
+     * announcement — which is exactly why it is a button rather than a
+     * feature. An event that has been closed reads as ended everywhere:
+     * `Event::isEnded()` folds the column in, so rolling, claiming, ticking
+     * a tile and joining all refuse without a single new check, and
+     * `eventStatus()` in board.js shuts the matching controls.
+     *
+     * Reversible, and therefore a host action rather than an owner one —
+     * the same line pause() draws. Deleting is the irreversible one and
+     * stays with the owner.
+     */
+    public function close(
+        Request $request,
+        Event $event,
+        EventNotificationService $notifier,
+        EventFinishService $finishes,
+        bool $asAdmin = false,
+    ): RedirectResponse {
+        $this->assertCanEditEvent($request->user(), $event, $asAdmin);
+
+        $data = $request->validate([
+            'closed' => ['required', 'boolean'],
+            // Opt-out, same as pause: "the event is over" is the single
+            // thing participants most need to hear, and a host correcting a
+            // misclick thirty seconds later can uncheck it.
+            'notify' => ['sometimes', 'boolean'],
+        ]);
+
+        $closed = (bool) $data['closed'];
+
+        // Idempotent and quiet, same as pause: a double-click must not send
+        // a second round of "it is over" to everybody.
+        if ($closed === $event->isClosed()) {
+            return back();
+        }
+
+        $finishes->close($event, $closed);
+
+        $message = trans($closed ? 'events.closed_confirmed' : 'events.reopened_confirmed');
+
+        if ($data['notify'] ?? true) {
+            $counts = $notifier->announce(
+                $event,
+                $closed ? EventStatusChanged::ENDED : EventStatusChanged::REOPENED,
                 $request->user(),
             );
 

@@ -67,7 +67,7 @@
                                  will do, since it starts off and an empty board
                                  otherwise reads as broken. -->
                             <u-button
-                                v-if="otherPlayers.length > 0"
+                                v-if="otherPlayers.length > 0 && !isSpectator"
                                 :color="showOtherPlayers ? 'primary' : 'neutral'"
                                 :variant="showOtherPlayers ? 'subtle' : 'outline'"
                                 size="sm"
@@ -89,7 +89,14 @@
                                  which put every passer-by on the leaderboard
                                  at square one. Joining is a decision now, and
                                  this is where it is made. -->
-                            <join-event-button v-if="joined || (!isPaused && !isEnded)" :event-id="liveBoard.id" :joined="joined" size="sm" />
+                            <join-event-button
+                                v-if="joined || (!isPaused && !isEnded)"
+                                :event-id="liveBoard.id"
+                                :joined="joined"
+                                :needs-team="needsTeam"
+                                :teams="teamOptions"
+                                size="sm"
+                            />
                             <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
                             <u-button
                                 :href="`/events/${liveBoard.id}/leaderboard`"
@@ -107,6 +114,7 @@
                      began. -->
                 <event-notices
                     :event="liveBoard"
+                    :finishes="liveFinishes"
                     :can-edit="canEdit"
                     :viewing-as-admin="viewingAsAdmin"
                     :admin-edit-url="adminEditUrl"
@@ -120,16 +128,26 @@
                      first thing a reader without access needs. -->
                 <invite-code-card v-if="needsInvite" :event-id="liveBoard.id" class="mb-6" />
 
-                <u-card v-if="!hasTeam" class="mt-8">
-                    <div class="flex flex-col items-center text-center gap-3 py-6">
-                        <u-icon name="i-lucide-users" class="size-10 text-muted" />
-                        <p class="font-semibold text-lg">{{ $t('board.no_team_title') }}</p>
-                        <p class="text-sm text-muted max-w-md">{{ $t('board.no_team_desc') }}</p>
-                        <u-button color="primary" :label="$t('board.go_to_teams')" href="/teams" />
-                    </div>
-                </u-card>
+                <!-- Being teamless used to REPLACE the board with this,
+                     which meant somebody arriving at a public team event —
+                     possibly to decide whether to join it — was shown a
+                     roster problem instead of the event. The board is public
+                     reading; the team is only needed to play, so it is said
+                     once you have joined, next to what it is about. The
+                     prompt for anyone who has not joined yet lives on the
+                     join button, where the decision is. -->
+                <u-alert
+                    v-if="joined && needsTeam"
+                    color="warning"
+                    variant="subtle"
+                    icon="i-lucide-users"
+                    :title="$t('board.no_team_title')"
+                    :description="$t('board.no_team_desc')"
+                    :actions="[{ label: $t('events.choose_team'), color: 'neutral', variant: 'outline', onClick: () => (showTeamEntry = true) }]"
+                    class="mt-8"
+                />
 
-                <div v-else class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
+                <div class="mt-8 flex flex-col lg:flex-row gap-8 items-start">
                     <!-- `isolate` seals the pill's z-index into this box. Without
                          it that z-10 sits in the root stacking context and climbs
                          over a teleported modal. -->
@@ -290,7 +308,8 @@
                                             v-for="p in playersOnTile(tile.position).slice(0, 3)"
                                             :key="p.id"
                                             :src="p.avatarUrl ?? undefined"
-                                            :alt="p.name"
+                                            :alt="namesArePublic ? p.name : undefined"
+                                            :icon="namesArePublic ? undefined : 'i-lucide-user'"
                                             size="xs"
                                             class="ring-2 ring-primary bg-elevated shadow-md"
                                         />
@@ -318,7 +337,13 @@
                                 :style="{ left: `${piece.at.x}%`, top: `${piece.at.y}%`, '--walker-size': piece.at.size }"
                                 aria-hidden="true"
                             >
-                                <u-avatar :src="piece.avatarUrl ?? undefined" :alt="piece.name" size="md" class="ring-2 ring-primary" />
+                                <u-avatar
+                                    :src="piece.avatarUrl ?? undefined"
+                                    :alt="namesArePublic ? piece.name : undefined"
+                                    :icon="namesArePublic ? undefined : 'i-lucide-user'"
+                                    size="md"
+                                    class="ring-2 ring-primary"
+                                />
                             </div>
                             </div>
                         </div>
@@ -340,12 +365,75 @@
                              all", which is the correct reading of a page with
                              no way to play on it. The gate is a pace, not a
                              secret. -->
-                        <u-card v-if="playerBoard">
+                        <!-- Finished. The dice card is replaced rather than
+                             disabled: a player standing on the last tile
+                             could still press it, and every roll clamped to
+                             where they already were — so the button burnt one
+                             of their daily rolls and moved nobody. This is
+                             also the part that survives a refresh, which the
+                             old celebration modal did not: the modal is the
+                             moment, this is the state. -->
+                        <u-card v-if="playerBoard && hasFinished">
+                            <template #header>
+                                <span class="font-semibold">{{ $t('board.finished_title') }}</span>
+                            </template>
+
+                            <!-- While an earlier claim is still being checked
+                                 this says the run is in and nothing about
+                                 which place it took: a place that is about to
+                                 move is not one to print. -->
+                            <div v-if="finishIsProvisional" class="text-center py-2 space-y-2">
+                                <p class="text-4xl">🏁</p>
+                                <p class="font-semibold">{{ $t('board.finished_pending_title') }}</p>
+                                <p class="text-sm text-muted leading-relaxed">{{ $t('board.finished_pending_desc') }}</p>
+                            </div>
+
+                            <div v-else class="text-center py-2 space-y-2">
+                                <p class="text-4xl">{{ medal(myFinish.rank) ?? '🏁' }}</p>
+                                <p class="font-semibold">
+                                    {{ myFinish.rank === 1 ? wonLabel : $t('board.finished_place', { place: ordinal(myFinish.rank) }) }}
+                                </p>
+                                <p class="text-sm text-muted leading-relaxed">
+                                    {{ liveBoard.closed_at ? $t('board.finished_closed') : $t('board.finished_continue', { when: formatDate(liveBoard.end_date) }) }}
+                                </p>
+                                <u-button
+                                    :href="`/events/${liveBoard.id}/leaderboard`"
+                                    variant="soft"
+                                    color="primary"
+                                    size="sm"
+                                    icon="i-lucide-trophy"
+                                    :label="$t('leaderboard.title')"
+                                />
+                            </div>
+                        </u-card>
+
+                        <!-- Not playable right now: paused, upcoming, or
+                             over. A card headed "Roll the dice" whose body
+                             says the event has ended is a control promising
+                             something it cannot do — reported from exactly
+                             that state, on an ended board, with the dev
+                             force-roll buttons still sitting under the
+                             heading because they were only ever gated on the
+                             environment. The heading names the state
+                             instead, and nothing inside offers a roll. -->
+                        <u-card v-else-if="playerBoard && !canPlayNow">
+                            <template #header>
+                                <span class="font-semibold">{{ $t(statusLabelKey) }}</span>
+                            </template>
+
+                            <p class="text-sm text-muted">
+                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : $t('events.not_started')) }}
+                            </p>
+                        </u-card>
+
+                        <u-card v-else-if="playerBoard">
                             <template #header>
                                 <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
                             </template>
 
-                            <!-- Local only: a chosen die, for the animation. -->
+                            <!-- Local only: a chosen die, for the animation.
+                                 Inside the playable branch, so it cannot
+                                 offer a roll the server would refuse. -->
                             <div v-if="canForceRoll" class="flex flex-wrap items-center justify-center gap-1 mb-3">
                                 <span class="text-[10px] uppercase tracking-wide text-muted w-full text-center">dev: force roll</span>
                                 <u-button
@@ -362,7 +450,7 @@
                             </div>
 
                             <dice-roller
-                                v-if="canRoll && !isPaused && !isEnded && !isUpcoming"
+                                v-if="canRoll"
                                 :rolling="rolling"
                                 :last-roll="lastRoll"
                                 :rolls-today="playerBoard?.dice_rolls_today ?? 0"
@@ -370,15 +458,15 @@
                                 @roll="roll"
                             />
 
-                            <!-- Paused/ended/upcoming all refuse the roll
-                                 server-side either way; taking the dice away
-                                 is so that the refusal is not the way anyone
-                                 finds out. Upcoming used to be missing from
-                                 both sides of this — the dice showed and
-                                 worked on a board dated to start next month,
-                                 reported directly from exactly that page. -->
+                            <!-- Playable, but not yet: the tile you are
+                                 standing on has to be ticked off first. The
+                                 paused/ended/upcoming wordings moved up to
+                                 the status card above, which is the one that
+                                 renders in those states — leaving them here
+                                 meant this card had to be headed "Roll the
+                                 dice" to say "you cannot roll". -->
                             <p v-else class="text-sm text-muted">
-                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (isUpcoming ? $t('events.not_started') : (currentClaim?.status === 'PENDING' ? $t('board.roll_awaiting_review') : $t('board.roll_needs_current_tile')))) }}
+                                {{ currentClaim?.status === 'PENDING' ? $t('board.roll_awaiting_review') : $t('board.roll_needs_current_tile') }}
                             </p>
                         </u-card>
 
@@ -397,11 +485,20 @@
                              date, same as everywhere else this pass touched. -->
                         <u-card v-if="!playerBoard">
                             <p class="text-sm text-muted">
-                                {{ isEnded ? $t('events.ended_notice') : (isPaused ? $t('events.paused_notice') : (isUpcoming ? $t('events.not_started') : (joined ? $t('board.get_started_desc') : $t('events.join_hint')))) }}
+                                {{ sidebarStateText }}
                             </p>
                             <div v-if="!isPaused && !isEnded" class="mt-3 flex flex-col gap-3">
-                                <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" />
-                                <dice-roller v-if="joined && !isUpcoming" :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
+                                <join-event-button v-if="!joined" :event-id="liveBoard.id" :joined="false" :needs-team="needsTeam" :teams="teamOptions" />
+                                <!-- No die without a team: rolling creates the
+                                     board you play on, and on a team event
+                                     that board is the TEAM's — so the server
+                                     has nothing to make one from and answers
+                                     with an error toast. Offering the roll
+                                     anyway was how somebody with no team got
+                                     a die and a refusal instead of the
+                                     reason. -->
+                                <dice-roller v-if="joined && !isUpcoming && !needsTeam" :rolling="rolling" :last-roll="lastRoll" :rolls-today="0" :roll-limit="liveBoard.dice_roll_limit" @roll="roll" />
+                                <u-button v-else-if="joined && needsTeam" color="neutral" variant="outline" block icon="i-lucide-users" :label="$t('events.choose_team')" @click="showTeamEntry = true" />
                             </div>
                         </u-card>
 
@@ -660,14 +757,50 @@
                                     >
                                         {{ p.team.name.slice(0, 2).toUpperCase() }}
                                     </span>
-                                    <u-avatar v-else :src="p.user?.avatar_url ?? undefined" :alt="playerName(p)" size="xs" class="shrink-0" />
+                                    <!-- An icon rather than initials when there is
+                                         nobody to initial: UAvatar derives them
+                                         from `alt`, so the anonymous label came
+                                         back as a monogram of itself ("Ap"). -->
+                                    <u-avatar
+                                        v-else
+                                        :src="p.user?.avatar_url ?? undefined"
+                                        :alt="namesArePublic ? playerName(p) : undefined"
+                                        :icon="namesArePublic ? undefined : 'i-lucide-user'"
+                                        size="xs"
+                                        class="shrink-0"
+                                    />
                                     <span class="flex-1 min-w-0 truncate font-medium" :class="namesArePublic ? '' : 'text-muted italic'">{{ playerName(p) }}</span>
-                                    <span class="text-xs text-muted shrink-0">#{{ p.current_position + 1 }}</span>
+                                    <!-- Said in a word, not only in a tint.
+                                         A row shaded 10% against a dark
+                                         panel is easy to miss, and "which of
+                                         these is mine" is the first question
+                                         anyone asks of a leaderboard. -->
+                                    <u-badge
+                                        v-if="isMyPlayerRow(p)"
+                                        :label="liveBoard.mode === 'TEAM' ? $t('board.your_team') : $t('board.you')"
+                                        color="primary"
+                                        variant="soft"
+                                        size="xs"
+                                        class="shrink-0"
+                                    />
+                                    <!-- A finisher is not "at tile 49 with 0
+                                         to go" like everybody parked on the
+                                         last square; they are done, and the
+                                         place they came in is the only number
+                                         about them that still matters. -->
+                                    <span v-if="finishRankFor(p)" class="text-xs shrink-0" :title="$t('board.finished_place', { place: ordinal(finishRankFor(p)) })">
+                                        {{ medal(finishRankFor(p)) ?? `#${finishRankFor(p)}` }}
+                                    </span>
+                                    <span v-else class="text-xs text-muted shrink-0">#{{ p.current_position + 1 }}</span>
                                     <span
+                                        v-if="!finishRankFor(p)"
                                         class="text-xs font-semibold w-10 text-right shrink-0"
                                         :class="p.pathHasSnake ? 'text-error' : p.pathHasLadder ? 'text-success' : 'text-muted'"
                                     >
                                         {{ p.tilesRemaining }}🔲
+                                    </span>
+                                    <span v-else class="text-xs font-semibold w-10 text-right shrink-0 text-success">
+                                        {{ $t('board.finished_short') }}
                                     </span>
                                 </div>
                             </div>
@@ -686,11 +819,24 @@
             </u-container>
         </u-page>
 
-        <u-modal v-model:open="showCompleted" :title="$t('board.completed')">
+        <!-- The moment, not the state: the card in the sidebar is what is
+             still there tomorrow. It can say which place now, because the
+             server decided it — the guess this replaces knew only that the
+             last tile had been ticked. -->
+        <u-modal v-model:open="showCompleted" :title="myFinish?.rank === 1 ? wonLabel : $t('board.completed')">
             <template #body>
                 <div class="text-center py-6">
-                    <p class="text-6xl mb-4">🎉</p>
-                    <p class="text-muted">{{ $t('board.completed_desc') }}</p>
+                    <p class="text-6xl mb-4">{{ medal(myFinish?.rank) ?? '🎉' }}</p>
+                    <!-- First place gets told it won, in as many words. Every
+                         other place gets told which one it is — "board
+                         complete" said the same thing to whoever got home
+                         first and to whoever came fourth. -->
+                    <p class="font-semibold mb-1">
+                        {{ myFinish?.rank === 1 ? $t('board.won_congrats') : $t('board.finished_place', { place: ordinal(myFinish?.rank) }) }}
+                    </p>
+                    <p class="text-muted">
+                        {{ liveBoard.closed_at ? $t('board.completed_desc_closed') : $t('board.completed_desc') }}
+                    </p>
                 </div>
             </template>
             <template #footer>
@@ -699,14 +845,28 @@
         </u-modal>
 
         <client-only>
-            <board-settings-modal v-model:open="showSettingsModal" :board="liveBoard" :webhook-url="webhookUrl" />
-            <tile-list-editor
-                v-model:open="showTileList"
-                :event-id="liveBoard.id"
-                type="SNAKES_LADDERS"
-                :items="tiles"
-                :total="tileCount"
-            />
+            <!-- Editor-only, and mounted only for an editor: the settings
+                 modal loads the event's team list as soon as it exists, so a
+                 player's console filled with 403s from a request they were
+                 never allowed to make. Same gating SkillRace and Bingo
+                 already had. -->
+            <template v-if="canEdit">
+                <board-settings-modal
+                    v-model:open="showSettingsModal"
+                    :board="liveBoard"
+                    :webhook-url="webhookUrl"
+                    :initial-tab="settingsTab"
+                    :finishes="liveFinishes"
+                />
+                <tile-list-editor
+                    v-model:open="showTileList"
+                    :event-id="liveBoard.id"
+                    type="SNAKES_LADDERS"
+                    :items="tiles"
+                    :total="tileCount"
+                />
+                <tile-review-modal v-model:open="showReviewModal" :event-id="liveBoard.id" :claims="livePending" />
+            </template>
             <tile-edit-modal
                 v-if="editingTile"
                 :open="editingTile !== null"
@@ -716,6 +876,7 @@
                 :tile="editingTile.id ? editingTile : null"
                 @update:open="(v) => !v && (editingTile = null)"
             />
+            <team-entry-modal v-model:open="showTeamEntry" :event-id="liveBoard.id" :teams="teamOptions" />
             <tile-claim-modal
                 v-if="currentTile"
                 v-model:open="showClaimModal"
@@ -724,7 +885,6 @@
                 :tile-title="currentTileTitle"
                 :claim="currentClaim"
             />
-            <tile-review-modal v-model:open="showReviewModal" :event-id="liveBoard.id" :claims="livePending" />
         </client-only>
     </u-main>
 </template>
@@ -739,9 +899,10 @@ import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
+import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
-import { BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate, eventStatus } from '@/Support/board';
+import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate, eventStatus, ordinal } from '@/Support/board';
 import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';
 import { useEventStream } from '@/Composables/useEventStream';
 
@@ -768,6 +929,9 @@ const props = defineProps({
     // a deleted account, which is a different thing to say.
     namesArePublic: { type: Boolean, default: true },
     hasTeam: { type: Boolean, default: true },
+    // Teams this reader runs that are not in the event yet — see
+    // TeamEntryModal. Empty for everyone with nothing to offer.
+    teamOptions: { type: Array, default: () => [] },
     canEdit: { type: Boolean, default: false },
     // True only when a site admin is reading a private event they were never
     // invited to — the heading says so rather than letting it be silent.
@@ -780,6 +944,16 @@ const props = defineProps({
     // The host's review queue — see BoardReviewService::pendingQueue(). Empty
     // for anyone else, so asking for it costs a player nothing.
     pending: { type: Array, default: () => [] },
+    // The podium, in the order it was earned — see EventFinishService. A
+    // page prop rather than a browser-side guess: finishing used to be
+    // worked out here, by comparing the ticked tile's position against the
+    // tile count, which reached one person and did not survive their
+    // refresh.
+    finishes: { type: Array, default: () => [] },
+    // This viewer's own place, if they have one. Kept apart from the list
+    // above because that list is anonymised on a private event, and being
+    // told your own name is not a leak.
+    myFinish: { type: Object, default: null },
 });
 
 /**
@@ -807,6 +981,12 @@ const breadcrumbs = computed(() => [
 // board's own channel — a roll moves one player and everybody watching should
 // see it, the same as a bingo square being ticked.
 const livePlayers = ref([...props.players]);
+
+// Same first-paint-then-stream shape as the players list: somebody getting
+// home is a fact about the board, so every open page hears it on the
+// channel rather than on their next reload.
+const liveFinishes = ref([...props.finishes]);
+watch(() => props.finishes, (value) => (liveFinishes.value = [...value]));
 /**
  * A player's label: their name, or the anonymous stand-in.
  *
@@ -858,7 +1038,15 @@ function applyClaimsVersion(version) {
 
     // `pending` is the host's review queue; it comes back empty for anyone
     // else, so asking for it costs a player nothing.
-    router.reload({ only: ['playerBoard', 'pending'] });
+    //
+    // `myFinish` rides along because it is the one thing on this page that
+    // the stream cannot carry: the podium is public and arrives on the
+    // channel, but *your own place* is yours, so it only ever comes back on
+    // a visit. Reported directly — a player whose winning claim had just
+    // been approved watched the banner update to say two teams had finished
+    // while their own sidebar still offered them a dice roll, because
+    // `hasFinished` reads this prop and nothing was refreshing it.
+    router.reload({ only: ['playerBoard', 'pending', 'myFinish', 'finishes'] });
 }
 
 // Destructured now, because the status dot in the heading reports the
@@ -883,6 +1071,11 @@ const { streaming, stale } = useEventStream({
         // What a host decided about a claim — approved, rejected — only
         // when it actually changed, rather than on every push.
         if (payload.claims_version) applyClaimsVersion(payload.claims_version);
+
+        // Guarded rather than assigned blind: an older SSR bundle may still
+        // be streaming payloads from before this existed, and replacing the
+        // podium with `undefined` would empty it on the first push.
+        if (payload.finishes) liveFinishes.value = payload.finishes;
     },
 });
 
@@ -904,7 +1097,116 @@ const editMode = ref(false);
 const rolling = ref(false);
 const lastRoll = ref(null);
 const showCompleted = ref(false);
+
+// --------------------------------------------------------------- finishing
+
+/**
+ * Whether a roll is on offer at all — which is a different question from
+ * whether this player may roll *yet* (that is `canRoll`, and it is about the
+ * tile they are standing on). Ended outranks the rest here the same way it
+ * does in eventStatus(), and a finished player is done regardless.
+ */
+const canPlayNow = computed(() => !isPaused.value
+    && !isEnded.value
+    && !isUpcoming.value
+    && !hasFinished.value);
+
+/** The state's own label, for the card that stands in for the dice. */
+const statusLabelKey = computed(() => (BOARD_STATUS_STYLE[eventStatus(liveBoard.value)] ?? BOARD_STATUS_STYLE.live).labelKey);
+
+/** This viewer's own place, or null while they are still playing. */
+const myFinish = computed(() => props.myFinish);
+const hasFinished = computed(() => myFinish.value !== null);
+
+/**
+ * Whether this viewer's place is still up for grabs.
+ *
+ * True while an earlier claim is sitting in the review queue: approving it
+ * pushes this finish down a place. The page says the run is in, and stays
+ * quiet about which place it took.
+ */
+const finishIsProvisional = computed(() => myFinish.value?.provisional === true);
+
+/** Any dialog that a celebration must not land on top of — or behind. */
+const aDialogIsOpen = computed(() => showReviewModal.value
+    || showClaimModal.value
+    || showSettingsModal.value
+    || showTileList.value
+    || editingTile.value !== null);
+
+/**
+ * The celebration, fired by the server's answer rather than by a guess made
+ * here. Watching `myFinish` rather than calling it from toggleTile() also
+ * covers the case that guess could never have handled: on a board that
+ * reviews claims, the run ends when the host approves the last tile, which
+ * happens in somebody else's browser and arrives here on the live stream.
+ *
+ * Two things hold it back, both reported:
+ *
+ *  - **A provisional place.** A host who approves the second submission
+ *    first must not set off a celebration for a competitor an earlier claim
+ *    is about to overtake.
+ *  - **Another dialog.** A host is usually also a player, so approving the
+ *    claim that finishes their own team's run opened this *underneath* the
+ *    review queue they were working in — a modal behind a modal. It waits
+ *    for them to finish reviewing.
+ */
+const celebrationPending = ref(false);
+
+watch(() => props.myFinish, (now, before) => {
+    if (now && !before) celebrationPending.value = true;
+});
+
+watch([celebrationPending, finishIsProvisional, aDialogIsOpen], () => {
+    if (celebrationPending.value && !finishIsProvisional.value && !aDialogIsOpen.value) {
+        celebrationPending.value = false;
+        showCompleted.value = true;
+    }
+}, { immediate: true });
+
+/**
+ * "You won" or "Your team won" — a team event is won by the team, and
+ * telling one member they personally won it reads wrong to the other five.
+ */
+const wonLabel = computed(() => (liveBoard.value.mode === 'TEAM'
+    ? trans('board.won_team')
+    : trans('board.won_solo')));
+
+/** 1st, 2nd, 3rd — then plain numbers, which is what a medal is for. */
+function medal(rank) {
+    return ['🥇', '🥈', '🥉'][rank - 1] ?? null;
+}
+
+/**
+ * Where a player row sits on the podium, so the sidebar can medal it.
+ * Matched on team on a TEAM event and on user otherwise — the same either/or
+ * the finish itself is recorded against.
+ */
+function finishRankFor(player) {
+    const key = liveBoard.value.mode === 'TEAM' ? player.team_id : player.user_id;
+
+    if (!key) return null;
+
+    const found = liveFinishes.value.find((f) => (liveBoard.value.mode === 'TEAM' ? f.teamId : f.userId) === key);
+
+    return found?.rank ?? null;
+}
 const showOtherPlayers = ref(false);
+
+/**
+ * Somebody reading the event rather than playing it.
+ *
+ * The toggle exists to keep your own marker findable in a crowd, so it only
+ * means anything to somebody who has one. Without a player board every row
+ * is an "other" player, which made the default state hide the entire board —
+ * a spectator opened a live event and saw an empty grid with a button
+ * offering to show them the players, which is the wrong way round. They
+ * cannot join, so there is nothing to withhold: they get the full board and
+ * no button.
+ */
+const isSpectator = computed(() => props.playerBoard === null);
+const showingOthers = computed(() => isSpectator.value || showOtherPlayers.value);
+
 // The tile the player last clicked (for inspection), separate from
 // currentTile (where they actually are). Ported from the old Sidebar.vue's
 // "Selected tile" panel — clicking a tile previews it, it does not toggle
@@ -981,6 +1283,27 @@ const currentTileHasTask = computed(() => Boolean(
  */
 const canRoll = computed(() => !currentTileHasTask.value || currentTileCompleted.value);
 
+/**
+ * What the sidebar card says while there is no board of your own yet, in the
+ * order the states rule each other out: over, stopped, not started, no team,
+ * joined-and-ready, not joined.
+ */
+const sidebarStateText = computed(() => {
+    if (isEnded.value) return trans('events.ended_notice');
+    if (isPaused.value) return trans('events.paused_notice');
+    if (isUpcoming.value) return trans('events.not_started');
+    if (! props.joined) return trans('events.join_hint');
+
+    return needsTeam.value ? trans('board.no_team_desc') : trans('board.get_started_desc');
+});
+
+// A team event is played per team, so somebody on none of the event's teams
+// has nothing to play on — but plenty to read. Drives the notice above the
+// board and the prompt on the join button, neither of which hides the event.
+const needsTeam = computed(() => liveBoard.value.mode === 'TEAM' && ! props.hasTeam);
+
+const showTeamEntry = ref(false);
+
 // Read off the live event rather than the initial prop, so a host pausing
 // mid-game reaches an open board through the stream — the fingerprint carries
 // paused_at (see SignalsEventEdits) and this is what it lands on.
@@ -1003,6 +1326,11 @@ const manageItems = computed(() => [
     { key: 'edit', label: editMode.value ? trans('bingo.editing_tiles') : trans('bingo.edit_tiles'), icon: 'i-lucide-grid-2x2-plus', active: editMode.value },
     { key: 'tiles', label: trans('tile_list.open'), icon: 'i-lucide-list-checks' },
     { key: 'settings', label: trans('board.event_settings'), icon: 'i-lucide-settings' },
+    // Its own entry rather than "go to settings, then the last tab": where
+    // an event stands — and pausing, ending or reopening it — is the thing a
+    // host opens this menu for most often, and it was four clicks deep in a
+    // tab called "Stop". Same panel either way; this one just lands on it.
+    { key: 'status', label: trans('events.status_menu'), icon: statusIcon.value },
     ...(requiresApproval.value ? [{ key: 'review', label: trans('bingo.review_queue'), icon: 'i-lucide-gavel', badge: livePending.value.length }] : []),
 ]);
 
@@ -1011,7 +1339,31 @@ function onManage(key) {
     if (key === 'tiles') showTileList.value = true;
     if (key === 'settings') showSettingsModal.value = true;
     if (key === 'review') showReviewModal.value = true;
+
+    // The same dialog, opened on the tab that was asked for. `settingsTab`
+    // is read by BoardSettingsModal only when it opens, so setting it in the
+    // same tick as `open` is enough.
+    if (key === 'status') {
+        settingsTab.value = 'danger';
+        showSettingsModal.value = true;
+    } else if (key === 'settings') {
+        settingsTab.value = 'basics';
+    }
 }
+
+/**
+ * The menu row's icon reports the state rather than naming the action — a
+ * host glancing at the menu can see that an event is paused without opening
+ * anything.
+ */
+const statusIcon = computed(() => ({
+    upcoming: 'i-lucide-clock',
+    live: 'i-lucide-circle-play',
+    paused: 'i-lucide-pause',
+    ended: 'i-lucide-flag',
+}[eventStatus(liveBoard.value)] ?? 'i-lucide-circle-play'));
+
+const settingsTab = ref('basics');
 
 const clickedTileTitle = computed(() => clickedTile.value?.title_override ?? clickedTile.value?.task?.title ?? trans('tile_editor.no_task'));
 
@@ -1023,7 +1375,7 @@ const isMyPlayerRow = (p) => (liveBoard.value.mode === 'TEAM' ? p.team_id === pr
 const otherPlayers = computed(() => livePlayers.value.filter((p) => !isMyPlayerRow(p)));
 // Reads the live list, so a roll by anyone moves their avatar on every
 // open board rather than only after a refresh.
-const visiblePlayers = computed(() => livePlayers.value.filter((p) => isMyPlayerRow(p) || showOtherPlayers.value));
+const visiblePlayers = computed(() => livePlayers.value.filter((p) => isMyPlayerRow(p) || showingOthers.value));
 
 /**
  * The pieces in motion. A roll is two motions: the walk the dice bought and,
@@ -1513,21 +1865,22 @@ function roll(force = null) {
     );
 }
 
-// Ported from the old useBoardPage's onCompleteTile: completing the tile at
-// the board's last position ends the run.
+// Ported from the old useBoardPage's onCompleteTile.
 //
 // Called "bingo" until 2026-08-20, which was a misnomer waiting to collide:
 // this fires on finishing a Snakes & Ladders board, and BINGO is becoming
 // a separate event type with its own line/full-board rules (ROADMAP phase 5).
+//
+// Whether the run is over is no longer decided here. It used to be: this
+// compared the ticked tile's position against the tile count and popped the
+// celebration itself, which was wrong in three ways at once — a refresh
+// erased it, nobody else was ever told, and on a board that reviews claims
+// it congratulated the player before the host had seen the proof. The server
+// stamps the finish (EventFinishService) and `myFinish` comes back with the
+// visit; the watch below is what celebrates.
 function toggleTile(tile) {
-    const wasCompleted = props.playerBoard?.completedTileIds.includes(tile.id) ?? false;
-    const finishesBoard = !wasCompleted && tile.position === tileCount.value - 1;
-
     router.post(`/events/${liveBoard.value.id}/tiles/${tile.id}/toggle`, {}, {
         preserveScroll: true,
-        onSuccess: () => {
-            if (finishesBoard) showCompleted.value = true;
-        },
     });
 }
 </script>

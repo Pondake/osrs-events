@@ -28,7 +28,12 @@ final class EventCard
     public static function for(Event $event): array
     {
         return [
-            ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date', 'paused_at', 'pause_reason', 'standings_stale_since']),
+            ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date', 'paused_at', 'pause_reason', 'closed_at', 'finish_rule', 'standings_stale_since']),
+            // `closed_at` and `finish_rule` ride along for the same reason
+            // `paused_at` does: eventStatus() in board.js reads them to
+            // decide whether the page shows a dice at all, and a card that
+            // lost them on the first live push would put a working dice back
+            // on an event that had just been won.
             // 'skill' or 'boss' — decides whether a race page counts XP or
             // kills, and which i18n namespace the metric name comes from.
             // Here rather than added by the race controller alone, because

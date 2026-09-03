@@ -72,8 +72,12 @@
 
                         <ul class="space-y-1.5">
                             <li v-for="member in team.members" :key="member.id" class="flex items-center gap-2 text-sm">
-                                <u-avatar :src="member.user?.avatar_url ?? undefined" size="3xs" />
-                                <span class="truncate">{{ member.user?.nickname ?? member.user?.discord_username ?? $t('common.unknown') }}</span>
+                                <!-- `alt` is what UAvatar derives its initials from — without it
+                                     a member with no Discord picture rendered an empty
+                                     circle. Same fallback chain as the name beside it,
+                                     see TeamAvatar. -->
+                                <u-avatar :src="member.user?.avatar_url ?? undefined" :alt="memberName(member)" size="3xs" />
+                                <span class="truncate">{{ memberName(member) }}</span>
                                 <u-icon
                                     v-if="member.role === 'OWNER'"
                                     name="i-lucide-crown"
@@ -147,6 +151,12 @@ const props = defineProps({
     // you could do nothing with.
     teams: { type: Array, required: true },
 });
+
+// Name and initials come from one place: UAvatar derives the initials from
+// `alt`, so the avatar has to be handed the same string the label prints —
+// without it, a member with no Discord picture was an empty grey circle.
+const memberName = (member) =>
+    member.user?.nickname ?? member.user?.discord_username ?? trans('common.unknown');
 
 /**
  * The three ways a team can end up on this page, in order of how strong the

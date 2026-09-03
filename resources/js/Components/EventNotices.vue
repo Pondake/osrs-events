@@ -62,6 +62,24 @@
             </template>
         </u-alert>
 
+        <!-- Somebody got home. Everyone sees this, not only the person it
+             happened to: the celebration this replaces was a modal in one
+             browser that a refresh erased, so an event could be won and the
+             other twenty people playing it would never find out.
+
+             Two sentences, because the difference between them is the only
+             thing anyone needs: under CONTINUE the podium is still filling
+             up and the board is still open, under STOP the first finish
+             ended it — which is also why the dice have gone, a question the
+             page should answer before it is asked. -->
+        <u-alert
+            v-if="finishNotice"
+            :color="event.closed_at ? 'success' : 'primary'"
+            variant="subtle"
+            :icon="event.closed_at ? 'i-lucide-trophy' : 'i-lucide-flag'"
+            :description="finishNotice"
+        />
+
         <!-- The moment a host knows whether the format was worth keeping.
              Here rather than on each event page because this component is
              the one thing all three of them share, and it already works out
@@ -107,15 +125,49 @@ const props = defineProps({
     // Where an admin who does not host this event goes to change it. Null
     // for everybody else, including an admin who does host it.
     adminEditUrl: { type: String, default: null },
+    // The podium as it stands — see EventFinishService::places(). Empty
+    // until somebody finishes, which is most of an event's life.
+    finishes: { type: Array, default: () => [] },
 });
 
 const status = computed(() => eventStatus(props.event));
+
+/**
+ * Who won, and whether that was the end of it.
+ *
+ * Reads the first row rather than a "winner" field: the list is already in
+ * finish order, and a second source for the same fact is a second thing to
+ * keep in step.
+ */
+const finishNotice = computed(() => {
+    const first = props.finishes[0];
+
+    if (!first) return null;
+
+    // Nothing while the top of the podium can still change. Reported
+    // directly: a host approved the second submission first and every player
+    // was told that team had got home first, while the claim that actually
+    // won was still sitting unopened in the review queue. Saying nothing for
+    // the minute it takes to open that claim is the honest option — the
+    // correction is what makes it look broken.
+    if (first.provisional) return null;
+
+    if (props.event.closed_at) {
+        return trans('events.finish_banner_won', { name: first.label });
+    }
+
+    return trans('events.finish_banner_continue', {
+        name: first.label,
+        count: props.finishes.length,
+    });
+});
 
 // Nothing to say is nothing to render — an empty wrapper would still hand
 // the page its own margin.
 const hasNotice = computed(() => Boolean(props.adminEditUrl)
     || props.viewingAsAdmin
     || status.value === 'paused'
+    || finishNotice.value !== null
     || (props.canEdit && status.value === 'ended'));
 
 /**

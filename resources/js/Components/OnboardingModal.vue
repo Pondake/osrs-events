@@ -116,11 +116,16 @@
                         </div>
 
                         <div v-else-if="joinableBoards.length" class="space-y-2">
+                            <!-- Kept a real link (middle-click, right-click,
+                                 focus order) but handled in JS: opening an
+                                 event IS finishing the tour, and without the
+                                 complete post it reopened on arrival. -->
                             <a
                                 v-for="board in joinableBoards"
                                 :key="board.id"
                                 :href="`/events/${board.id}`"
                                 class="flex items-center justify-between gap-3 rounded-lg border border-default p-3 hover:border-primary transition-colors"
+                                @click.prevent="finish(`/events/${board.id}`)"
                             >
                                 <div class="min-w-0">
                                     <p class="font-medium text-sm truncate">{{ board.title }}</p>
@@ -218,12 +223,12 @@
 
         <template #footer>
             <div class="flex items-center justify-between w-full gap-2">
-                <u-button color="neutral" variant="ghost" :label="$t('onboarding.skip')" @click="finish" />
+                <u-button color="neutral" variant="ghost" :label="$t('onboarding.skip')" @click="finish()" />
 
                 <div class="flex gap-2">
                     <u-button v-if="stepIndex > 0" color="neutral" variant="outline" :label="$t('common.back')" @click="stepIndex--" />
                     <u-button v-if="!isLastStep" color="primary" :loading="form.processing || osrsForm.processing" :disabled="nextDisabled" :label="nextLabel" @click="next" />
-                    <u-button v-else color="primary" :label="$t('onboarding.finish')" @click="finish" />
+                    <u-button v-else color="primary" :label="$t('onboarding.finish')" @click="finish()" />
                 </div>
             </div>
         </template>
@@ -300,11 +305,18 @@ const stepDefs = computed(() => {
         defs.push({ key: 'connect', title: trans('onboarding.step_connect'), icon: 'i-lucide-link' });
     }
 
-    defs.push(canCreateBoards.value
-        ? { key: 'board', title: trans('onboarding.step_board'), icon: 'i-lucide-layout-grid' }
-        : { key: 'join', title: trans('onboarding.step_join'), icon: 'i-lucide-compass' });
-
-    defs.push({ key: 'runelite', title: trans('onboarding.step_runelite'), icon: 'i-lucide-puzzle' });
+    // 'join' goes last, after the plugin step. Picking an event from it
+    // navigates away and ends the tour, so anything placed after it was
+    // never reached — you left on step three and came back to a modal
+    // starting again from step one. 'board' has no such exit and keeps its
+    // place before the plugin.
+    if (canCreateBoards.value) {
+        defs.push({ key: 'board', title: trans('onboarding.step_board'), icon: 'i-lucide-layout-grid' });
+        defs.push({ key: 'runelite', title: trans('onboarding.step_runelite'), icon: 'i-lucide-puzzle' });
+    } else {
+        defs.push({ key: 'runelite', title: trans('onboarding.step_runelite'), icon: 'i-lucide-puzzle' });
+        defs.push({ key: 'join', title: trans('onboarding.step_join'), icon: 'i-lucide-compass' });
+    }
 
     return defs;
 });
@@ -445,7 +457,7 @@ function next() {
  * Not a validation gate: the tour stays skippable, and an empty field still
  * skips. This only stops an answer being thrown away.
  */
-function finish() {
+function finish(destination = null) {
     const typed = osrsForm.osrs_username.trim();
 
     if (!osrsUsername.value && typed) {
@@ -455,19 +467,26 @@ function finish() {
             // Complete either way. A name their hiscores do not know is still
             // saved (see OsrsIdentityService), and a validation failure is not
             // a reason to trap somebody in a tour they asked to leave.
-            onFinish: () => completeOnboarding(),
+            onFinish: () => completeOnboarding(destination),
         });
 
         return;
     }
 
-    completeOnboarding();
+    completeOnboarding(destination);
 }
 
-function completeOnboarding() {
+// `destination` is the event picked on the join step. Recorded first, then
+// navigated to — the other way round the page changes under the request and
+// the tour comes back on the event's own page.
+function completeOnboarding(destination = null) {
     router.post('/onboarding/complete', {}, {
         preserveScroll: true,
-        onFinish: () => (isOpen.value = false),
+        onFinish: () => {
+            isOpen.value = false;
+
+            if (destination) router.visit(destination);
+        },
     });
 }
 </script>

@@ -187,6 +187,11 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     // field on the update above, because it announces itself to everybody
     // who joined — see BoardController::pause.
     Route::patch('/events/{event}/pause', [BoardController::class, 'pause'])->name('events.pause');
+    // Calling it: results final, nothing more counts. Separate from pause
+    // for the same reason pause is separate from update — and separate from
+    // pause itself because they are not the same promise: paused means
+    // "back shortly", closed means "that's the result".
+    Route::patch('/events/{event}/close', [BoardController::class, 'close'])->name('events.close');
 
     // Participation is rate limited per user. Not because a player can win
     // by spamming — the game rules already bound what a roll or a claim can
@@ -398,6 +403,10 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::patch('/events/{event}', [AdminBoardController::class, 'update'])->name('events.update');
         Route::delete('/events/{event}', [AdminBoardController::class, 'destroy'])->name('events.destroy');
         Route::patch('/events/{event}/pause', [AdminBoardController::class, 'pause'])->name('events.pause');
+        // The settings modal is shared with the public side and builds its
+        // URLs from `basePath`, so every host action it offers needs a twin
+        // here or the admin copy of the button posts into a 404.
+        Route::patch('/events/{event}/close', [AdminBoardController::class, 'close'])->name('events.close');
         // Not {event}: route model binding cannot find a trashed row, which
         // is exactly the row this restores. The controller looks it up
         // withTrashed().

@@ -6,7 +6,7 @@
                     <p class="text-xs font-medium text-muted uppercase tracking-wide mb-2">{{ $t('teams.members') }}</p>
                     <div v-if="team.members.length" class="flex flex-col gap-1">
                         <div v-for="member in team.members" :key="member.id" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-elevated">
-                            <u-avatar :src="member.user?.avatar_url ?? undefined" size="xs" />
+                            <u-avatar :src="member.user?.avatar_url ?? undefined" :alt="displayName(member)" size="xs" />
                             <span class="text-sm flex-1 min-w-0 truncate">{{ displayName(member) }}</span>
 
                             <u-badge
@@ -67,7 +67,7 @@
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-elevated cursor-pointer transition-colors"
                             @click="addMember(user)"
                         >
-                            <u-avatar :src="user.avatar_url ?? undefined" size="xs" />
+                            <u-avatar :src="user.avatar_url ?? undefined" :alt="user.nickname ?? user.discord_username ?? ''" size="xs" />
                             <span class="text-sm flex-1">{{ user.nickname ?? user.discord_username }}</span>
                         </div>
                         <p v-if="search && !results.length && !searching" class="text-xs text-muted italic px-1 py-2">{{ $t('teams.no_users_found') }}</p>

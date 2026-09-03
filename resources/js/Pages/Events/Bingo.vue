@@ -56,7 +56,7 @@
                         <!-- Bingo had no way of saying you were playing at
                              all: taking part was inferred from having claimed
                              a square, so an empty card meant an empty event. -->
-                        <join-event-button v-if="joined || !isPaused" :event-id="liveEvent.id" :joined="joined" size="sm" />
+                        <join-event-button v-if="joined || !isPaused" :event-id="liveEvent.id" :joined="joined" :needs-team="needsTeam" :teams="teamOptions" size="sm" />
 
                         <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
                     </div>
@@ -67,6 +67,7 @@
                      began. -->
                 <event-notices
                     :event="liveEvent"
+                    :finishes="liveFinishes"
                     :can-edit="canEdit"
                     :viewing-as-admin="viewingAsAdmin"
                     :admin-edit-url="adminEditUrl"
@@ -125,13 +126,18 @@
                     </template>
                 </u-alert>
 
+                <!-- Which place, not just that you won. On a card that
+                     keeps running after the first win — the default — "you
+                     won" said the same thing to the team that got there
+                     first and to the one that got there fourth. -->
                 <u-alert
                     v-if="hasWon"
                     icon="i-lucide-party-popper"
                     color="success"
                     variant="subtle"
                     class="mb-6"
-                    :title="$t('bingo.you_won')"
+                    :title="finishTitle"
+                    :description="finishDescription"
                 />
 
                 <!-- A TEAM event where you are on no assigned team: you can
@@ -311,8 +317,9 @@
                                         v-for="(holder, i) in holdersOf(square)"
                                         :key="i"
                                         :src="holder.avatarUrl ?? undefined"
-                                        :alt="holder.name ?? ''"
-                                        :title="holder.name ?? ''"
+                                        :alt="holder.name ?? undefined"
+                                        :icon="holder.name === null ? 'i-lucide-user' : undefined"
+                                        :title="holder.name ?? $t('events.anonymous_player')"
                                         :size="avatarSize(holdersOf(square).length)"
                                         class="ring-2 ring-default"
                                     />
@@ -337,7 +344,16 @@
                                     <span class="w-6 text-sm font-semibold tabular-nums" :class="index < 3 ? 'text-primary' : 'text-muted'">
                                         {{ index + 1 }}
                                     </span>
-                                    <u-avatar :src="row.avatarUrl ?? undefined" :alt="row.name ?? $t('events.anonymous_player')" size="sm" />
+                                    <!-- An icon rather than initials when there is
+                                         nobody to initial: UAvatar derives them from
+                                         `alt`, so the anonymous label came back as a
+                                         monogram of itself ("Ap"). -->
+                                    <u-avatar
+                                        :src="row.avatarUrl ?? undefined"
+                                        :alt="row.name ?? undefined"
+                                        :icon="row.name === null ? 'i-lucide-user' : undefined"
+                                        size="sm"
+                                    />
                                     <div class="flex-1 min-w-0">
                                         <!-- A null name is not a missing one: on a
                                              listed invite-only event the progress is
@@ -428,7 +444,13 @@
                 :claim="claims[claimingSquare.position] ?? null"
             />
             <template v-if="canEdit">
-                <board-settings-modal v-model:open="showSettingsModal" :board="liveEvent" :webhook-url="webhookUrl" />
+                <board-settings-modal
+                    v-model:open="showSettingsModal"
+                    :board="liveEvent"
+                    :webhook-url="webhookUrl"
+                    :initial-tab="settingsTab"
+                    :finishes="liveFinishes"
+                />
                 <tile-list-editor
                     v-model:open="showTileList"
                     :event-id="liveEvent.id"
@@ -446,7 +468,7 @@
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { eventStatus } from '@/Support/board';
+import { eventStatus, formatDate, ordinal } from '@/Support/board';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
@@ -488,6 +510,17 @@ const props = defineProps({
     // part of the event payload.
     webhookUrl: { type: String, default: null },
     joined: { type: Boolean, default: false },
+    // A team card with no team of theirs on it, and the teams they run that
+    // could be brought in — see TeamEntryModal.
+    needsTeam: { type: Boolean, default: false },
+    teamOptions: { type: Array, default: () => [] },
+    // The podium, in the order it was earned — see EventFinishService.
+    // `hasWon` above is still computed live because it drives this card's own
+    // highlighting; this is the recorded, ordered version of the same fact,
+    // and the only one that can say who got there first.
+    finishes: { type: Array, default: () => [] },
+    // This viewer's own place, if they have one.
+    myFinish: { type: Object, default: null },
 });
 
 // Still needed here, even though the heading renders its own copy: the live
@@ -502,6 +535,11 @@ const liveEvent = ref({ ...props.event });
 watch(() => props.event, (value) => (liveEvent.value = { ...value }));
 
 const status = computed(() => eventStatus(liveEvent.value));
+
+// Same first-paint-then-stream shape as the standings: a card being won is a
+// fact about the event, so every open page hears it on the channel.
+const liveFinishes = ref([...props.finishes]);
+watch(() => props.finishes, (value) => (liveFinishes.value = [...value]));
 
 const breadcrumbs = computed(() => [
     { label: trans('nav.home'), icon: 'i-lucide-house', href: '/' },
@@ -523,14 +561,54 @@ const manageItems = computed(() => [
     { key: 'edit', label: editing.value ? trans('bingo.editing_tiles') : trans('bingo.edit_tiles'), icon: 'i-lucide-grid-2x2-plus', active: editing.value },
     { key: 'tiles', label: trans('tile_list.open'), icon: 'i-lucide-list-checks' },
     { key: 'settings', label: trans('board.event_settings'), icon: 'i-lucide-settings' },
+    // Same entry BoardShow's menu carries, for the same reason: where the
+    // event stands is what a host opens this menu for most often.
+    { key: 'status', label: trans('events.status_menu'), icon: statusIcon.value },
     { key: 'review', label: trans('bingo.review_queue'), icon: 'i-lucide-gavel', badge: props.pending.length },
 ]);
+
+/**
+ * What the winner's banner says, in three states: the place is not settled
+ * yet, the card was won first, or it was won in some later place. A card
+ * that keeps running after the first win — the default — had "you won"
+ * saying the same thing to the team that got there first and the one that
+ * got there fourth.
+ */
+const finishTitle = computed(() => {
+    if (!props.myFinish) return trans('bingo.you_won');
+    if (props.myFinish.provisional) return trans('board.finished_pending_title');
+    if (props.myFinish.rank === 1) return trans(liveEvent.value.mode === 'TEAM' ? 'board.won_team' : 'board.won_solo');
+
+    return trans('board.finished_place', { place: ordinal(props.myFinish.rank) });
+});
+
+const finishDescription = computed(() => {
+    if (!props.myFinish) return undefined;
+    if (props.myFinish.provisional) return trans('board.finished_pending_desc');
+    if (liveEvent.value.closed_at) return trans('board.finished_closed');
+
+    return trans('board.finished_continue', { when: formatDate(liveEvent.value.end_date) });
+});
+
+/** Reports the state rather than naming the action — see BoardShow. */
+const statusIcon = computed(() => ({
+    upcoming: 'i-lucide-clock',
+    live: 'i-lucide-circle-play',
+    paused: 'i-lucide-pause',
+    ended: 'i-lucide-flag',
+}[status.value] ?? 'i-lucide-circle-play'));
+
+const settingsTab = ref('basics');
 
 function onManage(key) {
     if (key === 'edit') editing.value = ! editing.value;
     if (key === 'tiles') showTileList.value = true;
-    if (key === 'settings') showSettingsModal.value = true;
     if (key === 'review') showReviewModal.value = true;
+
+    if (key === 'settings' || key === 'status') {
+        settingsTab.value = key === 'status' ? 'danger' : 'basics';
+        showSettingsModal.value = true;
+    }
 }
 
 // Seeded from the server render, then kept current by the channel. The
@@ -629,7 +707,7 @@ function applyClaimsVersion(version) {
 
     // `pending` is the host's review queue; it comes back empty for anyone
     // else, so asking for it costs a player nothing.
-    router.reload({ only: ['pending', 'claims', 'completed', 'completedLines', 'hasWon'] });
+    router.reload({ only: ['pending', 'claims', 'completed', 'completedLines', 'hasWon', 'myFinish'] });
 }
 
 const { streaming, stale } = useEventStream({
@@ -651,6 +729,11 @@ const { streaming, stale } = useEventStream({
         // A host changing which shapes count mid-event reaches every open
         // card, so the hint never points at a line that stopped counting.
         if (payload.winLines) winLines.value = payload.winLines;
+
+        // Guarded rather than assigned blind: an older SSR bundle may still
+        // be streaming payloads from before this existed, and replacing the
+        // podium with `undefined` would empty it on the first push.
+        if (payload.finishes) liveFinishes.value = payload.finishes;
 
         // What a host decided about YOUR square is yours: the verdict, the
         // note, whether it completed a line. None of it can ride a channel

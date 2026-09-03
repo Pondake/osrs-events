@@ -78,7 +78,7 @@
 
                                 <div v-if="expanded === team.id" class="px-4 pb-3 space-y-2">
                                     <div v-for="member in team.members" :key="member.id" class="flex items-center gap-2 text-sm">
-                                        <u-avatar :src="member.avatarUrl ?? undefined" size="2xs" />
+                                        <u-avatar :src="member.avatarUrl ?? undefined" :alt="member.name" size="2xs" />
                                         <span class="truncate">{{ member.name }}</span>
                                         <u-badge
                                             v-if="member.role !== 'MEMBER'"

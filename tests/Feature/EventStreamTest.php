@@ -9,8 +9,10 @@ use App\Events\Channels\SnakesLaddersChannel;
 use App\Models\BingoCard;
 use App\Models\BingoCompletion;
 use App\Models\Board;
+use App\Models\BoardAccess;
 use App\Models\BoardAuthor;
 use App\Models\Event;
+use App\Models\EventFinish;
 use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\Tile;
@@ -155,6 +157,60 @@ class EventStreamTest extends TestCase
         $event = $this->event('BINGO', ['access_mode' => 'INVITE']);
 
         $this->actingAs($this->player())->get("/events/{$event->id}/stream")->assertForbidden();
+    }
+
+    /**
+     * A listed invite-only event, both halves of it.
+     *
+     * This is the combination the rules were written for: the host
+     * advertised that the event exists, not who is in it. The page render
+     * drops every identity for a stranger — names, avatars, and the ids
+     * that are identities to anyone who can look one up — and the stream
+     * cannot do that, because one connection is shared by every viewer and
+     * carries no per-viewer state.
+     *
+     * So the access check IS the anonymisation here: a stranger never gets
+     * a connection, and therefore never gets a payload to be anonymised.
+     * The two assertions belong in one test because neither is safe alone
+     * — a payload that named people would leak if the gate went, and a gate
+     * with a payload that anonymised itself anyway would take the podium
+     * away from the players it belongs to.
+     */
+    #[Test]
+    public function a_listed_invite_only_event_streams_only_to_people_who_may_see_names(): void
+    {
+        $event = $this->event('SNAKES_LADDERS', ['access_mode' => 'INVITE', 'is_listed' => true]);
+        $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
+
+        $player = $this->player('Pondake');
+        $player->update(['nickname' => 'Pondake']);
+        BoardAccess::create(['event_id' => $event->id, 'user_id' => $player->id, 'access_mode' => 'INVITE']);
+        PlayerBoard::create(['user_id' => $player->id, 'board_id' => $board->id, 'current_position' => 24]);
+        EventFinish::create([
+            'event_id' => $event->id,
+            'user_id' => $player->id,
+            'display_name' => 'Pondake',
+            'finished_at' => now(),
+        ]);
+
+        // Listed, so the page opens for a stranger — and the stream does not.
+        $this->get("/events/{$event->id}/stream")->assertForbidden();
+        $this->actingAs($this->player('Nosy'))->get("/events/{$event->id}/stream")->assertForbidden();
+
+        // The player who was invited gets it, which is what makes the
+        // payload below safe to name.
+        $this->actingAs($player)->get("/events/{$event->id}/stream")->assertOk();
+
+        $payload = $this->resolver()->for($event->fresh())->payload($event->fresh());
+
+        $this->assertSame($player->id, $payload['players'][0]['user_id']);
+        $this->assertSame('Pondake', $payload['players'][0]['user']->nickname);
+        // The podium too. Anonymising it here was a real regression in the
+        // other direction: a player watched their own name on the podium
+        // turn into "Anonymous player" three seconds after the page loaded,
+        // on an event they had been invited to.
+        $this->assertSame('Pondake', $payload['finishes'][0]['label']);
+        $this->assertSame($player->id, $payload['finishes'][0]['userId']);
     }
 
     // ------------------------------------------------- bingo fingerprints

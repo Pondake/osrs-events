@@ -7,6 +7,7 @@ use App\Models\BingoCard;
 use App\Models\BingoCompletion;
 use App\Models\Event;
 use App\Services\BingoService;
+use App\Services\EventFinishService;
 use App\Support\EventCard;
 
 /**
@@ -76,12 +77,19 @@ class BingoChannel implements EventChannel
             implode(',', $card->winLines()),
         ]);
 
+        // Who has won, and whether that closed the event — the same reason
+        // the rules above are here. A card won on one browser left every
+        // other one still offering claims on an event that was already over.
+        $finishVersion = app(EventFinishService::class)->version($event);
+
         return md5(
             $this->claimsVersion($card)
             .'#'
             .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->is_wildcard}")->implode('|')
             .'#'
             .$rules
+            .'#'
+            .$finishVersion
             .'#'
             .$this->eventVersion($event)
         );
@@ -126,6 +134,7 @@ class BingoChannel implements EventChannel
         if ($card === null) {
             return [
                 'standings' => [],
+                'finishes' => [],
                 'squares' => [],
                 'approvedBy' => [],
                 'event_version' => $this->eventVersion($event),
@@ -152,6 +161,13 @@ class BingoChannel implements EventChannel
             // seconds late, and the delay looked like the feature.
             'event' => EventCard::fresh($event),
             'standings' => $this->bingo->standings($event, $card)->all(),
+            // The podium, in the order it was earned. Named, like the
+            // standings beside it — the connection itself is what decides
+            // who may see names here, not the payload: a shared channel
+            // carries no per-viewer state, so EventStreamController refuses
+            // the stream to anyone canSeeParticipants() says no to. Same
+            // note on SnakesLaddersChannel.
+            'finishes' => app(EventFinishService::class)->places($event),
             'winLines' => $card->winLines(),
             // Public by definition — an approved claim is already visible in
             // the standings, so putting the same fact on the square it was

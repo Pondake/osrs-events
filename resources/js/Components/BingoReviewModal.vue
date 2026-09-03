@@ -53,7 +53,7 @@
                      screenshot belong to the person claiming it" — and that
                      needs the OSRS name next to the Discord one. -->
                 <div class="flex items-center gap-3 rounded-lg bg-elevated px-3 py-2">
-                    <u-avatar :src="claim.submittedByAvatar ?? claim.competitorAvatar ?? undefined" size="sm" />
+                    <u-avatar :src="claim.submittedByAvatar ?? claim.competitorAvatar ?? undefined" :alt="claim.submittedBy ?? claim.competitor ?? ''" size="sm" />
                     <div class="min-w-0 text-sm">
                         <p class="truncate">
                             {{ claim.submittedBy ?? $t('common.unknown') }}
@@ -71,6 +71,23 @@
                         </p>
                     </div>
                 </div>
+
+                <!-- Approving this one completes the card. Said before the
+                     click, and — when two competitors are both one square
+                     away — saying which of them got in first, because places
+                     go by submission and not by the order a host works
+                     through the queue. Same notice the tile review carries,
+                     for the same reason. -->
+                <u-alert
+                    v-if="claim.winsCard"
+                    icon="i-lucide-flag"
+                    color="primary"
+                    variant="subtle"
+                    :title="$t('bingo.review_winning_claim')"
+                    :description="claim.raceOrder
+                        ? $t('bingo.review_race_order', { place: ordinal(claim.raceOrder), total: claim.raceTotal })
+                        : $t('bingo.review_winning_desc')"
+                />
 
                 <p v-if="claim.note" class="text-sm text-muted rounded-lg ring ring-default px-3 py-2">{{ claim.note }}</p>
 
@@ -154,6 +171,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { ordinal } from '@/Support/board';
 import { router } from '@inertiajs/vue3';
 
 /**

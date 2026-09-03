@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { trans } from 'laravel-vue-i18n';
 
-import { BOARD_TILE_COUNT, boardEventStatus, eventStatus, formatBoardSize, formatDate } from '@/Support/board';
+import { BOARD_TILE_COUNT, boardEventStatus, eventStatus, formatBoardSize, formatDate, ordinal } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import { metricIconUrl, metricKindFor, metricLabel, rankedByLabel } from '@/Support/metrics';
 
@@ -75,6 +75,26 @@ describe('eventStatus', () => {
     // to a finished one, so 'ended' is the truer word for it.
     it('prefers ended over paused once the end date has gone by', () => {
         expect(eventStatus({ start_date: '2026-07-01', end_date: '2026-08-01', paused_at: '2026-07-20T09:00:00Z' }, now)).toBe('ended');
+    });
+
+    // An event stopped by a finish, or by a host calling it, is over on a
+    // date it was still due to run. This mirrors Event::isEnded() folding the
+    // same column in — the page has to agree with the server about it, or it
+    // keeps offering a dice every mutation endpoint is already refusing.
+    it('reports a closed event as ended even mid-run', () => {
+        expect(eventStatus({ ...running, closed_at: '2026-08-23T10:00:00Z' }, now)).toBe('ended');
+    });
+
+    it('prefers closed over paused', () => {
+        expect(eventStatus({
+            ...running,
+            paused_at: '2026-08-20T09:00:00Z',
+            closed_at: '2026-08-23T10:00:00Z',
+        }, now)).toBe('ended');
+    });
+
+    it('leaves an open event alone when closed_at is null', () => {
+        expect(eventStatus({ ...running, closed_at: null }, now)).toBe('live');
     });
 });
 
@@ -203,5 +223,33 @@ describe('eventTypeMeta', () => {
 
     it('is null for a type it does not know', () => {
         expect(eventTypeMeta('QUIZ_NIGHT')).toBeNull();
+    });
+});
+
+describe('ordinal', () => {
+    // Reported directly: the finish card read "1 place", because a bare rank
+    // went into a ":place place" string.
+    it('spells the ordinary cases', () => {
+        expect(ordinal(1)).toBe('1st');
+        expect(ordinal(2)).toBe('2nd');
+        expect(ordinal(3)).toBe('3rd');
+        expect(ordinal(4)).toBe('4th');
+    });
+
+    // The whole reason this is a function and not a lookup — and the half
+    // every naive version gets wrong.
+    it('does not say 11st, 12nd or 13rd', () => {
+        expect(ordinal(11)).toBe('11th');
+        expect(ordinal(12)).toBe('12th');
+        expect(ordinal(13)).toBe('13th');
+        expect(ordinal(21)).toBe('21st');
+        expect(ordinal(111)).toBe('111th');
+        expect(ordinal(112)).toBe('112th');
+    });
+
+    // A rank that is not there yet must render as nothing, not "undefinedth".
+    it('says nothing about a missing place', () => {
+        expect(ordinal(null)).toBe('');
+        expect(ordinal(undefined)).toBe('');
     });
 });

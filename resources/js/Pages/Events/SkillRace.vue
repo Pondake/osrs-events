@@ -216,7 +216,17 @@
                                         :class="entry.rank !== null && entry.rank <= 3 && entry.gained > 0 ? 'text-primary' : 'text-muted'"
                                     >{{ entry.rank ?? '—' }}</span>
 
-                                    <u-avatar :src="entry.avatarUrl ?? undefined" :alt="entry.name ?? $t('events.anonymous_player')" size="sm" class="shrink-0" />
+                                    <!-- An icon rather than initials when there is
+                                         nobody to initial: UAvatar derives them from
+                                         `alt`, so the anonymous label came back as a
+                                         monogram of itself ("Ap"). -->
+                                    <u-avatar
+                                        :src="entry.avatarUrl ?? undefined"
+                                        :alt="entry.name ?? undefined"
+                                        :icon="entry.name === null ? 'i-lucide-user' : undefined"
+                                        size="sm"
+                                        class="shrink-0"
+                                    />
 
                                     <div class="flex-1 min-w-0">
                                         <!-- Faceless on purpose when the roster is

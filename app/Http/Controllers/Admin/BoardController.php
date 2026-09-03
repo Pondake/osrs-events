@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\Team;
 use App\Notifications\EventStatusChanged;
 use App\Services\BoardAccessService;
+use App\Services\EventFinishService;
 use App\Services\EventNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -89,6 +90,18 @@ class BoardController extends Controller
         abort_unless(Auth::user()->isAdmin(), 403);
 
         return $events->pause($request, $event, $notifier, asAdmin: true);
+    }
+
+    public function close(
+        Request $request,
+        Event $event,
+        EventController $events,
+        EventNotificationService $notifier,
+        EventFinishService $finishes,
+    ): RedirectResponse {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        return $events->close($request, $event, $notifier, $finishes, asAdmin: true);
     }
 
     public function destroy(
