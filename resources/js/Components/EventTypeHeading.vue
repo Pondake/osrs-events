@@ -29,15 +29,16 @@
                  a finished event, and nobody is waiting for it to. So the
                  pulse IS the stream: it beats while the connection is good,
                  stops when it drops, and never appears on an event that is
-                 not running. -->
+                 not running. And it goes amber when it stops, because a
+                 still green dot reads as green — see dotClass. -->
             <span class="inline-flex items-center gap-2" :title="liveTitle">
                 <span class="relative flex size-2.5">
                     <span
                         v-if="pulsing"
                         class="absolute inline-flex size-full rounded-full opacity-60 animate-ping"
-                        :class="DOT[status]"
+                        :class="dotClass"
                     />
-                    <span class="relative inline-flex size-2.5 rounded-full" :class="DOT[status]" />
+                    <span class="relative inline-flex size-2.5 rounded-full" :class="dotClass" />
                 </span>
                 <span class="text-sm font-medium" :class="TEXT[status]">{{ $t(`boards.status_${status}`) }}</span>
                 <!-- Only when the stream has actually fallen over. A healthy
@@ -80,111 +81,17 @@
             </span>
             <slot name="meta" />
         </div>
-
-        <!-- An admin looking at an event they do not host. The public side
-             gives them no controls at all — deliberately — and said nothing
-             about where the power went, so it read as buttons going missing.
-             This is the only place the two sides are joined up. -->
-        <div v-if="adminEditUrl" class="mt-3">
-            <u-alert color="neutral" variant="subtle" icon="i-lucide-shield" :description="$t('events.open_in_admin_hint')">
-                <template #actions>
-                    <u-button
-                        :href="adminEditUrl"
-                        color="neutral"
-                        variant="outline"
-                        size="xs"
-                        icon="i-lucide-external-link"
-                        :label="$t('events.open_in_admin')"
-                    />
-                </template>
-            </u-alert>
-        </div>
-
-        <!-- Reading somebody else's private event on an admin's pass.
-             The power is deliberate (BoardAccessService::canBypass) and
-             moderating is what it is for, but exercising it silently is a
-             different thing from having it. /teams has said this out loud
-             since it was built; an invite-only clan event is at least as
-             good a place to say it. -->
-        <div v-if="viewingAsAdmin" class="mt-3">
-            <u-alert
-                color="neutral"
-                variant="subtle"
-                icon="i-lucide-eye"
-                :description="$t('events.viewing_as_admin')"
-            />
-        </div>
-
-        <!-- On hold, said once and where everybody looks.
-             Here rather than on each event page for the same reason the
-             save-as-template prompt is: this component is the one thing all
-             three types share, and a pause means the same thing on a race as
-             on a bingo card. The dot above already says "paused"; this says
-             what that costs, because "can I still claim this?" is the next
-             question and a coloured word does not answer it. -->
-        <div v-if="status === 'paused'" class="mt-3">
-            <u-alert
-                color="warning"
-                variant="subtle"
-                icon="i-lucide-pause"
-                :description="pausedDescription"
-            >
-                <!-- The host who paused it gets the way back on the banner
-                     itself. Resuming lived four clicks deep in a settings tab
-                     called "Danger zone", which is where you go to end an
-                     event, not to un-pause one you paused ten minutes ago. -->
-                <template v-if="canEdit" #actions>
-                    <u-button
-                        color="warning"
-                        variant="solid"
-                        size="xs"
-                        icon="i-lucide-play"
-                        :label="$t('events.danger_resume_cta')"
-                        :loading="resuming"
-                        @click="resume"
-                    />
-                </template>
-            </u-alert>
-        </div>
-
-        <!-- The moment a host knows whether the format was worth keeping.
-             Here rather than on each event page because this component is
-             the one thing all three of them share, and it already works out
-             whether the event has ended. -->
-        <div v-if="canEdit && status === 'ended'" class="mt-3">
-            <u-alert color="neutral" variant="subtle" icon="i-lucide-layout-template">
-                <template #description>
-                    <div class="flex items-center justify-between gap-3 flex-wrap">
-                        <span class="text-sm">{{ $t('blueprints.finished_prompt') }}</span>
-                        <client-only>
-                            <blueprint-save-modal :event-id="event.id" :event-title="event.title" />
-                        </client-only>
-                    </div>
-                </template>
-            </u-alert>
-        </div>
     </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import { eventStatus, formatDate } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
-import ClientOnly from '@/Components/ClientOnly.vue';
-import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
 
 const props = defineProps({
     event: { type: Object, required: true },
-    // Whether this viewer runs the event. Only a host is offered the
-    // save-as-template prompt below, and the resume button on the banner.
-    canEdit: { type: Boolean, default: false },
-    // Set when the only reason this page opened is a site-admin pass.
-    viewingAsAdmin: { type: Boolean, default: false },
-    // Where an admin who does not host this event goes to change it. Null
-    // for everybody else, including an admin who does host it.
-    adminEditUrl: { type: String, default: null },
     // The live channel's own state, from useEventStream on the page. The
     // status dot is where it is reported — see the note in the template.
     streaming: { type: Boolean, default: false },
@@ -199,34 +106,27 @@ const status = computed(() => eventStatus(props.event));
 const pulsing = computed(() => status.value === 'live' && props.streaming && ! props.stale);
 
 const liveTitle = computed(() => {
-    if (status.value !== 'live' || ! props.streaming) return undefined;
+    if (status.value !== 'live') return undefined;
+    if (props.stale) return trans('events.reconnecting');
 
-    return props.stale ? trans('events.reconnecting') : trans('events.auto_updating');
+    return props.streaming ? trans('events.auto_updating') : trans('events.not_updating');
 });
-
-/**
- * The banner carries the host's reason when there is one. "Paused" answers
- * "can I still claim this?"; only the host can answer "for how long, and
- * why", and that is the question the clan actually asks in Discord.
- */
-const pausedDescription = computed(() => (props.event.pause_reason
-    ? trans('events.paused_banner_reason', { reason: props.event.pause_reason })
-    : trans('events.paused_banner')));
-
-const resuming = ref(false);
-
-function resume() {
-    resuming.value = true;
-
-    router.patch(`/events/${props.event.id}/pause`, { paused: false, notify: true }, {
-        preserveScroll: true,
-        onError: (errors) => console.error(errors),
-        onFinish: () => { resuming.value = false; },
-    });
-}
 
 const DOT = { upcoming: 'bg-info', live: 'bg-success', paused: 'bg-warning', ended: 'bg-muted' };
 const TEXT = { upcoming: 'text-info', live: 'text-success', paused: 'text-warning', ended: 'text-muted' };
+
+/**
+ * Amber while a running event is not actually being kept up to date.
+ *
+ * A green dot that has stopped beating still reads as green — the beat is
+ * the thing you notice once, and never again on a page you are reading
+ * rather than watching. So the colour carries it too: green means the
+ * numbers on this page are current, amber means they were current when it
+ * loaded. Not connected yet, backgrounded tab (the stream is dropped on
+ * purpose — see useEventStream) and a reconnect that never landed all look
+ * the same from here, because they mean the same thing to a reader.
+ */
+const dotClass = computed(() => (status.value === 'live' && ! pulsing.value ? 'bg-warning' : DOT[status.value]));
 
 const dateRange = computed(() => {
     if (!props.event.start_date && !props.event.end_date) return trans('boards.no_dates');

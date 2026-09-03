@@ -1132,6 +1132,7 @@
     "events.no_standings_desc": "Nobody has entered yet. Standings appear here once someone enters and the first sync runs.",
     "events.no_team_yet": "You are not on a team in this event yet, so there is no board to play on. Ask a host to add you to one.",
     "events.not_started": "Not started yet",
+    "events.not_updating": "Not updating live right now",
     "events.notified_discord": "Posted to the event's Discord channel.",
     "events.notified_nobody_joined": "Nobody had joined yet, so there was nobody to email.",
     "events.notified_none": "None of the :total participants have an email address, so nobody was emailed.",
