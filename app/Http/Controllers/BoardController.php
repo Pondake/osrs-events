@@ -917,7 +917,18 @@ class BoardController extends Controller
             // says so until somebody pulls fresh numbers. Not re-synced here:
             // a forty-entrant race is forty outbound requests to somebody
             // else's API, which a form submit does not get to decide.
-            if ($event->needsMetric() && $event->isDirty(Event::MEASUREMENT_FIELDS)) {
+            //
+            // Only once something has actually been read, though. The banner
+            // says "these numbers are out of date", and a race nobody has
+            // entered has no numbers to be out of date — a host setting the
+            // dates on an event they just created was warned about stale
+            // standings while the table beside it still read "Numbers not
+            // read yet". Rows that exist but were never synced count as
+            // nothing read: they hold no measurement either.
+            if ($event->needsMetric()
+                && $event->isDirty(Event::MEASUREMENT_FIELDS)
+                && $event->hasReadStandings()
+            ) {
                 $event->standings_stale_since = now();
             }
 

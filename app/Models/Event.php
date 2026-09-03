@@ -136,6 +136,26 @@ class Event extends Model
     }
 
     /**
+     * Whether anything has actually been measured here yet.
+     *
+     * The precondition for staleness, and the reason it is one method rather
+     * than the same query written twice: "these numbers are out of date" is
+     * only ever true while there are numbers. A row that exists but was never
+     * synced holds no measurement — `gained` is null and the page says
+     * "Numbers not read yet" — so it does not count.
+     *
+     * Both ends of the flag depend on this. Marking it needs the answer to be
+     * yes (BoardController::update); clearing it needs to happen the moment
+     * the answer turns back to no, which is what leaving an event can do
+     * (EventStandingsService::leave). Keeping only the first half is how the
+     * banner outlives the numbers it describes.
+     */
+    public function hasReadStandings(): bool
+    {
+        return $this->standings()->whereNotNull('synced_at')->exists();
+    }
+
+    /**
      * The kinds of event this app runs, per docs/ROADMAP.md phases 5 and 7.
      *
      * `available` gates what can be created. A type listed but unavailable
