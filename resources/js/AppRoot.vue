@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, onMounted, provide, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AppHeader from '@/Components/AppHeader.vue';
 import AppFooter from '@/Components/AppFooter.vue';
@@ -164,8 +164,9 @@ import { bannerBgFor, bannerIconFor, styleFor } from '@/Support/announcement';
 import { isLandingPage } from '@/Support/landing';
 import { CURRENT_PAGE } from '@/Support/pageState';
 import { usePush } from '@/Composables/usePush';
-// Aliased: this file already has its own snooze pair for the onboarding
-// tour, and the two are unrelated windows over unrelated questions.
+import { onboardingSnoozedUntil, snoozeOnboarding } from '@/Support/onboarding';
+// Aliased: the onboarding tour above has a snooze pair of its own, and the
+// two are unrelated windows over unrelated questions.
 import {
     shouldOfferPush,
     snooze as snoozePushOffer,
@@ -444,41 +445,24 @@ const needsOnboarding = computed(
  * outside — used to persist nothing at all, so it reopened on the very next
  * page load, forever. "Skip" writes onboarding_completed_at and is final;
  * this is the middle ground that was missing: gone for a day, then offered
- * again.
- *
- * localStorage rather than sessionStorage because a day has to survive
- * closing the tab, and rather than a cookie because the server has no use
- * for it — it would ride along on every single request for nothing.
+ * again. The key itself lives in Support/onboarding.js, because the profile
+ * page's replay button has to be able to clear it.
  */
-const SNOOZE_KEY = 'onboarding-snoozed-until';
-const SNOOZE_MS = 24 * 60 * 60 * 1000;
-
-function snoozedUntil() {
-    if (typeof window === 'undefined') return 0;
-
-    try {
-        return Number(window.localStorage.getItem(SNOOZE_KEY)) || 0;
-    } catch (error) {
-        // Private mode and blocked storage both throw on access rather than
-        // returning null. Treating that as "not snoozed" shows the tour,
-        // which is the harmless direction to fail in.
-        console.error(error);
-
-        return 0;
-    }
-}
-
-function snoozeOnboarding() {
-    try {
-        window.localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
-    } catch (error) {
-        console.error(error);
-    }
-}
-
 onMounted(() => {
-    showOnboarding.value = needsOnboarding.value && snoozedUntil() < Date.now();
+    showOnboarding.value = needsOnboarding.value && onboardingSnoozedUntil() < Date.now();
+
+    // "Replay the intro" (Settings/Profile) opens the tour through this
+    // rather than by waiting for the reset response's props to arrive:
+    // watching `needsOnboarding` meant the modal only appeared on the NEXT
+    // page load, so the button looked dead at the moment it was pressed.
+    window.addEventListener('app:onboarding-open', openOnboarding);
 });
+
+onBeforeUnmount(() => window.removeEventListener('app:onboarding-open', openOnboarding));
+
+function openOnboarding() {
+    showOnboarding.value = true;
+}
 
 // Fires for every close, including the ones that reach `finish()` — harmless
 // there, since that account is already flagged complete server-side and the
@@ -493,7 +477,7 @@ watch(needsOnboarding, (needs) => {
     // Snooze checked here too, not just on mount: this fires on navigation
     // (the gate page clearing, for one), and without it the tour would
     // reopen on the next page change no matter what was stored.
-    if (needs && snoozedUntil() < Date.now()) {
+    if (needs && onboardingSnoozedUntil() < Date.now()) {
         showOnboarding.value = true;
     } else if (onAuthPage.value) {
         // Close only when a blocking page is the reason. Onboarding finishing

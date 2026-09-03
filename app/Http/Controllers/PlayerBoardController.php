@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\EventParticipant;
 use App\Models\Tile;
 use App\Services\BoardAccessService;
+use App\Services\EventFinishService;
 use App\Services\PlayerBoardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,7 @@ class PlayerBoardController extends Controller
      * between the snake's head and its target — same as the old
      * rollDice()'s "slide back down" behavior.
      */
-    public function roll(Request $request, Event $event, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
+    public function roll(Request $request, Event $event, BoardAccessService $access, PlayerBoardService $playerBoards, EventFinishService $finishes): RedirectResponse
     {
         abort_unless($access->hasAccess(Auth::user(), $event), 403);
 
@@ -143,6 +144,13 @@ class PlayerBoardController extends Controller
             }
         });
 
+        // A snake can swallow a completed tile, and the last one is not
+        // exempt: ride one back from the finish and the board is no longer
+        // finished. evaluateSnakesLadders() answers in both directions, so
+        // the podium loses the row it should lose without anything here
+        // needing to know that this particular roll was the undoing one.
+        $finishes->evaluateSnakesLadders($event, $playerBoard->fresh());
+
         // Separate from the board-save flash text — DiceRoller.vue needs the
         // raw number to pick which face to render, not a pre-formatted
         // sentence to parse back apart.
@@ -173,7 +181,7 @@ class PlayerBoardController extends Controller
      * it is still pending — once a host has ruled on it, changing it is the
      * host's call, same restriction bingo already enforces.
      */
-    public function toggleTile(Request $request, Event $event, Tile $tile, BoardAccessService $access, PlayerBoardService $playerBoards): RedirectResponse
+    public function toggleTile(Request $request, Event $event, Tile $tile, BoardAccessService $access, PlayerBoardService $playerBoards, EventFinishService $finishes): RedirectResponse
     {
         abort_unless($access->hasAccess(Auth::user(), $event), 403);
 
@@ -234,6 +242,11 @@ class PlayerBoardController extends Controller
 
             $existing->delete();
 
+            // Withdrawing the last tile's claim un-finishes the board — the
+            // same call, in the same both-directions spirit, as the one on
+            // the way in below.
+            $finishes->evaluateSnakesLadders($event, $playerBoard);
+
             return back()->with('board-save', trans('board.tile_cleared'));
         }
 
@@ -254,12 +267,30 @@ class PlayerBoardController extends Controller
             'id' => (string) str()->uuid(),
             'player_board_id' => $playerBoard->id,
             'tile_id' => $tile->id,
+            // Stamped from the app's clock, not left to the column's
+            // `useCurrent()` default. The default is the DATABASE's clock,
+            // which is a different machine's idea of the time and a
+            // different timezone's — and this column is no longer only a
+            // display date: it is what decides who won, because a finish is
+            // ordered by when it was submitted rather than when a host got
+            // round to approving it. Two claims a minute apart came back
+            // with the same timestamp under a travelled clock, which is what
+            // turned this up.
+            'completed_at' => now(),
             'completed_via' => 'MANUAL',
             'marked_by' => Auth::id(),
             'status' => $board->requires_approval ? 'PENDING' : 'APPROVED',
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);
+
+        // Finishing is decided here, on the server, not by the browser
+        // comparing a position against a tile count — that guess was lost on
+        // every refresh and, on a board that reviews claims, fired the
+        // celebration before the host had seen the proof. On such a board
+        // this call finds a PENDING claim and stamps nothing; review() below
+        // is what makes it true.
+        $finishes->evaluateSnakesLadders($event, $playerBoard);
 
         return back()->with('board-save', $board->requires_approval
             ? trans('board.claim_submitted')
@@ -273,7 +304,7 @@ class PlayerBoardController extends Controller
      * A rejection keeps the row rather than deleting it, so the claimant can
      * see why.
      */
-    public function review(Request $request, Event $event, CompletedTile $completedTile): RedirectResponse
+    public function review(Request $request, Event $event, CompletedTile $completedTile, EventFinishService $finishes): RedirectResponse
     {
         $this->assertCanEditEvent($request->user(), $event);
 
@@ -295,6 +326,14 @@ class PlayerBoardController extends Controller
             'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(),
         ]);
+
+        // The verdict is what decides a finish on a reviewed board, in both
+        // directions: approving the last tile puts somebody on the podium,
+        // and rejecting it later takes them back off again. Which is also
+        // why the finish timestamp is the host's clock and not the
+        // claimant's — on a board where a claim only counts once it has been
+        // checked, being checked first is what being first means.
+        $finishes->evaluateSnakesLadders($event, $completedTile->playerBoard);
 
         return back()->with('board-save', $data['status'] === 'APPROVED'
             ? trans('board.claim_approved')

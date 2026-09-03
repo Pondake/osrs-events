@@ -126,6 +126,35 @@
             </u-form-field>
         </template>
 
+        <!-- What happens when the first competitor gets home. Only for the
+             types that can BE finished: a metric race ends when its clock
+             runs out, so there is no first-one-home moment for this to have
+             an opinion about. Two options, no number field — "stop after N
+             finishers" is a knob nobody sets right, and CONTINUE already
+             gives a full podium from finish order. -->
+        <template v-if="canBeFinished">
+            <u-separator />
+
+            <u-form-field :label="$t('board.finish_rule')" :description="$t('board.finish_rule_desc')">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                        v-for="option in finishRuleOptions"
+                        :key="option.value"
+                        type="button"
+                        class="flex items-start gap-3 p-3 rounded-lg ring text-left transition-colors cursor-pointer"
+                        :class="form.finish_rule === option.value ? 'ring-primary bg-primary/5' : 'ring-default hover:ring-primary/50'"
+                        @click="form.finish_rule = option.value"
+                    >
+                        <u-icon :name="option.icon" class="size-5 shrink-0 mt-0.5" :class="form.finish_rule === option.value ? 'text-primary' : 'text-muted'" />
+                        <span class="min-w-0">
+                            <span class="block font-medium text-sm">{{ option.label }}</span>
+                            <span class="block text-xs text-muted mt-0.5">{{ option.description }}</span>
+                        </span>
+                    </button>
+                </div>
+            </u-form-field>
+        </template>
+
         <!-- Every type ends up here eventually; saying so is better than an
              empty panel that reads as a bug. -->
         <p v-if="!needsMetric && !isBingo && !hasBoard" class="text-sm text-muted">
@@ -155,6 +184,25 @@ const metrics = computed(() => site.value.metricsByKind?.[metricKind.value] ?? [
 
 const hasBoard = computed(() => props.form.type === 'SNAKES_LADDERS');
 const isBingo = computed(() => props.form.type === 'BINGO');
+
+// The types with something to finish — mirrors Event::canBeFinished() on
+// the server, which is what actually validates and enforces it.
+const canBeFinished = computed(() => hasBoard.value || isBingo.value);
+
+const finishRuleOptions = [
+    {
+        value: 'CONTINUE',
+        label: trans('board.finish_rule_continue'),
+        description: trans('board.finish_rule_continue_desc'),
+        icon: 'i-lucide-medal',
+    },
+    {
+        value: 'STOP',
+        label: trans('board.finish_rule_stop'),
+        description: trans('board.finish_rule_stop_desc'),
+        icon: 'i-lucide-flag',
+    },
+];
 
 const modeOptions = [
     {

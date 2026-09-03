@@ -488,6 +488,90 @@ class PermissionMatrixTest extends TestCase
                 )));
     }
 
+    /**
+     * The same rule on a metric race, which carries a second name.
+     *
+     * A race's standings row has `name` (the RSN) and `displayName` (the
+     * Discord one, printed underneath it). The anonymiser was written for
+     * bingo's row shape, which has only the first, so a listed invite-only
+     * drop race rendered "Anonymous player" in italics with the player's
+     * real name directly below it — reported from a screenshot of exactly
+     * that. Every identity field, or the label is theatre.
+     */
+    #[Test]
+    public function a_listed_invite_only_race_hides_both_of_its_names(): void
+    {
+        $race = Event::create([
+            'title' => 'Boss of the month',
+            'type' => 'DROP_RACE',
+            'metric' => 'abyssal_sire',
+            'mode' => 'SOLO',
+            'access_mode' => 'INVITE',
+            'is_listed' => true,
+            'start_date' => now()->subWeek(),
+            'end_date' => now()->addWeek(),
+        ]);
+        $entrant = $this->player('Racer');
+        $entrant->update(['nickname' => 'Marthijn']);
+        \App\Models\EventStanding::create([
+            'event_id' => $race->id,
+            'user_id' => $entrant->id,
+            'username' => $entrant->osrs_username,
+            'gained' => 12,
+            'synced_at' => now(),
+        ]);
+
+        $this->get("/events/{$race->id}")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('standings', fn ($rows) => collect($rows)->isNotEmpty() && collect($rows)->every(
+                    fn ($row) => $row['name'] === null
+                        && $row['displayName'] === null
+                        && $row['avatarUrl'] === null
+                        && $row['id'] === null,
+                ))
+                // The score itself stays — that is the half that is public.
+                ->where('standings.0.gained', 12));
+    }
+
+    /**
+     * And the ranking page, which had no rule at all.
+     *
+     * `/leaderboard` gates on canView and then published every player's
+     * nickname, Discord username and avatar to whoever got in — on a listed
+     * invite-only event, the clan roster, on the one page whose whole
+     * subject is the roster. The board itself had been anonymising since
+     * 2026-08-31; this was the same event's other page.
+     */
+    #[Test]
+    public function a_listed_invite_only_boards_ranking_hides_its_roster(): void
+    {
+        $board = Event::create([
+            'title' => 'Clan race',
+            'type' => 'SNAKES_LADDERS',
+            'mode' => 'SOLO',
+            'access_mode' => 'INVITE',
+            'is_listed' => true,
+        ]);
+        $game = \App\Models\Board::create(['event_id' => $board->id, 'size' => 'SIZE_5X5']);
+        $player = $this->player('Runner');
+        $player->update(['nickname' => 'Marthijn']);
+        \App\Models\PlayerBoard::create([
+            'user_id' => $player->id,
+            'board_id' => $game->id,
+            'current_position' => 7,
+        ]);
+
+        $this->get("/events/{$board->id}/leaderboard")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('namesArePublic', false)
+                // Progress kept, identity gone — the same trade the board makes.
+                ->where('entries.0.currentPosition', 7)
+                ->where('entries.0.user', null)
+                ->where('entries.0.team', null));
+    }
+
     /** On an OPEN event the same reader sees who is playing. */
     #[Test]
     public function a_listed_open_event_shows_who_is_playing(): void

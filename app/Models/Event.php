@@ -49,6 +49,12 @@ class Event extends Model
         'is_listed',
         'start_date',
         'end_date',
+        // What happens when the first competitor gets home — CONTINUE (the
+        // board stays open until the end date and the podium fills in by
+        // finish order) or STOP (the first finish ends it for everyone). An
+        // ordinary setting, so it lives here; `closed_at` deliberately does
+        // NOT, for the same reason `paused_at` doesn't.
+        'finish_rule',
         // Where announcements go, when a host wires one up. An ordinary
         // setting: changing it announces nothing by itself.
         'discord_webhook_url',
@@ -64,6 +70,7 @@ class Event extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'paused_at' => 'datetime',
+        'closed_at' => 'datetime',
         'standings_stale_since' => 'datetime',
     ];
 
@@ -77,6 +84,41 @@ class Event extends Model
     public function isPaused(): bool
     {
         return $this->paused_at !== null;
+    }
+
+    /**
+     * The two answers to "somebody finished — now what?".
+     *
+     * CONTINUE is the default and the forgiving one: the first finisher is
+     * locked in as first, everyone else plays on until the end date, and
+     * second and third fall out of finish order for free. STOP is the race
+     * format — the first finish closes the event for everyone.
+     */
+    public const FINISH_RULES = ['CONTINUE', 'STOP'];
+
+    /**
+     * The types that can be *finished* at all.
+     *
+     * A metric race is over when its clock runs out — there is no last tile
+     * to stand on and no line to complete, so `finish_rule` is a question
+     * with no meaning for it. Named here rather than checked inline so the
+     * settings form, the validator and the service all hide and enforce the
+     * same list.
+     */
+    public function canBeFinished(): bool
+    {
+        return in_array($this->type, ['SNAKES_LADDERS', 'BINGO'], true);
+    }
+
+    /**
+     * Stopped by a decision rather than by the calendar.
+     *
+     * Set by the first finish under the STOP rule, and by a host pressing
+     * End now. Presence IS the state, exactly like `paused_at`.
+     */
+    public function isClosed(): bool
+    {
+        return $this->closed_at !== null;
     }
 
     /**
@@ -97,6 +139,16 @@ class Event extends Model
         // today), so an event running through the end of its own end_date is
         // still live for the rest of that day, not ended at its first
         // midnight tick.
+        // `closed_at` first, and cheapest: an event closed by a finish or by
+        // a host is over regardless of what its dates say. Folding it in
+        // here rather than at every call site is the whole design — roll(),
+        // toggleTile(), claim() and joining already refuse an ended event, so
+        // one column closes every one of those doors at once, and the JS
+        // mirror in board.js's eventStatus() shuts the matching UI.
+        if ($this->closed_at !== null) {
+            return true;
+        }
+
         return $this->end_date !== null && $this->end_date->copy()->endOfDay()->isPast();
     }
 
@@ -388,6 +440,21 @@ class Event extends Model
      * hasManyThrough rather than hopping via ->board->playerBoards, so an
      * event with no board yields an empty set instead of a null dereference.
      */
+    /**
+     * The podium, in the order it was earned. Rank is the position in this
+     * list — see the event_finishes migration for why it is not a column.
+     */
+    public function finishes(): HasMany
+    {
+        // Ordered by when the finish was SUBMITTED — see EventFinishService
+        // for why that is not the same as when it was approved. `created_at`
+        // breaks a tie inside the same second, so the podium is stable rather
+        // than dependent on however the database felt like returning rows.
+        return $this->hasMany(EventFinish::class)
+            ->orderBy('finished_at')
+            ->orderBy('created_at');
+    }
+
     public function playerBoards(): HasManyThrough
     {
         return $this->hasManyThrough(PlayerBoard::class, Board::class);

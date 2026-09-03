@@ -77,10 +77,40 @@ export function boardEventStatus(startDate, endDate, now = new Date()) {
  * end date is over — saying "paused" about it would imply somebody is coming
  * back to start it again.
  */
+/**
+ * "3rd", not "3".
+ *
+ * The JS half of App\Support\Ordinal, and it exists for the same reason that
+ * one does: 11, 12 and 13 break the pattern every naive version follows. Two
+ * copies rather than one is unavoidable across a server/browser boundary —
+ * the announcements are built in PHP and the cards in Vue — so the rule is at
+ * least written down twice in the same words, and tested on both sides.
+ *
+ * Reported directly: the finish card read "1 place", because the rank went
+ * into a `:place place` string as a bare number.
+ */
+export function ordinal(number) {
+    if (number === null || number === undefined) return '';
+
+    const suffix = [11, 12, 13].includes(number % 100)
+        ? 'th'
+        : ({ 1: 'st', 2: 'nd', 3: 'rd' }[number % 10] ?? 'th');
+
+    return `${number}${suffix}`;
+}
+
 export function eventStatus(event, now = new Date()) {
     const byDate = boardEventStatus(event?.start_date, event?.end_date, now);
 
     if (byDate === 'ended') return 'ended';
+
+    // Closed outranks paused for the same reason ended does, and outranks
+    // the calendar entirely: an event stopped by a finish (or by a host
+    // pressing End now) is over on a date it was still due to run. This
+    // mirrors Event::isEnded() on the server, which folds the same column
+    // in — without it the page would keep offering a dice on an event every
+    // mutation endpoint has already started refusing.
+    if (event?.closed_at) return 'ended';
 
     return event?.paused_at ? 'paused' : byDate;
 }

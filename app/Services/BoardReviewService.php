@@ -22,6 +22,25 @@ class BoardReviewService
      */
     public function pendingQueue(Board $board): Collection
     {
+        // Which tile ends the run — the board's SIZE, not how many tiles a
+        // host filled in, same rule EventFinishService uses.
+        $lastPosition = max($board->tileCount() - 1, 0);
+
+        // Every pending claim on that tile, oldest submission first. A host
+        // ruling on a race for the finish has to be able to see that it IS a
+        // race, and who got in first: the podium is ordered by submission, so
+        // approving the second one first does not hand it the win — but a
+        // host who cannot see that will believe it does, and will agonise
+        // over an order that does not matter.
+        $contenders = CompletedTile::query()
+            ->join('tiles', 'tiles.id', '=', 'completed_tiles.tile_id')
+            ->where('tiles.board_id', $board->id)
+            ->where('tiles.position', $lastPosition)
+            ->where('completed_tiles.status', 'PENDING')
+            ->orderBy('completed_tiles.completed_at')
+            ->pluck('completed_tiles.id')
+            ->values();
+
         return CompletedTile::query()
             ->join('tiles', 'tiles.id', '=', 'completed_tiles.tile_id')
             ->join('player_boards', 'player_boards.id', '=', 'completed_tiles.player_board_id')
@@ -52,6 +71,18 @@ class BoardReviewService
                 'proofUrl' => $c->proof_url,
                 'note' => $c->note,
                 'submittedAt' => $c->completed_at?->toIso8601String(),
+                // Approving this one ends somebody's run — worth saying
+                // before the click rather than after it, especially on a
+                // STOP event where it may also end everybody else's.
+                'finishesBoard' => (int) $c->tile_position === $lastPosition,
+                // Where this claim sits among the pending claims for that
+                // tile, and how many there are. Both null unless there is
+                // actually a contest, so the page has nothing to draw in the
+                // ordinary case of one person getting home.
+                'raceOrder' => $contenders->count() > 1 && ($index = $contenders->search($c->id)) !== false
+                    ? $index + 1
+                    : null,
+                'raceTotal' => $contenders->count() > 1 ? $contenders->count() : null,
             ]);
     }
 

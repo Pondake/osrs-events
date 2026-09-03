@@ -19,10 +19,16 @@ class EventParticipationController extends Controller
 {
     public function store(Request $request, Event $event, EventParticipationService $participation): RedirectResponse
     {
-        $data = $request->validate(['token_or_code' => ['nullable', 'string']]);
+        $data = $request->validate([
+            'token_or_code' => ['nullable', 'string'],
+            // A team of theirs to bring in with them. Whether they may is the
+            // service's call — owning or managing that team, not editing the
+            // event.
+            'team_id' => ['nullable', 'uuid', 'exists:teams,id'],
+        ]);
 
         try {
-            $needsTeam = $participation->join($request->user(), $event, $data['token_or_code'] ?? null);
+            $participation->join($request->user(), $event, $data['token_or_code'] ?? null, $data['team_id'] ?? null);
         } catch (ValidationException $e) {
             // An access failure belongs under the invite field the gate page
             // has; everything else is a toast, because the page it happens on
@@ -35,7 +41,7 @@ class EventParticipationController extends Controller
         }
 
         return redirect()->route('events.show', $event)
-            ->with('board-save', trans($needsTeam ? 'events.joined_needs_team' : 'events.joined'));
+            ->with('board-save', trans('events.joined'));
     }
 
     public function destroy(Request $request, Event $event, EventParticipationService $participation): RedirectResponse

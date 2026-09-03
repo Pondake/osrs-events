@@ -5,6 +5,7 @@ namespace App\Events\Channels;
 use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\Event;
 use App\Services\BoardReviewService;
+use App\Services\EventFinishService;
 use App\Support\EventCard;
 
 /**
@@ -55,12 +56,21 @@ class SnakesLaddersChannel implements EventChannel
         // reviewed claim only ever showed up on the next full reload.
         $claimsVersion = $event->board === null ? '' : app(BoardReviewService::class)->claimsVersion($event->board);
 
+        // Who has finished, and whether the event was closed by it. Without
+        // this a win reached only the browser that scored it: everybody
+        // else's page kept a live dice on an event that was already over
+        // until they happened to reload. Two ids and a timestamp, so the
+        // per-viewer-every-few-seconds budget this method has stays intact.
+        $finishVersion = app(EventFinishService::class)->version($event);
+
         return md5(
             $rows->map(fn ($r) => "{$r->id}:{$r->current_position}:{$r->move_seq}")->implode('|')
             .'#'
             .$tiles->map(fn ($t) => "{$t->position}:{$t->task_id}:{$t->title_override}:{$t->type}:{$t->target_position}")->implode('|')
             .'#'
             .$claimsVersion
+            .'#'
+            .$finishVersion
             .'#'
             .$this->eventVersion($event)
         );
@@ -99,6 +109,16 @@ class SnakesLaddersChannel implements EventChannel
             // own copy only when it actually changes, same pattern as
             // BingoChannel's claims_version.
             'claims_version' => $event->board === null ? null : app(BoardReviewService::class)->claimsVersion($event->board),
+            // The podium, so a page that was open when somebody got home
+            // updates in place. Named, like the player rows below it: a
+            // shared channel cannot anonymise itself for some readers, so
+            // EventStreamController gates the connection on
+            // canSeeParticipants() instead — everybody holding one has
+            // already passed that check. Anonymising here as well took the
+            // podium away from the players it belongs to: on a listed
+            // invite-only event their own names turned into "Anonymous
+            // player" three seconds after the page rendered them.
+            'finishes' => app(EventFinishService::class)->places($event),
             'players' => $players->map(fn ($pb) => [
                 ...$pb->only(['id', 'user_id', 'team_id', 'current_position', 'move_seq', 'last_move_from', 'last_move_landed', 'last_move_jump']),
                 'user' => $pb->user,

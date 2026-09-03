@@ -45,7 +45,7 @@
                 </div>
 
                 <div class="flex items-center gap-3 rounded-lg bg-elevated px-3 py-2">
-                    <u-avatar :src="claim.submittedByAvatar ?? claim.competitorAvatar ?? undefined" size="sm" />
+                    <u-avatar :src="claim.submittedByAvatar ?? claim.competitorAvatar ?? undefined" :alt="claim.submittedBy ?? claim.competitor ?? ''" size="sm" />
                     <div class="min-w-0 text-sm">
                         <p class="truncate">
                             {{ claim.submittedBy ?? $t('common.unknown') }}
@@ -63,6 +63,26 @@
                         </p>
                     </div>
                 </div>
+
+                <!-- This claim ends somebody's run, and possibly the whole
+                     event. Said before the click rather than after it.
+
+                     The second line is the one that matters when two people
+                     get home minutes apart and both send a screenshot: the
+                     podium is ordered by when a claim was SUBMITTED, so the
+                     order these are approved in cannot change who won. A host
+                     who cannot see that will assume the opposite and agonise
+                     over a decision they are not actually making. -->
+                <u-alert
+                    v-if="claim.finishesBoard"
+                    icon="i-lucide-flag"
+                    color="primary"
+                    variant="subtle"
+                    :title="$t('board.review_finishing_claim')"
+                    :description="claim.raceOrder
+                        ? $t('board.review_race_order', { place: ordinal(claim.raceOrder), total: claim.raceTotal })
+                        : $t('board.review_finishing_desc')"
+                />
 
                 <p v-if="claim.note" class="text-sm text-muted rounded-lg ring ring-default px-3 py-2">{{ claim.note }}</p>
 
@@ -141,6 +161,7 @@
 </template>
 
 <script setup>
+import { ordinal } from '@/Support/board';
 import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 

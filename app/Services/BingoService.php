@@ -263,6 +263,14 @@ class BingoService
      */
     public function pendingQueue(BingoCard $card): Collection
     {
+        // Which of these waiting claims would actually win the card, and
+        // which of those got in first. A host ruling on a race for the win
+        // has to be able to see that it IS a race: places go by when a claim
+        // was submitted, not by when it was signed off, so the order they
+        // work through the queue cannot change who won — but a host who
+        // cannot see that will believe it does.
+        $winning = $this->winningClaims($card);
+
         return BingoCompletion::query()
             ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
             ->where('bingo_squares.bingo_card_id', $card->id)
@@ -297,7 +305,70 @@ class BingoService
                 'proofUrl' => $c->proof_url,
                 'note' => $c->note,
                 'submittedAt' => $c->created_at?->toIso8601String(),
+                // Approving this one wins the card for its competitor — and
+                // on a STOP event, ends the whole thing.
+                'winsCard' => $winning->has($c->id),
+                // Where it sits among the waiting claims that would win, and
+                // how many there are. Both null unless there is a contest,
+                // so an ordinary claim has nothing extra drawn on it.
+                'raceOrder' => $winning->count() > 1 ? $winning->get($c->id) : null,
+                'raceTotal' => $winning->count() > 1 ? $winning->count() : null,
             ]);
+    }
+
+    /**
+     * The pending claims whose approval would complete the card, mapped to
+     * their place in submission order.
+     *
+     * Grouped by competitor so this costs one claimsFor() per person with
+     * something waiting, not one per claim. A competitor's whole pending set
+     * is tried at once — two squares submitted together can complete a line
+     * that neither would on its own, and a host looking at the first of them
+     * should still be told what it is part of.
+     *
+     * @return Collection<string, int>  claim id => 1-based place
+     */
+    private function winningClaims(BingoCard $card): Collection
+    {
+        $pending = BingoCompletion::query()
+            ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
+            ->where('bingo_squares.bingo_card_id', $card->id)
+            ->where('bingo_completions.status', 'PENDING')
+            ->orderBy('bingo_completions.created_at')
+            ->get(['bingo_completions.*', 'bingo_squares.position as square_position']);
+
+        $winners = collect();
+
+        foreach ($pending->groupBy(fn (BingoCompletion $c) => $c->team_id ?? $c->user_id) as $claims) {
+            $competitor = ['team_id' => $claims->first()->team_id, 'user_id' => $claims->first()->user_id];
+
+            $approved = $this->approvedPositions($card, $competitor);
+
+            // Already won without any of these: nothing waiting can be the
+            // claim that wins it.
+            if ($this->hasWon($card, $approved)) {
+                continue;
+            }
+
+            $positions = $approved;
+
+            // In submission order, so the FIRST claim that tips them over is
+            // the one marked — the later ones are riding on a card that was
+            // already complete.
+            foreach ($claims as $claim) {
+                $positions[] = (int) $claim->square_position;
+
+                if ($this->hasWon($card, $positions)) {
+                    $winners->push($claim);
+                    break;
+                }
+            }
+        }
+
+        return $winners
+            ->sortBy(fn (BingoCompletion $c) => $c->created_at)
+            ->values()
+            ->mapWithKeys(fn (BingoCompletion $c, int $index) => [$c->id => $index + 1]);
     }
 
     /**

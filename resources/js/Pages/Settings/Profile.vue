@@ -60,6 +60,7 @@ import { ref } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { useAuth } from '@/Composables/useAuth';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
+import { clearOnboardingSnooze } from '@/Support/onboarding';
 
 defineProps({
     roles: { type: Array, required: true },
@@ -83,8 +84,21 @@ function save() {
 
 // Clears onboarding_completed_at; AppRoot watches the shared prop and
 // re-opens the modal once the response lands.
+//
+// The snooze has to go first. Dismissing the tour with Escape or the X hides
+// it for a day, and AppRoot honours that even when the server flag says the
+// tour is due — so this button did nothing at all for the one person most
+// likely to press it: somebody who had just closed the tour and wanted it
+// back.
 function replayOnboarding() {
-    router.post('/onboarding/reset', {}, { preserveScroll: true });
+    clearOnboardingSnooze();
+    router.post('/onboarding/reset', {}, {
+        preserveScroll: true,
+        // AppRoot opens the modal on this rather than on the refreshed
+        // `needsOnboarding` prop — that arrived too late to feel like a
+        // response to the click.
+        onSuccess: () => window.dispatchEvent(new CustomEvent('app:onboarding-open')),
+    });
 }
 
 const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', PLAYER: 'primary' };

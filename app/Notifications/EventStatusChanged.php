@@ -38,6 +38,20 @@ class EventStatusChanged extends Notification implements ShouldQueue
     public const CANCELLED = 'cancelled';
 
     /**
+     * Called: the event is over, and its results are the results.
+     *
+     * Distinct from CANCELLED, which is the event never happening — a
+     * cancelled event has no page left to link to and nothing came of it,
+     * where an ended one has a podium and is worth going to look at. Sent
+     * both by a host pressing End now and by the first finish on an event
+     * whose rule is STOP.
+     */
+    public const ENDED = 'ended';
+
+    /** A host taking that back — the event runs again. */
+    public const REOPENED = 'reopened';
+
+    /**
      * An admin undid a deletion. Nobody was told about this at first, which
      * left everyone holding a "this has been cancelled" email about an event
      * that was running again — the one state where saying nothing is worse

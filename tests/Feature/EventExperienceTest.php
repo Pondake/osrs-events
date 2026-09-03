@@ -67,21 +67,24 @@ class EventExperienceTest extends TestCase
     // ------------------------------------------------- joining a team event
 
     /**
-     * Joining a team event you have no team in succeeds, writes a
-     * participant row, and gives you nothing to play on — a host assigns
-     * teams when they are ready. "You joined the event" was therefore true
-     * and useless: it reads as "you can play now", and then nothing happens.
+     * Joining a team event you have no team in is refused outright.
+     *
+     * It used to succeed and answer "you are in, a host has to put you on a
+     * team" — but hosts add teams to an event, not people to a team, so that
+     * was advice nobody could act on, and the membership it left behind had
+     * no board, no score and every control on the page refusing. The team is
+     * the way in, so it comes first.
      */
     #[Test]
-    public function joining_a_team_event_without_a_team_says_so(): void
+    public function joining_a_team_event_without_a_team_is_refused(): void
     {
         $event = $this->board(['mode' => 'TEAM']);
         $player = User::factory()->create();
 
         $this->actingAs($player)->post("/events/{$event->id}/join")
-            ->assertSessionHas('board-save', trans('events.joined_needs_team'));
+            ->assertSessionHas('board-save-error', trans('events.team_required_notice'));
 
-        $this->assertDatabaseCount('event_participants', 1);
+        $this->assertDatabaseCount('event_participants', 0);
         $this->assertDatabaseCount('player_boards', 0);
     }
 
@@ -98,6 +101,46 @@ class EventExperienceTest extends TestCase
             ->assertSessionHas('board-save', trans('events.joined'));
 
         $this->assertDatabaseCount('player_boards', 1);
+    }
+
+    /**
+     * An open team event had no way in at all: teams were assigned by the
+     * host, so somebody who ran a team and was allowed to join could still do
+     * nothing. Bringing their own team in is the way in, and it happens on
+     * the same join.
+     */
+    #[Test]
+    public function a_team_owner_can_bring_their_team_into_an_event_they_may_join(): void
+    {
+        $event = $this->board(['mode' => 'TEAM']);
+        $owner = User::factory()->create();
+        $team = Team::create(['name' => 'Team One']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $owner->id, 'role' => TeamMember::OWNER]);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/join", ['team_id' => $team->id])
+            ->assertSessionHas('board-save', trans('events.joined'));
+
+        $this->assertDatabaseHas('board_teams', ['event_id' => $event->id, 'team_id' => $team->id]);
+        $this->assertDatabaseCount('player_boards', 1);
+    }
+
+    /**
+     * Entering a team commits that whole team's score to an event, so it is
+     * the team's own call — a plain member cannot make it for everybody else.
+     */
+    #[Test]
+    public function a_plain_member_cannot_bring_their_team_into_an_event(): void
+    {
+        $event = $this->board(['mode' => 'TEAM']);
+        $member = User::factory()->create();
+        $team = Team::create(['name' => 'Team One']);
+        TeamMember::create(['team_id' => $team->id, 'user_id' => $member->id, 'role' => TeamMember::MEMBER]);
+
+        $this->actingAs($member)->post("/events/{$event->id}/join", ['team_id' => $team->id])
+            ->assertSessionHas('board-save-error', trans('events.team_not_yours'));
+
+        $this->assertDatabaseCount('board_teams', 0);
+        $this->assertDatabaseCount('event_participants', 0);
     }
 
     #[Test]

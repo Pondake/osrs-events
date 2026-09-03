@@ -89,10 +89,15 @@
                     <danger-fields
                         :title="form.title"
                         :can-delete="canDelete"
+                        :event="board"
+                        :finishes="finishes"
                         :paused-at="board?.paused_at ?? null"
+                        :closed-at="board?.closed_at ?? null"
                         :pausing="pausing"
+                        :closing="closing"
                         :deleting="deleting"
                         @pause="setPaused"
+                        @close-event="setClosed"
                         @destroy="destroyEvent"
                     />
                 </template>
@@ -281,6 +286,19 @@ const props = defineProps({
     // Creating is not part of that split: a new event has an author by
     // definition, so it always posts to /events.
     basePath: { type: String, default: '/events' },
+    /**
+     * Which tab to open on. The Manage menu offers "Event status" as its own
+     * entry — the state of an event is the thing a host most often opens
+     * this dialog to check — and without this it would land on Basics and
+     * make them hunt for the tab they asked for.
+     */
+    initialTab: { type: String, default: 'basics' },
+    /**
+     * The podium as it stands, for the Status tab's end-now confirmation to
+     * name. A page prop rather than part of the event card — it arrives on
+     * the live stream and changes without the event itself changing.
+     */
+    finishes: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['update:open']);
@@ -353,6 +371,9 @@ function blankForm() {
         line_bonus: 0,
         requires_approval: true,
         mode: 'SOLO',
+        // What happens when the first competitor gets home. CONTINUE is the
+        // forgiving default — see the finish_rule migration.
+        finish_rule: 'CONTINUE',
         ...defaultDates(),
         dice_roll_limit: settings.defaultDiceRollLimit ?? null,
         is_listed: true,
@@ -443,10 +464,15 @@ const tabs = computed(() => [
     ...(form.mode === 'TEAM' ? [{ value: 'teams', slot: 'teams', label: trans('admin.team_assignment') }] : []),
     // Last, because it is where you go on purpose. The tabs only render
     // while editing, and only somebody who may edit the event gets this far
-    // — so pausing is available to everyone who can see this tab, while
-    // deleting is gated inside it (the owner's alone, per
+    // — so pausing and ending are available to everyone who can see this
+    // tab, while deleting is gated inside it (the owner's alone, per
     // BoardController::destroy).
-    { value: 'danger', slot: 'danger', label: trans('admin.step_stop') },
+    //
+    // Called "Status", not "Stop", since it gained the one thing a list of
+    // stop buttons could not tell you: where the event actually is right
+    // now. Upcoming, live, paused since Tuesday, ended on the 14th, or
+    // closed because somebody won — read it first, then change it.
+    { value: 'danger', slot: 'danger', label: trans('admin.step_status') },
 ]);
 
 const activeTab = ref('basics');
@@ -456,7 +482,7 @@ const activeTab = ref('basics');
 watch(() => props.open, (open) => {
     if (! open) return;
 
-    activeTab.value = 'basics';
+    activeTab.value = props.initialTab;
 
     // Loaded when the modal opens rather than when the step is reached: the
     // template step IS the first thing on screen, so waiting for a keystroke
@@ -659,7 +685,7 @@ watch(
         // there made the dialog visibly snap back to Basics for a frame
         // before it closed. The tab only needs resetting for the NEXT
         // opening, which is what the watch on `open` below does.
-        if (! props.open) activeTab.value = 'basics';
+        if (! props.open) activeTab.value = props.initialTab;
 
         if (board && board.access_mode === 'INVITE') fetchInvites();
 
@@ -815,6 +841,7 @@ function removeAuthor(userId) {
 // ------------------------------------------------------------ danger zone
 
 const pausing = ref(false);
+const closing = ref(false);
 const deleting = ref(false);
 
 /**
@@ -837,6 +864,28 @@ function setPaused({ paused, notify, reason }) {
         // state on its own — the page's props come back with the visit.
         onError: (errors) => console.error(errors),
         onFinish: () => { pausing.value = false; },
+    });
+}
+
+/**
+ * Calling it, or taking that back.
+ *
+ * Named `setClosed`, and the event it answers is `close-event` rather than
+ * `close`: a Vue component that emits `close` is saying "shut me", and this
+ * one means the opposite kind of closing — a modal that dismissed itself
+ * every time a host ended an event would be a genuinely confusing bug to
+ * chase.
+ */
+function setClosed({ closed, notify }) {
+    closing.value = true;
+
+    router.patch(`${eventPath.value}/close`, { closed, notify }, {
+        preserveScroll: true,
+        // Stays open, same as pausing: the panel re-reads the new state from
+        // the props that come back with the visit, and a host who has just
+        // reopened an event usually wants to move its end date next.
+        onError: (errors) => console.error(errors),
+        onFinish: () => { closing.value = false; },
     });
 }
 
