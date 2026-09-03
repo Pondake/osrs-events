@@ -77,7 +77,7 @@
                             size="xs"
                             color="neutral"
                             variant="ghost"
-                            href="/settings/profile"
+                            href="/settings/connections"
                             :label="$t('auth.osrs_fix_name')"
                         />
                     </span>
@@ -426,7 +426,7 @@ const rechecking = ref(false);
 
 function recheckOsrs() {
     rechecking.value = true;
-    router.post('/settings/profile/osrs/verify', {}, {
+    router.post('/settings/connections/osrs/verify', {}, {
         preserveScroll: true,
         onFinish: () => (rechecking.value = false),
         onError: (errors) => console.error(errors),

@@ -269,7 +269,7 @@ class DiagnosticsController extends Controller
         $notifier->toUser($user, new PushMessage(
             title: trans('notifications.preview_osrs_username_reminder_title'),
             body: trans('diagnostics.osrs_nudge_body', ['event' => $standing->event?->title ?? trans('common.unknown')]),
-            path: '/settings/profile',
+            path: '/settings/connections',
             category: NotificationCategory::OSRS_USERNAME_REMINDER,
         ));
 

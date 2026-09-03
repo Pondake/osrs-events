@@ -292,16 +292,8 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
 
     Route::get('/settings/profile', [SettingsProfileController::class, 'show'])->name('settings.profile');
     Route::patch('/settings/profile', [SettingsProfileController::class, 'update'])->name('settings.profile.update');
-    Route::put('/settings/profile/osrs', [SettingsProfileController::class, 'updateOsrsUsername'])->name('settings.profile.osrs');
     Route::get('/settings/animations', [AnimationController::class, 'show'])->name('settings.animations');
     Route::put('/settings/animations', [AnimationController::class, 'update'])->name('settings.animations.update');
-    // Re-checks the stored name against Wise Old Man. Throttled because it is
-    // a button anyone can hold down, and it spends a request against a shared
-    // public API with a 20/minute ceiling.
-    Route::post('/settings/profile/osrs/verify', [SettingsProfileController::class, 'verifyOsrsUsername'])
-        ->middleware('throttle:6,1')
-        ->name('settings.profile.osrs.verify');
-
     Route::get('/settings/account', [AccountController::class, 'show'])->name('settings.account');
     Route::put('/settings/account/email', [AccountController::class, 'updateEmail'])
         ->middleware('throttle:5,1')
@@ -312,6 +304,14 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     // The services this account is wired to, on their own page — see
     // ConnectionsController for why this is not part of Account.
     Route::get('/settings/connections', [ConnectionsController::class, 'show'])->name('settings.connections');
+    Route::put('/settings/connections/osrs', [ConnectionsController::class, 'updateOsrsUsername'])
+        ->name('settings.connections.osrs');
+    // Re-checks the stored name against Wise Old Man. Throttled because it is
+    // a button anyone can hold down, and it spends a request against a shared
+    // public API with a 20/minute ceiling.
+    Route::post('/settings/connections/osrs/verify', [ConnectionsController::class, 'verifyOsrsUsername'])
+        ->middleware('throttle:6,1')
+        ->name('settings.connections.osrs.verify');
 
     // Linking flow reuses DiscordController's existing redirect()/callback() OAuth
     // plumbing rather than a parallel implementation — connect() just stashes

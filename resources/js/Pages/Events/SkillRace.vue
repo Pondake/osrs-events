@@ -474,7 +474,7 @@ const dateRange = computed(() => {
 });
 
 function goToProfile() {
-    router.visit('/settings/profile');
+    router.visit('/settings/connections');
 }
 
 // One shared channel per event; this page listens for 'standings'. The

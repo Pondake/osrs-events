@@ -26,37 +26,6 @@
             </div>
         </u-card>
 
-        <!-- A separate identity from the Discord one above: skill races are
-             scored off the OSRS hiscores, which are keyed by account name. -->
-        <u-card>
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="min-w-0">
-                    <p class="font-medium">{{ $t('profile.osrs_account') }}</p>
-                    <p class="text-sm text-muted max-w-md">{{ $t('profile.osrs_account_help') }}</p>
-                </div>
-
-                <div class="flex items-center gap-2 flex-wrap shrink-0">
-                    <u-input
-                        v-model="osrsInput"
-                        :placeholder="$t('profile.osrs_username')"
-                        size="sm"
-                        maxlength="12"
-                        icon="i-lucide-user-round"
-                    />
-                    <u-button
-                        size="sm"
-                        color="primary"
-                        icon="i-lucide-check"
-                        :label="$t('common.save')"
-                        :loading="osrsForm.processing"
-                        @click="saveOsrsUsername"
-                    />
-                </div>
-            </div>
-
-            <p v-if="osrsForm.errors.osrs_username" class="text-sm text-error mt-2">{{ osrsForm.errors.osrs_username }}</p>
-        </u-card>
-
         <u-card>
             <div class="flex items-center justify-between gap-4 flex-wrap">
                 <div>
@@ -87,14 +56,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { useAuth } from '@/Composables/useAuth';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
 
-const props = defineProps({
+defineProps({
     roles: { type: Array, required: true },
-    osrsUsername: { type: String, default: null },
 });
 
 const { user } = useAuth();
@@ -111,23 +79,6 @@ function startEditing() {
 function save() {
     form.nickname = nicknameInput.value.trim() || null;
     form.patch('/settings/profile', { onSuccess: () => (editing.value = false), preserveScroll: true });
-}
-
-// Its own form and its own endpoint, not folded into save() above: one
-// validated action writing two fields blanks whichever one the submitted form
-// didn't carry.
-const osrsInput = ref(props.osrsUsername ?? '');
-const osrsForm = useForm({ osrs_username: '' });
-
-// Resynced after a save because the server may normalise what was typed —
-// Wise Old Man returns the account's canonical casing, so "pondake" is stored
-// as "Pondake". Seeded once, the field would keep showing the typed version
-// and quietly disagree with what is actually saved.
-watch(() => props.osrsUsername, (name) => (osrsInput.value = name ?? ''));
-
-function saveOsrsUsername() {
-    osrsForm.osrs_username = osrsInput.value.trim();
-    osrsForm.put('/settings/profile/osrs', { preserveScroll: true });
 }
 
 // Clears onboarding_completed_at; AppRoot watches the shared prop and
