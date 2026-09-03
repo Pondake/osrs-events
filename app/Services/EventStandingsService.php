@@ -154,6 +154,16 @@ class EventStandingsService
     public function leave(Event $event, User $user): void
     {
         EventStanding::where(['event_id' => $event->id, 'user_id' => $user->id])->delete();
+
+        // The last measured row leaving takes the staleness warning with it.
+        // The flag means "what is on screen was read against a different
+        // question", and once nothing is on screen there is no such claim
+        // left to make — the banner otherwise sat above an empty table on an
+        // event nobody was in, which is exactly how it was reported: join,
+        // change the boss, leave, and the warning stays behind.
+        if ($event->standingsAreStale() && ! $event->hasReadStandings()) {
+            $event->forceFill(['standings_stale_since' => null])->save();
+        }
     }
 
     /**

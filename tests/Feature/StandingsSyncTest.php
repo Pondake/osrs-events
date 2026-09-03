@@ -59,6 +59,21 @@ class StandingsSyncTest extends TestCase
         ]);
     }
 
+    /**
+     * An entrant whose numbers have actually been read once.
+     *
+     * The distinction the staleness rule turns on: a row that exists holds no
+     * measurement until a sync has put one in it, and only a measurement can
+     * go out of date.
+     */
+    private function readEntrant(Event $event, string $name): EventStanding
+    {
+        $row = $this->entrant($event, $name);
+        $row->forceFill(['gained' => 4200, 'synced_at' => Carbon::now()])->save();
+
+        return $row;
+    }
+
     /** Wise Old Man's shape for a metric that gained something. */
     private function gains(int $gained): array
     {
@@ -152,7 +167,7 @@ class StandingsSyncTest extends TestCase
     {
         $event = $this->race();
         $host = $this->host($event);
-        $this->entrant($event, 'Pondake');
+        $this->readEntrant($event, 'Pondake');
 
         $this->assertNull($event->standings_stale_since);
 
@@ -170,8 +185,92 @@ class StandingsSyncTest extends TestCase
     {
         $event = $this->race();
         $host = $this->host($event);
+        $this->readEntrant($event, 'Pondake');
 
         $this->actingAs($host)->patch("/events/{$event->id}", ['title' => $event->title, 'metric' => 'fishing']);
+
+        $this->assertNotNull($event->fresh()->standings_stale_since);
+    }
+
+    /**
+     * Nothing read yet is not the same as read against the old question.
+     *
+     * The banner says "these numbers are out of date", and a race nobody has
+     * entered has no numbers. Reported from a brand-new drop race: zero
+     * participants, the standings panel reading "Numbers not read yet", and
+     * a warning above it that the numbers beside it were stale. Setting the
+     * dates on an event you just made is the normal way to make one.
+     */
+    #[Test]
+    public function an_event_nobody_has_entered_never_goes_stale(): void
+    {
+        $event = $this->race();
+        $host = $this->host($event);
+
+        $this->actingAs($host)->patch("/events/{$event->id}", [
+            'title' => $event->title,
+            'metric' => 'fishing',
+            'start_date' => Carbon::now()->subMonth()->toDateString(),
+            'end_date' => Carbon::now()->addWeek()->toDateString(),
+        ])->assertRedirect();
+
+        $this->assertNull($event->fresh()->standings_stale_since);
+    }
+
+    /**
+     * And an entrant who has never been synced holds no measurement either —
+     * the row exists, `gained` is null, and there is still nothing on screen
+     * that the old window could have produced.
+     */
+    #[Test]
+    public function an_entrant_who_was_never_read_does_not_make_the_event_stale(): void
+    {
+        $event = $this->race();
+        $host = $this->host($event);
+        $this->entrant($event, 'Pondake');
+
+        $this->actingAs($host)->patch("/events/{$event->id}", ['title' => $event->title, 'metric' => 'fishing']);
+
+        $this->assertNull($event->fresh()->standings_stale_since);
+    }
+
+    /**
+     * The whole reported sequence: join, the host changes the boss, leave.
+     *
+     * Marking the event stale was right at the time — there was a measured
+     * row on screen describing the old boss. Deleting that row on the way out
+     * is what makes the warning false, and nothing was re-asking the
+     * question, so the banner stayed above an empty table on an event with
+     * nobody in it.
+     */
+    #[Test]
+    public function the_last_entrant_leaving_takes_the_warning_with_them(): void
+    {
+        $event = $this->race(['type' => 'DROP_RACE', 'metric' => 'abyssal_sire']);
+        $host = $this->host($event);
+        $entrant = $this->readEntrant($event, 'Pondake');
+
+        $this->actingAs($host)->patch("/events/{$event->id}", ['title' => $event->title, 'metric' => 'zulrah']);
+        $this->assertNotNull($event->fresh()->standings_stale_since);
+
+        $this->actingAs($entrant->user)->delete("/events/{$event->id}/enter")->assertRedirect();
+
+        $this->assertSame(0, $event->standings()->count());
+        $this->assertNull($event->fresh()->standings_stale_since);
+    }
+
+    /** But somebody else's numbers still being there keeps it honest. */
+    #[Test]
+    public function one_of_two_entrants_leaving_keeps_the_warning(): void
+    {
+        $event = $this->race();
+        $host = $this->host($event);
+        $leaver = $this->readEntrant($event, 'Pondake');
+        $this->readEntrant($event, 'Zezima');
+
+        $this->actingAs($host)->patch("/events/{$event->id}", ['title' => $event->title, 'metric' => 'fishing']);
+
+        $this->actingAs($leaver->user)->delete("/events/{$event->id}/enter")->assertRedirect();
 
         $this->assertNotNull($event->fresh()->standings_stale_since);
     }
