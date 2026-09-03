@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use App\Rules\OsrsUsername;
-use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +22,10 @@ use Inertia\Response;
  * simpler list here duplicating the same data was two places that could
  * disagree about it, not two features — this page now just links to that one
  * instead of rebuilding it.
+ *
+ * The OSRS account name used to live here too. It moved to
+ * ConnectionsController on 2026-09-03: it is the one field that talks to an
+ * outside service, which is that page's subject rather than this one's.
  */
 class ProfileController extends Controller
 {
@@ -33,9 +35,6 @@ class ProfileController extends Controller
 
         return Inertia::render('Settings/Profile', [
             'roles' => $user->roles->pluck('name'),
-            // Not shared globally via HandleInertiaRequests: this is the only
-            // page that edits it, and the skill-race page gets its own copy.
-            'osrsUsername' => $user->osrs_username,
         ]);
     }
 
@@ -46,49 +45,5 @@ class ProfileController extends Controller
         $request->user()->update(['nickname' => $data['nickname'] ?: null]);
 
         return back()->with('board-save', trans('profile.nickname_saved'));
-    }
-
-    /**
-     * The OSRS account name, kept on its own endpoint rather than folded into
-     * update() above.
-     *
-     * Two forms writing through one validated action is how a field gets
-     * wiped: validate() returns only the keys it has rules for, so a nickname
-     * save that also listed osrs_username would blank it whenever the
-     * nickname form didn't send one.
-     */
-    public function updateOsrsUsername(Request $request, OsrsIdentityService $identity): RedirectResponse
-    {
-        $data = $request->validate([
-            // Required rather than nullable: every account has one by the
-            // time it gets here (RequireOsrsUsername sees to that), so
-            // allowing a blank would let someone quietly undo it and drop
-            // out of every race they had entered.
-            'osrs_username' => ['required', 'string', new OsrsUsername],
-        ]);
-
-        $found = $identity->apply($request->user(), $data['osrs_username']);
-
-        // Saved regardless; an unconfirmed name is a warning, not a rejection.
-        return $found === false
-            ? back()->with('board-save-error', trans('auth.osrs_not_found'))
-            : back()->with('board-save', trans('profile.osrs_username_saved'));
-    }
-
-    /**
-     * Re-run the Wise Old Man check on the name already stored — the action
-     * behind the recurring "we can't find this account" notice.
-     */
-    public function verifyOsrsUsername(Request $request, OsrsIdentityService $identity): RedirectResponse
-    {
-        $found = $identity->recheck($request->user());
-
-        return match ($found) {
-            true => back()->with('board-save', trans('auth.osrs_found')),
-            false => back()->with('board-save-error', trans('auth.osrs_not_found')),
-            // Their API was unreachable. Saying "not found" here would tell
-            // someone their own RSN is wrong because a third party was down.
-            default => back()->with('board-save-error', trans('auth.osrs_check_failed')),
-        };
     }
 }
