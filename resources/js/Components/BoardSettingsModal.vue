@@ -482,6 +482,11 @@ const activeTab = ref('basics');
 watch(() => props.open, (open) => {
     if (! open) return;
 
+    // The re-seed the board watch no longer does while the dialog is open.
+    // Without it an edit that was abandoned — typed, then cancelled — would
+    // still be sitting there the next time the dialog opened.
+    seedFromBoard(props.board);
+
     activeTab.value = props.initialTab;
 
     // Loaded when the modal opens rather than when the step is reached: the
@@ -666,11 +671,23 @@ function cardFields(board) {
     };
 }
 
-// Re-seed whenever a different board is opened for editing, or the modal is
-// reopened in create mode after a previous edit.
-watch(
-    () => props.board,
-    (board) => {
+/**
+ * Fill the form from the event being edited.
+ *
+ * Called when a different event is handed in and when the dialog opens —
+ * deliberately NOT on every change of the `board` prop, which is a different
+ * thing entirely. That prop is rebuilt on every page render: the live stream
+ * pushes a fresh event card every few seconds, and a failed save comes back
+ * as a re-render of the same page carrying the errors. Re-seeding on those
+ * wiped whatever was half-typed.
+ *
+ * That is the bug behind "it saved nothing and said it did": a save that
+ * failed validation reset the form to the stored values, and the second save
+ * — after fixing the one field the error named — sent those stored values
+ * back. The server saved them faithfully, answered success, and the dates
+ * the person had picked before the error had never left the browser.
+ */
+function seedFromBoard(board) {
         form.defaults(board
             ? { ...blankForm(), ...board, ...dateFields(board), ...cardFields(board), discord_webhook_url: props.webhookUrl ?? '' }
             : blankForm());
@@ -708,6 +725,17 @@ watch(
         authorSearch.value = '';
         authorResults.value = [];
         blueprintResults.value = [];
+}
+
+watch(
+    () => props.board,
+    (board, previous) => {
+        // `previous` is undefined on the immediate run, which is the one that
+        // has to seed. After that, a new object for the same event while the
+        // dialog is open is a re-render, not a new thing to edit.
+        if (props.open && previous !== undefined && board?.id === previous?.id) return;
+
+        seedFromBoard(board);
     },
     { immediate: true },
 );
