@@ -39,12 +39,22 @@ class LeaderboardController extends Controller
 
         // Who got home, and when. Keyed by whichever id the event's mode
         // makes the competitor, so a row can look itself up in one go.
+        //
+        // `provisional` rides along because a place can still move: while a
+        // claim submitted earlier than this one is unreviewed, approving it
+        // pushes everyone below it down. Asked once for the whole page rather
+        // than per row — see EventFinishService::contenderCutoff().
+        $contenderAt = $finishes->contenderCutoff($event);
+
         $finishRows = $event->finishes()->get();
         $finishByCompetitor = $finishRows
             ->mapWithKeys(fn ($finish, $index) => [
                 ($finish->team_id ?? $finish->user_id) => [
                     'place' => $index + 1,
                     'at' => $finish->finished_at,
+                    'provisional' => $contenderAt !== null
+                        && $finish->finished_at !== null
+                        && $contenderAt->lt($finish->finished_at),
                 ],
             ]);
 
@@ -118,6 +128,12 @@ class LeaderboardController extends Controller
                 // sits in this list, and place is a result that does not
                 // change when somebody else joins.
                 'finishPlace' => $finish['place'] ?? null,
+                // Whether that place is still up for grabs. Sent separately
+                // from the place itself so the page can say "home" without
+                // saying "first" — this ranking crowned the wrong winner with
+                // a medal while the claim that actually won had not been
+                // opened yet.
+                'finishProvisional' => (bool) ($finish['provisional'] ?? false),
                 // Guarded on `$finish` itself, not only on the key: `null['at']`
                 // is a fatal "trying to access array offset on null", and every
                 // player who has not finished takes this branch — which is most

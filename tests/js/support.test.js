@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { trans } from 'laravel-vue-i18n';
 
-import { BOARD_TILE_COUNT, boardEventStatus, eventStatus, formatBoardSize, formatDate, ordinal } from '@/Support/board';
+import { BOARD_TILE_COUNT, boardEventStatus, claimAreaIsShown, eventStatus, finishSubtitle, formatBoardSize, formatDate, ordinal, settledPlace } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import { metricIconUrl, metricKindFor, metricLabel, rankedByLabel } from '@/Support/metrics';
 
@@ -251,5 +251,99 @@ describe('ordinal', () => {
     it('says nothing about a missing place', () => {
         expect(ordinal(null)).toBe('');
         expect(ordinal(undefined)).toBe('');
+    });
+});
+
+/**
+ * Which place a finish may be shown as.
+ *
+ * Found by walking an event end to end as two racers and a host: the host
+ * approved the later of two finishing claims first, and while the earlier one
+ * was still unopened the sidebar ranking and the leaderboard page both handed
+ * a gold medal to the wrong competitor. The finish card on the same screen
+ * was already refusing to name a place, which is what made it a bug rather
+ * than a decision.
+ */
+describe('settledPlace', () => {
+    it('gives a settled finish its rank', () => {
+        expect(settledPlace({ rank: 1, provisional: false })).toBe(1);
+        expect(settledPlace({ rank: 4, provisional: false })).toBe(4);
+    });
+
+    // The reported failure, in one line: home, but not in a place yet.
+    it('withholds the place while an earlier claim is unreviewed', () => {
+        expect(settledPlace({ rank: 1, provisional: true })).toBeNull();
+    });
+
+    // Only `true` withholds. A payload that predates the flag, or a finish
+    // sent without it, must still show the place it has — silently blanking
+    // every podium would be a worse failure than the one this prevents.
+    it('treats a missing flag as settled', () => {
+        expect(settledPlace({ rank: 2 })).toBe(2);
+        expect(settledPlace({ rank: 2, provisional: undefined })).toBe(2);
+    });
+
+    it('has nothing to say about somebody who has not finished', () => {
+        expect(settledPlace(null)).toBeNull();
+        expect(settledPlace(undefined)).toBeNull();
+    });
+});
+
+/**
+ * The line under your own place once the event is over.
+ *
+ * Same walkthrough: second place was told "That was the winning run", which
+ * on a STOP event is by definition somebody else's run — the one that ended
+ * the event over them.
+ */
+describe('finishSubtitle', () => {
+    it('tells the winner it was the winning run', () => {
+        expect(finishSubtitle('2026-09-07T07:15:59Z', 1, '2026-09-13')).toBe('t:board.finished_closed');
+    });
+
+    it('does not tell everybody else the same thing', () => {
+        expect(finishSubtitle('2026-09-07T07:15:59Z', 2, '2026-09-13')).toBe('t:board.finished_closed_behind');
+        expect(finishSubtitle('2026-09-07T07:15:59Z', 7, '2026-09-13')).toBe('t:board.finished_closed_behind');
+    });
+
+    // Still running: nobody has won anything, so the card points at the end
+    // date instead of at a result.
+    it('points an open event at its end date', () => {
+        expect(finishSubtitle(null, 1, '2026-09-13')).toBe('t:board.finished_continue');
+        expect(trans).toHaveBeenCalledWith('board.finished_continue', { when: formatDate('2026-09-13') });
+    });
+});
+
+/**
+ * Whether the tile card still has something to show.
+ *
+ * The same walkthrough again, at its last step: the host rejected the claim
+ * on the final tile, which took the win back, and the player was shown
+ * nothing at all — no status, no note, no way to open the claim — because the
+ * event was closed by then and one guard was hiding the verdict along with
+ * the button.
+ */
+describe('claimAreaIsShown', () => {
+    const live = { start_date: '2026-09-01', end_date: '2026-09-30' };
+    const now = new Date('2026-09-07T12:00:00Z');
+    const claim = { id: 'c1', status: 'REJECTED', reviewNote: 'Wrong account.' };
+
+    it('shows the area on a live event with nothing claimed yet', () => {
+        expect(claimAreaIsShown(live, null, now)).toBe(true);
+    });
+
+    // The fix: a verdict already given does not expire with the event.
+    it('keeps a claim readable after the event has closed', () => {
+        expect(claimAreaIsShown({ ...live, closed_at: '2026-09-07T07:15:59Z' }, claim, now)).toBe(true);
+        expect(claimAreaIsShown({ start_date: '2026-08-01', end_date: '2026-08-20' }, claim, now)).toBe(true);
+        expect(claimAreaIsShown({ ...live, paused_at: '2026-09-06' }, claim, now)).toBe(true);
+    });
+
+    // Nothing claimed and nothing to do: the card keeps its own counsel
+    // rather than offering a button every endpoint would refuse.
+    it('shows nothing on an event that is not taking moves', () => {
+        expect(claimAreaIsShown({ ...live, closed_at: '2026-09-07T07:15:59Z' }, null, now)).toBe(false);
+        expect(claimAreaIsShown({ ...live, paused_at: '2026-09-06' }, null, now)).toBe(false);
+        expect(claimAreaIsShown({ start_date: '2026-10-01', end_date: '2026-10-30' }, null, now)).toBe(false);
     });
 });

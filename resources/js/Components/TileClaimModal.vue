@@ -121,6 +121,12 @@ const props = defineProps({
     tileTitle: { type: String, default: '' },
     // The existing claim for this tile, or null to make a new one.
     claim: { type: Object, default: null },
+    // Whether the event still takes moves. Reading a claim outlives the
+    // event; withdrawing one or trying again does not, and every endpoint
+    // behind those buttons refuses once it is over — so they go, rather than
+    // waiting to fail. Defaults to true so a caller that has already decided
+    // not to render this modal at all needs to say nothing.
+    canAct: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:open']);
@@ -162,12 +168,17 @@ const reviewedAt = computed(() => (
  * retry here would brick the whole board, forever, since nothing past it is
  * reachable without completing it first.
  */
-const canWithdraw = computed(() => props.claim?.status !== 'APPROVED');
+const canWithdraw = computed(() => props.canAct && props.claim?.status !== 'APPROVED');
 
 /** "Withdraw" undoes a pending claim; a rejected one is cleared to try again with better proof. */
 const isRetry = computed(() => props.claim?.status === 'REJECTED');
 
 const withdrawNotice = computed(() => {
+    // Two different reasons the buttons are gone, and they must not borrow
+    // each other's words: a host has ruled on this, or the event itself has
+    // stopped. "Only a host can change the result now" is untrue of an event
+    // that is over — nobody is going to change it.
+    if (!props.canAct) return trans('board.claim_locked_event_over');
     if (!canWithdraw.value) return trans('board.already_reviewed');
     if (isRetry.value) return trans('board.try_again_notice');
 
