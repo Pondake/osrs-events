@@ -65,18 +65,45 @@ h3,
 }
 
 /* Tailwind v4 preflight resets heading sizes to inherit — restore them since
-   the app still relies on h1-h3 reading as headings by default. */
-h1 {
-    font-size: var(--text-3xl);
-    font-weight: 600;
-}
-h2 {
-    font-size: var(--text-2xl);
-    font-weight: 600;
-}
-h3 {
-    font-size: var(--text-xl);
-    font-weight: 600;
+   the app still relies on h1-h3 reading as headings by default.
+
+   `@layer base` is the whole point of this block, not tidiness. Tailwind v4
+   emits everything it generates into cascade layers; anything written outside
+   one is UNLAYERED, and unlayered CSS beats layered CSS outright, whatever the
+   specificity. So these three element rules — written bare, as they were from
+   2026-08-18 to 2026-09-07 — outranked every `text-*` utility on a heading,
+   and `<h1 class="text-2xl">` silently rendered at 30px.
+
+   This is a v4-only reversal, which is why it reads as impossible. Under v3
+   the utilities were plain CSS, so an element selector (0,0,1) lost to a
+   utility class (0,1,0) exactly as you would expect. Same three rules, same
+   markup, opposite outcome.
+
+   Two things that look like fixes and are not: `:where(h1)` drops the
+   specificity to zero but stays unlayered, so it still wins; and bumping the
+   utility with `!` works one call site at a time while leaving the trap armed
+   for the next person. Inside `base`, the utilities layer comes later and
+   wins on ordering, which is the behaviour every Tailwind user already
+   expects.
+
+   Found by measuring: 27 of the 37 headings carrying a size class in
+   resources/js were rendering at a size nobody asked for. It went unnoticed
+   for three weeks because h2 + `text-2xl` — by far the most common pairing —
+   happens to match the default exactly, so the case that would have exposed
+   it is the one that looks correct. */
+@layer base {
+    h1 {
+        font-size: var(--text-3xl);
+        font-weight: 600;
+    }
+    h2 {
+        font-size: var(--text-2xl);
+        font-weight: 600;
+    }
+    h3 {
+        font-size: var(--text-xl);
+        font-weight: 600;
+    }
 }
 
 .osrs-title {
