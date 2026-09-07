@@ -170,6 +170,15 @@ de kleinere open vragen bij.
   overgenomen) en de policy-generators. **Controleer de licentievoorwaarden
   zelf** — "gratis te gebruiken" en "vrij aan te passen en onder je eigen naam
   te publiceren" zijn niet dezelfde toestemming.
+  **Nagekeken 2026-09-07, en dit is precies zo'n geval:** `Automattic/legalmattic`
+  staat onder **CC BY-SA 4.0**, niet onder een permissieve licentie. Attribution
+  én ShareAlike — wie die tekst bewerkt moet naar Automattic linken *en* het
+  resultaat onder dezelfde licentie publiceren. Voor een privacypagina is dat
+  geen detail: je zet er een licentieverklaring onder die zelf uitleg vraagt.
+  Dat maakt de keuze die hierboven al de voorkeur had ook de goedkoopste: neem
+  hooguit de **volgorde en de kopjes** over — een indeling is geen beschermde
+  tekst — en schrijf de alinea's zelf uit het schema, zoals nu. Dan raakt de
+  licentie het nooit.
 - [ ] **Geschreven voor de wereld, niet voor Nederland.** De spelersbasis zit
   waar OSRS zit, dus alles wat als EU-only ceremonie leest heeft de verkeerde
   vorm. Het goede nieuws: de twee feiten die dit het meest vereenvoudigen zijn
@@ -180,18 +189,38 @@ de kleinere open vragen bij.
 - [ ] **Of er überhaupt een persoonlijk e-mailadres gepubliceerd moet worden.**
   Nu `mailto:dev@absolit.nl` op `/privacy`. *Vindbaar* en *gepubliceerd* zijn
   niet dezelfde handeling, en welke van de twee die pagina verricht is nog een
-  keuze — het GitHub-account is publiek, dus wie wil komt er sowieso.
-  **Wel al feitelijk verouderd, los van die keuze:** de policy zegt "vraag het
-  en je account wordt verwijderd", wat waar was toen dat de enige route was.
-  Settings → Account heeft sinds 2026-08-24 een verwijderknop, dus die alinea
-  in `LegalPages::privacy()` moet daarnaar wijzen en het adres wordt de
-  terugvaloptie. Vergeet `php artisan pages:sync-legal` niet — het bestand
-  aanpassen doet niets op een omgeving waar de paginarij al bestaat.
+  keuze — het GitHub-account is publiek, dus wie wil komt er sowieso. **Dit
+  blijft open**: het is de oordeelsvraag, en die is aan de eigenaar.
+  **De feitelijke helft is wel af.** De alinea zei "vraag het en je account
+  wordt verwijderd", wat waar was toen dat de enige route was; Settings →
+  Account heeft sinds 2026-08-24 een verwijderknop. Op 2026-08-27 is
+  `LegalPages::privacy()` herschreven en dat is meegelift in commit `909fdd9`
+  (de guides-commit), waardoor het hier nooit is afgevinkt. De sectie "Your
+  data is yours" wijst nu eerst naar Settings → Account — knop `Delete your
+  account` → `/settings/account`, `variant: outline` — en het adres staat
+  eronder als `Ask us to do it` in `ghost`, met een alinea die zegt wanneer je
+  die nodig hebt (je komt niet meer bij de pagina). Nagelopen op 2026-09-07 in
+  de browser op `localhost:8010/privacy`: beide links staan er met de juiste
+  hrefs. `pages:sync-legal --diff` zegt lokaal "already matches", maar **op
+  elke andere omgeving moet `php artisan pages:sync-legal` nog draaien** — het
+  bestand aanpassen doet niets waar de paginarij al bestaat.
 - [ ] **Bewaartermijn voor sessies en push-subscriptions.** De audit log heeft
   er een (90 dagen, uit `config/audit.php`, vastgepind door een test). Sessies
   verlopen en push-subscriptions worden dood gemarkeerd op een 404/410, maar
   geen van beide heeft een uitgesproken maximumleeftijd. Wil je daar een getal,
   dan heeft de code er eerst een nodig.
+  **Wat de code nu doet, nagekeken 2026-09-07 — de twee helften kosten niet
+  hetzelfde.** Sessies hebben het getal al: driver `database`,
+  `SESSION_LIFETIME=120`, en Laravel's eigen GC ruimt rijen op die langer dan
+  dat inactief zijn. Dat is een bewaartermijn van twee uur na laatste
+  activiteit die alleen nog nergens uitgesproken wordt; die opschrijven kost
+  één alinea en geen code. Push-subscriptions hebben het getal níet:
+  `expired_at` markeert een dood abonnement maar niets verwijdert de rij, en
+  `model:prune` is in `routes/console.php` bewust versmald tot alleen
+  `AuditLog`. Daar is dus wél code voor nodig — `Prunable` op
+  `PushSubscription`, een `config/push.php`-waarde, het model erbij in de
+  schedule — en `last_used_at` staat al op de tabel, dus "zoveel dagen niet
+  gebruikt" is meteen de bruikbaarste maat.
 
 ## 2. SEO — on-page werk
 

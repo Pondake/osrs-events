@@ -79,17 +79,23 @@ cannot see your email address or your other events.
 
 ## Still a judgement call, and still yours
 
-The owner is taking a second pass at this — see the "Legal, round two" section
-at the end of `docs/backlog.md` for what they want to look at (licensed policy
-sources, writing for a worldwide playerbase rather than an EU-shaped one, and
-whether to publish a personal address at all).
+The owner is taking a second pass at this — see section 1, "Legal — de eigen
+pass van de eigenaar", in `docs/backlog.md` for what they want to look at
+(licensed policy sources, writing for a worldwide playerbase rather than an
+EU-shaped one, whether to publish a personal address at all, and a retention
+number for sessions and push subscriptions). The heading it used to point at,
+"Legal, round two", now lives in `docs/backlog-archive-2026-08.md`.
 
 - **The deletion address.** `mailto:dev@absolit.nl` is what the page offers as
   the route to erasure. If that is not the address you want handling those, it
   is one line in `LegalPages::privacy()`.
-  It is also **the only route there is**: `Admin\UserController::destroy` is
-  the sole way an account gets deleted, and there is no button in Settings.
-  Build that and the address becomes a fallback rather than the mechanism.
+  **No longer the only route** — that changed on 2026-08-24, when Settings →
+  Account gained a delete button of its own (`AccountController::destroy`,
+  which also asks what should happen to any event you host). The policy was
+  rewritten to match on 2026-08-27: the paragraph now sends you to the button,
+  and the address is the fallback for someone who cannot reach it. What is
+  still yours to decide is the separate question — whether a personal address
+  belongs on a public page at all.
 - **"Last updated August 2026"** is accurate today. It moves the next time this
   file does, and nothing enforces that.
 - **Retention beyond the audit log.** Sessions expire and push subscriptions are
