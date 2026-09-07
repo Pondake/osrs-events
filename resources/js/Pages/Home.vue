@@ -10,22 +10,57 @@
                  behaviour rather than content. -->
             <u-page-hero :title="heroTitle" :description="heroDescription">
                 <template #links>
-                    <!-- The public pages stay readable while the site is locked, but
-                         everything they invite you to do is behind the door. A
-                         button that lands on a password box reads as broken; a
-                         sentence saying "not yet" reads as not yet. -->
-                    <u-alert
-                        v-if="locked"
-                        color="neutral"
-                        variant="subtle"
-                        icon="i-lucide-lock"
-                        class="max-w-lg"
-                        :description="$t('lock.app_not_open')"
-                    />
-                    <template v-else>
-                        <u-button v-if="isAuthenticated" href="/events" trailing-icon="i-lucide-arrow-right" size="xl" color="primary" :label="$t('home.cta_boards')" />
-                        <u-button v-else to="/login" size="xl" icon="i-lucide-log-in" color="primary" :label="$t('home.cta_login')" />
-                    </template>
+                    <!-- Stacked rather than laid out in one row, because the
+                         locked state puts a paragraph where the others put a
+                         button, and the Discord link sits under either. -->
+                    <div class="flex flex-col items-center gap-4">
+                        <!-- The public pages stay readable while the site is locked, but
+                             everything they invite you to do is behind the door. A
+                             button that lands on a password box reads as broken; a
+                             sentence saying "not yet" reads as not yet. -->
+                        <u-alert
+                            v-if="locked"
+                            color="neutral"
+                            variant="subtle"
+                            icon="i-lucide-lock"
+                            class="max-w-lg"
+                            :description="$t('lock.app_not_open')"
+                        />
+
+                        <div class="flex flex-wrap justify-center gap-3">
+                            <template v-if="!locked">
+                                <u-button v-if="isAuthenticated" href="/events" trailing-icon="i-lucide-arrow-right" size="xl" color="primary" :label="$t('home.cta_boards')" />
+                                <u-button v-else to="/login" size="xl" icon="i-lucide-log-in" color="primary" :label="$t('home.cta_login')" />
+                            </template>
+
+                            <!-- Deliberately the one thing on this page that
+                                 still works while the door is shut: somebody
+                                 who cannot get in is exactly who needs
+                                 somewhere to ask. Points at /discord rather
+                                 than the invite itself, so a replaced invite
+                                 does not need this template touched — and it
+                                 renders nothing at all when no invite is set,
+                                 which reads as not-yet instead of broken.
+
+                                 `external` is load-bearing: without it Nuxt
+                                 UI reads a protocol-less href as internal and
+                                 renders an Inertia <Link>, which makes the
+                                 click an XHR — and /discord answers 302 to
+                                 another origin, so the browser refuses the
+                                 redirect and the button does nothing. Found
+                                 2026-09-07 by clicking it. -->
+                            <u-button
+                                v-if="discordInviteUrl"
+                                href="/discord"
+                                external
+                                size="xl"
+                                icon="i-simple-icons-discord"
+                                color="neutral"
+                                variant="outline"
+                                :label="$t('home.cta_discord')"
+                            />
+                        </div>
+                    </div>
                 </template>
             </u-page-hero>
 
@@ -78,11 +113,18 @@ import SeoHead from '@/Components/SeoHead.vue';
 import PageRenderer from '@/Components/Cms/PageRenderer.vue';
 import { useAuth } from '@/Composables/useAuth';
 import { useSiteLock } from '@/Composables/useSiteLock';
+import { useCurrentPage } from '@/Support/pageState';
 
 const { isAuthenticated, isAdmin } = useAuth();
 
 // Everything this page invites you to do is behind the pre-launch door.
 const { locked } = useSiteLock();
+
+const page = useCurrentPage();
+
+// Null until an admin sets one, and the button is withheld rather than
+// pointed at a dead link — same reasoning as the beta page's copy of this.
+const discordInviteUrl = computed(() => page.value.props?.site?.discordInviteUrl ?? null);
 
 /**
  * Unlike /about, /privacy and /terms, this page is only PARTLY editable.

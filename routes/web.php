@@ -42,6 +42,7 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TileController;
 use App\Http\Controllers\UserSearchController;
 use App\Http\Controllers\WikiController;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -131,6 +132,12 @@ Route::get('/osrs-bingo', [LandingController::class, 'bingo'])->name('landing.bi
 Route::get('/osrs-skill-race', [LandingController::class, 'skillRace'])->name('landing.skill-race');
 Route::get('/osrs-drop-race', [LandingController::class, 'dropRace'])->name('landing.drop-race');
 
+// A fixed route rather than the CMS catch-all, since 2026-09-07 — see
+// LandingController::about(). Declared here, above the catch-all, so a
+// leftover `about` row cannot shadow it; PARTIAL_SLUGS stops that row being
+// served at all.
+Route::get('/about', [LandingController::class, 'about'])->name('about');
+
 // The beta tester's page. Public on purpose although it describes a closed
 // beta: the link is handed out in Discord to people who have not typed the
 // shared password yet, so a page behind the door would only be readable by
@@ -138,10 +145,35 @@ Route::get('/osrs-drop-race', [LandingController::class, 'dropRace'])->name('lan
 // Beta.vue — and is deliberately absent from SitemapController.
 Route::get('/beta', [LandingController::class, 'beta'])->name('beta');
 
-// /privacy and /terms are CMS pages now, resolved by the /{page} catch-all at
-// the bottom of this file — the same path /about already took. Keeping fixed
-// routes here would shadow the database rows and quietly serve the old
-// hardcoded copy instead.
+// The short link to the Discord server — the one you can paste into a clan
+// chat or read out loud, which `discord.gg/<code>` is not.
+//
+// It resolves the invite per request from site settings rather than being a
+// literal URL here, and that is the whole point of the indirection: the
+// invite belongs to one server, so it lives in that environment's database
+// and never in this repository. Replacing a revoked invite is then a form
+// field, not a deploy.
+//
+// 404 when nothing is set, rather than a redirect home. A short link that
+// silently lands somewhere else is worse than one that admits it is not a
+// page — this is also what an old link does after the setting is cleared.
+Route::get('/discord', function () {
+    $invite = Setting::get('discord_invite_url');
+
+    abort_if(! $invite, 404);
+
+    // away(), not to(): the target is another origin, and to() would prefix
+    // it with this app's own. Safe to send off-site unvalidated because the
+    // value is not user input — only an admin can write it, and the form
+    // validates it as an http/https URL before it is stored.
+    return redirect()->away($invite);
+})->name('discord');
+
+// /privacy and /terms are CMS pages, resolved by the /{page} catch-all at the
+// bottom of this file. Keeping fixed routes here would shadow the database
+// rows and quietly serve the old hardcoded copy instead. /about took the same
+// path until 2026-09-07 and has gone back to a fixed route above, for reasons
+// that are about that page rather than about this arrangement.
 
 // Snakes & Ladders was the whole product, so the app said "boards"
 // everywhere. It is becoming one event type among several (ROADMAP phase 5),

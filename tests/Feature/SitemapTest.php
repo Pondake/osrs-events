@@ -30,7 +30,7 @@ class SitemapTest extends TestCase
     {
         $response = $this->get('/sitemap.xml');
 
-        foreach (['/osrs-snakes-and-ladders', '/osrs-clan-events', '/osrs-event-ideas', '/osrs-bingo', '/osrs-skill-race', '/osrs-drop-race', '/events'] as $path) {
+        foreach (['/osrs-snakes-and-ladders', '/osrs-clan-events', '/osrs-event-ideas', '/osrs-bingo', '/osrs-skill-race', '/osrs-drop-race', '/events', '/about'] as $path) {
             $response->assertSee(url($path), false);
         }
     }
@@ -38,9 +38,9 @@ class SitemapTest extends TestCase
     #[Test]
     public function it_lists_published_cms_pages(): void
     {
-        Page::create(['slug' => 'about', 'title' => 'About', 'is_published' => true, 'blocks' => []]);
+        Page::create(['slug' => 'colophon', 'title' => 'Colophon', 'is_published' => true, 'blocks' => []]);
 
-        $this->get('/sitemap.xml')->assertSee(url('/about'), false);
+        $this->get('/sitemap.xml')->assertSee(url('/colophon'), false);
     }
 
     #[Test]

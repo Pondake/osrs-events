@@ -112,23 +112,24 @@ class SiteLockTest extends TestCase
         $this->get('/osrs-bingo')->assertOk();
         $this->get('/osrs-skill-race')->assertOk();
         $this->get('/osrs-drop-race')->assertOk();
+        $this->get('/about')->assertOk();
         $this->get('/sitemap.xml')->assertOk();
     }
 
-    /** Including the CMS pages, which is where About and Privacy live. */
+    /** Including the CMS pages, which is where Privacy and Terms live. */
     #[Test]
     public function a_published_cms_page_stays_open_too(): void
     {
         $this->lock();
 
         Page::create([
-            'slug' => 'about',
+            'slug' => 'colophon',
             'title' => 'About us',
             'is_published' => true,
             'blocks' => [['type' => 'paragraph', 'text' => 'We run clan events.']],
         ]);
 
-        $this->get('/about')->assertOk();
+        $this->get('/colophon')->assertOk();
     }
 
     /**

@@ -38,6 +38,10 @@ class SitemapController extends Controller
         '/osrs-bingo' => ['priority' => '0.9', 'changefreq' => 'monthly'],
         '/osrs-skill-race' => ['priority' => '0.9', 'changefreq' => 'monthly'],
         '/osrs-drop-race' => ['priority' => '0.9', 'changefreq' => 'monthly'],
+        // Listed here rather than picked up as a CMS row: /about stopped
+        // being one on 2026-09-07. Lower priority than the guides, which are
+        // what the search traffic is actually for.
+        '/about' => ['priority' => '0.5', 'changefreq' => 'monthly'],
     ];
 
     public function __invoke(): Response

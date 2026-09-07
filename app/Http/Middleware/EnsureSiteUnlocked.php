@@ -105,9 +105,16 @@ class EnsureSiteUnlocked
         'landing.skill-race',
         'landing.drop-race',
         'pages.show',
+        // Off the CMS since 2026-09-07, so it no longer arrives through
+        // `pages.show` and needs naming here in its own right.
+        'about',
         // The one page written FOR the person standing at the door. Behind
         // it, it would only ever be read by people already through.
         'beta',
+        // The Discord short link, for the same reason and more sharply: the
+        // server is where somebody without the password goes to ask for it.
+        // A door that redirects that link back to itself is a closed loop.
+        'discord',
         'sitemap',
         // The catch-all miss. A locked site should answer a dead URL the same
         // way an open one does — and it already did for single-segment paths,

@@ -10,8 +10,25 @@ use Inertia\Response;
 class LandingController extends Controller
 {
     /**
-     * The home page is **partly** editable, unlike /about, /privacy and
-     * /terms which are wholly CMS documents.
+     * The `/about` feature grid: an icon per `about.feature_<key>_*` pair.
+     *
+     * Kept as keys plus icons rather than resolved copy, so the strings stay
+     * in lang/en.json where every other user-visible string lives and this
+     * list only says which ones the page shows, and in what order.
+     */
+    private const ABOUT_FEATURES = [
+        'boards' => 'i-lucide-grid-3x3',
+        'dice' => 'i-lucide-dice-6',
+        'tasks' => 'i-lucide-check-square',
+        'discord' => 'i-lucide-message-circle',
+        'dark' => 'i-lucide-moon',
+        'free' => 'i-lucide-heart',
+    ];
+
+    /**
+     * The home page is **partly** editable, unlike /privacy and /terms which
+     * are wholly CMS documents. (/about was a third until 2026-09-07; see
+     * about() below for why it is a component now.)
      *
      * The copy an admin should be able to change — the hero headline and
      * standfirst, plus a free content region — comes from a `pages` row.
@@ -34,6 +51,43 @@ class LandingController extends Controller
                 'subtitle' => $page->subtitle,
                 'blocks' => $page->blocks ?? [],
             ],
+        ]);
+    }
+
+    /**
+     * `/about`, written in code rather than stored as a CMS document.
+     *
+     * It was a `pages` row until 2026-09-07, and it moved for the same two
+     * reasons the six guide pages did in commit 909fdd9. The shape: the CMS
+     * vocabulary renders through u-page/u-page-section, @nuxt/ui's
+     * marketing-page components, which is the wrong form for a page somebody
+     * reads to find out what this is. And the reach: PageSeeder plants that
+     * row with firstOrCreate and then never touches it again, so editing the
+     * seeder changed nothing on any environment that had already run — the
+     * copy served here had drifted a full rewrite behind the repository, and
+     * nobody could tell from the code.
+     *
+     * That second one is why this move happened NOW rather than whenever the
+     * layout annoyed somebody enough: the page published a personal email
+     * address, and taking it out of a seeder that reaches nothing would have
+     * removed it from the repository while leaving it on the site.
+     *
+     * A leftover `about` row is handled the same way the guides' rows are —
+     * Page::PARTIAL_SLUGS keeps it out of the CMS inventory and out of the
+     * `/{page}` catch-all, so it stops being served without needing a
+     * migration to delete it.
+     */
+    public function about(): Response
+    {
+        return Inertia::render('About', [
+            'features' => collect(self::ABOUT_FEATURES)
+                ->map(fn (string $icon, string $key) => [
+                    'icon' => $icon,
+                    'title' => trans("about.feature_{$key}_title"),
+                    'description' => trans("about.feature_{$key}_desc"),
+                ])
+                ->values()
+                ->all(),
         ]);
     }
 
