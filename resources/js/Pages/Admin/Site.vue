@@ -209,6 +209,20 @@
                 >
                     <u-input v-model="form.kofi_url" type="url" class="w-full" placeholder="https://ko-fi.com/yourname" />
                 </u-form-field>
+
+                <!-- Kept out of the repository on purpose — anyone holding an
+                     invite URL can walk into the server, so it lives here and
+                     nowhere a checkout would carry it. Blank is a valid
+                     answer: the pages that use it render no button at all
+                     rather than a link to nowhere. -->
+                <u-form-field
+                    :label="$t('admin.site_discord_invite')"
+                    :description="$t('admin.site_discord_invite_desc')"
+                    :error="form.errors.discord_invite_url"
+                    class="max-w-lg mt-6"
+                >
+                    <u-input v-model="form.discord_invite_url" type="url" class="w-full" placeholder="https://discord.gg/..." />
+                </u-form-field>
             </u-card>
 
             <u-card v-show="active === 'announcement'">
@@ -300,6 +314,7 @@ const form = useForm({
     default_dice_roll_limit: props.settings.default_dice_roll_limit,
     default_event_duration: props.settings.default_event_duration ?? '2w',
     kofi_url: props.settings.kofi_url ?? '',
+    discord_invite_url: props.settings.discord_invite_url ?? '',
     announcement: props.settings.announcement ?? '',
     announcement_type: props.settings.announcement_type ?? 'info',
     announcement_public: props.settings.announcement_public ?? false,

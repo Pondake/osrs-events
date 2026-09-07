@@ -280,6 +280,47 @@ concurrentieset is de bingo-tooling (`osrsbingohub.com`, `aiobingo.com`,
   pushnotificatie — via de `NotificationCategory`-catalogus en `PushNotifier`,
   volgens het patroon dat `CLAUDE.md` voor elke nieuwe categorie voorschrijft.
 
+- [x] ~~**Instructiepagina voor betatesters.**~~ — gebouwd 2026-09-07 op
+  `/beta` (`Beta.vue`, `LandingController::beta()`, `beta.*` in
+  `lang/en.json`). Zelfde `GuideLayout` als de zes guides, met de twee sporen
+  die de S&L-guide al hanteert: **Als host** (vijf stappen) en **Als speler**
+  (vier), plus binnenkomen, hoe je iets meldt, wat al bekend is en twee
+  huisregels.
+  **Publiek, en met opzet vóór de deur.** De link wordt in Discord uitgedeeld
+  aan mensen die het wachtwoord nog moeten intypen, dus een pagina áchter de
+  deur zou alleen leesbaar zijn voor wie hem niet meer nodig heeft — daarom
+  staat `beta` in `EnsureSiteUnlocked::PUBLIC_ROUTES`. Het wachtwoord staat er
+  niet op, en de pagina zegt dat ook.
+  **`noindex, follow`, en niet in de sitemap.** Een zoekresultaat naar een
+  gesloten beta kost een bezoeker een klik en levert hem niets; `follow` omdat
+  de guides waarnaar hij linkt wél geïndexeerd horen te worden.
+  **Nieuw: de setting `discord_invite_url`** (admin → Site settings → Support,
+  naast de Ko-fi-URL). De invite-URL hoort niet in deze repo — wie hem heeft
+  loopt de server binnen — dus hij staat in de database van de omgeving die
+  hem gebruikt. Leeg betekent geen knop, niet een knop naar niets. §7 hoeft
+  dat veld dus niet opnieuw te verzinnen voor het lock screen en de
+  landingspagina.
+  Geverifieerd tegen de echte SSR-output op `localhost:8010`: 200 met de deur
+  dicht en zonder sessie, `<meta name="robots" content="noindex, follow">` en
+  de canonical in de server-HTML, `/beta` afwezig uit `/sitemap.xml`, alle zes
+  ankers uit de zijbalk landen op een bestaande sectie, en de pagina leest op
+  375px. Zes tests in `BetaPageTest`; suite 856 groen.
+  **Wat er níet in zit:** het `noindex`-metatag zelf is niet in phpunit te
+  toetsen — die komt uit Inertia's SSR-render, die onder phpunit niet draait.
+  De docblock van die test legt uit waarom dat geen gat is maar een verkeerde
+  plek om te meten.
+  **Onderweg gevonden en gerepareerd:** de nieuwe setting liet
+  `EventDurationTest::an_admin_can_save_a_short_form` vallen — die helper
+  postte het formulier zonder het nieuwe veld, en de controller las de key
+  onvoorwaardelijk uit `$data`, waar een `nullable`-regel hem weglaat als de
+  request hem niet stuurt. Dat is een fatale fout die alsnog redirect zonder
+  validatiemeldingen: het formulier lijkt op te slaan en er wordt niets
+  geschreven. Nu `?? null`, en de helper stuurt het veld mee.
+  **Openstaand, apart gemeld:** de browserconsole logt op élke pagina —
+  homepage en bestaande guides incluis, dus los van deze pagina — meerdere
+  keren `TypeError: Cannot read properties of undefined (reading 'startsWith')`
+  uit Inertia's bundle. Niets is er zichtbaar stuk.
+
 ## 4. Vóór de RuneLite-plugin
 
 De teaser staat sinds 2026-08-30 in beide claimformulieren (uitgeschakeld, met
