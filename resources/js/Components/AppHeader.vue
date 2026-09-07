@@ -70,6 +70,7 @@
                     <u-button
                         v-if="item.to && !item.children"
                         :to="item.to"
+                        :active="isCurrent(item.to)"
                         :icon="item.icon"
                         color="neutral"
                         variant="ghost"
@@ -108,6 +109,7 @@
                     <u-popover v-else-if="item.children" mode="hover" :open-delay="300" :close-delay="200" :ui="{ content: 'p-1 w-56 z-[60]' }">
                         <u-button
                             :to="item.to"
+                            :active="isCurrent(item.to)"
                             :icon="item.icon"
                             trailing-icon="i-lucide-chevron-down"
                             color="neutral"
@@ -275,6 +277,38 @@ const { isAuthenticated, isAdmin } = useAuth();
 // those wrong.
 const page = useCurrentPage();
 const locked = computed(() => Boolean(page.value.props?.site?.locked));
+
+/**
+ * Whether a nav entry points at the page being viewed.
+ *
+ * Not just for the highlight — it is what stops Nuxt UI's Inertia ULink
+ * computing the answer itself. That override does:
+ *
+ *     if (props.active !== undefined) return props.active
+ *     ...
+ *     if (page.url.startsWith(href)) return true
+ *
+ * reading `usePage()` DIRECTLY, not the corrected page this file uses. The
+ * header renders as a sibling of, and before, the Inertia page component, so
+ * on the header's first render `page.url` is still undefined and that last
+ * line throws — every page load, for every link in here. It was reported as
+ * a render warning rather than a broken header because Vue catches it and
+ * the next render succeeds, which is exactly why it survived this long.
+ * Passing `active` explicitly returns on the first line and never reaches it.
+ * Same escape-hatch shape as the `to=""` on u-header above, one branch later.
+ *
+ * `startsWith` rather than equality, matching what the override would have
+ * done: /events stays lit on /events/<id>. `/` is exempt, or it would light
+ * up everywhere.
+ */
+const currentPath = computed(() => String(page.value.url ?? '').split('?')[0]);
+
+function isCurrent(to) {
+    if (! to) return false;
+    if (to === '/') return currentPath.value === '/';
+
+    return currentPath.value.startsWith(to);
+}
 
 // Which groups are expanded in the mobile drawer. A Set rather than a single
 // value so opening one does not close another — the drawer is a list you

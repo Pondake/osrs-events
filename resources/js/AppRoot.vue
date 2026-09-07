@@ -73,11 +73,18 @@
                             :label="$t('auth.osrs_recheck')"
                             @click="recheckOsrs"
                         />
+                        <!-- `:active="false"` short-circuits Nuxt UI's
+                             Inertia ULink before it reads `usePage().url` —
+                             undefined here, since this banner renders above
+                             the page component. See AppHeader's isCurrent().
+                             Nothing lost: the banner is hidden on the page
+                             this points at. -->
                         <u-button
                             size="xs"
                             color="neutral"
                             variant="ghost"
                             href="/settings/connections"
+                            :active="false"
                             :label="$t('auth.osrs_fix_name')"
                         />
                     </span>
