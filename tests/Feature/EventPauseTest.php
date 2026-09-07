@@ -840,15 +840,58 @@ class EventPauseTest extends TestCase
         $event = $this->event();
         $host = $this->host($event);
 
-        foreach (['http://127.0.0.1/admin', 'https://evil.test/api/webhooks/1/x', 'https://discord.com/api/guilds/1'] as $url) {
+        $refused = [
+            'http://127.0.0.1/admin',
+            'https://evil.test/api/webhooks/1/x',
+            'https://discord.com/api/guilds/1',
+            // A version segment in the wrong place is NOT here on purpose:
+            // `/api/webhooks/v10/1/x` is accepted, and always was, because
+            // this checks the path's prefix and not the shape of the id and
+            // token after it. Refusing it would mean validating those, which
+            // is a bigger promise than "only Discord's own webhook endpoints"
+            // and one more way to refuse a URL that actually works.
+        ];
+
+        foreach ($refused as $url) {
             $this->actingAs($host)
                 ->patch("/events/{$event->id}", ['title' => 'Still here', 'discord_webhook_url' => $url])
                 ->assertSessionHasErrors('discord_webhook_url');
         }
 
-        $this->actingAs($host)
-            ->patch("/events/{$event->id}", ['title' => 'Still here', 'discord_webhook_url' => 'https://discord.com/api/webhooks/1/x'])
-            ->assertSessionHasNoErrors();
+        // Both spellings Discord itself hands out. The versioned one was
+        // refused until 2026-09-07, which told a host to go and copy a URL
+        // they had already copied correctly — see DiscordAnnouncer.
+        $accepted = [
+            'https://discord.com/api/webhooks/1/x',
+            'https://discord.com/api/v10/webhooks/1/x',
+            'https://discord.com/api/v9/webhooks/1/x',
+        ];
+
+        foreach ($accepted as $url) {
+            $this->actingAs($host)
+                ->patch("/events/{$event->id}", ['title' => 'Still here', 'discord_webhook_url' => $url])
+                ->assertSessionHasNoErrors();
+        }
+    }
+
+    /**
+     * And the announcer's own half of the same rule, which is the one a
+     * request that never went through the form meets — a seeder, tinker, or
+     * anything added later that writes the column directly.
+     */
+    #[Test]
+    public function a_versioned_webhook_url_is_posted_to_like_any_other(): void
+    {
+        Notification::fake();
+        Http::fake(['discord.com/*' => Http::response('', 204)]);
+        Setting::set('discord_webhooks_enabled', true);
+
+        $event = $this->event();
+        $event->forceFill(['discord_webhook_url' => 'https://discord.com/api/v10/webhooks/123/abc'])->save();
+
+        $this->pause($this->host($event), $event);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://discord.com/api/v10/webhooks/123/abc');
     }
 
     // ---------------------------------------------------------- deleting

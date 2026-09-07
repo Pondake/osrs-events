@@ -45,6 +45,17 @@ class DiscordAnnouncer
      * primitive if anything at all is accepted. Validation on the form says
      * the same thing (BoardController::update); this is the half that cannot
      * be skipped by a request that never went through the form.
+     *
+     * **Both spellings of the path.** Discord's REST API is versioned in the
+     * URL, so one webhook has two equally real addresses: `/api/webhooks/…`
+     * and `/api/v10/webhooks/…`. The *Copy Webhook URL* button gives the
+     * unversioned one, which is why this went unnoticed — but a URL that came
+     * from anywhere else (Discord's own docs, a bot library, anything built
+     * from an API response) carries the version, and refusing it told a host
+     * to go and copy the URL they had already copied correctly. The version
+     * number is left open rather than pinned to 10: Discord ships new ones,
+     * and the part that actually matters for safety is the host allow-list
+     * above plus the `webhooks/` segment.
      */
     public static function isValidUrl(?string $url): bool
     {
@@ -56,7 +67,7 @@ class DiscordAnnouncer
 
         return ($parts['scheme'] ?? null) === 'https'
             && in_array($parts['host'] ?? null, ['discord.com', 'discordapp.com', 'ptb.discord.com', 'canary.discord.com'], true)
-            && str_starts_with($parts['path'] ?? '', '/api/webhooks/');
+            && preg_match('#^/api/(v\d+/)?webhooks/#', $parts['path'] ?? '') === 1;
     }
 
     /**
