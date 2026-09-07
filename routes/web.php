@@ -131,6 +131,13 @@ Route::get('/osrs-bingo', [LandingController::class, 'bingo'])->name('landing.bi
 Route::get('/osrs-skill-race', [LandingController::class, 'skillRace'])->name('landing.skill-race');
 Route::get('/osrs-drop-race', [LandingController::class, 'dropRace'])->name('landing.drop-race');
 
+// The beta tester's page. Public on purpose although it describes a closed
+// beta: the link is handed out in Discord to people who have not typed the
+// shared password yet, so a page behind the door would only be readable by
+// the people who no longer need it. It carries `noindex` instead — see
+// Beta.vue — and is deliberately absent from SitemapController.
+Route::get('/beta', [LandingController::class, 'beta'])->name('beta');
+
 // /privacy and /terms are CMS pages now, resolved by the /{page} catch-all at
 // the bottom of this file — the same path /about already took. Keeping fixed
 // routes here would shadow the database rows and quietly serve the old

@@ -38,6 +38,46 @@ class LandingController extends Controller
     }
 
     /**
+     * The beta tester's page.
+     *
+     * Same shape as the guide pages — the step arrays are built here from
+     * i18n keys rather than hardcoded in the component, which is the rule
+     * snakesAndLadders() below had to be corrected into.
+     *
+     * No `$faqs`, no JSON-LD and no sitemap entry: this page carries
+     * `noindex` (see Beta.vue) because it describes a closed beta, and
+     * structured data on a page nobody should reach from a search result is
+     * work spent on an audience that will not arrive.
+     */
+    public function beta(): Response
+    {
+        $accessSteps = collect(range(1, 3))->map(fn ($i) => [
+            'title' => trans("beta.access_step{$i}_title"),
+            'description' => trans("beta.access_step{$i}_desc"),
+        ])->all();
+
+        $hostSteps = collect(range(1, 5))->map(fn ($i) => [
+            'title' => trans("beta.host_step{$i}_title"),
+            'description' => trans("beta.host_step{$i}_desc"),
+        ])->all();
+
+        $playerSteps = collect(range(1, 4))->map(fn ($i) => [
+            'title' => trans("beta.player_step{$i}_title"),
+            'description' => trans("beta.player_step{$i}_desc"),
+        ])->all();
+
+        return Inertia::render('Beta', [
+            'accessSteps' => $accessSteps,
+            'hostSteps' => $hostSteps,
+            'playerSteps' => $playerSteps,
+            'expectations' => collect(range(1, 3))->map(fn ($i) => trans("beta.what_point{$i}"))->all(),
+            'reportPoints' => collect(range(1, 5))->map(fn ($i) => trans("beta.report_point{$i}"))->all(),
+            'knownIssues' => collect(range(1, 4))->map(fn ($i) => trans("beta.known_point{$i}"))->all(),
+            'groundRules' => collect(range(1, 2))->map(fn ($i) => trans("beta.rules_point{$i}"))->all(),
+        ]);
+    }
+
+    /**
      * SEO-heaviest of the three Nuxt landing pages — the one the prototype
      * was scoped to, since it carries both FAQPage and HowTo JSON-LD plus a
      * full meta/canonical/OG set. Mirrors the shape of

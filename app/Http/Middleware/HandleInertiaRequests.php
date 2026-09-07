@@ -125,6 +125,13 @@ class HandleInertiaRequests extends Middleware
                 // field at all. Shared for the same reason the board defaults
                 // are: that form opens from three different places.
                 'discordWebhooksEnabled' => (bool) Setting::get('discord_webhooks_enabled'),
+                // The Discord invite, shared site-wide because the places
+                // that want it are the public ones — the beta page, and the
+                // lock screen and landing page as they grow a link. Not
+                // withheld behind the door the way the announcement is: an
+                // invite is meant to be handed to strangers, which is the
+                // opposite of a secret.
+                'discordInviteUrl' => Setting::get('discord_invite_url'),
                 // Only the ones an admin overrode, keyed by metric. The
                 // committed pet sprites are already known client-side
                 // (Support/bossIcons.js, generated alongside the files), so

@@ -79,6 +79,14 @@ class Setting extends Model
         // nowhere, and the profile is not something that changes often enough
         // to be worth that failure mode.
         'kofi_url' => 'https://ko-fi.com/pondake',
+        // The Discord invite, for every "come and ask us" link on the site —
+        // the beta page's own, and whatever the landing and lock screens
+        // grow. A setting rather than a constant BECAUSE it is an invite
+        // URL: anyone holding one can walk into the server, so it belongs in
+        // the database of the environment that uses it and never in this
+        // repository. Null renders no button at all, which is the honest
+        // state on a fresh install rather than a link to nowhere.
+        'discord_invite_url' => null,
         // A shared password in front of the whole site for the pre-launch
         // stretch — see EnsureSiteUnlocked. The password is stored hashed
         // under site_lock_password and is never read back into a form; the

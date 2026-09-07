@@ -110,3 +110,20 @@ vulcopy.
   verder moet dekken is nooit uitgeschreven; er is steeds per stuk bijgebouwd.
   Verdient één keer goed nadenken in plaats van nog een gok — maar pas als er
   een aanleiding is, anders is het een ontwerp zonder gebruiker.
+- **De guides en `/beta` naar de CMS, zonder dat ze lelijker worden.** Alle
+  zeven zijn statische Vue-pagina's, en dat is twee keer bewust gekozen: de
+  guides toen ze van `u-page-section` naar de huidige layout werden herschreven
+  (zie `LandingController::snakesAndLadders()`, waar de FAQ ooit uit een
+  `pages`-rij kwam), en `/beta` op 2026-09-07 opnieuw. De reden is beide keren
+  dezelfde: de blokkenwoordenschat kan de twee-sporenlayout, de zijbalk en de
+  quick facts niet, en een pagina die je in één bestand kunt lezen is makkelijker
+  te herontwerpen dan een documentmodel.
+  **Wat het zou opleveren is echt**: `/beta` verandert tijdens een beta wekelijks,
+  en nu is elke tekstwijziging een commit plus een deploy met twee builds.
+  **Wat er eerst moet gebeuren**, en dit is de kern van het idee: de vraag is
+  niet "zet die tekst in de database" maar **welke blokken de CMS mist** om deze
+  layout te halen zonder in te leveren op hoe hij eruitziet. Minstens: een
+  twee-sporenblok met eigen nummering per spoor, iets voor de zijbalksecties en
+  de quick-facts-tabel, en een `is_indexable`-vlag — die laatste ontbreekt sowieso
+  en houdt nu elke gepubliceerde CMS-pagina automatisch in de sitemap
+  (`SitemapController`), wat voor een betapagina precies verkeerd is.

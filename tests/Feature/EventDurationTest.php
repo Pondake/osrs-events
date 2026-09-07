@@ -178,6 +178,7 @@ class EventDurationTest extends TestCase
             'default_dice_roll_limit' => null,
             'default_event_duration' => '2w',
             'kofi_url' => 'https://ko-fi.com/pondake',
+            'discord_invite_url' => null,
             'announcement' => null,
             'announcement_type' => 'info',
             'announcement_public' => false,

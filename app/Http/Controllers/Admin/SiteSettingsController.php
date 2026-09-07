@@ -75,6 +75,10 @@ class SiteSettingsController extends Controller
             // will accept anyway — better to reject it at the form than to
             // store a value that silently renders as no button at all.
             'kofi_url' => ['required', 'url:http,https', 'max:255'],
+            // Nullable where kofi_url is required: there is no sensible
+            // default for an invite that belongs to one server, and a blank
+            // field renders no button rather than a broken one.
+            'discord_invite_url' => ['nullable', 'url:http,https', 'max:255'],
             'discord_webhooks_enabled' => ['required', 'boolean'],
             'site_lock_enabled' => ['required', 'boolean'],
             'admin_lockdown_enabled' => ['required', 'boolean'],
@@ -93,6 +97,7 @@ class SiteSettingsController extends Controller
             // Without this the message reads "The kofi url field ...", from
             // Laravel's snake_case-to-words fallback.
             'kofi_url' => __('admin.site_kofi_url'),
+            'discord_invite_url' => __('admin.site_discord_invite'),
         ]);
 
         // Only the validated keys are written, so the request can't
@@ -100,6 +105,14 @@ class SiteSettingsController extends Controller
         $values = [
             ...$data,
             'announcement' => $data['announcement'] ?: null,
+            // An empty field means "there is no invite", not "store an empty
+            // string" — the pages that render it check for null. `?? null`
+            // rather than a bare index because a `nullable` rule leaves the
+            // key out of $data entirely when the request omitted it, and
+            // reading it unconditionally turns that into a fatal error that
+            // still redirects with no validation messages: the form looks
+            // like it saved and nothing was written.
+            'discord_invite_url' => ($data['discord_invite_url'] ?? null) ?: null,
         ];
 
         // Hashed on the way in, and dropped from the write entirely when the

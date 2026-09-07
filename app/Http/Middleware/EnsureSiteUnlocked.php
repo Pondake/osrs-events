@@ -105,6 +105,9 @@ class EnsureSiteUnlocked
         'landing.skill-race',
         'landing.drop-race',
         'pages.show',
+        // The one page written FOR the person standing at the door. Behind
+        // it, it would only ever be read by people already through.
+        'beta',
         'sitemap',
         // The catch-all miss. A locked site should answer a dead URL the same
         // way an open one does — and it already did for single-segment paths,
