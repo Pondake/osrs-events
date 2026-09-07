@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AuditLog;
 use App\Models\Page;
 use App\Support\LegalPages;
+use Carbon\CarbonInterval;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -121,6 +122,29 @@ class LegalPagesTest extends TestCase
             AuditLog::retentionDays().' days',
             $text,
             'The privacy page must state the audit retention period from config/audit.php.',
+        );
+    }
+
+    /**
+     * The second promise, added 2026-09-07.
+     *
+     * Sessions carry an IP address and a user-agent, so how long one is kept
+     * is a retention period like the audit log's — and it was the half of
+     * "retention beyond the audit log" that needed no code, because
+     * `config/session.php` already had the number and only the page was
+     * silent. Pinned the same way, so lowering SESSION_LIFETIME without
+     * touching the copy fails here rather than quietly making the page
+     * overstate what is kept.
+     */
+    #[Test]
+    public function the_privacy_page_states_how_long_an_idle_session_is_kept(): void
+    {
+        $text = json_encode(LegalPages::privacy());
+
+        $this->assertStringContainsString(
+            CarbonInterval::minutes((int) config('session.lifetime'))->cascade()->forHumans(),
+            $text,
+            'The privacy page must state the session lifetime from config/session.php.',
         );
     }
 

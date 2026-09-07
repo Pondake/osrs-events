@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Carbon\CarbonInterval;
+
 /**
  * The text of `/privacy` and `/terms`, in one place.
  *
@@ -24,6 +26,27 @@ namespace App\Support;
 final class LegalPages
 {
     public const SLUGS = ['privacy', 'terms'];
+
+    /**
+     * How long an idle session survives, in words.
+     *
+     * Read from config rather than typed into the copy, for the same reason
+     * the audit log's ninety days is: it is a retention period stated as a
+     * promise, and a promise that can drift away from `config/session.php`
+     * without anything failing is worse than no promise. LegalPagesTest pins
+     * the two together.
+     *
+     * The number is the session driver's own — Laravel's database handler
+     * deletes rows whose last activity is older than this. Push
+     * subscriptions have no equivalent, because nothing prunes them, which
+     * is why this page states a period for one and not the other.
+     */
+    private static function sessionLifetime(): string
+    {
+        return CarbonInterval::minutes((int) config('session.lifetime'))
+            ->cascade()
+            ->forHumans();
+    }
 
     /** @return array<int, array<string, mixed>> */
     public static function privacy(): array
@@ -51,7 +74,7 @@ final class LegalPages
                 'type' => 'section',
                 'props' => ['title' => 'Staying signed in'],
                 'blocks' => [
-                    ['type' => 'prose', 'props' => ['text' => 'Being logged in means a session record, and a session record includes **your IP address and your browser\'s user-agent string** alongside your account. It is deleted when you log out, and expires by itself if you do not come back. Admin actions are recorded with an IP address too — see below.']],
+                    ['type' => 'prose', 'props' => ['text' => 'Being logged in means a session record, and a session record includes **your IP address and your browser\'s user-agent string** alongside your account. It is deleted when you log out, and a session you leave alone is discarded after **'.self::sessionLifetime().' of inactivity** — that is the whole of how long it is kept. Admin actions are recorded with an IP address too — see below.']],
                 ],
             ],
             ['type' => 'separator', 'props' => []],

@@ -158,8 +158,13 @@ van deze is juridisch advies, en de eerste twee zijn oordeelsvragen en geen
 implementatievragen. `docs/legal-review.md` houdt de toegepaste wijzigingen en
 de kleinere open vragen bij.
 
-- [ ] **Gelicenseerde policy-bronnen bekijken in plaats van nog meer met de
-  hand schrijven.** De huidige tekst is uit het schema geschreven: dat is zijn
+- [x] **Gelicenseerde policy-bronnen bekijken in plaats van nog meer met de
+  hand schrijven.** — besloten 2026-09-07: **niet overnemen, hooguit de
+  indeling lenen**, precies de helft die hieronder al de voorkeur had. Geen
+  tekstwijziging; wat dit item opleverde is de licentiecontrole eronder, en de
+  reden om er niet nog een ronde in te steken.
+  De oorspronkelijke afweging, bewaard omdat hij nog geldt:
+  De huidige tekst is uit het schema geschreven: dat is zijn
   kracht en zijn plafond — hij beschrijft deze app precies en mist alle
   structuur en jurisdictie-boilerplate die een template meebrengt. **De eerste
   beslissing is welke helft waarvandaan komt**: houd de accurate beschrijving
@@ -221,6 +226,17 @@ de kleinere open vragen bij.
   `PushSubscription`, een `config/push.php`-waarde, het model erbij in de
   schedule — en `last_used_at` staat al op de tabel, dus "zoveel dagen niet
   gebruikt" is meteen de bruikbaarste maat.
+  **De sessiehelft is af (2026-09-07).** "Staying signed in" zegt nu dat een
+  sessie die je met rust laat na 2 uur inactiviteit verdwijnt, en dat dat de
+  hele bewaartermijn is. Het getal komt uit `config/session.php` in plaats van
+  dat het is ingetypt: `LegalPages::sessionLifetime()` leest het en
+  `LegalPagesTest::the_privacy_page_states_how_long_an_idle_session_is_kept`
+  pint het vast, dezelfde constructie als de 90 dagen van de audit log — wie
+  `SESSION_LIFETIME` verlaagt zonder de tekst aan te raken krijgt een rode
+  test in plaats van een pagina die te veel belooft. Bevestigd op
+  `localhost:8010/privacy` na `pages:sync-legal`.
+  **Push-subscriptions blijven open**, want dat is de helft die eerst code
+  vraagt; daarom staat dit item nog op `[ ]`.
 
 ## 2. SEO — on-page werk
 
