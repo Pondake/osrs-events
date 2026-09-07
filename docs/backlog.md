@@ -580,6 +580,57 @@ noot.
      een queue nodig heeft — noteer het antwoord hier, en bouw het niet
      tijdens de test.
 
+- [ ] **De `startsWith`-TypeError in de console op elke pagina — hier niet te
+  reproduceren, dus hij moet gevangen worden waar hij optreedt.** Gemeld
+  2026-09-07: `TypeError: Cannot read properties of undefined (reading
+  'startsWith')`, meerdere keren per paginalading, op `/`,
+  `/osrs-snakes-and-ladders` en `/beta`, in een productiebuild met de
+  SSR-daemon actief.
+
+  *Wat uitgezocht is (2026-09-07):* het frame wijst naar
+  `build/assets/inertia-C-vFvfZ4.js`. Die hash is ná een verse `pnpm build`
+  ongewijzigd, dus dit is exact het bestand dat gemeld werd. Het is een
+  vendorchunk (Vue 3.5.41, axios 1.19.0, `@inertiajs/core` 2.3.27,
+  `@inertiajs/vue3` 2.3.27) — géén app-code, en **niet** de ULink-bug die
+  bovenaan `Components/AppHeader.vue` beschreven staat: `page.url.startsWith(...)`
+  van `@nuxt/ui`'s Inertia-`Link` zit in `Button-*.js`, een andere chunk.
+
+  De chunk heeft precies veertien `.startsWith(`-aanroepen. Via de sourcemap
+  teruggelegd op hun bron blijven er twee over die op *data* werken in plaats
+  van op een prop-, attribuut- of eventnaam (die zijn per constructie een
+  string), en die niet al een `typeof`-guard voor zich hebben staan zoals de
+  drie in axios:
+
+  - `@inertiajs/core` `buildDOMElement()` — `e.startsWith('<script ')` over de
+    lijst head-elementen.
+  - `@inertiajs/vue3` `addTitleElement()` — `e.find(e => e.startsWith('<title'))`.
+
+  De drie in Inertia's `mergeDataIntoQueryString` doen eerst `t.toString()` en
+  zouden dus een ándere melding geven ("reading 'toString'"), dus die vallen af.
+
+  *Wat het waarschijnlijk kost:* weinig. `buildDOMElement()` draait binnen de
+  gedebouncete `update()` van de head manager, in een `setTimeout` — een
+  exception daar is onafgevangen (vandaar de console) maar breekt geen render;
+  hij laat één flush van de `<head>`-tags vallen, en de volgende zet ze alsnog.
+  Dat past op "meerdere keren per lading, niets zichtbaar stuk". `addTitleElement()`
+  draait wél in de render van `<Head>`, en zou de meta van die pagina hélemaal
+  wegnemen — dus als het die is, is het geen cosmetisch probleem maar een
+  SEO-probleem. Welke van de twee het is, is niet vastgesteld.
+
+  *Waarom het hier bleef staan:* niet reproduceerbaar in de browserpane, op de
+  build van 11:02 met SSR-daemon actief, uitgelogd én ingelogd, op alle drie de
+  gemelde pagina's, op 1440×900 en op mobiel, met de errorcapture bewezen werkend
+  (een expres gegooide `startsWith` op undefined kwam wél binnen). Wat hier niet
+  na te bootsen was: een sessie mét de ADMIN-rol, en een geregistreerde service
+  worker (registratie faalt in de sandbox).
+
+  *Wat er klaarstaat:* `vite.config.js` heeft nu `build.sourcemap` achter
+  `VITE_SOURCEMAP=1`, en de build die er nu staat is ermee gemaakt. Reproduceer
+  hem opnieuw en de console noemt bestand + regel in de originele bron in plaats
+  van een kolom in een geminificeerde chunk. Plak die regel hier, dan is het
+  binnen een minuut een fix in plaats van een analyse. Bouw daarna zonder de
+  env-var terug, zodat er geen sourcemaps naast een deploy komen te liggen.
+
 ## 6. Klein werk
 
 - [x] **De dode `privacy.*`-sleutels uit `lang/en.json`.** — opgeruimd
