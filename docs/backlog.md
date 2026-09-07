@@ -507,10 +507,46 @@ De premisse is opnieuw gemeten op 2026-09-07 en staat nog: met één
 dezelfde origin in 12 seconden niets terug. Gotcha 15 is geen historische
 noot.
 
-- [ ] **Multi-viewertest** (geclaimd 2026-08-23). Twee echte browsers, één
-  host en één speler, pauzeren en hervatten terwijl beiden kijken. Dat is de
-  ene claim die niet vanuit `artisan serve` te maken is, en hij dekt meteen
-  het gat dat de fingerprint-ronde openliet.
+- [ ] **Multi-viewertest** (geclaimd 2026-08-23, **van de eigenaar** sinds
+  2026-09-07). Twee echte browsers, één host en één speler, pauzeren en
+  hervatten terwijl beiden kijken. Dat is de ene claim die niet vanuit
+  `artisan serve` te maken is, en hij dekt meteen het gat dat de
+  fingerprint-ronde openliet.
+
+  **Voor de sessie die dit oppakt: jij draait deze test niet.** Er zijn twee
+  mensen voor nodig en de eigenaar is er één van. Wat je wél doet, in deze
+  volgorde:
+
+  1. *Controleer de omgeving vóór je iemand laat beginnen.* Vier commando's,
+     allemaal read-only, en elk ervan heeft deze test al een keer op een
+     verkeerd been gezet:
+     ```bash
+     curl -s -o /dev/null -w "%{http_code} %{size_download}\n" https://staging.osrs-events.com/
+     ```
+     200 en ~95KB betekent dat SSR echt rendert. Rond de 44KB en je kijkt
+     naar een lege shell — dan is het SSR-proces niet herstart na de deploy
+     (gotcha 16), en meet je niets. Daarna:
+     ```bash
+     curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" https://staging.osrs-events.com/events
+     ```
+     Een 302 naar `/locked` betekent dat de pre-launch deur aanstaat. Dat is
+     géén blokkade voor deze test — wie is ingelogd loopt er van elke rol
+     doorheen — maar het tweede account moet dan al bestaan, want dezelfde
+     deur weigert registratie met opzet. Controleer verder of de commit die
+     je wilt testen er echt op staat (draait staging op `develop`, en is dat
+     `develop` van vandaag?), en of de suite groen is: `php artisan test`.
+  2. *Zeg wat er nodig is en wacht.* De eigenaar heeft nodig: een tweede
+     persoon, en een tweede account dat al bestaat. Vraag beide op voordat
+     je iets klaarzet, niet halverwege.
+  3. *Kijk mee terwijl het draait, als daarom gevraagd wordt.* Nuttig en
+     read-only: `laravel.log` op staging voor exceptions tijdens de pauze, en
+     of het aantal open fpm-workers meeloopt met het aantal kijkers — twee
+     streams horen twee workers te houden, dat is de kost die
+     `EventStreamController` in zijn eigen commentaar noemt.
+  4. *Schrijf op wat eruit kwam, hier in dit item.* Wat je zag, met getallen:
+     hoeveel seconden tot de banner verscheen, of de indicator Live bleef,
+     wat er in de console stond. En laat het vinkje met rust — een `[x]`
+     hier zet de eigenaar, niemand anders.
 
   *Wat inmiddels in de suite vastligt* (2026-09-07, `EventPauseTest`) — geen
   vervanging voor de test hieronder, wel het deel dat niet meer met de hand
@@ -524,9 +560,10 @@ noot.
   en terug ging. Wat daar níet mee bewezen is, is het hele punt: twee
   gelijktijdige streams.
 
-  *Draaiboek.* Twee gescheiden cookiejars — bij voorkeur twee mensen op twee
-  machines, anders Chrome (host) naast Firefox (speler); incognito naast
-  gewoon werkt ook maar bewijst minder over een tweede machine.
+  *Draaiboek — dit doe jij, met de tweede persoon.* Twee gescheiden
+  cookiejars: bij voorkeur twee mensen op twee machines. Chrome (host) naast
+  Firefox (speler) op één machine kan ook; incognito naast gewoon werkt maar
+  bewijst het minst, want dan deelt alles nog steeds één netwerkstack.
   1. Host: maak op staging een `SNAKES_LADDERS`-event, `access_mode` OPEN,
      lopend (startdatum in het verleden, einddatum in de toekomst).
   2. Speler: log in met een tweede account — een e-mailregistratie is genoeg,
@@ -786,7 +823,7 @@ noot.
 
 ## 6. Klein werk
 
-- [ ] **`text-*` op een kop doet niets — gemeten, niet vermoed.** Tailwind v4's
+- [x] **`text-*` op een kop doet niets — gemeten, niet vermoed.** Tailwind v4's
   preflight zet `h1`–`h3` op `font-size: inherit`, en `app.css` herstelt ze met
   gewone element-regels. Die regels staan **buiten elke cascade layer**, terwijl
   utility classes erin staan — en unlayered CSS wint altijd van layered CSS,
@@ -806,11 +843,30 @@ noot.
   vraagt `text-xl` en krijgt 30px, `Boards/Index` en `Community/Index` vragen
   `text-xl` op h2 en krijgen 24px, `OnboardingModal` zes keer `text-lg` op h3
   en krijgt 20px. De overige 10 vragen toevallig precies de element-default.
-  Twee manieren, en de keuze is de helft van het werk: de element-regels in
-  `app.css` in `@layer base` zetten — één plek, en alle 27 krimpen in één klap
-  naar wat er staat — of per geval de maat op een element zetten dat geen kop
-  is, zoals `About.vue` nu doet. De eerste is de goede; hij verandert wel het
-  uiterlijk van 16 bestanden tegelijk, dus die wil je naast elkaar zien.
+  **Opgelost 2026-09-07:** de drie element-regels staan nu in `@layer base` in
+  `app.css`. Eén wijziging, en alle 27 nemen aan wat er in de class staat. Twee
+  alternatieven die eruitzien als een fix en het niet zijn, staan in de comment
+  erboven: `:where(h1)` maakt de specificiteit nul maar blijft ongelayerd en
+  wint dus nog steeds, en `!` op de utility lost één plek op en laat de val
+  staan.
+
+  **Waarom het zo scheef liep.** De regels landen op 2026-08-18 (`82e6629`,
+  het theming-werk) om Tailwind's preflight terug te draaien — goed instinct,
+  verkeerde plek. Vanaf dat moment deed elke `text-*` op een kop niets, en
+  alles wat erna geschreven is (AdminLayout twee dagen later, de guides op
+  2026-08-27, OnboardingModal op 2026-09-03) heeft nooit gewerkt. Onder
+  Tailwind v3 zou exact dezelfde code wél goed zijn gegaan: utilities waren
+  toen platte CSS, dus een element-selector (0,0,1) verloor van een class
+  (0,1,0). v4 zet alles in cascade layers, en ongelayerde CSS wint daarvan
+  ongeacht specificiteit — dezelfde regels, tegenovergestelde uitkomst.
+
+  **Nagemeten na de fix**, `/osrs-bingo` en `/events`, productiebuild:
+  guide-h1 30 → 36px (de `sm:text-4xl` landt eindelijk), guide-h3 20 → 18px,
+  `Boards/Index`-h2 24 → 20px, h2 met `text-2xl` onveranderd op 24px.
+  **Niet visueel nagekeken:** de zes auth-pagina's, `AdminLayout`, `BossIcons`
+  en `ContentEdit` — die vragen om een adminaccount of een uitgelogde sessie,
+  en geen van beide was hier beschikbaar. De maten daar zijn zeker (de class
+  geldt nu), het uiterlijk niet.
 
 - [x] **De dode `privacy.*`-sleutels uit `lang/en.json`.** — opgeruimd
   2026-09-07. Achtendertig sleutels, de hele namespace, overgebleven van de
