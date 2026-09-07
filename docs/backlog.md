@@ -151,6 +151,20 @@ sindsdien negen dagen aan werk bijgekomen dat ook niet live staat.
   vierde verplicht veld toevoegen een ándere test liet vallen terwijl deze
   groen bleef. Nu compleet, met `assertSessionHasNoErrors()`.
 
+- [ ] **Bij het deployen: de site-instellingen die per omgeving gezet moeten
+  worden.** Ze staan in de database en niet in de repo — met opzet, want het
+  zijn per stuk dingen die bij één omgeving horen — dus een verse deploy heeft
+  ze geen van alle. Een lijst omdat dit precies het soort werk is dat je
+  vergeet tot iemand meldt dat er een knop mist:
+  - **Discord invite link** (admin → Site settings). Zonder deze rendert er
+    op de landingspagina, het lockscreen en `/beta` géén Discord-knop, en
+    `/discord` geeft 404. De permanente invite bestaat sinds 2026-09-07 (§7);
+    hij hoeft alleen geplakt te worden.
+  - **Ko-fi URL**, als de standaard niet klopt voor die omgeving.
+  - **Het gedeelde wachtwoord** van de pre-launch deur, plus de deur zelf aan.
+  - **VAPID-sleutels** voor push (`php artisan webpush:vapid`, één keer per
+    omgeving) — en nooit roteren op een omgeving die al draait.
+
 ## 1. Legal — de eigen pass van de eigenaar
 
 De pagina's zijn accuraat; dat was de technische helft. Dit is de andere. Geen
@@ -519,6 +533,14 @@ noot.
      een tweede Discord-account hoeft niet — en klik **Join**. Dat de speler
      deelnemer is doet ertoe: de mail en de push hangen aan
      `EventParticipant`, niet aan wie er kijkt.
+
+     **Maak dat tweede account vooraf aan.** De pre-launch deur staat op
+     staging aan (gemeten 2026-09-07: `/events` geeft anoniem 302 naar
+     `/locked`), en die weigert registratie met opzet — "een dichte deur die
+     sleutels uitdeelt is niet dicht". Inloggen mag wel, en iemand die is
+     ingelogd loopt er van elke rol dwars doorheen, dus zodra het account
+     bestaat staat de lock deze test verder niet in de weg. Alleen: de
+     speler kan zichzelf er niet aan helpen.
   3. Laat beide tabbladen **minstens 90 seconden** open vóór je iets doet. De
      server sluit elke stream na ~45s en de browser verbindt zelf opnieuw; een
      reconnect die stil niet opnieuw abonneert is precies wat je hier zoekt en
@@ -570,6 +592,47 @@ noot.
   | faalt stil | `a_revoked_webhook_breaks_neither_the_pause_nor_the_resume` (401 én 404), `a_webhook_that_never_answers_does_not_break_the_pause` (de `catch (Throwable)`, waar niets anders in de suite langskwam) | of Discord bij een verwijderde webhook werkelijk 401/404 geeft, en of 5s timeout genoeg is |
   | rate limit | `a_rate_limited_post_is_dropped_and_not_reported_as_posted` (429 wordt gedropt, en de bevestiging beweert níet dat het gepost is), `nothing_batches_or_spaces_a_burst_of_posts` (6 aankondigingen = 6 requests, geen bundeling, geen spreiding, geen throttle) | waar het plafond in het echt ligt |
 
+  *Wat de generale repetitie van 2026-09-07 opleverde.* Het draaiboek
+  hieronder is voor het eerst echt gedraaid, tegen `#dev-announcements` met de
+  webhook `OSRS Events (test)` — lokaal, dus met een `.test`-host in de link.
+  Vier dingen, waarvan twee die geen enkele test had kunnen vinden:
+
+  - **Een `/api/v10/`-webhook-URL wordt geweigerd, stil.**
+    `DiscordAnnouncer::isValidUrl()` eist `str_starts_with($path,
+    '/api/webhooks/')`, en Discords **API** geeft de URL uit als
+    `/api/v10/webhooks/…`. Allebei werken bij Discord; de app accepteert
+    alleen de eerste. De knop *Copy Webhook URL* in de UI geeft de
+    ongeversioneerde vorm, dus een host die kopieert en plakt merkt niets —
+    maar wie de URL ergens anders vandaan haalt krijgt een event dat nooit
+    post, zonder dat iets zegt waarom. **Kostte de eerste hele testronde:
+    veertien posts die er nooit uit gingen, in 0,00s per stuk.** Fix is één
+    regel: ook `/api/v\d+/webhooks/` toestaan. Doen vóór de feature aangaat.
+  - **Een verwijderde webhook geeft 404, niet 401** — en de app zegt er
+    *niets* over. Verwacht was een gerapporteerde exception in
+    `laravel.log`; die komt er niet, want een 404 is een nette response en
+    geen `Throwable`, dus de `catch` waar `report()` in staat wordt nooit
+    bereikt. `announce()` geeft `false` in 0,24s, de hervatting slaagt, en
+    daarmee is het klaar: **geen logregel, geen woord tegen de host, niets.**
+    Stil falen is precies wat er ontworpen is, maar "stil" blijkt hier ook
+    "onvindbaar" te betekenen — niemand komt er ooit achter dat de webhook
+    dood is. De vraag die dat opengooit: hoort een mislukte post een
+    logregel te krijgen, of de host een melding? Beantwoorden voordat dit
+    aangaat, niet erna.
+  - **Acht posts vlak achter elkaar kwamen alle acht aan**, in 3,42s samen,
+    ~0,4s per stuk. Geen 429. De reden is de vorm van de code, niet geluk:
+    `announce()` post synchroon en wacht op het antwoord, dus één proces komt
+    niet boven ~2–3 per seconde en haalt Discords informele plafond van 5 per
+    2 seconden niet. Dat maakt een queue minder dringend dan gedacht — maar
+    het weerlegt de vraag niet, want bij een finisher-burst keurt een host
+    via losse requests goed, en die kunnen wél parallel lopen.
+  - **De drie zinnen lezen goed** op desktop: emoji, vette titel en de
+    pauzereden erachter. `@everyone`, `@here` en `<@&rolid>` staan alle drie
+    letterlijk in het kanaal en `allowed_mentions` gaat leeg mee — maar of
+    Discord ze ook echt niet als mention behandelt is **niet** bewezen: dat
+    is alleen zichtbaar in de client van iemand anders dan de eigenaar. Punt
+    3 hieronder blijft dus staan, net als het unfurlen uit punt 2, waar een
+    publiek bereikbare URL voor nodig is.
+
   *Draaiboek.* **Gebruik een wegwerpserver of een privékanaal, niet het
   clankanaal.** Stap 3 hieronder is een opzettelijke poging om een hele server
   te pingen; die wil je niet per ongeluk zien slagen bij tweehonderd mensen.
@@ -583,12 +646,29 @@ noot.
      annuleren, want dat zijn drie verschillende zinnen.
   2. **Resolvet de link.** De post hoort te unfurlen tot een embed met titel
      en omschrijving van het event, en klikken hoort op het event uit te
-     komen. Controleer eerst de host in de geposte URL — staat daar niet
-     `staging.osrs-events.com`, dan klopt `APP_URL` op staging niet en is de
-     rest van deze stap zinloos. Let op: staat er basic auth of een
-     wachtwoordmuur voor staging, dan krijgt de unfurler een 401 en zie je een
-     kale link; dan verhuist deze stap naar productie of moet de crawler erin
-     mogen.
+     komen. De host in de geposte URL klopt: staging genereert zijn eigen
+     host voor routes en assets (gemeten 2026-09-07), dus de link wijst naar
+     `staging.osrs-events.com`.
+
+     **Maar deze stap kan op staging nu niet slagen, en dat is gemeten, geen
+     vermoeden.** De pre-launch deur staat daar aan: `/events/…` geeft
+     anoniem een **302 naar `/locked`**. Discords unfurler is anoniem, heeft
+     geen account en kent het wachtwoord niet, dus die krijgt de lockpagina
+     te zien — geen 401 zoals hier eerst stond, en geen kale link maar een
+     verkeerde embed. Drie uitwegen, kies er één: de unfurl-check op
+     productie doen, de pre-launch deur op staging even uit, of dit punt
+     bewaren tot na de launch. Event-pagina's in `ALWAYS_ALLOWED` zetten is
+     géén uitweg — dat is de deur openzetten voor iedereen.
+
+     Twee dingen die je dan alsnog ziet en die niets met de lock te maken
+     hebben: `og:url`, `canonical` en `og:image` staan hard op
+     `https://osrs-events.com` (`SITE_URL` in `useSeo.js`, geen env), dus de
+     embed noemt productie ook als je een staging-link post. En `og:title`
+     draagt de sitenaam twee keer — "… Skill Races for Clans - OSRS Events" —
+     omdat `seo.home_title` zelf al met "OSRS Events" begint en `useSeo.js`
+     het achtervoegsel er nog eens achter plakt. Niet gotcha 4 (die gaat over
+     dubbel toepassen bij hydration), gewoon copy die overlapt met het
+     achtervoegsel. Beide zijn eigen regels waard, niet hier.
   3. **Pingt niets.** Hernoem het testevent naar `@everyone bingo` en
      pauzeer. In het kanaal: de tekst `@everyone bingo` staat er letterlijk,
      en er is géén ping — geen highlight, geen badge, geen "1 mention".
@@ -616,7 +696,7 @@ noot.
      een queue nodig heeft — noteer het antwoord hier, en bouw het niet
      tijdens de test.
 
-- [ ] **De `startsWith`-TypeError in de console op elke pagina — hier niet te
+- [x] **De `startsWith`-TypeError in de console op elke pagina — hier niet te
   reproduceren, dus hij moet gevangen worden waar hij optreedt.** Gemeld
   2026-09-07: `TypeError: Cannot read properties of undefined (reading
   'startsWith')`, meerdere keren per paginalading, op `/`,
@@ -666,6 +746,43 @@ noot.
   van een kolom in een geminificeerde chunk. Plak die regel hier, dan is het
   binnen een minuut een fix in plaats van een analyse. Bouw daarna zonder de
   env-var terug, zodat er geen sourcemaps naast een deploy komen te liggen.
+
+  **Opgelost 2026-09-07 — en het wás de ULink-bug.** Gevangen met `pnpm dev`
+  in plaats van met de sourcemap: Vue draait dan onverkort en logt een
+  component-stack bij de warning, en die noemde de dader bij naam —
+  `<Link to="/events">` binnen de hover-`Popover` in `AppHeader`, en
+  `<Link href="/settings/connections">` in de OSRS-naambanner van `AppRoot`.
+  Allebei `@nuxt/ui`'s Inertia-`ULink`.
+
+  **Waarom de chunk-toewijzing hierboven de verkeerde kant op wees:** de
+  exception wórdt gegooid in `isLinkActive`, maar het bovenste frame is Vue's
+  eigen renderer die de computed evalueert — en Vue zit in `inertia-*.js`. De
+  chunk noemt dus de aanroeper, niet de schuldige. `buildDOMElement()` en
+  `addTitleElement()` zijn onschuldig; de SEO-zorg over `addTitleElement()`
+  gaat daarmee niet op.
+
+  **De fix.** De override doet:
+
+      if (props.active !== undefined) return props.active
+      ...
+      if (page.url.startsWith(href)) return true
+
+  Een expliciete `active` keert terug op de eerste regel en bereikt
+  `page.url` nooit. `AppHeader` berekent hem nu zelf uit `useCurrentPage()`
+  (de gecorrigeerde pagina — de override leest `usePage()` rechtstreeks, en
+  dát is de undefined), `UserMenu` en de banner geven `false`. Zelfde
+  ontsnappingsluik als de `to=""` boven in `AppHeader`, één tak later.
+
+  Nagemeten na de fix op een productiebuild met SSR-daemon: nul console-errors
+  op `/`, `/about`, `/osrs-bingo` en `/privacy`, in een verse tab.
+
+  **En er lag een tweede fout onder.** De `/discord`-knoppen misten
+  `external`. Zonder dat leest Nuxt UI een href zonder protocol als intern en
+  rendert een Inertia-`<Link>`, dus de klik werd een XHR — en `/discord`
+  antwoordt 302 naar een ander origin, wat de browser weigert. De knop deed
+  **niets**, op Home, SiteLock en `/about`. Gevonden door erop te klikken;
+  geen enkele test ving dit, en een test die het wél vangt zou een echte
+  browser nodig hebben.
 
 ## 6. Klein werk
 
@@ -1257,6 +1374,13 @@ geen automatisering.
   clankanalen voor events, dan is er een **site-brede** webhook nodig die
   `DiscordAnnouncer` nu niet kan lezen — dat is bouwwerk, geen invulveld, en
   het hoort als eigen item opgeschreven te worden voordat iemand eraan begint.
+  **Derde optie, en waarschijnlijk de juiste voorlopig:** het kanaal met de
+  hand gebruiken. `#dev-log` heeft de commits al, dus `#announcements` hoeft
+  niet nóg een stroom te zijn; wat er niet is, is een plek waar in gewone
+  taal staat wat er veranderd is en wat dat voor een speler betekent. Dat
+  schrijf je zelf, niet een webhook. De webhook mag dan blijven staan waar
+  hij staat — hij kost niets zolang niemand hem gebruikt — of weg; dat is
+  geen haast en geen risico, want een nieuwe maken is drie klikken.
   **Het ophalen van de URL blijft handwerk, met opzet.** De bot kán een
   webhook-URL teruggeven, maar dan staat hij in een sessielog in plaats van
   alleen in de instellingen — en een webhook-URL is een schrijfrecht, geen
@@ -1299,7 +1423,9 @@ geen automatisering.
   de bot. Een **permanente** invite naar `#general`, `maxAge 0` en `maxUses 0`:
   de twee die er al waren verliepen allebei na 30 dagen, en een link die op de
   landingspagina staat mag niet stilletjes doodgaan. De URL staat nergens in
-  deze repo — hij is ingevoerd in admin → Site settings → Discord invite link,
+  deze repo — hij staat in admin → Site settings → Discord invite link **van de
+  ontwikkelomgeving**, en omdat het een instelling is en geen constante moet
+  hij per omgeving opnieuw ingevuld worden zodra er een tweede is,
   en dát is waar hij hoort (zie het item hieronder voor waarom dat een
   instelling is en geen constante).
   Waar hij landt: **de landingspagina, de SiteLock-pagina en de betapagina**,
@@ -1329,11 +1455,15 @@ geen automatisering.
     als kapot in plaats van als nog-niet. Op de landingspagina staat hij in de
     hero naast de primaire knop, en hij blijft staan als de deur dicht is:
     dat is dan het enige waar een bezoeker nog op kan klikken. Op de
-    SiteLock-pagina staat hij **boven** de admin-hint, met de regel "No
-    password? Ask in the Discord" erbij — die pagina heeft geen header, geen
-    nav en geen footer, dus er is verder niets te vinden.
-  Keys `home.cta_discord`, `lock.discord_hint` en `lock.discord_cta` in
-  `lang/en.json`. `tests/Feature/DiscordLinkTest.php` dekt de redirect, de
+    SiteLock-pagina staat hij **boven** de admin-hint — die pagina heeft geen
+    header, geen nav en geen footer, dus er is verder niets te vinden.
+  - **Kale knop op het lockscreen, met opzet.** Er stond eerst een regel bij
+    ("No password? Ask in the Discord"); die is dezelfde dag weggehaald. Wie
+    er in een besloten beta komt is een besluit van degene die hem draait, en
+    zo'n zin maakt van een dichte deur een uitnodiging om om de sleutel te
+    vragen. De knop zegt waar het project woont, niet dat er een weg naar
+    binnen is.
+  Keys `home.cta_discord` en `lock.discord_cta` in `lang/en.json`. `tests/Feature/DiscordLinkTest.php` dekt de redirect, de
   404, de doorgang langs de deur, de prop op het lockscreen en dat noch de
   route noch de invite in de sitemap terechtkomt.
 
@@ -1355,8 +1485,14 @@ geen automatisering.
   De volgorde uit `docs/discord.md` is aangehouden en werkte: **eerst** de
   allow voor `OSRS Events Ops`, **daarna** pas de weigering op `@everyone` —
   andersom raakt de bot zijn eigen kanaal kwijt en kan hij dat niet
-  terugdraaien. Drie dingen die hier al uit waren geleerd en die tijd
-  schelen:
+  terugdraaien.
+  **De kamer heeft dezelfde dag zijn werk gedaan**: de generale repetitie van
+  `DiscordAnnouncer` is er doorheen gegaan en leverde twee dingen op die geen
+  test had kunnen vinden — een `/api/v10/`-webhook-URL die stil geweigerd
+  wordt, en een verwijderde webhook die 404 geeft zonder ook maar één
+  logregel. Allebei uitgeschreven in §5; **dit is wat er nog gefixt moet
+  worden voordat de schakelaar aan mag.** Drie dingen die hier al uit waren
+  geleerd en die tijd schelen:
   1. **Een `@everyone`-deny op `MESSAGE_SEND` raakt de webhook niet, de bot
      wel.** Een webhook hangt niet aan een lid; de bot wel, dus die valt onder
      dezelfde weigering als iedereen.
