@@ -393,9 +393,7 @@
                                 <p class="font-semibold">
                                     {{ myFinish.rank === 1 ? wonLabel : $t('board.finished_place', { place: ordinal(myFinish.rank) }) }}
                                 </p>
-                                <p class="text-sm text-muted leading-relaxed">
-                                    {{ liveBoard.closed_at ? $t('board.finished_closed') : $t('board.finished_continue', { when: formatDate(liveBoard.end_date) }) }}
-                                </p>
+                                <p class="text-sm text-muted leading-relaxed">{{ finishSubtitle }}</p>
                                 <u-button
                                     :href="`/events/${liveBoard.id}/leaderboard`"
                                     variant="soft"
@@ -565,7 +563,17 @@
                                  dice do) — so this card, and the tick button
                                  on it, is reachable the same way the dice
                                  were. Same fix. -->
-                            <div v-if="!isPaused && !isEnded && !isUpcoming" class="mt-3">
+                            <!-- The ACTION is gated on the event still
+                                 running; the verdict on a claim already made
+                                 is not. Both used to sit behind this guard
+                                 together, so the player whose finishing claim
+                                 was rejected — the ruling that had just cost
+                                 them the event — was shown no status, no host
+                                 note and no way to open the claim, precisely
+                                 when it mattered most. Anything already
+                                 submitted stays readable for as long as the
+                                 event does. -->
+                            <div v-if="claimAreaIsShown(liveBoard, currentClaim)" class="mt-3">
                                 <!-- Same trust problem bingo solved, applied
                                      here: on a board that requires approval a
                                      click opens the claim dialog (proof, then
@@ -574,7 +582,7 @@
                                      task tiles have no claim/approve flow". -->
                                 <template v-if="requiresApproval">
                                     <u-button
-                                        v-if="!currentClaim"
+                                        v-if="!currentClaim && canPlay"
                                         color="success"
                                         variant="solid"
                                         size="sm"
@@ -583,7 +591,7 @@
                                         :label="$t('board.complete_tile')"
                                         @click="showClaimModal = true"
                                     />
-                                    <div v-else class="space-y-2">
+                                    <div v-else-if="currentClaim" class="space-y-2">
                                         <div class="flex items-center gap-2 text-sm">
                                             <u-icon :name="claimStatusIcon" class="size-4 shrink-0" :class="claimStatusClass" />
                                             <span :class="claimStatusClass">{{ $t(`board.status_${currentClaim.status.toLowerCase()}`) }}</span>
@@ -598,7 +606,7 @@
                                         />
                                     </div>
                                 </template>
-                                <template v-else>
+                                <template v-else-if="canPlay">
                                     <u-button
                                         v-if="!currentTileCompleted"
                                         color="success"
@@ -800,9 +808,17 @@
                                     <span v-if="finishRankFor(p)" class="text-xs shrink-0" :title="$t('board.finished_place', { place: ordinal(finishRankFor(p)) })">
                                         {{ medal(finishRankFor(p)) ?? `#${finishRankFor(p)}` }}
                                     </span>
+                                    <!-- Home, but not yet in a place: an
+                                         earlier claim is still unreviewed, and
+                                         approving it moves this row down. A
+                                         medal here announced the wrong
+                                         competitor while the winning claim sat
+                                         unopened in the queue — the very thing
+                                         the finish card above refuses to do. -->
+                                    <span v-else-if="finishFor(p)" class="text-xs shrink-0" :title="$t('board.finished_unsettled')">🏁</span>
                                     <span v-else class="text-xs text-muted shrink-0">#{{ p.current_position + 1 }}</span>
                                     <span
-                                        v-if="!finishRankFor(p)"
+                                        v-if="!finishFor(p)"
                                         class="text-xs font-semibold w-10 text-right shrink-0"
                                         :class="p.pathHasSnake ? 'text-error' : p.pathHasLadder ? 'text-success' : 'text-muted'"
                                     >
@@ -893,6 +909,7 @@
                 :tile="currentTile"
                 :tile-title="currentTileTitle"
                 :claim="currentClaim"
+                :can-act="canPlay"
             />
         </client-only>
     </u-main>
@@ -912,7 +929,7 @@ import JoinEventButton from '@/Components/JoinEventButton.vue';
 import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
-import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, formatBoardSize, formatDate, eventStatus, ordinal } from '@/Support/board';
+import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, claimAreaIsShown, formatBoardSize, formatDate, eventStatus, finishSubtitle as finishSubtitleFor, ordinal, settledPlace } from '@/Support/board';
 import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';
 import { useEventStream } from '@/Composables/useEventStream';
 
@@ -1121,6 +1138,17 @@ const canPlayNow = computed(() => !isPaused.value
     && !isUpcoming.value
     && !hasFinished.value);
 
+/**
+ * Whether the event is in a state that accepts moves at all.
+ *
+ * canPlayNow without the "and you are not already home" clause, because this
+ * gates the tile card's actions rather than the dice. Named so the difference
+ * between "the event takes moves" and "you may make one" stays visible at the
+ * call site — see claimAreaIsShown(), which is the other half: what is
+ * readable there does not need the event to take moves.
+ */
+const canPlay = computed(() => eventStatus(liveBoard.value) === 'live');
+
 /** The state's own label, for the card that stands in for the dice. */
 const statusLabelKey = computed(() => (BOARD_STATUS_STYLE[eventStatus(liveBoard.value)] ?? BOARD_STATUS_STYLE.live).labelKey);
 
@@ -1182,24 +1210,49 @@ const wonLabel = computed(() => (liveBoard.value.mode === 'TEAM'
     ? trans('board.won_team')
     : trans('board.won_solo')));
 
+/**
+ * The line under your own place, which depends on whose run ended the event.
+ *
+ * "That was the winning run" was printed for every finisher on a closed
+ * event, so second place was congratulated on winning — on a STOP event, by
+ * definition, by the run that had just beaten them.
+ */
+const finishSubtitle = computed(() => finishSubtitleFor(
+    liveBoard.value.closed_at,
+    myFinish.value?.rank,
+    liveBoard.value.end_date,
+));
+
 /** 1st, 2nd, 3rd — then plain numbers, which is what a medal is for. */
 function medal(rank) {
     return ['🥇', '🥈', '🥉'][rank - 1] ?? null;
 }
 
 /**
- * Where a player row sits on the podium, so the sidebar can medal it.
+ * This player row's finish, or null while they are still walking.
  * Matched on team on a TEAM event and on user otherwise — the same either/or
  * the finish itself is recorded against.
  */
-function finishRankFor(player) {
+function finishFor(player) {
     const key = liveBoard.value.mode === 'TEAM' ? player.team_id : player.user_id;
 
     if (!key) return null;
 
-    const found = liveFinishes.value.find((f) => (liveBoard.value.mode === 'TEAM' ? f.teamId : f.userId) === key);
+    return liveFinishes.value.find((f) => (liveBoard.value.mode === 'TEAM' ? f.teamId : f.userId) === key) ?? null;
+}
 
-    return found?.rank ?? null;
+/**
+ * Where a player row sits on the podium, so the sidebar can medal it — or
+ * null while that place can still move.
+ *
+ * Having finished and having a place are two different facts, and this list
+ * printed the second whenever the first was true. A competitor whose finish
+ * is provisional is home; which place they came in is not settled until the
+ * queue is clear of everyone who could still beat them, so the medal waits
+ * and a flag stands in for it.
+ */
+function finishRankFor(player) {
+    return settledPlace(finishFor(player));
 }
 const showOtherPlayers = ref(false);
 

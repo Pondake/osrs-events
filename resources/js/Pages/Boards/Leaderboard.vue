@@ -32,8 +32,12 @@
                         class="flex items-center gap-4 px-4 py-3"
                         :class="entry.finishPlace ? 'bg-success/5' : ''"
                     >
+                        <!-- A provisional finish gets its row number, not a
+                             medal: the place is not settled until the queue is
+                             clear of anyone who submitted earlier, and until
+                             then a medal here names the wrong winner. -->
                         <div class="w-8 text-center font-bold" :class="entry.rank <= 3 ? 'text-primary' : 'text-muted'">
-                            {{ medal(entry.finishPlace) ?? entry.rank }}
+                            {{ placeOf(entry) ?? entry.rank }}
                         </div>
 
                         <!-- An icon rather than initials when there is nobody to
@@ -54,7 +58,10 @@
                                  moment they got home; when they did is what
                                  the podium is ordered by, so that is what is
                                  printed. -->
-                            <div v-if="entry.finishPlace" class="text-xs text-success">
+                            <div v-if="entry.finishPlace && entry.finishProvisional" class="text-xs text-muted">
+                                {{ $t('board.finished_unsettled') }}
+                            </div>
+                            <div v-else-if="entry.finishPlace" class="text-xs text-success">
                                 {{ $t('leaderboard.finished_at', { when: whenText(entry.finishedAt) }) }}
                             </div>
                             <div v-else class="text-xs text-muted">
@@ -78,7 +85,7 @@
 import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { ordinal } from '@/Support/board';
+import { ordinal, settledPlace } from '@/Support/board';
 
 const props = defineProps({
     board: { type: Object, required: true },
@@ -102,6 +109,18 @@ const nameFor = (entry) => {
 /** 1st, 2nd, 3rd — anything further down is just its number. */
 function medal(place) {
     return place ? (['🥇', '🥈', '🥉'][place - 1] ?? ordinal(place)) : null;
+}
+
+/**
+ * The medal this row has earned, or null while it could still change hands —
+ * in which case the row falls back to its number, which claims nothing.
+ *
+ * settledPlace() is the same rule the event page's ranking applies, reached
+ * through the entry shape this page is sent rather than the finish shape that
+ * one gets.
+ */
+function placeOf(entry) {
+    return medal(settledPlace({ rank: entry.finishPlace, provisional: entry.finishProvisional }));
 }
 
 function whenText(value) {

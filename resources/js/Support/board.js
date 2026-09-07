@@ -9,6 +9,8 @@
 // was labelled "Live" on the hub and "Running" one click later. Keys here,
 // $t() at the point of render, one wording.
 
+import { trans } from 'laravel-vue-i18n';
+
 export const BOARD_SIZE_LABEL = {
     SIZE_5X5: '5×5',
     SIZE_7X7: '7×7',
@@ -99,6 +101,44 @@ export function ordinal(number) {
     return `${number}${suffix}`;
 }
 
+/**
+ * The place a finish has earned, or null while that place can still move.
+ *
+ * Finishing and placing are two facts, and every surface that showed a
+ * podium derived the second straight from the first. A finish is
+ * **provisional** while a claim submitted earlier than it is still unreviewed:
+ * approving that claim pushes this one down. The server already says so on
+ * every finish it sends (EventFinishService::places()), and the finish card
+ * on the event page already honoured it — the sidebar ranking and the
+ * leaderboard page did not, so both crowned the wrong competitor with a medal
+ * while the claim that actually won sat unopened in the host's queue.
+ *
+ * Returns the rank so a caller can medal it, or null so a caller can say
+ * "home" without saying "first".
+ */
+export function settledPlace(finish) {
+    if (finish === null || finish === undefined) return null;
+
+    return finish.provisional === true ? null : (finish.rank ?? null);
+}
+
+/**
+ * The line under your own place on a finish card.
+ *
+ * Only first place made the winning run. "That was the winning run — the
+ * event is over" was printed for every finisher on a closed event, so on a
+ * STOP event the runner-up was congratulated on winning by the very run that
+ * had just beaten them.
+ *
+ * Takes the closed stamp and the rank rather than the whole event, so the
+ * rule is one line to read and does not care where either came from.
+ */
+export function finishSubtitle(closedAt, rank, endDate) {
+    if (!closedAt) return trans('board.finished_continue', { when: formatDate(endDate) });
+
+    return rank === 1 ? trans('board.finished_closed') : trans('board.finished_closed_behind');
+}
+
 export function eventStatus(event, now = new Date()) {
     const byDate = boardEventStatus(event?.start_date, event?.end_date, now);
 
@@ -113,4 +153,23 @@ export function eventStatus(event, now = new Date()) {
     if (event?.closed_at) return 'ended';
 
     return event?.paused_at ? 'paused' : byDate;
+}
+
+/**
+ * Whether the tile card has anything to put under the task at all.
+ *
+ * Two different questions used to share one guard, and the wrong one won.
+ * *Making* a move needs a live event — paused, ended and not-yet-started all
+ * refuse it. *Reading the verdict on a move already made* needs nothing: it
+ * is a decision a host took about this player, and it does not expire with
+ * the event.
+ *
+ * Walking an event to its end showed what that cost. The host rejected the
+ * claim on the final tile — the ruling that had just taken the win away —
+ * and because the event was closed by then, the player was shown no status,
+ * no note explaining it and no way to open the claim. The one screen that
+ * owed them an explanation had hidden it.
+ */
+export function claimAreaIsShown(event, claim, now = new Date()) {
+    return Boolean(claim) || eventStatus(event, now) === 'live';
 }

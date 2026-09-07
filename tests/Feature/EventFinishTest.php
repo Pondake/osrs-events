@@ -524,6 +524,90 @@ class EventFinishTest extends TestCase
                 ->where('finishes.0.provisional', true));
     }
 
+    /**
+     * And so is the leaderboard, which was the half that got missed.
+     *
+     * The event page held its banner and its celebration, but the ranking on
+     * `/leaderboard` had no idea a place could still move: it read the place
+     * straight off the finish and printed a gold medal for it. Found by
+     * walking the event as a spectator — the page open to anyone, including
+     * people not in the event, announced the wrong winner while the claim
+     * that actually won had not been opened yet.
+     */
+    #[Test]
+    public function the_leaderboard_is_told_when_a_place_is_provisional(): void
+    {
+        Notification::fake();
+        $event = $this->board(['requires_approval' => true]);
+        $host = $this->host($event);
+        [$early] = $this->player($event);
+        [$late] = $this->player($event);
+
+        $this->travelTo(now()->setTime(20, 0));
+        $this->tick($early, $event, $this->lastTile($event), ['proof_url' => 'https://i.imgur.com/a.png']);
+        $this->travelTo(now()->addMinutes(5));
+        $this->tick($late, $event, $this->lastTile($event), ['proof_url' => 'https://i.imgur.com/b.png']);
+
+        $claims = CompletedTile::orderBy('completed_at')->get();
+
+        // The later submission, approved first — the order a host reading
+        // their queue top-down does not necessarily follow.
+        $this->actingAs($host)->patch("/events/{$event->id}/tiles/completions/{$claims[1]->id}", ['status' => 'APPROVED']);
+
+        $this->get("/events/{$event->id}/leaderboard")
+            ->assertInertia(fn ($page) => $page
+                ->where('entries.0.finishPlace', 1)
+                ->where('entries.0.finishProvisional', true));
+
+        // Queue cleared: the places settle, and only now may either of them
+        // be shown as a place.
+        $this->actingAs($host)->patch("/events/{$event->id}/tiles/completions/{$claims[0]->id}", ['status' => 'APPROVED']);
+
+        $this->get("/events/{$event->id}/leaderboard")
+            ->assertInertia(fn ($page) => $page
+                ->where('entries.0.finishPlace', 1)
+                ->where('entries.0.finishProvisional', false)
+                ->where('entries.1.finishPlace', 2)
+                ->where('entries.1.finishProvisional', false));
+    }
+
+    /**
+     * A rejection is a decision about a player, and it outlives the event.
+     *
+     * Under the STOP rule the claim on the final tile decides everything, so
+     * rejecting it can close the event and take the win back in one move —
+     * after which the page has to be able to say so. The event page hid the
+     * claim's status and its note once the event was closed, which left the
+     * player who had just lost it looking at a card that said nothing at all.
+     */
+    #[Test]
+    public function a_rejected_finishing_claim_stays_readable_after_the_event_closes(): void
+    {
+        Notification::fake();
+        $event = $this->board(['requires_approval' => true, 'finish_rule' => 'STOP']);
+        $host = $this->host($event);
+        [$user] = $this->player($event);
+
+        $this->tick($user, $event, $this->lastTile($event), ['proof_url' => 'https://i.imgur.com/a.png']);
+
+        $claim = CompletedTile::firstOrFail();
+
+        $this->actingAs($host)->patch("/events/{$event->id}/tiles/completions/{$claim->id}", ['status' => 'APPROVED']);
+        $this->assertNotNull($event->fresh()->closed_at, 'STOP should have closed the event');
+
+        $this->actingAs($host)->patch("/events/{$event->id}/tiles/completions/{$claim->id}", [
+            'status' => 'REJECTED',
+            'review_note' => 'That screenshot is from another account.',
+        ]);
+
+        $tileId = $this->lastTile($event)->id;
+
+        $this->actingAs($user)->get("/events/{$event->id}")
+            ->assertInertia(fn ($page) => $page
+                ->where("playerBoard.claims.{$tileId}.status", 'REJECTED')
+                ->where("playerBoard.claims.{$tileId}.reviewNote", 'That screenshot is from another account.'));
+    }
+
     // ------------------------------------------------------ the STOP rule
 
     #[Test]

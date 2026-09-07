@@ -329,6 +329,20 @@ class EventFinishService
     }
 
     /**
+     * The cutoff every finish on this event is provisional below, asked once.
+     *
+     * A page that renders a whole ranking needs the same answer for every
+     * row, and isProvisional() would go back to the database for each of them
+     * — see earliestContenderAt() for why that adds up. A caller holding this
+     * compares it against each finish itself: the finish is provisional when
+     * the cutoff is earlier than it.
+     */
+    public function contenderCutoff(Event $event): ?Carbon
+    {
+        return $this->earliestContenderAt($event);
+    }
+
+    /**
      * The earliest moment a claim still in the queue could turn out to have
      * finished at — or null when nothing waiting can finish anything.
      *

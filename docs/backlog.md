@@ -407,6 +407,32 @@ tweede partij nodig hebben.
   event staat en biedt niets aan.
   29 feature-tests in `EventFinishTest`, plus `ordinal`/`closed_at` in
   `tests/js/support.test.js`.
+  **Nagelopen 2026-09-07 met een e2e-walkthrough** (anoniem, twee racers, de
+  host), op een gezaaid scenario dat je in een browser niet kunt naspelen:
+  twee finishclaims in de wachtrij, de winnaar als eerste ingediend, en de
+  host keurt de latere eerst goed. `dev:fixtures` zaait dat nu als "Photo
+  finish", met drie accounts die kunnen inloggen — een claim kan alleen *nu*
+  ingediend worden, dus het gat tussen twee inzendingen bestaat alleen als
+  iets het zet.
+  De kern hield stand: niets aangekondigd, event niet gesloten, plaats
+  voorlopig, en na de tweede goedkeuring de goede volgorde. Drie dingen die
+  eromheen zaten niet:
+  - **Het klassement gaf de voorlopige leider tóch goud** — de finishkaart
+    zweeg netjes, maar de zijbalk en `/leaderboard` lazen de plaats
+    rechtstreeks van de finish. Dat is dezelfde bug als hierboven, één
+    scherm verderop, en zichtbaar voor een toeschouwer zonder account.
+    `settledPlace()` in `board.js` is nu de enige plek die die vraag
+    beantwoordt, en `LeaderboardController` stuurt `finishProvisional` mee.
+  - **Nummer twee kreeg te lezen dat hij de winnende run deed.**
+    `board.finished_closed` ging naar elke plaats op een gesloten event;
+    alleen de eerste hoort dat te lezen (`finishSubtitle()`).
+  - **Een afgewezen finishclaim werd onzichtbaar zodra het event dicht was.**
+    Eén `v-if` verborg de knop én het oordeel, dus wie het event verloor door
+    een afwijzing mét toelichting zag helemaal niets. Handelen vraagt een
+    lopend event, een uitspraak teruglezen niet — `claimAreaIsShown()`. De
+    knoppen in de claimmodal zijn daarbij wél gesloten, anders bood die na
+    de fix een "Try again" aan die de server toch weigert.
+  2 feature-tests erbij en 3 in `tests/js/support.test.js`.
 
 - [x] ~~**Het volledige menu flitste in beeld nadat het slot aanging.**~~ —
   gefixt 2026-08-31, gemeld vanaf staging. De conditie zat al zo vroeg
