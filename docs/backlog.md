@@ -218,20 +218,56 @@ de kleinere open vragen bij.
   bestand aanpassen doet niets waar de paginarij al bestaat.
 - [ ] **Een eigen adres in plaats van `dev@absolit.nl`.** Zoiets als
   `support@osrs-events.com` — bestaat nog niet, dus dit hangt achter een
-  mailbox en niet achter een beslissing. Wanneer het er is: `/privacy`
-  (`LegalPages::privacy()`, gevolgd door `php artisan pages:sync-legal`) en
-  waar het op `/about` terechtkomt. Tot die tijd blijft het huidige adres
-  staan; een pagina zonder contactroute is slechter dan een pagina met een
-  persoonlijke.
-- [ ] **`/about` opnieuw, en het e-mailadres gaat er daarbij af.** De pagina
-  heeft nog de oude layout die niet meer gewenst is, en `about.support_email`
-  wijst naar `mailto:dev@absolit.nl` — dat is de plek waar het adres feitelijk
-  gepubliceerd wordt, want `/privacy` heeft het als terugvaloptie nodig. Twee
-  dingen om te weten voordat iemand eraan begint: `/about` wordt gezaaid door
-  `PageSeeder` met `firstOrCreate`, dus de seeder aanpassen doet **niets** op
-  een bestaande database, en er is geen `pages:sync-legal`-equivalent voor
-  deze pagina zoals `/privacy` en `/terms` dat wel hebben. Vandaar één item in
-  plaats van een losse eenregelige fix.
+  mailbox en niet achter een beslissing. Wanneer het er is: alleen `/privacy`
+  (`LegalPages::privacy()`, gevolgd door `php artisan pages:sync-legal`).
+  `/about` staat er sinds 2026-09-07 niet meer bij — die pagina publiceert
+  geen adres meer en hoeft er ook geen terug te krijgen; contact loopt daar
+  via Discord. Tot die tijd blijft het huidige adres op `/privacy` staan; een
+  pagina zonder contactroute is slechter dan een pagina met een persoonlijke.
+- [x] **`/about` opnieuw, en het e-mailadres gaat er daarbij af.** — gebouwd
+  2026-09-07. De pagina is **van de CMS af**, dezelfde stap die de zes guides
+  op 2026-08-27 zetten (commit `909fdd9`): een vaste route naar
+  `LandingController::about()`, een `Pages/About.vue`, en de teksten in
+  `lang/en.json`. Dat was ook het antwoord op de seeder-val — de derde optie
+  naast "sync-command uitbreiden" en "met de hand in admin → Content", en de
+  enige waarbij het adres verdwijnt zónder dat iemand ergens iets moet
+  draaien. Een achtergebleven `about`-rij staat nu in `Page::PARTIAL_SLUGS`,
+  dus hij is nergens meer te zien en er hoefde geen migratie content te
+  verwijderen.
+  **Wat de layout geworden is:** geen `u-page`/`u-page-section` meer, maar ook
+  niet `GuideLayout` — die zijbalk is een inhoudsopgave en een lijst andere
+  guides, en dit is geen guide. In plaats daarvan panelen met een titelbalk,
+  die de OSRS-bevel uit `.landing-page` meepakken: de zes features in één
+  kader met haarlijnen ertussen, privacy over de volle breedte, en daaronder
+  Free en Support naast elkaar. De hele pagina past nu in ruim één scherm.
+  **Het adres:** `about.support_email` en `about.support_body` zijn weg;
+  contact loopt via de Discord-server, en dat paneel rendert alleen als er een
+  invite is ingesteld — geen kopje "Support" boven niks. `about.disclaimer_body`
+  is ook weg: die zei de Jagex-regel in eigen woorden terwijl de footer al
+  `common.not_affiliated` toont, en twee versies van een verplichte
+  attributie is hoe er één verkeerd raakt. `/privacy` is niet aangeraakt.
+  **Onderweg gevonden:** `text-*` op een `<h1>`–`<h3>` doet in deze codebase
+  niets. `About.vue` zet de maat daarom op een `<span>` erbinnen; het bredere
+  probleem staat als eigen item in §6.
+- [ ] **`/about` weer bewerkbaar maken vanuit de CMS.** Bewust ingeleverd op
+  2026-09-07: de pagina staat nu in code, dus elke tekstwijziging kost een
+  deploy in plaats van een formulier. Dat is precies wat je niet wilt op de
+  ene pagina die je nog wel eens aanpast. Wat het echt vraagt is niet "zet hem
+  terug in de `pages`-tabel" — dat is waar hij vandaan komt — maar de twee
+  dingen oplossen die hem eruit joegen:
+  1. **Bereik.** Een seeder met `firstOrCreate` bereikt een bestaande rij
+     nooit, en dat is niet fout maar wél stil. Wat ontbreekt is dat iemand
+     *ziet* dat repo en database uit elkaar lopen; `pages:sync-legal --diff`
+     doet dat voor twee pagina's en niemand draait het uit zichzelf. Een
+     diagnostiek-check die zegt "deze pagina wijkt af van wat de repo denkt"
+     zou het probleem bij de wortel pakken, voor alle CMS-pagina's tegelijk.
+  2. **Vorm.** De blokken-woordenschat rendert via `u-page-section` — dat is
+     de marketing-vorm waar deze pagina juist vanaf moest. Terugzetten heeft
+     pas zin als de renderer de paneelvorm óók kan, bijvoorbeeld als variant
+     op het `section`-blok. Anders ruil je bewerkbaarheid weer in voor de
+     layout die net is weggehaald.
+  Tot dat er is: de teksten staan in `lang/en.json` onder `about.*` en de
+  opbouw in `resources/js/Pages/About.vue`.
 - [ ] **Bewaartermijn voor sessies en push-subscriptions.** De audit log heeft
   er een (90 dagen, uit `config/audit.php`, vastgepind door een test). Sessies
   verlopen en push-subscriptions worden dood gemarkeerd op een 404/410, maar
@@ -632,6 +668,32 @@ noot.
   env-var terug, zodat er geen sourcemaps naast een deploy komen te liggen.
 
 ## 6. Klein werk
+
+- [ ] **`text-*` op een kop doet niets — gemeten, niet vermoed.** Tailwind v4's
+  preflight zet `h1`–`h3` op `font-size: inherit`, en `app.css` herstelt ze met
+  gewone element-regels. Die regels staan **buiten elke cascade layer**, terwijl
+  utility classes erin staan — en unlayered CSS wint altijd van layered CSS,
+  hoe specifiek de utility ook oogt. Elke `text-*` op een kop is dus stil dood.
+  Nagemeten 2026-09-07 op `localhost:8010/osrs-bingo`:
+  | element | vraagt | krijgt |
+  |---|---|---|
+  | `GuideLayout` h1 | `text-3xl sm:text-4xl` | 30px, ook boven `sm` |
+  | `GUIDE_PROSE.h3` | `text-lg` (18px) | 20px |
+  | `GUIDE_PROSE.h2` | `text-2xl` | 24px — klopt, maar bij toeval |
+  Dus: elke guide-titel is één stap kleiner dan bedoeld op elke breedte, en
+  h3 één stap groter. Niemand heeft het gezien omdat h2 toevallig goed valt.
+  **Blast radius geteld 2026-09-07** (statisch over `resources/js`): 37 koppen
+  dragen een `text-*`; bij **27** daarvan doet die niets, verspreid over 16
+  bestanden. Alle 27 renderen op dit moment **groter** dan gevraagd — de zes
+  auth-pagina's vragen `text-2xl` op hun h1 en krijgen 30px, `AdminLayout`
+  vraagt `text-xl` en krijgt 30px, `Boards/Index` en `Community/Index` vragen
+  `text-xl` op h2 en krijgen 24px, `OnboardingModal` zes keer `text-lg` op h3
+  en krijgt 20px. De overige 10 vragen toevallig precies de element-default.
+  Twee manieren, en de keuze is de helft van het werk: de element-regels in
+  `app.css` in `@layer base` zetten — één plek, en alle 27 krimpen in één klap
+  naar wat er staat — of per geval de maat op een element zetten dat geen kop
+  is, zoals `About.vue` nu doet. De eerste is de goede; hij verandert wel het
+  uiterlijk van 16 bestanden tegelijk, dus die wil je naast elkaar zien.
 
 - [x] **De dode `privacy.*`-sleutels uit `lang/en.json`.** — opgeruimd
   2026-09-07. Achtendertig sleutels, de hele namespace, overgebleven van de
@@ -1174,16 +1236,32 @@ geen automatisering.
   voice-kanaal zijn dezelfde dag verwijderd.
 - [ ] **De announcement-webhook koppelen.** Webhook `OSRS Events` is op
   2026-08-30 in `#announcements` aangemaakt; wat rest is de URL ophalen
-  (Serverinstellingen → Integraties → Webhooks → Copy Webhook URL) en plakken in
-  admin → Site settings → Discord announcements. Die URL hoort nergens in deze
-  repo: wie hem heeft mag in dat kanaal posten, dat is de hele authenticatie. Dit is de helft die
+  (Serverinstellingen → Integraties → Webhooks → Copy Webhook URL) en hem
+  ergens invoeren. Die URL hoort nergens in deze repo: wie hem heeft mag in dat
+  kanaal posten, dat is de hele authenticatie. Dit is de helft die
   §5 openliet: dat item vroeg om een echte kamer om in te posten, en die is er
   nu. Het aanzetten blijft daar staan — dit item levert alleen de kamer en de
   URL.
-  **Blijft handwerk, met opzet.** De bot kán een webhook-URL teruggeven, maar
-  dan staat hij in een sessielog in plaats van alleen in de instellingen — en
-  een webhook-URL is een schrijfrecht, geen adres. Kopiëren uit de Discord-UI
-  is één klik en laat geen tweede kopie achter.
+  **Let op, dit item beschreef een veld dat niet bestaat** (gecontroleerd
+  2026-09-07). Er is geen site-brede webhook-URL: `Setting`
+  kent alleen `discord_webhooks_enabled`, een **schakelaar**, en
+  `DiscordAnnouncer` post naar `$event->discord_webhook_url` — een kolom op
+  het event. De route is dus twee stappen en twee schermen:
+  1. admin → Site settings → **Discord announcements** op **aan**. Zolang die
+     uit staat is het veld hieronder verborgen en wordt er nooit iets verstuurd.
+  2. Het event openen → **Settings** → tabblad **Access** → *Discord webhook*.
+     Alleen zichtbaar bij **bewerken**, niet in de create-stepper.
+  Daaruit volgt een echte ontwerpvraag die hier nog niet beantwoord is: één
+  `#announcements`-webhook per event invoeren betekent dat elk event naar
+  hetzelfde kanaal post. Wil je `#announcements` voor site-nieuws en de
+  clankanalen voor events, dan is er een **site-brede** webhook nodig die
+  `DiscordAnnouncer` nu niet kan lezen — dat is bouwwerk, geen invulveld, en
+  het hoort als eigen item opgeschreven te worden voordat iemand eraan begint.
+  **Het ophalen van de URL blijft handwerk, met opzet.** De bot kán een
+  webhook-URL teruggeven, maar dan staat hij in een sessielog in plaats van
+  alleen in de instellingen — en een webhook-URL is een schrijfrecht, geen
+  adres. Kopiëren uit de Discord-UI is één klik en laat geen tweede kopie
+  achter.
 - [x] ~~**`/github` in `#dev-log`.**~~ — gedaan 2026-08-30. Discord-webhook
   `GitHub` in `#dev-log`, met `/github` achter de URL, geregistreerd op de repo
   via `gh api repos/Pondake/osrs-events/hooks` (hook `672396333`) voor de events

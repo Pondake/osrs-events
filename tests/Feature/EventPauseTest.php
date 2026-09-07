@@ -16,11 +16,14 @@ use App\Models\Tile;
 use App\Models\User;
 use App\Notifications\EventStatusChanged;
 use App\Services\BingoService;
+use App\Services\DiscordAnnouncer;
 use App\Support\EventCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -334,6 +337,62 @@ class EventPauseTest extends TestCase
     }
 
     /**
+     * The stream the pause is announced on has to survive the pause.
+     *
+     * Obvious right up until somebody adds it: pausing stops rolls, claims
+     * and new entries, and "stop the event doing things" reads like it should
+     * include the live channel. If it ever did, every browser watching would
+     * go silent at the moment of the pause and never hear the resume — which
+     * is the one thing that makes a pause a pause rather than an ending.
+     *
+     * All three readers of an OPEN event, because the gate is
+     * canSeeParticipants() and a pause is not a change of access.
+     */
+    #[Test]
+    public function a_paused_event_still_streams_to_everyone_watching_it(): void
+    {
+        $event = $this->event('BINGO', ['paused_at' => Carbon::now()]);
+        BingoCard::create(['event_id' => $event->id, 'size' => 3]);
+
+        $this->get("/events/{$event->id}/stream")->assertOk();
+        $this->actingAs($this->host($event))->get("/events/{$event->id}/stream")->assertOk();
+        $this->actingAs($this->participant($event))->get("/events/{$event->id}/stream")->assertOk();
+    }
+
+    /**
+     * Two changes, not one round trip nobody sees.
+     *
+     * pausing_changes_the_live_fingerprint() covers the way in. This is the
+     * way back out, and it is the half that a player — who never pressed
+     * anything and has no flash message — depends on entirely: the resume
+     * reaches them through the fingerprint or it does not reach them at all.
+     *
+     * The resumed fingerprint returning to the pre-pause value is the correct
+     * outcome, not an accident: a fingerprint is what the viewer reads, and a
+     * resumed event reads exactly like one that was never paused.
+     */
+    #[Test]
+    public function resuming_changes_the_live_fingerprint_back(): void
+    {
+        $event = $this->event('BINGO');
+        BingoCard::create(['event_id' => $event->id, 'size' => 3]);
+        $channel = app(EventChannelResolver::class)->for($event);
+        $host = $this->host($event);
+
+        Notification::fake();
+
+        $running = $channel->fingerprint($event);
+
+        $this->pause($host, $event, extra: ['reason' => 'Back at 20:00.']);
+        $paused = $channel->fingerprint($event->fresh());
+        $this->assertNotSame($running, $paused);
+
+        $this->pause($host, $event, paused: false);
+        $this->assertNotSame($paused, $channel->fingerprint($event->fresh()));
+        $this->assertSame($running, $channel->fingerprint($event->fresh()));
+    }
+
+    /**
      * A paused race must not keep pulling fresh numbers into its standings —
      * the pause would be a lie the moment it was lifted.
      */
@@ -585,6 +644,188 @@ class EventPauseTest extends TestCase
         $this->pause($host, $event)->assertRedirect()->assertSessionHasNoErrors();
 
         $this->assertNotNull($event->fresh()->paused_at);
+    }
+
+    /**
+     * The named testcase, and the reason `allowed_mentions` is there at all.
+     *
+     * A title is free text a host types, and it is pasted into the message
+     * body verbatim — Discord parses mentions out of the body, so "@everyone
+     * bingo" is an event name on this site and a server-wide ping in that
+     * channel. Both assertions are needed: suppressing the ping by mangling
+     * the title would pass the second one alone, and would rename somebody's
+     * event in the only place it gets read.
+     */
+    #[Test]
+    public function an_event_titled_at_everyone_reaches_the_channel_without_pinging_it(): void
+    {
+        Notification::fake();
+        Http::fake(['discord.com/*' => Http::response('', 204)]);
+        Setting::set('discord_webhooks_enabled', true);
+
+        $event = $this->event('SNAKES_LADDERS', ['title' => '@everyone bingo']);
+        $event->update(['discord_webhook_url' => 'https://discord.com/api/webhooks/123/abc']);
+
+        $this->pause($this->host($event), $event);
+
+        Http::assertSent(fn ($request) => str_contains($request['content'], '@everyone bingo')
+            && $request['allowed_mentions'] === ['parse' => []]);
+    }
+
+    /**
+     * The link is most of what these posts are for — the sentence says what
+     * happened, the URL is how anybody acts on it — and Discord only unfurls
+     * an absolute one. A relative path would render as literal text in the
+     * channel and go nowhere.
+     *
+     * This is the half of "does the link resolve" a test can answer: that the
+     * app emits a real absolute URL for the event. Whether the host behind it
+     * answers is a question for a publicly reachable deploy, and lives in the
+     * runbook in docs/backlog.md rather than here.
+     */
+    #[Test]
+    public function the_post_carries_an_absolute_link_to_the_event(): void
+    {
+        Notification::fake();
+        Http::fake(['discord.com/*' => Http::response('', 204)]);
+        Setting::set('discord_webhooks_enabled', true);
+
+        $event = $this->event();
+        $event->update(['discord_webhook_url' => 'https://discord.com/api/webhooks/123/abc']);
+
+        $this->pause($this->host($event), $event);
+
+        Http::assertSent(fn ($request) => str_contains(
+            $request['content'],
+            rtrim(config('app.url'), '/')."/events/{$event->id}",
+        ));
+    }
+
+    /**
+     * How this feature actually ends: a server admin deletes the webhook and
+     * nobody tells the app. Discord answers 401 while the token is wrong and
+     * 404 once the webhook itself is gone. The resume matters as much as the
+     * pause — a host who cannot lift their own pause because a Discord
+     * integration broke is strictly worse off than one who never had it.
+     */
+    #[Test]
+    #[DataProvider('revokedWebhookResponses')]
+    public function a_revoked_webhook_breaks_neither_the_pause_nor_the_resume(int $status, array $body): void
+    {
+        Notification::fake();
+        Http::fake(['discord.com/*' => Http::response($body, $status)]);
+        Setting::set('discord_webhooks_enabled', true);
+
+        $event = $this->event();
+        $event->update(['discord_webhook_url' => 'https://discord.com/api/webhooks/123/abc']);
+        $host = $this->host($event);
+
+        $this->pause($host, $event)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertNotNull($event->fresh()->paused_at);
+
+        $this->pause($host, $event, paused: false)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertNull($event->fresh()->paused_at);
+    }
+
+    /** @return array<string, array{int, array<string, mixed>}> */
+    public static function revokedWebhookResponses(): array
+    {
+        return [
+            'token revoked' => [401, ['message' => 'Invalid Webhook Token', 'code' => 50027]],
+            'webhook deleted' => [404, ['message' => 'Unknown Webhook', 'code' => 10015]],
+        ];
+    }
+
+    /**
+     * The failure that never reaches `$response->successful()` at all.
+     *
+     * Discord being unreachable, DNS failing, or the five-second timeout
+     * expiring all raise out of the HTTP client rather than returning a
+     * status — a different code path from a 404, and the one the `catch
+     * (Throwable)` in DiscordAnnouncer exists for. Nothing else in the suite
+     * entered it, so deleting that catch would have been silent.
+     */
+    #[Test]
+    public function a_webhook_that_never_answers_does_not_break_the_pause(): void
+    {
+        Notification::fake();
+        Http::fake(['discord.com/*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out')]);
+        Setting::set('discord_webhooks_enabled', true);
+
+        $event = $this->event();
+        $event->update(['discord_webhook_url' => 'https://discord.com/api/webhooks/123/abc']);
+
+        $this->pause($this->host($event), $event)->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertNotNull($event->fresh()->paused_at);
+    }
+
+    /**
+     * Discord's rate limit, which this does not retry — and, more to the
+     * point, does not claim to have beaten.
+     *
+     * A 429 is not `successful()`, so the post is dropped. That is defensible
+     * for a status line nobody is waiting on, but only while the host is told:
+     * the confirmation must not say it was posted to Discord when it was not.
+     * Pinned here because "and it says so" is the part that would quietly rot
+     * if the flash were ever simplified.
+     */
+    #[Test]
+    public function a_rate_limited_post_is_dropped_and_not_reported_as_posted(): void
+    {
+        Notification::fake();
+        Http::fake(['discord.com/*' => Http::response(
+            ['message' => 'You are being rate limited.', 'retry_after' => 1.5, 'global' => false],
+            429,
+        )]);
+        Setting::set('discord_webhooks_enabled', true);
+
+        $event = $this->event();
+        $event->update(['discord_webhook_url' => 'https://discord.com/api/webhooks/123/abc']);
+
+        $this->pause($this->host($event), $event)->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertNotNull($event->fresh()->paused_at);
+
+        // Asserted against the confirmation the host actually got, so this
+        // cannot pass by there being no flash at all to look in.
+        $flash = session('board-save');
+        $this->assertStringContainsString(trans('events.paused_confirmed'), $flash);
+        $this->assertStringNotContainsString(trans('events.notified_discord'), $flash);
+    }
+
+    /**
+     * What a clan's volume looks like at the webhook, measured rather than
+     * assumed.
+     *
+     * Discord allows a webhook 5 requests per 2 seconds, and this posts once
+     * per finisher with no batching, no spacing and no throttle — deliberately
+     * unlike the push half, where NotificationCategory carries a per-entity
+     * floor. So a CONTINUE event where six teams get home inside a couple of
+     * seconds is one over the ceiling, and the sixth line is the one that
+     * disappears.
+     *
+     * This does not fail on that; it pins the shape, so the number stays a
+     * decision rather than becoming a discovery. Whether it bites depends on
+     * how bunched real finishes are, which is what the burst step in the
+     * runbook in docs/backlog.md is for.
+     */
+    #[Test]
+    public function nothing_batches_or_spaces_a_burst_of_posts(): void
+    {
+        Http::fake(['discord.com/*' => Http::response('', 204)]);
+        Setting::set('discord_webhooks_enabled', true);
+
+        $event = $this->event();
+        $event->update(['discord_webhook_url' => 'https://discord.com/api/webhooks/123/abc']);
+
+        $announcer = app(DiscordAnnouncer::class);
+
+        foreach (range(1, 6) as $nth) {
+            $announcer->announce($event, "Finisher {$nth}");
+        }
+
+        Http::assertSentCount(6);
     }
 
     /**
