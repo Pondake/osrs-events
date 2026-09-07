@@ -57,9 +57,45 @@
                     />
                 </form>
 
+                <!-- The way out of a page that otherwise has none: it carries
+                     no header, no nav and no footer to find a link in.
+
+                     A bare button, and it stays bare. It first shipped with a
+                     line above it reading "No password? Ask in the Discord",
+                     which was removed the same day: that sentence turns a
+                     shut door into an invitation to ask for the key, and who
+                     gets into a closed beta is a decision for the person
+                     running it, not a default on a lock screen. The button
+                     says where the project lives. It does not promise a way
+                     in.
+
+                     Rendered only when an admin has set an invite: a "join
+                     us" button that goes nowhere, on the page that already
+                     turns people away, is the worst place on the site for
+                     one. Full lockdown keeps it too — the server is still
+                     open when the app is not, and it is where an outage
+                     would be explained.
+
+                     `external` is load-bearing: without it Nuxt UI reads a
+                     protocol-less href as internal and renders an Inertia
+                     <Link>, which makes the click an XHR — and /discord
+                     answers 302 to another origin, so the browser refuses the
+                     redirect and the button does nothing. Found 2026-09-07 by
+                     clicking it. -->
+                <div v-if="discordInviteUrl" class="mt-8 pt-6 border-t border-default">
+                    <u-button
+                        href="/discord"
+                        external
+                        color="neutral"
+                        variant="outline"
+                        icon="i-simple-icons-discord"
+                        :label="$t('lock.discord_cta')"
+                    />
+                </div>
+
                 <!-- The other way in. An admin should not have to be told the
                      shared password to reach a site they run. -->
-                <p class="text-xs text-muted" :class="fullLockdown ? 'mt-4' : 'mt-6'">
+                <p class="text-xs text-muted" :class="fullLockdown && !discordInviteUrl ? 'mt-4' : 'mt-6'">
                     {{ $t('lock.admin_hint') }}
                     <a href="/login" class="text-primary hover:underline">{{ $t('common.login') }}</a>
                 </p>
@@ -90,6 +126,11 @@ const body = computed(() => (props.fullLockdown ? trans('lock.full_lockdown_body
 const page = usePage();
 
 const announcement = computed(() => page.props?.site?.announcement ?? null);
+
+// Shared site-wide, and unlike the announcement it is not withheld from
+// somebody outside the door — an invite is meant to be handed to strangers,
+// and this page is where most of them stand.
+const discordInviteUrl = computed(() => page.props?.site?.discordInviteUrl ?? null);
 const announcementType = computed(() => page.props?.site?.announcementType);
 
 const bannerClass = computed(() => bannerBgFor(announcementType.value));

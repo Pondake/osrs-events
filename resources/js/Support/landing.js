@@ -19,10 +19,14 @@ export const LANDING_PAGES = [
     'OsrsBingo',
     'OsrsSkillRace',
     'OsrsDropRace',
-    // Every CMS page — about, privacy, terms, donate. They are read by the
-    // same people, in the same frame of mind, and they are what a search
-    // result lands on.
+    // Every CMS page — privacy, terms, donate. They are read by the same
+    // people, in the same frame of mind, and they are what a search result
+    // lands on.
     'Page',
+    // /about was one of those until 2026-09-07 and is its own component now,
+    // so it needs naming here in its own right. It leans on the panel bevel
+    // more than any of them — see About.vue.
+    'About',
     // The error page, for the same reason: a dead link from a search result
     // is somebody's first sight of the site, and the panel treatment is what
     // makes it read as a page rather than as a crash. It also gets the panel

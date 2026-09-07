@@ -19,10 +19,15 @@ class PublicPageTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * A slug with no route and no special handling. It used to be `about`,
+     * which stopped being a CMS page on 2026-09-07 — a fixture that is also
+     * a real page tests the real page by accident.
+     */
     private function page(array $attributes = []): Page
     {
         return Page::create(array_merge([
-            'slug' => 'about',
+            'slug' => 'colophon',
             'title' => 'About us',
             'subtitle' => 'Who runs this',
             'is_published' => true,
@@ -37,7 +42,7 @@ class PublicPageTest extends TestCase
     {
         $this->page();
 
-        $props = $this->get('/about')->viewData('page')['props'];
+        $props = $this->get('/colophon')->viewData('page')['props'];
 
         $this->assertSame('About us', $props['header']['title']);
         $this->assertSame('Who runs this', $props['header']['subtitle']);
@@ -49,7 +54,7 @@ class PublicPageTest extends TestCase
     {
         $this->page();
 
-        $seo = $this->get('/about')->viewData('page')['props']['seo'];
+        $seo = $this->get('/colophon')->viewData('page')['props']['seo'];
 
         $this->assertNotEmpty($seo['title']);
         $this->assertNotEmpty($seo['description']);
@@ -64,7 +69,7 @@ class PublicPageTest extends TestCase
     {
         $this->page(['is_published' => false]);
 
-        $this->get('/about')->assertNotFound();
+        $this->get('/colophon')->assertNotFound();
     }
 
     /**

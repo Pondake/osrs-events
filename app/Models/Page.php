@@ -73,16 +73,27 @@ class Page extends Model
     public const MAX_DEPTH = 3;
 
     /**
-     * Slugs whose row backs only PART of a hand-written page.
+     * Slugs the CMS must not treat as pages of their own.
      *
-     * `home` is a real row — Home.vue reads its hero copy and block region —
-     * but the page itself is a component at `/`. Two things follow, and both
-     * are handled by callers checking this list: the row must not be offered
-     * as a fully editable page in the CMS inventory, and the `/{page}`
-     * catch-all must not also serve it at `/home`, which would be the same
-     * content on a second URL.
+     * Two kinds of row end up here, and they arrive for different reasons:
+     *
+     *   - `home` is a REAL row that backs only part of a hand-written page.
+     *     Home.vue reads its hero copy and block region, but the page itself
+     *     is a component at `/`.
+     *   - the guide slugs and `about` are LEFTOVERS. Those pages were CMS
+     *     documents once and are components now (the guides since 2026-08-27,
+     *     `about` since 2026-09-07), so their rows back nothing at all. They
+     *     stay listed because an environment that ran the seeder before the
+     *     change still has them, and listing them retires those rows without
+     *     a migration that deletes content somebody may have edited.
+     *
+     * Both kinds need the same two things from every caller that checks this
+     * list: the row must not be offered as an editable page in the CMS
+     * inventory, and the `/{page}` catch-all must not serve it — which for a
+     * leftover would put stale copy on the same URL as the component, and for
+     * `home` would put the same content on a second URL.
      */
-    public const PARTIAL_SLUGS = ['home', 'osrs-snakes-and-ladders', 'osrs-clan-events', 'osrs-event-ideas', 'osrs-bingo', 'osrs-skill-race', 'osrs-drop-race'];
+    public const PARTIAL_SLUGS = ['home', 'about', 'osrs-snakes-and-ladders', 'osrs-clan-events', 'osrs-event-ideas', 'osrs-bingo', 'osrs-skill-race', 'osrs-drop-race'];
 
     /**
      * The public URL this page's content appears on.
@@ -96,8 +107,8 @@ class Page extends Model
     {
         return match ($this->slug) {
             'home' => '/',
-            // The landing slugs happen to equal their public path, so the
-            // default is already right for them.
+            // The landing slugs and `about` happen to equal their public
+            // path, so the default is already right for them.
             default => '/'.$this->slug,
         };
     }

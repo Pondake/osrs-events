@@ -17,26 +17,27 @@ use Illuminate\Database\Seeder;
  * Copy still comes from __() so the initial content matches what the page
  * said before it moved into the database. From here on the strings live in
  * the `blocks` column and lang/en.json is no longer their source.
+ *
+ * What is left here is two legal pages and one partial. Every page that
+ * started here and then moved back into a component did so because of the
+ * paragraph above: a seeder that cannot reach an existing row is the wrong
+ * home for copy that has to stay true.
  */
 class PageSeeder extends Seeder
 {
     public function run(): void
     {
-        $page = Page::firstOrCreate(
-            ['slug' => 'about'],
-            [
-                'title' => __('about.title'),
-                'subtitle' => __('about.subtitle'),
-                'seo_title' => __('seo.about_title'),
-                'seo_description' => __('seo.about_desc'),
-                'is_published' => true,
-                'blocks' => $this->aboutBlocks(),
-            ],
-        );
-
-        $this->command?->info($page->wasRecentlyCreated
-            ? 'Seeded the About page.'
-            : 'About page already exists — left untouched.');
+        // /about used to be seeded here as a full CMS document. Dropped
+        // 2026-09-07: it is a component now (LandingController::about()), for
+        // the same reasons the guide pages below stopped being rows. Still
+        // listed in Page::PARTIAL_SLUGS regardless, since an environment that
+        // ran this seeder before the change still has the row and it must
+        // stay out of the CMS inventory and the /{page} catch-all.
+        //
+        // This is also the clearest example of why firstOrCreate cuts both
+        // ways. The row that shipped served copy several rewrites behind what
+        // this file said, and nothing anywhere reported the difference — the
+        // seeder had been correct and unread for weeks.
 
         // Partly editable, unlike the others: Home.vue takes its hero copy
         // and one block region from this row and keeps the rest — the
@@ -95,79 +96,4 @@ class PageSeeder extends Seeder
      * them out gave `pages:sync-legal` something to apply to a database whose
      * rows already exist.
      */
-
-    /** @return array<int, array<string, mixed>> */
-    private function aboutBlocks(): array
-    {
-        return [
-            [
-                'type' => 'section',
-                'props' => ['title' => __('about.offer_title')],
-                'blocks' => [
-                    [
-                        'type' => 'features',
-                        'props' => [
-                            'columns' => 3,
-                            'items' => [
-                                ['icon' => 'i-lucide-grid-3x3', 'title' => __('about.feature_boards_title'), 'description' => __('about.feature_boards_desc')],
-                                ['icon' => 'i-lucide-dice-6', 'title' => __('about.feature_dice_title'), 'description' => __('about.feature_dice_desc')],
-                                ['icon' => 'i-lucide-check-square', 'title' => __('about.feature_tasks_title'), 'description' => __('about.feature_tasks_desc')],
-                                ['icon' => 'i-lucide-message-circle', 'title' => __('about.feature_discord_title'), 'description' => __('about.feature_discord_desc')],
-                                ['icon' => 'i-lucide-moon', 'title' => __('about.feature_dark_title'), 'description' => __('about.feature_dark_desc')],
-                                ['icon' => 'i-lucide-heart', 'title' => __('about.feature_free_title'), 'description' => __('about.feature_free_desc')],
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            ['type' => 'separator', 'props' => []],
-            [
-                'type' => 'section',
-                'props' => ['title' => __('about.privacy_title')],
-                'blocks' => [
-                    ['type' => 'prose', 'props' => ['text' => __('about.privacy_body')]],
-                    ['type' => 'links', 'props' => ['links' => [
-                        ['label' => __('about.privacy_cta'), 'to' => '/privacy', 'icon' => 'i-lucide-arrow-right', 'variant' => 'outline'],
-                    ]]],
-                ],
-            ],
-            ['type' => 'separator', 'props' => []],
-            [
-                'type' => 'section',
-                'props' => ['title' => __('about.free_title')],
-                'blocks' => [
-                    ['type' => 'prose', 'props' => ['text' => __('about.free_body')]],
-                    ['type' => 'links', 'props' => ['links' => [
-                        // Left as a literal rather than Setting::get(): once
-                        // this is editable content, an admin changing the
-                        // Ko-fi setting would no longer update a link already
-                        // written into a page. Better that the seeded default
-                        // is honest about being a starting point.
-                        ['label' => __('about.donate_cta'), 'to' => 'https://ko-fi.com/pondake', 'icon' => 'i-lucide-coffee', 'color' => 'warning', 'variant' => 'outline'],
-                    ]]],
-                ],
-            ],
-            ['type' => 'separator', 'props' => []],
-            [
-                'type' => 'section',
-                'props' => ['title' => __('about.support_title')],
-                'blocks' => [
-                    ['type' => 'prose', 'props' => ['text' => __('about.support_body')]],
-                    ['type' => 'links', 'props' => ['links' => [
-                        ['label' => __('about.support_email'), 'to' => 'mailto:dev@absolit.nl', 'icon' => 'i-lucide-mail', 'variant' => 'outline'],
-                    ]]],
-                ],
-            ],
-            ['type' => 'separator', 'props' => []],
-            [
-                'type' => 'callout',
-                'props' => [
-                    'color' => 'warning',
-                    'icon' => 'i-lucide-alert-triangle',
-                    'title' => __('about.disclaimer_title'),
-                    'description' => __('about.disclaimer_body'),
-                ],
-            ],
-        ];
-    }
 }
