@@ -191,11 +191,18 @@ de kleinere open vragen bij.
   advertising of third-party tracking van welke soort dan ook.** De meeste
   jurisdictie-specifieke machinerie klapt daarmee samen tot één zin. Die
   framing bewaken wanneer een template hem terug probeert te zetten.
-- [ ] **Of er überhaupt een persoonlijk e-mailadres gepubliceerd moet worden.**
+- [x] **Of er überhaupt een persoonlijk e-mailadres gepubliceerd moet worden.**
+  — besloten 2026-09-07: **`dev@absolit.nl` blijft op `/privacy` staan**, omdat
+  daar een route moet zijn voor wie niet meer bij zijn account kan en de knop
+  dus niet kan indrukken. Wat de vraag oploste was dat het adres al op
+  `/about` stond: alleen bij `/privacy` weghalen publiceert niets minder, het
+  haalt de route alleen weg bij de pagina waar iemand ernaar zoekt. Twee
+  vervolgpunten hieronder, allebei nieuw: het adres bij `/about` weg, en later
+  een fatsoenlijk adres in plaats van dit.
+  De oorspronkelijke afweging, bewaard omdat hij nog geldt:
   Nu `mailto:dev@absolit.nl` op `/privacy`. *Vindbaar* en *gepubliceerd* zijn
   niet dezelfde handeling, en welke van de twee die pagina verricht is nog een
-  keuze — het GitHub-account is publiek, dus wie wil komt er sowieso. **Dit
-  blijft open**: het is de oordeelsvraag, en die is aan de eigenaar.
+  keuze — het GitHub-account is publiek, dus wie wil komt er sowieso.
   **De feitelijke helft is wel af.** De alinea zei "vraag het en je account
   wordt verwijderd", wat waar was toen dat de enige route was; Settings →
   Account heeft sinds 2026-08-24 een verwijderknop. Op 2026-08-27 is
@@ -209,6 +216,22 @@ de kleinere open vragen bij.
   hrefs. `pages:sync-legal --diff` zegt lokaal "already matches", maar **op
   elke andere omgeving moet `php artisan pages:sync-legal` nog draaien** — het
   bestand aanpassen doet niets waar de paginarij al bestaat.
+- [ ] **Een eigen adres in plaats van `dev@absolit.nl`.** Zoiets als
+  `support@osrs-events.com` — bestaat nog niet, dus dit hangt achter een
+  mailbox en niet achter een beslissing. Wanneer het er is: `/privacy`
+  (`LegalPages::privacy()`, gevolgd door `php artisan pages:sync-legal`) en
+  waar het op `/about` terechtkomt. Tot die tijd blijft het huidige adres
+  staan; een pagina zonder contactroute is slechter dan een pagina met een
+  persoonlijke.
+- [ ] **`/about` opnieuw, en het e-mailadres gaat er daarbij af.** De pagina
+  heeft nog de oude layout die niet meer gewenst is, en `about.support_email`
+  wijst naar `mailto:dev@absolit.nl` — dat is de plek waar het adres feitelijk
+  gepubliceerd wordt, want `/privacy` heeft het als terugvaloptie nodig. Twee
+  dingen om te weten voordat iemand eraan begint: `/about` wordt gezaaid door
+  `PageSeeder` met `firstOrCreate`, dus de seeder aanpassen doet **niets** op
+  een bestaande database, en er is geen `pages:sync-legal`-equivalent voor
+  deze pagina zoals `/privacy` en `/terms` dat wel hebben. Vandaar één item in
+  plaats van een losse eenregelige fix.
 - [ ] **Bewaartermijn voor sessies en push-subscriptions.** De audit log heeft
   er een (90 dagen, uit `config/audit.php`, vastgepind door een test). Sessies
   verlopen en push-subscriptions worden dood gemarkeerd op een 404/410, maar
@@ -403,25 +426,172 @@ goedkoop en achteraf duur.
 Twee dingen die alleen de eigenaar kan afvinken, allebei omdat ze een echte
 tweede partij nodig hebben.
 
-- [ ] **Multi-viewertest op Herd** (geclaimd 2026-08-23). Twee echte browsers
-  op `osrs-events.test`, één host en één speler, pauzeren en hervatten terwijl
-  beiden kijken. Dat is de ene claim die niet vanuit `artisan serve` te maken
-  is, en hij dekt meteen het gat dat de fingerprint-ronde openliet. Zie ook
-  gotcha 15 in `docs/ssr-gotchas.md`: `artisan serve` kan geen SSE-stream en
-  iets anders tegelijk serveren, dus dit *moet* via Herd.
+**Waar ze gedraaid worden: `staging.osrs-events.com`, niet Herd** (besloten
+2026-09-07). Het item hieronder zei "moet via Herd", en dat klopte zolang
+staging er niet was. Nu wel, en staging wint op vier punten die geen van
+alle een kwestie van gemak zijn:
+
+- Discord's unfurler moet de link zélf kunnen ophalen. `osrs-events.test`
+  bestaat alleen op deze machine — `config('app.url')` is daar letterlijk
+  `http://osrs-events.test`, dus dát is de URL die in het kanaal belandt en
+  die voor iedereen behalve deze laptop nergens heen wijst. "Resolvet de
+  link" is op Herd niet half te doen maar helemaal niet.
+- Een tweede mens moet erbij kunnen. Een `.test`-domein resolvet niet buiten
+  deze machine; staging is een link die je iemand stuurt.
+- `.test` is bovendien afgesproken verboden terrein. Herd zou hier de ene
+  genoemde uitzondering inroepen; staging maakt die vraag overbodig.
+- Staging draait echte nginx+fpm mét wat ervoor staat, en een echte
+  SSR-daemon op `develop`. Een proxy die SSE buffert is precies het soort
+  productie-vormige fout die Herd niet kan laten zien — `X-Accel-Buffering:
+  no` is in de suite vastgelegd, maar alleen tot aan nginx.
+
+Wat het kost, eerlijk: de branch moet gedeployed zijn en het SSR-proces moet
+écht herstart zijn (gotcha 16 — controleer op bytes en `<title>`, niet op hoe
+de pagina eruitziet), er moet testdata op staging staan, en de
+Discord-schakelaar moet daar aan (en na afloop weer uit). Herd blijft over
+voor precies één ding: als staging blijkt te bufferen, zegt Herd of dat de
+app is of de proxy. Noem het hardop als je daarvoor terug moet naar `.test`.
+
+De premisse is opnieuw gemeten op 2026-09-07 en staat nog: met één
+`EventSource` open op `artisan serve` kreeg een gewone `fetch()` naar
+dezelfde origin in 12 seconden niets terug. Gotcha 15 is geen historische
+noot.
+
+- [ ] **Multi-viewertest** (geclaimd 2026-08-23). Twee echte browsers, één
+  host en één speler, pauzeren en hervatten terwijl beiden kijken. Dat is de
+  ene claim die niet vanuit `artisan serve` te maken is, en hij dekt meteen
+  het gat dat de fingerprint-ronde openliet.
+
+  *Wat inmiddels in de suite vastligt* (2026-09-07, `EventPauseTest`) — geen
+  vervanging voor de test hieronder, wel het deel dat niet meer met de hand
+  hoeft: `a_paused_event_still_streams_to_everyone_watching_it` (de stream
+  overleeft de pauze — anders hoort niemand ooit de hervatting, voor
+  uitgelogd, host én deelnemer) en `resuming_changes_the_live_fingerprint_back`
+  (hervatten is een tweede wijziging, en de fingerprint keert terug naar de
+  waarde van vóór de pauze). Eén browser is bovendien op 2026-09-07 lokaal
+  gedraaid: pauze en hervatting kwamen allebei binnen de 3s-poll aan zonder
+  reload, met de reden in de banner en de badge die van Running naar Paused
+  en terug ging. Wat daar níet mee bewezen is, is het hele punt: twee
+  gelijktijdige streams.
+
+  *Draaiboek.* Twee gescheiden cookiejars — bij voorkeur twee mensen op twee
+  machines, anders Chrome (host) naast Firefox (speler); incognito naast
+  gewoon werkt ook maar bewijst minder over een tweede machine.
+  1. Host: maak op staging een `SNAKES_LADDERS`-event, `access_mode` OPEN,
+     lopend (startdatum in het verleden, einddatum in de toekomst).
+  2. Speler: log in met een tweede account — een e-mailregistratie is genoeg,
+     een tweede Discord-account hoeft niet — en klik **Join**. Dat de speler
+     deelnemer is doet ertoe: de mail en de push hangen aan
+     `EventParticipant`, niet aan wie er kijkt.
+  3. Laat beide tabbladen **minstens 90 seconden** open vóór je iets doet. De
+     server sluit elke stream na ~45s en de browser verbindt zelf opnieuw; een
+     reconnect die stil niet opnieuw abonneert is precies wat je hier zoekt en
+     wat je mist als je meteen op de knop drukt. Kijk in beide browsers naar
+     de indicator in de kop: die hoort **Live** te zeggen met een kloppende
+     stip, niet "Reconnecting…".
+  4. Host: **Pause**, met een reden ingetypt (bijv. "Terug om 20:00"). De
+     reden is het deel dat bewijst dat de fingerprint méér dan `paused_at`
+     draagt.
+  5. Kijk nu naar het scherm van de speler en raak het niet aan. Binnen ~3
+     seconden, zonder reload: de banner verschijnt mét de reden, de badge gaat
+     van Running naar Paused, de dobbelsteen en het aanvinken van tegels gaan
+     dood, en de indicator blijft **Live** — hij mag geen "Reconnecting…"
+     worden. In de console van de speler mag `Event stream went stale` niet
+     verschijnen.
+  6. Host: kijk naar de eigen flash. Die noemt hoeveel deelnemers gemaild
+     zijn, en of het naar Discord ging. De host is zelf ook kijker: de pagina
+     van de host hoort dezelfde banner te krijgen.
+  7. Host: pas de reden aan terwijl het event gepauzeerd is. De speler hoort
+     de nieuwe tekst te zien, weer zonder reload.
+  8. Derde tabblad (mag dezelfde browser zijn): open het event nieuw tijdens
+     de pauze. De banner hoort er direct te staan in de eerste render — niet
+     pas na de eerste poll. Bekijk `view-source` als je twijfelt.
+  9. Host: **Resume**. Bij de speler: banner weg, reden weg, badge terug op
+     Running, dobbelsteen weer levend. Dit is de belangrijkste stap — de
+     speler heeft nergens op gedrukt en heeft geen flash; de hervatting
+     bereikt die persoon via de fingerprint of helemaal niet.
+  10. Laat daarna beide tabbladen nog vijf minuten staan en kijk of de
+      indicator Live blijft. Twee gelijktijdige streams die na een paar
+      turnovers een worker-tekort oplopen zien er precies zo uit als een
+      gezonde pagina, tot de indicator omslaat.
+
 - [ ] **De Discord-webhook tegen een echte server proberen voordat hij aan
   gaat.** Gebouwd en bewust uitgeschakeld uitgeleverd (admin → Site settings →
   Discord announcements). Het is de enige feature die iets naar buiten stuurt
   op gezag van een host, een kamer vol mensen in die deze app nooit iets
   gevraagd hebben — die wil een mens die naar de eerste post kijkt, geen
-  voorbijkomende test. Wat te controleren: leest het bericht goed in een echt
-  kanaal; resolvet de link; pingt er niets (`allowed_mentions` is leeg, en een
-  event getiteld "@everyone bingo" is de testcase); faalt een ingetrokken
-  webhook stil in plaats van de pauze te breken; en houdt de rate limit stand
-  op het volume dat een clan werkelijk maakt.
+  voorbijkomende test.
+
+  *Stand van de vijf punten.* Punt 1 — leest het bericht goed in een echt
+  kanaal — is afgevinkt door de changelog-post van 2026-08-30, die er goed
+  uitkwam. De andere vier staan open, en van elk ligt inmiddels de helft vast
+  die een test kan vastleggen (2026-09-07, `EventPauseTest`):
+
+  | Punt | Test | Wat de test níet dekt |
+  |---|---|---|
+  | pingt niets | `an_event_titled_at_everyone_reaches_the_channel_without_pinging_it` — de titel komt letterlijk mee én `allowed_mentions` is leeg | of Discord het ook echt als niet-mention behandelt |
+  | resolvet de link | `the_post_carries_an_absolute_link_to_the_event` | of de host achter die URL antwoordt, en of Discord hem unfurlt |
+  | faalt stil | `a_revoked_webhook_breaks_neither_the_pause_nor_the_resume` (401 én 404), `a_webhook_that_never_answers_does_not_break_the_pause` (de `catch (Throwable)`, waar niets anders in de suite langskwam) | of Discord bij een verwijderde webhook werkelijk 401/404 geeft, en of 5s timeout genoeg is |
+  | rate limit | `a_rate_limited_post_is_dropped_and_not_reported_as_posted` (429 wordt gedropt, en de bevestiging beweert níet dat het gepost is), `nothing_batches_or_spaces_a_burst_of_posts` (6 aankondigingen = 6 requests, geen bundeling, geen spreiding, geen throttle) | waar het plafond in het echt ligt |
+
+  *Draaiboek.* **Gebruik een wegwerpserver of een privékanaal, niet het
+  clankanaal.** Stap 3 hieronder is een opzettelijke poging om een hele server
+  te pingen; die wil je niet per ongeluk zien slagen bij tweehonderd mensen.
+  Vooraf: Serverinstellingen → Integraties → Webhooks → nieuwe webhook, URL
+  kopiëren. Op staging: admin → Site settings → Discord announcements **aan**
+  (en na afloop weer uit). Op het testevent: instellingen → webhook plakken.
+  1. **Leest het goed.** Pauzeer met een reden en kijk naar de regel in het
+     kanaal. Dit is een andere string dan de changelog-post: emoji, een vette
+     titel en de reden erachter geplakt. Bekijk hem ook op Discord mobiel —
+     `**vet**` en ⏸️/▶️/🏁 vallen daar anders uit. Doe daarna hervatten en
+     annuleren, want dat zijn drie verschillende zinnen.
+  2. **Resolvet de link.** De post hoort te unfurlen tot een embed met titel
+     en omschrijving van het event, en klikken hoort op het event uit te
+     komen. Controleer eerst de host in de geposte URL — staat daar niet
+     `staging.osrs-events.com`, dan klopt `APP_URL` op staging niet en is de
+     rest van deze stap zinloos. Let op: staat er basic auth of een
+     wachtwoordmuur voor staging, dan krijgt de unfurler een 401 en zie je een
+     kale link; dan verhuist deze stap naar productie of moet de crawler erin
+     mogen.
+  3. **Pingt niets.** Hernoem het testevent naar `@everyone bingo` en
+     pauzeer. In het kanaal: de tekst `@everyone bingo` staat er letterlijk,
+     en er is géén ping — geen highlight, geen badge, geen "1 mention".
+     **Kijk mee vanuit de client van de tweede persoon**, niet die van de
+     eigenaar van de webhook: een mention is alleen als mention zichtbaar bij
+     iemand die hem zou krijgen. Wil je het rond hebben, herhaal dan met
+     `@here` en met een echte rol-mention (`<@&rolid>`) in de titel.
+  4. **Faalt stil.** Pauzeer het event, verwijder daarna de webhook in Discord
+     — laat het veld in de app staan — en druk op **Resume**. Verwacht: de
+     hervatting slaagt, de bevestiging noemt Discord *niet*, en er staat een
+     gerapporteerde exception in `laravel.log` op staging. Draai het daarna
+     nog eens met de netwerkkant: zet er een webhook-URL in van een host die
+     niet antwoordt en kijk of het na 5 seconden doorloopt in plaats van de
+     pauze op te houden.
+  5. **Rate limit.** Discord hanteert voor een webhook informeel zo'n 5
+     requests per 2 seconden; het punt van deze stap is het echte getal
+     vinden, niet dat cijfer bevestigen. De app post één keer per finisher,
+     zonder bundelen en zonder spreiden — anders dan de push-helft, die via
+     `NotificationCategory` wél een throttle per entiteit heeft. Zet dus een
+     CONTINUE-event op met zes of meer deelnemers op het laatste vakje, keur
+     hun finish-claims vlak achter elkaar goed, en tel de regels in het
+     kanaal. Verwachting die je probeert te falsifiëren: bij zes binnen twee
+     seconden verdwijnt er minstens één, en niets zegt dat tegen wie dan ook.
+     Valt dat zo uit, dan is de vraag die hier opengaat of `DiscordAnnouncer`
+     een queue nodig heeft — noteer het antwoord hier, en bouw het niet
+     tijdens de test.
 
 ## 6. Klein werk
 
+- [x] **De dode `privacy.*`-sleutels uit `lang/en.json`.** — opgeruimd
+  2026-09-07. Achtendertig sleutels, de hele namespace, overgebleven van de
+  privacypagina van vóór de CMS-overstap; sinds `/privacy` uit
+  `App\Support\LegalPages` komt verwees niets in `resources/js`, `app`,
+  `database` of `routes` er nog naar. Ze waren niet alleen ongebruikt maar ook
+  onwaar: `privacy.rights_body` zei nog "contact us to delete your account"
+  (er is een knop), en `privacy.storage_body` beschreef een JWT in
+  localStorage met zeven dagen geldigheid — de oude NestJS/Nuxt-stack, niet
+  deze. `terms.*` en `about.*` zijn langs dezelfde lat gelegd en die worden
+  allebei wél gebruikt. 99 backend- en 212 frontendtests groen.
 - [x] ~~**Een event kon gewonnen worden zonder dat er iets gebeurde.**~~ —
   gebouwd 2026-09-03. De laatste tegel afvinken zette een ref in de browser en
   toonde een 🎉-modal die een refresh wiste. Er werd niets opgeslagen: niemand
@@ -959,6 +1129,10 @@ geen automatisering.
   §5 openliet: dat item vroeg om een echte kamer om in te posten, en die is er
   nu. Het aanzetten blijft daar staan — dit item levert alleen de kamer en de
   URL.
+  **Blijft handwerk, met opzet.** De bot kán een webhook-URL teruggeven, maar
+  dan staat hij in een sessielog in plaats van alleen in de instellingen — en
+  een webhook-URL is een schrijfrecht, geen adres. Kopiëren uit de Discord-UI
+  is één klik en laat geen tweede kopie achter.
 - [x] ~~**`/github` in `#dev-log`.**~~ — gedaan 2026-08-30. Discord-webhook
   `GitHub` in `#dev-log`, met `/github` achter de URL, geregistreerd op de repo
   via `gh api repos/Pondake/osrs-events/hooks` (hook `672396333`) voor de events
@@ -976,6 +1150,12 @@ geen automatisering.
   Create Polls, Use External Apps, Embedded Activities, Request to Speak.
   Laten staan: lezen, praten, reageren, threads in het openbaar, links en
   bestanden, externe emoji's, bijnaam wijzigen, en de voice-basis voor later.
+  **Die lijst is op 2026-09-07 tegen de echte rol gehouden** (bitfield
+  `2248473465835073`, uitgelezen via de bot en per bit vertaald): alle elf
+  staan daadwerkelijk nog aan, er is er niet één die al uit stond, en er is
+  ook niets bij dat de lijst mist. Eén naam is makkelijk te verwarren en staat
+  daarom hier: **Use External Apps** moet eraf, **Use Application Commands**
+  blijft — dat tweede is wat een gewone slash-command laat werken.
 - [ ] **Verificatieniveau en contentfilter.** Serverinstellingen → Moderatie:
   verificatie op minstens *Low* (geverifieerd e-mailadres) en het contentfilter
   aan voor alle leden. Ook UI-werk; hier is geen tool voor. Valt weg als
@@ -986,10 +1166,15 @@ geen automatisering.
   en het is het enige "reageert vanzelf" dat deze server gaat hebben zolang er
   geen permanent draaiende bot is. De spam- en mention-spamregels zijn de twee
   die iets doen; een trefwoordenlijst is voor later.
-- [ ] **Invite-link, en besluiten waar hij landt.** De server heeft er nog geen.
-  De voor de hand liggende plek is de SiteLock-pagina, want daar staat toch al
-  iemand die het beta-wachtwoord nodig heeft. Let op: een invite-URL hoort niet
-  in deze repo (`docs/discord.md` legt uit waarom).
+- [x] ~~**Invite-link, en besluiten waar hij landt.**~~ — gedaan 2026-09-07 via
+  de bot. Een **permanente** invite naar `#general`, `maxAge 0` en `maxUses 0`:
+  de twee die er al waren verliepen allebei na 30 dagen, en een link die op de
+  landingspagina staat mag niet stilletjes doodgaan. De URL staat nergens in
+  deze repo — hij is ingevoerd in admin → Site settings → Discord invite link,
+  en dát is waar hij hoort (zie het item hieronder voor waarom dat een
+  instelling is en geen constante).
+  Waar hij landt: **de landingspagina, de SiteLock-pagina en de betapagina**,
+  alle drie via `/discord` in plaats van de invite zelf.
 - [ ] **Servericoon en banner** op het sitelogo. Handwerk; daar is geen tool
   voor. De kanaalberichten staan er sinds 2026-08-30 — welkom met
   kanaalwegwijzer in `#general`, en in `#beta-feedback` en `#support` elk een
@@ -999,14 +1184,29 @@ geen automatisering.
   welkomstbericht wijzen naar `.com`-pagina's die pas kloppen zodra `develop`
   live staat.
 
-- [ ] **"Join our Discord" op de site.** Nu is de server nergens vandaan te
-  vinden. Nodig: een knop of sectie op de landingspagina, en waarschijnlijk ook
-  op de SiteLock-pagina — daar staat toch al iemand die op het beta-wachtwoord
-  wacht, en dat is precies het moment waarop hij vragen heeft. Of het ook een
-  eigen pagina wordt is een aparte vraag: een `/discord`-route die doorstuurt is
-  goedkoop en is meteen de link die je in een clanchat kunt plakken. Hangt aan
-  het invite-item hierboven — zonder invite-link is er niets om naartoe te
-  linken.
+- [x] ~~**"Join our Discord" op de site.**~~ — gebouwd 2026-09-07. Drie dingen:
+  - **`/discord`** (`routes/web.php`, `name('discord')`) stuurt door naar de
+    invite uit `Setting::get('discord_invite_url')`, en **404't** als er geen
+    staat. Dat is de link die je in een clanchat plakt. De omweg is het punt:
+    de invite hoort bij één server, dus hij staat in de database van de
+    omgeving die hem gebruikt en nooit in deze repo — een ingetrokken invite
+    vervangen is dan een formulierveld en geen deploy. `redirect()->away()`,
+    niet `to()`, anders krijgt de URL de eigen origin ervoor.
+  - **`EnsureSiteUnlocked`** laat `discord` door, naast `beta`. Wie zonder
+    wachtwoord voor de deur staat gaat juist naar de server om erom te vragen;
+    een deur die die link naar zichzelf terugstuurt is een gesloten lus.
+  - **De knop staat op `Home.vue` en `SiteLock.vue`**, allebei alleen als een
+    admin een invite heeft ingevuld — een "join us" die nergens heen gaat leest
+    als kapot in plaats van als nog-niet. Op de landingspagina staat hij in de
+    hero naast de primaire knop, en hij blijft staan als de deur dicht is:
+    dat is dan het enige waar een bezoeker nog op kan klikken. Op de
+    SiteLock-pagina staat hij **boven** de admin-hint, met de regel "No
+    password? Ask in the Discord" erbij — die pagina heeft geen header, geen
+    nav en geen footer, dus er is verder niets te vinden.
+  Keys `home.cta_discord`, `lock.discord_hint` en `lock.discord_cta` in
+  `lang/en.json`. `tests/Feature/DiscordLinkTest.php` dekt de redirect, de
+  404, de doorgang langs de deur, de prop op het lockscreen en dat noch de
+  route noch de invite in de sitemap terechtkomt.
 
 - [x] ~~**`#announcements` gevuld met een changelog.**~~ — gedaan 2026-08-30.
   Er waren nooit releases: geen tags, geen versienummers. `CHANGELOG.md` in de
@@ -1014,9 +1214,20 @@ geen automatisering.
   in plaats van per versie, met bovenaan de waarschuwing dat "gebouwd" niet
   hetzelfde is als "live". De post in `#announcements` is de leesbare
   samenvatting daarvan.
-- [ ] **Privé `#dev-announcements` om de webhook in te testen** (de eigenaar
-  pakt dit in een aparte sessie op). Drie dingen die hier al uit zijn geleerd en
-  die tijd schelen:
+- [x] ~~**Privé `#dev-announcements` om de webhook in te testen.**~~ — gemaakt
+  2026-09-07 via de bot, in `INFORMATION`. `@everyone` heeft er `VIEW_CHANNEL`
+  geweigerd, dus de kamer is verborgen en niet alleen dicht. Er hangt een
+  tweede webhook in, **`OSRS Events (test)`**: die plak je in het
+  webhook-veld van een event als je wilt zien wat een post doet, terwijl de
+  `#announcements`-webhook alleen in admin → Site settings gaat. In het kanaal
+  staat een bericht dat dat uitlegt en de vier openstaande §5-checks opsomt
+  (link resolven, niets pingen, stil falen bij een ingetrokken webhook, rate
+  limit).
+  De volgorde uit `docs/discord.md` is aangehouden en werkte: **eerst** de
+  allow voor `OSRS Events Ops`, **daarna** pas de weigering op `@everyone` —
+  andersom raakt de bot zijn eigen kanaal kwijt en kan hij dat niet
+  terugdraaien. Drie dingen die hier al uit waren geleerd en die tijd
+  schelen:
   1. **Een `@everyone`-deny op `MESSAGE_SEND` raakt de webhook niet, de bot
      wel.** Een webhook hangt niet aan een lid; de bot wel, dus die valt onder
      dezelfde weigering als iedereen.
