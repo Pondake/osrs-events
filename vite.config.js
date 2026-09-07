@@ -13,6 +13,18 @@ export default defineConfig({
     server: {
         host: '127.0.0.1',
     },
+    build: {
+        // Off by default; `VITE_SOURCEMAP=1 pnpm build:ssr` turns it on.
+        //
+        // A minified production chunk answers a console TypeError with a
+        // file and a column, and nothing else — and vendor chunks bundle
+        // Vue, Inertia and axios together, so the same file name covers
+        // dozens of unrelated call sites. Chasing one of those by reading
+        // the minified source is guesswork; a sourcemap names the line.
+        // Gated rather than always-on so a deploy build does not ship the
+        // application's own source alongside it.
+        sourcemap: process.env.VITE_SOURCEMAP === '1',
+    },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
