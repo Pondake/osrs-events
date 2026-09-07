@@ -27,7 +27,12 @@
          room, in a header that has no space to explain the difference, and
          the Discord one skipped the login page entirely. The login page
          already presents every method with room to label them. -->
-    <u-button v-else to="/login" color="primary" variant="solid" icon="i-lucide-log-in" :label="$t('common.login')" />
+    <!-- `:active="false"` is not styling — it short-circuits Nuxt UI's
+         Inertia ULink before it reads `usePage().url`, which is undefined on
+         this component's first render because the header sits before the page
+         component. See AppHeader's isCurrent() for the full account. A login
+         button has no active state to lose: the login page does not show it. -->
+    <u-button v-else to="/login" :active="false" color="primary" variant="solid" icon="i-lucide-log-in" :label="$t('common.login')" />
 </template>
 
 <script setup>
