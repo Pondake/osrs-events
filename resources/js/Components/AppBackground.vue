@@ -63,11 +63,14 @@
                          crossed the edge would have to be drawn twice, once on
                          each side, for the repeat to close.
 
-                         No snake in here. One per tile meant a snake every
+                         No snake anywhere. One per tile meant a snake every
                          232px in both directions, and a screen of short
                          parallel squiggles reads as hairs on the monitor
-                         rather than as a board. There is exactly one snake
-                         now, below, and it is not part of the repeat. -->
+                         rather than as a board; a single one crawling an
+                         offset-path loop instead was so rarely on screen that
+                         it may as well not have been there. See the backlog
+                         entry — a snake is worth having, this was not the way
+                         to get one. -->
                     <template v-else>
                         <rect
                             v-for="cell in ladderCells" :key="`c-${cell.x}-${cell.y}`"
@@ -147,27 +150,6 @@
                     height="140%"
                     :fill="`url(#bg-pattern-${name})`"
                 />
-
-                <!-- The one snake. Not in the pattern above and not on the
-                     lattice: it crawls a long closed loop across the field
-                     with `offset-path`, so at any moment there is a single
-                     snake somewhere on the screen rather than a field of
-                     identical squiggles. 150s for the full circuit, which is
-                     slow enough that you notice it has moved rather than
-                     watch it move. -->
-                <g
-                    v-if="name === 'ladder'"
-                    class="app-bg__snake"
-                    :class="hero
-                        ? 'opacity-[0.16] dark:opacity-[0.14]'
-                        : 'opacity-[0.09] dark:opacity-[0.08]'"
-                >
-                    <path
-                        d="M-96,0 C-80,-11 -64,11 -48,0 C-32,-11 -16,11 0,0 C16,-11 32,11 48,0 C64,-11 80,11 96,0"
-                        fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                    />
-                    <circle cx="96" cy="0" r="4.5" fill="currentColor" />
-                </g>
 
                 <!-- A handful of squares that fade up and back down again: a
                      tile being claimed. They sit on the same lattice as the
@@ -335,28 +317,6 @@ const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
     }
 }
 
-/* A closed loop, so `linear infinite` comes back round without a jump.
-   offset-rotate defaults to `auto`, which is what turns the body to face the
-   way it is going. A browser without offset-path simply leaves the snake
-   parked in one corner — a still snake, not a broken one. */
-.app-bg__snake {
-    /* Kept inside the band the mask actually lights: a loop drawn to the
-       full size of the field spent most of its circuit in the faded-out
-       bottom, so the snake was missing more often than it was there. */
-    offset-path: path('M180,230 C420,90 760,90 1000,220 C1180,320 1180,520 1000,610 C760,700 420,700 180,570 C60,500 60,300 180,230 Z');
-    animation: bg-slither 150s linear infinite;
-}
-
-@keyframes bg-slither {
-    from {
-        offset-distance: 0%;
-    }
-
-    to {
-        offset-distance: 100%;
-    }
-}
-
 .app-bg__accent {
     opacity: 0;
     animation: bg-claim 26s ease-in-out infinite;
@@ -382,7 +342,6 @@ const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
    of anybody. Only the two things that move stop. */
 @media (prefers-reduced-motion: reduce) {
     .app-bg__drift,
-    .app-bg__snake,
     .app-bg__accent {
         animation: none;
     }
