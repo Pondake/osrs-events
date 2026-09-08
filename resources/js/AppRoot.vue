@@ -18,7 +18,13 @@
         <!-- Site-wide announcement, set in admin site settings. Rendered
              above the page rather than inside it so it shows everywhere,
              and server-side (no client-only) so it's in the served HTML. -->
-        <div v-if="announcement && showSiteChrome && !announcementDismissed" class="border-b border-default" :class="bannerClass">
+        <!-- Two layers, not one. Every page surface is transparent here so
+             the torch light and the tile field can show through, and a `/10`
+             tint over that meant the pattern ran straight through the bar —
+             worst in light mode, where the field is darker than the bar. The
+             outer layer is opaque, the inner one carries the tint. -->
+        <div v-if="announcement && showSiteChrome && !announcementDismissed" class="border-b border-default bg-default">
+          <div :class="bannerClass">
             <!-- Same container as u-header and every page body: Nuxt UI's own
                  --ui-container token with its padding scale. It previously used
                  max-w-7xl + px-4 and so sat 8px left of the header wordmark and
@@ -55,6 +61,7 @@
                     />
                 </div>
             </div>
+          </div>
         </div>
 
         <!-- Recurring on purpose. An account Wise Old Man can't find is one
@@ -64,7 +71,8 @@
              a notice, never a block: their API only knows accounts somebody
              has already looked up there, so a real newcomer legitimately
              isn't found. -->
-        <div v-if="showOsrsNotice" class="border-b border-default bg-warning/10">
+        <div v-if="showOsrsNotice" class="border-b border-default bg-default">
+          <div class="bg-warning/10">
             <div class="w-full max-w-(--ui-container) mx-auto px-4 sm:px-6 lg:px-8 py-2">
                 <div class="flex items-center justify-center gap-x-3 gap-y-1 flex-wrap text-sm text-center">
                     <span class="text-highlighted">
@@ -97,6 +105,7 @@
                     </span>
                 </div>
             </div>
+          </div>
         </div>
 
         <!-- The in-app way in.
@@ -113,7 +122,8 @@
              not exist during SSR, and a bar that appears and then vanishes on
              hydration is worse than one that arrives a moment late. -->
         <client-only>
-            <div v-if="showPushOffer" class="border-b border-default bg-primary/10">
+            <div v-if="showPushOffer" class="border-b border-default bg-default">
+              <div class="bg-primary/10">
                 <div class="w-full max-w-(--ui-container) mx-auto px-4 sm:px-6 lg:px-8 py-2">
                     <div class="flex items-center justify-center gap-x-3 gap-y-1 flex-wrap text-sm text-center">
                         <span class="text-highlighted">
@@ -139,6 +149,7 @@
                         </span>
                     </div>
                 </div>
+              </div>
             </div>
         </client-only>
 
