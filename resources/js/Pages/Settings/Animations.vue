@@ -13,20 +13,50 @@
                  on a board one click away — a Save step here would only add a
                  way to think you had changed something and not have. -->
             <div class="flex flex-col gap-5">
+                <!-- Only ever rendered in a browser, and only on a machine
+                     that actually asks for reduced motion. It says what is
+                     happening rather than reporting a fault: the OS setting
+                     is a deliberate choice for most of the people who have
+                     it, and the only thing wrong here was that the switches
+                     below claimed to be in charge while it quietly won. -->
+                <u-alert
+                    v-if="reducedMotion && !values[overrideKey]"
+                    color="warning"
+                    variant="subtle"
+                    icon="i-lucide-pause-circle"
+                    :title="$t('animations.reduced_motion_title')"
+                    :description="$t('animations.reduced_motion_desc')"
+                />
+
                 <div v-for="key in keys" :key="key" class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
-                        <p class="font-medium">{{ $t(`animations.${key}`) }}</p>
+                        <p class="font-medium" :class="{ 'text-muted': overridden }">{{ $t(`animations.${key}`) }}</p>
                         <p class="text-sm text-muted">{{ $t(`animations.${key}_desc`) }}</p>
                     </div>
                     <u-switch v-model="values[key]" class="shrink-0 mt-0.5" @update:model-value="save" />
                 </div>
+
+                <!-- Below the switches it overrules, and only where the
+                     question exists at all: on a machine with no reduced-motion
+                     preference this would be a switch about nothing. -->
+                <template v-if="reducedMotion">
+                    <u-separator />
+
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="min-w-0">
+                            <p class="font-medium">{{ $t(`animations.${overrideKey}`) }}</p>
+                            <p class="text-sm text-muted">{{ $t(`animations.${overrideKey}_desc`) }}</p>
+                        </div>
+                        <u-switch v-model="values[overrideKey]" class="shrink-0 mt-0.5" @update:model-value="save" />
+                    </div>
+                </template>
             </div>
         </u-card>
     </settings-layout>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 
 import SettingsLayout from '@/Components/SettingsLayout.vue';
@@ -37,9 +67,26 @@ const props = defineProps({
     // The catalogue's order, so adding a setting server-side puts it on the
     // page without touching this file.
     keys: { type: Array, required: true },
+    // Rendered apart from the list above, because it is only a question on a
+    // machine that asks for reduced motion.
+    overrideKey: { type: String, required: true },
 });
 
 const values = ref({ ...props.preferences });
+
+// Set after mount, never during render: `matchMedia` does not exist on the
+// server, and a value that differs between the SSR pass and the first client
+// render is a hydration mismatch. False until mounted means the page renders
+// identically on both sides and then gains the notice — see
+// docs/ssr-gotchas.md.
+const reducedMotion = ref(false);
+
+onMounted(() => {
+    reducedMotion.value = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+});
+
+/** What the board will actually do, which is what the switches should look like. */
+const overridden = computed(() => reducedMotion.value && !values.value[props.overrideKey]);
 
 function save() {
     router.put('/settings/animations', { preferences: values.value }, { preserveScroll: true });
