@@ -1591,6 +1591,17 @@ async function land(id, position) {
 const ownAnimationOn = computed(() => authUser.value?.display?.animate_own_moves ?? true);
 const othersAnimationOn = computed(() => authUser.value?.display?.animate_other_moves ?? true);
 
+/**
+ * Whether the OS preference may be overruled, and only because somebody said
+ * so on the settings page. Off unless asked for: the browser is reporting a
+ * choice its owner made, and a site that ignores that by default has decided
+ * it knows better.
+ */
+const playWhenReduced = computed(() => authUser.value?.display?.play_when_reduced_motion ?? false);
+
+/** Reduced motion wins, unless this account has overridden it. */
+const motionAllowed = () => !prefersReducedMotion() || playWhenReduced.value;
+
 const moveTokens = new Map();
 
 /**
@@ -1600,7 +1611,7 @@ const moveTokens = new Map();
 const seenMoves = new Map();
 
 async function playMove(id, { from, landed, to, jump }) {
-    if (prefersReducedMotion()) {
+    if (!motionAllowed()) {
         return;
     }
 

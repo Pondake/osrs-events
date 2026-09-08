@@ -18,7 +18,10 @@ class AnimationController extends Controller
             // Resolved rather than raw: a list saved before a setting existed
             // must not read as that setting being off.
             'preferences' => DisplayPreference::resolve($request->user()->display_preferences),
-            'keys' => array_keys(DisplayPreference::ALL),
+            // Only the movement switches: the override is rendered on its
+            // own, and only on a machine that asks for reduced motion.
+            'keys' => DisplayPreference::MOVEMENT,
+            'overrideKey' => DisplayPreference::PLAY_WHEN_REDUCED,
         ]);
     }
 
