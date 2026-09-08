@@ -151,11 +151,25 @@ sindsdien negen dagen aan werk bijgekomen dat ook niet live staat.
   vierde verplicht veld toevoegen een ándere test liet vallen terwijl deze
   groen bleef. Nu compleet, met `assertSessionHasNoErrors()`.
 
-- [ ] **Bij het deployen: de site-instellingen die per omgeving gezet moeten
-  worden.** Ze staan in de database en niet in de repo — met opzet, want het
-  zijn per stuk dingen die bij één omgeving horen — dus een verse deploy heeft
-  ze geen van alle. Een lijst omdat dit precies het soort werk is dat je
-  vergeet tot iemand meldt dat er een knop mist:
+- [ ] **Bij het deployen: wat per omgeving gezet of gedraaid moet worden.**
+  Instellingen die in de database staan en niet in de repo — met opzet, want
+  het zijn per stuk dingen die bij één omgeving horen — plus de commando's die
+  geen deploy uit zichzelf draait. Een verse omgeving heeft ze geen van alle.
+  Een lijst omdat dit precies het soort werk is dat je vergeet tot iemand
+  meldt dat er een knop mist — of, erger, tot niemand iets meldt:
+  - **`php artisan pages:sync-legal`.** De enige op deze lijst die *stil*
+    misgaat: `/privacy` en `/terms` staan als tekst in
+    `App\Support\LegalPages`, maar `PageSeeder` plant ze met `firstOrCreate`
+    en raakt een bestaande rij daarna nooit meer aan. Een omgeving die al een
+    keer gezaaid is houdt dus de oude tekst, zonder foutmelding en zonder
+    ontbrekende knop — de pagina rendert gewoon, alleen verkeerd. Draai eerst
+    `--diff` om te zien wat er zou veranderen. Het overschrijft wat er via
+    admin → Content op die twee pagina's bewerkt is, en dat is de reden dat
+    geen deploy dit uit zichzelf doet.
+    Op dit moment staan er twee dingen in de repo die een bestaande omgeving
+    nog niet heeft: de verwijderalinea die naar Settings → Account wijst in
+    plaats van naar een e-mail (2026-08-27), en de sessiebewaartermijn onder
+    "Staying signed in" (2026-09-07).
   - **Discord invite link** (admin → Site settings). Zonder deze rendert er
     op de landingspagina, het lockscreen en `/beta` géén Discord-knop, en
     `/discord` geeft 404. De permanente invite bestaat sinds 2026-09-07 (§7);
@@ -229,7 +243,8 @@ de kleinere open vragen bij.
   de browser op `localhost:8010/privacy`: beide links staan er met de juiste
   hrefs. `pages:sync-legal --diff` zegt lokaal "already matches", maar **op
   elke andere omgeving moet `php artisan pages:sync-legal` nog draaien** — het
-  bestand aanpassen doet niets waar de paginarij al bestaat.
+  bestand aanpassen doet niets waar de paginarij al bestaat. Dat staat nu op
+  de deploy-checklist in §0, want het is de enige stap daar die stil misgaat.
 - [ ] **Een eigen adres in plaats van `dev@absolit.nl`.** Zoiets als
   `support@osrs-events.com` — bestaat nog niet, dus dit hangt achter een
   mailbox en niet achter een beslissing. Wanneer het er is: alleen `/privacy`
@@ -634,16 +649,17 @@ noot.
   webhook `OSRS Events (test)` — lokaal, dus met een `.test`-host in de link.
   Vier dingen, waarvan twee die geen enkele test had kunnen vinden:
 
-  - **Een `/api/v10/`-webhook-URL wordt geweigerd, stil.**
-    `DiscordAnnouncer::isValidUrl()` eist `str_starts_with($path,
-    '/api/webhooks/')`, en Discords **API** geeft de URL uit als
-    `/api/v10/webhooks/…`. Allebei werken bij Discord; de app accepteert
-    alleen de eerste. De knop *Copy Webhook URL* in de UI geeft de
-    ongeversioneerde vorm, dus een host die kopieert en plakt merkt niets —
-    maar wie de URL ergens anders vandaan haalt krijgt een event dat nooit
-    post, zonder dat iets zegt waarom. **Kostte de eerste hele testronde:
-    veertien posts die er nooit uit gingen, in 0,00s per stuk.** Fix is één
-    regel: ook `/api/v\d+/webhooks/` toestaan. Doen vóór de feature aangaat.
+  - **Een `/api/v10/`-webhook-URL werd stil geweigerd** — inmiddels gefixt in
+    `d497933`, onafhankelijk gevonden. `isValidUrl()` eiste
+    `str_starts_with($path, '/api/webhooks/')`, en Discords **API** geeft de
+    URL uit als `/api/v10/webhooks/…`. Allebei werken bij Discord; de app
+    accepteerde alleen de eerste. De knop *Copy Webhook URL* in de UI geeft
+    de ongeversioneerde vorm, dus een host die kopieert en plakt merkte
+    niets — maar wie de URL ergens anders vandaan haalde kreeg een event dat
+    nooit postte, zonder dat iets zei waarom. **Kostte de eerste hele
+    testronde: veertien posts die er nooit uit gingen, in 0,00s per stuk.**
+    Nu een `preg_match` op `/api/(v\d+/)?webhooks/`, en het formulier deelt
+    diezelfde functie, dus beide kanten kloppen weer.
   - **Een verwijderde webhook geeft 404, niet 401** — en de app zegt er
     *niets* over. Verwacht was een gerapporteerde exception in
     `laravel.log`; die komt er niet, want een 404 is een nette response en
@@ -652,9 +668,8 @@ noot.
     daarmee is het klaar: **geen logregel, geen woord tegen de host, niets.**
     Stil falen is precies wat er ontworpen is, maar "stil" blijkt hier ook
     "onvindbaar" te betekenen — niemand komt er ooit achter dat de webhook
-    dood is. De vraag die dat opengooit: hoort een mislukte post een
-    logregel te krijgen, of de host een melding? Beantwoorden voordat dit
-    aangaat, niet erna.
+    dood is.
+    **Gebouwd 2026-09-07, dezelfde dag.** Zie het aparte item hieronder.
   - **Acht posts vlak achter elkaar kwamen alle acht aan**, in 3,42s samen,
     ~0,4s per stuk. Geen 429. De reden is de vorm van de code, niet geluk:
     `announce()` post synchroon en wacht op het antwoord, dus één proces komt
@@ -669,6 +684,35 @@ noot.
     is alleen zichtbaar in de client van iemand anders dan de eigenaar. Punt
     3 hieronder blijft dus staan, net als het unfurlen uit punt 2, waar een
     publiek bereikbare URL voor nodig is.
+
+- [x] ~~**Een dode webhook zegt het nu tegen de host.**~~ — gebouwd
+  2026-09-07, uit de bevinding hierboven. Wat er is:
+  - **`events.discord_webhook_failed_at`**, een timestamp naast de URL. Een
+    tijdstip en geen boolean, want "sinds wanneer" is het verschil tussen "ik
+    heb hem net gesloopt" en "dit ligt al twee weken plat". Niet fillable —
+    `DiscordAnnouncer` schrijft hem uit wat Discord antwoordde, nooit het
+    formulier ernaast.
+  - **Alleen 401, 403 en 404 zetten hem.** Dat zijn de statussen die
+    betekenen dat de webhook wég is. 429, 5xx en een timeout blijven precies
+    zo stil als eerst: dat is Discord die het even niet trekt, niet de host
+    die iets fout heeft ingevuld, en iemand zijn werkende webhook laten
+    vervangen omdat Discord hikte is erger dan de stilte die dit verving.
+  - **De push gaat één keer**, op de overgang naar kapot en niet bij elke
+    weigering — een event dat vier keer per dag aankondigt zou anders vier
+    keer per dag over dezelfde URL klagen. Nieuwe categorie
+    `DISCORD_WEBHOOK` (host, standaard aan, dagthrottle als vangnet). Een
+    tweede push kan pas nadat een post wél is aangekomen: dat is een nieuw
+    feit, geen herhaling.
+  - **De banner staat in `EventNotices`**, boven de pauzebanner — een dode
+    webhook is de reden dat de clan die pauze nooit hoorde. Alleen voor wie
+    het event mag bewerken, en de prop is `null` voor de rest, net als de URL
+    zelf; het gaat over een veld dat een speler niet kan openen.
+  - **De vlag gaat vanzelf weer schoon** zodra een post landt. Een webhook
+    kan herstellen zonder dat iemand iets doet, en een waarschuwing over een
+    probleem dat weg is leert mensen waarschuwingen te negeren.
+  Elf tests in `DiscordWebhookHealthTest`, waarvan de helft over wat er
+  *niet* mag gebeuren. Visueel nagekeken op de eventpagina met een
+  weggegooid testevent.
 
   *Draaiboek.* **Gebruik een wegwerpserver of een privékanaal, niet het
   clankanaal.** Stap 3 hieronder is een opzettelijke poging om een hele server
@@ -697,15 +741,14 @@ noot.
      bewaren tot na de launch. Event-pagina's in `ALWAYS_ALLOWED` zetten is
      géén uitweg — dat is de deur openzetten voor iedereen.
 
-     Twee dingen die je dan alsnog ziet en die niets met de lock te maken
-     hebben: `og:url`, `canonical` en `og:image` staan hard op
-     `https://osrs-events.com` (`SITE_URL` in `useSeo.js`, geen env), dus de
-     embed noemt productie ook als je een staging-link post. En `og:title`
-     draagt de sitenaam twee keer — "… Skill Races for Clans - OSRS Events" —
-     omdat `seo.home_title` zelf al met "OSRS Events" begint en `useSeo.js`
-     het achtervoegsel er nog eens achter plakt. Niet gotcha 4 (die gaat over
-     dubbel toepassen bij hydration), gewoon copy die overlapt met het
-     achtervoegsel. Beide zijn eigen regels waard, niet hier.
+     Twee dingen die deze stap eerst nog vertroebelden zijn op 2026-09-09
+     verholpen in `useSeo.js`, dus verwacht ze niet meer: `og:url`,
+     `canonical` en `og:image` volgen nu de origin waarop de pagina echt
+     staat in plaats van hard `https://osrs-events.com` (de embed noemde
+     productie ook als je een staging-link postte), en `og:title` draagt de
+     sitenaam niet meer dubbel. Zie de commit voor waarom niet-productie
+     daarbij meteen `noindex` kreeg. Merk je het toch nog: dan draait staging
+     op een oudere build.
   3. **Pingt niets.** Hernoem het testevent naar `@everyone bingo` en
      pauzeer. In het kanaal: de tekst `@everyone bingo` staat er letterlijk,
      en er is géén ping — geen highlight, geen badge, geen "1 mention".
@@ -1599,6 +1642,7 @@ claim kan opnieuw ingediend worden. De asymmetrie met bingo is bewust op één
 punt bewaard — een afgekeurde bingo-square blijft op slot, een afgekeurde
 S&L-tegel niet, omdat de speler daar op die tegel *staat* en anders nooit meer
 kan rollen. Het archief houdt de oorspronkelijke redenering.
+
 
 ---
 
