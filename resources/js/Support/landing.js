@@ -56,8 +56,35 @@ const MOTIFS = {
     SnakesAndLadders: 'ladder',
 };
 
+/**
+ * The landing pages that get no background at all, for now.
+ *
+ * Every page that explains an event type: a heading, a paragraph and a table
+ * of contents from the first line down, and a pattern behind that is one
+ * thing too many on a screen that is already busy. They keep the torch light
+ * and the panel bevel, which is what LANDING_PAGES is for — this is only
+ * about the field.
+ *
+ * It means `bingo` and `ladder` above are currently unreachable: the two
+ * pages that ask for them are on this list. They stay wired rather than
+ * deleted because "not yet" is what this is.
+ */
+const NO_BACKGROUND = [
+    'OsrsBingo',
+    'OsrsSkillRace',
+    'OsrsDropRace',
+    'OsrsClanEvents',
+    'OsrsEventIdeas',
+    'SnakesAndLadders',
+];
+
+/** The motif for a landing page, or null where the field is off. */
 export function backgroundMotif(component) {
-    return MOTIFS[String(component ?? '')] ?? 'tiles';
+    const name = String(component ?? '');
+
+    if (NO_BACKGROUND.includes(name)) return null;
+
+    return MOTIFS[name] ?? 'tiles';
 }
 
 /**

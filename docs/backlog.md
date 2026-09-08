@@ -1599,3 +1599,68 @@ claim kan opnieuw ingediend worden. De asymmetrie met bingo is bewust op één
 punt bewaard — een afgekeurde bingo-square blijft op slot, een afgekeurde
 S&L-tegel niet, omdat de speler daar op die tegel *staat* en anders nooit meer
 kan rollen. Het archief houdt de oorspronkelijke redenering.
+
+---
+
+## Gimmicky achtergrond, zoals in collectopoly
+
+**Status:** [x] gebouwd 2026-09-08 — `resources/js/Components/AppBackground.vue`,
+gemount in `AppRoot.vue` achter dezelfde `isLanding`-poort als de torchlight.
+Drie motieven in plaats van één, elk de taal van deze app: `tiles` (het
+bordvakje, overal de default), `bingo` (het ruitennet) en `ladder` (cellen plus
+ladders). De laatste twee staan op dit moment uit — zie "Nog open" hieronder.
+De opacities per motief zijn níet op gevoel gezet maar zo gekozen dat elke
+tile ongeveer evenveel inkt per vierkante pixel draagt — op gevoel kwamen ze
+uit op 0.11 / 0.07 / 0.07 en leek de bingopagina op een mislukte laadpoging.
+Aan/uit staat in Settings → Animations (`DisplayPreference::BACKGROUND`,
+default aan); `prefers-reduced-motion` zet alleen de bewegende helft stil en
+laat de textuur staan.
+
+### Nog open op dit onderdeel
+
+- **Een slang die je ook echt ziet.** Eerst zat er één slang per pattern-tile,
+  dus één per 232px in beide richtingen — een scherm vol korte parallelle
+  kronkels leest als haartjes op je monitor, niet als een bord. Vervangen door
+  één slang die via CSS `offset-path` een gesloten lus over het veld kruipt, en
+  dat was in de praktijk ook mis: hij was zo zelden in beeld dat je hem gewoon
+  niet tegenkomt. Beide varianten zijn eruit; het motief is nu cellen plus
+  ladders. Een slang is de moeite waard, maar dan een die je opmerkt zonder dat
+  het er twintig zijn — denk aan één exemplaar dat langs de rand van de
+  viewport blijft in plaats van over het hele veld, of aan een grotere slang
+  die deel van de compositie is in plaats van een kruipend detail.
+- **De eventpagina's staan uit.** `NO_BACKGROUND` in `Support/landing.js`: de
+  zes pagina's die een eventtype uitleggen krijgen geen veld, omdat die vanaf
+  de eerste regel al kop + tekst + inhoudsopgave zijn en het patroon daar één
+  ding te veel is. Gevolg: de motieven `bingo` en `ladder` zijn op dit moment
+  onbereikbaar — ze blijven bedraad, want dit is "nog niet", geen "nooit". Als
+  die pagina's terugkomen is de vraag eerst of de rustige sterkte volstaat.
+
+### Wat het in collectopoly is
+
+Een eigen getekend SVG-patroon als paginabrede laag achter de content:
+`frontend/components/common/AppBackground.vue`, commit `95810932`. Isometrische
+kubussen, omdat die bij Monopoly als huisjes en hotels lezen. Het recept, niet
+het motief, is wat hier overgenomen kan worden:
+
+- **Zelf tekenen, geen pattern-library.** Bookofshapes en soortgenoten noemen
+  geen licentie; een `<pattern>` met een handvol paden is twintig regels.
+- **`currentColor` plus Tailwind dark-varianten.** Een `:global(.dark)` in een
+  scoped `<style>` wordt door de SFC-compiler weggegooid — dat kostte een ronde.
+- **Veld rond 12-14% opacity op een hero, en ongeveer de helft daarbuiten.**
+  Een pagina die al vol kaarten en filters staat, wordt bij dezelfde sterkte
+  rommelig. In collectopoly hangt dat aan `route.meta.layout`.
+- **Radiale mask die naar onderen uitdooft**, zodat het niet abrupt ophoudt.
+- **Animatie die exact een tile per cyclus verschuift** (90s, `translate3d` op
+  een laag), plus een handvol vormen die om beurten oplichten. Alles uit onder
+  `prefers-reduced-motion`.
+
+### Wat het hier zou zijn
+
+Niet de kubussen overnemen — die zijn van Monopoly. OSRS heeft zijn eigen
+raster: de wereld is letterlijk in tegels opgedeeld, en dat is een motief dat
+niemand hoeft uit te leggen. Alternatieven die de moeite van het proberen waard
+zijn: het ruitpatroon van een bingokaart, of de vakjes van een Snakes &
+Ladders-bord — allebei al de taal van deze app.
+
+Let op de pre-launch deur en de eventpagina's: dit hoort op de marketingkant en
+op rustige schermen, niet achter een volle bingokaart of een live scorebord.

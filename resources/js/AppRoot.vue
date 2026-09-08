@@ -11,7 +11,7 @@
              gate as the torch light, for the same reason — it is decoration,
              and decoration behind a bingo card somebody is playing is
              something to look past. -->
-        <app-background v-if="isLanding && backgroundOn" :motif="backgroundMotif" :hero="backgroundIsHero" />
+        <app-background v-if="isLanding && backgroundOn && backgroundMotif" :motif="backgroundMotif" :hero="backgroundIsHero" />
 
         <app-header v-if="showSiteChrome" />
 
