@@ -39,6 +39,46 @@ export function isLandingPage(component) {
 }
 
 /**
+ * Which pattern the generative background draws behind a landing page.
+ *
+ * Three motifs, all of them the app's own language rather than a borrowed
+ * one: the square the game world is divided into, the bingo card's diamond
+ * lattice, and a Snakes & Ladders board. The page that sells an event type
+ * gets the shape of that event; everything else gets the plain tile, which is
+ * the unit all three are made of.
+ *
+ * Only landing pages are asked — the caller gates on isLandingPage() first.
+ * That gate is the whole point: this belongs on the pages people read, not
+ * behind a bingo card somebody is playing or a scoreboard that is moving.
+ */
+const MOTIFS = {
+    OsrsBingo: 'bingo',
+    SnakesAndLadders: 'ladder',
+};
+
+export function backgroundMotif(component) {
+    return MOTIFS[String(component ?? '')] ?? 'tiles';
+}
+
+/**
+ * The landing pages that take the pattern at half strength.
+ *
+ * Everything else on this list opens on a hero — a heading, a line of copy
+ * and a couple of buttons over open space — and carries the field at full
+ * strength happily. `Page` is the CMS one: privacy, terms, donate. Those are
+ * a wall of text from the first line down, and the same strength behind a
+ * paragraph somebody is actually reading is clutter rather than texture.
+ *
+ * The same split collectopoly makes on `route.meta.layout`, decided here on
+ * the component name because that is what the shell knows about the page.
+ */
+const QUIET_PAGES = ['Page'];
+
+export function backgroundIsHero(component) {
+    return ! QUIET_PAGES.includes(String(component ?? ''));
+}
+
+/**
  * The header links that still go somewhere while the site is locked.
  *
  * Only these, because a nav full of links that bounce straight back to the

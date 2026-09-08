@@ -6,6 +6,13 @@
              and it cannot take a click. -->
         <div v-if="isLanding" class="landing-chrome" aria-hidden="true" />
 
+        <!-- And the board it lights: a drifting field of tiles, diamonds or
+             S&L squares depending on the page (see Support/landing.js). Same
+             gate as the torch light, for the same reason — it is decoration,
+             and decoration behind a bingo card somebody is playing is
+             something to look past. -->
+        <app-background v-if="isLanding && backgroundOn" :motif="backgroundMotif" :hero="backgroundIsHero" />
+
         <app-header v-if="showSiteChrome" />
 
         <!-- Site-wide announcement, set in admin site settings. Rendered
@@ -168,7 +175,8 @@ import AppFooter from '@/Components/AppFooter.vue';
 import RichText from '@/Components/RichText.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import { bannerBgFor, bannerIconFor, styleFor } from '@/Support/announcement';
-import { isLandingPage } from '@/Support/landing';
+import AppBackground from '@/Components/AppBackground.vue';
+import { backgroundIsHero as isHeroFor, backgroundMotif as motifFor, isLandingPage } from '@/Support/landing';
 import { CURRENT_PAGE } from '@/Support/pageState';
 import { usePush } from '@/Composables/usePush';
 import { onboardingSnoozedUntil, snoozeOnboarding } from '@/Support/onboarding';
@@ -354,6 +362,22 @@ const CHROMELESS_PAGES = ['SiteLock'];
 const AUTH_PAGES = ['Auth/Login', 'Auth/Register', 'Auth/ForgotPassword', 'Auth/ResetPassword'];
 
 const isLanding = computed(() => isLandingPage(inertiaPage.value.component));
+
+const backgroundMotif = computed(() => motifFor(inertiaPage.value.component));
+const backgroundIsHero = computed(() => isHeroFor(inertiaPage.value.component));
+
+/**
+ * The account's answer to the background, defaulting to on.
+ *
+ * Read from the globally shared display preferences rather than fetched,
+ * because this renders on pages a signed-out visitor sees too — and for them
+ * there is no answer to read, only the default. `prefers-reduced-motion` is
+ * handled inside the component, where it stops the movement without taking
+ * the texture away; this switch is the one that removes it entirely.
+ */
+const backgroundOn = computed(
+    () => inertiaPage.value.props?.auth?.user?.display?.animate_background ?? true,
+);
 
 const showSiteChrome = computed(() => {
     const component = String(inertiaPage.value.component ?? '');
