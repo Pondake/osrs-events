@@ -16,7 +16,12 @@
                      the rest is what a plain `mx-auto` produced: a centred
                      logo over a left-aligned 404, which reads as a mistake
                      rather than as either alignment. -->
-                <div class="rounded-xl border border-default px-6 py-10 sm:px-10 sm:py-14 text-center">
+                <!-- `bg-default` is not decoration: every page surface here is
+                     transparent so the torch light and the tile field can show
+                     through, and this panel was letting the pattern run
+                     straight across the 404 underneath the text. A panel you
+                     can see the wall through does not read as a panel. -->
+                <div class="rounded-xl border border-default bg-default px-6 py-10 sm:px-10 sm:py-14 text-center">
                     <app-logo class="!size-14 sm:mx-auto" />
 
                     <!-- The status code, at display size. Cinzel Decorative
