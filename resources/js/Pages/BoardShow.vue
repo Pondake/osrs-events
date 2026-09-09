@@ -275,15 +275,30 @@
 
                                     <div class="absolute inset-0 flex flex-col items-center justify-center px-1 overflow-hidden">
                                         <img
-                                            v-if="tile.task?.icon_url"
+                                            v-if="tile.task?.icon_url && !isJumpTile(tile)"
                                             :src="tile.task.icon_url"
                                             :alt="tileTitle(tile)"
                                             class="max-h-[24%] max-w-[36%] object-contain shrink-0 mb-0.5"
                                             loading="lazy"
                                         />
-                                        <u-icon v-else-if="isTileEmpty(tile)" name="i-lucide-plus" class="size-5 text-muted/50 shrink-0" />
+                                        <!-- A jump tile is not an unfilled one.
+                                             The plus invites a host to put a
+                                             task here and a player to expect
+                                             one, and neither is true: landing
+                                             on a snake moves you on in the
+                                             same roll. Where it goes, instead
+                                             — the corner arrow already says
+                                             which way. -->
+                                        <u-icon v-else-if="isTileEmpty(tile) && !isJumpTile(tile)" name="i-lucide-plus" class="size-5 text-muted/50 shrink-0" />
 
-                                        <p v-if="!isTileEmpty(tile)" class="w-full text-xs text-center leading-tight line-clamp-2 text-muted shrink-0">
+                                        <p
+                                            v-if="isJumpTile(tile) && tile.target_position !== null"
+                                            class="w-full text-xs text-center leading-tight shrink-0 tabular-nums"
+                                            :class="tile.type === 'SNAKE' ? 'text-error/80' : 'text-success/80'"
+                                        >
+                                            → {{ tile.target_position + 1 }}
+                                        </p>
+                                        <p v-else-if="!isTileEmpty(tile)" class="w-full text-xs text-center leading-tight line-clamp-2 text-muted shrink-0">
                                             {{ tileTitle(tile) }}
                                         </p>
                                     </div>
@@ -1858,6 +1873,17 @@ function isLinkedTile(tile) {
 // classes that were already sitting there unused.
 function isTileEmpty(tile) {
     return !tile.task && !tile.title_override;
+}
+
+/**
+ * A snake or a ladder — a move rather than a thing to do.
+ *
+ * Kept separate from isTileEmpty(): both are true of the same tile, and they
+ * mean opposite things. Empty is a hole a host still has to fill; a jump is
+ * finished, and having no task is the whole point of it.
+ */
+function isJumpTile(tile) {
+    return tile.type === 'SNAKE' || tile.type === 'LADDER';
 }
 
 function tileTitle(tile) {

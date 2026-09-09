@@ -48,10 +48,24 @@
 
                             <img v-if="row.iconUrl" :src="row.iconUrl" alt="" class="size-6 object-contain shrink-0" />
                             <u-icon v-else-if="row.isWildcard" name="i-lucide-star" class="size-5 text-warning shrink-0" />
+                            <!-- A snake or a ladder is not an unfilled tile
+                                 waiting for a task, so it does not get the
+                                 dashed square and the word "Empty" — the
+                                 badge to the right says what it is instead. -->
+                            <u-icon
+                                v-else-if="row.type === 'SNAKE'"
+                                name="i-lucide-move-down"
+                                class="size-5 text-error shrink-0"
+                            />
+                            <u-icon
+                                v-else-if="row.type === 'LADDER'"
+                                name="i-lucide-move-up"
+                                class="size-5 text-success shrink-0"
+                            />
                             <u-icon v-else name="i-lucide-square-dashed" class="size-5 text-dimmed shrink-0" />
 
-                            <span class="flex-1 min-w-0 truncate text-sm" :class="row.title ? '' : 'text-dimmed italic'">
-                                {{ row.title || $t(row.isWildcard ? 'bingo.wildcard' : 'tile_list.empty') }}
+                            <span class="flex-1 min-w-0 truncate text-sm" :class="rowLabel(row).muted ? 'text-dimmed italic' : ''">
+                                {{ rowLabel(row).text }}
                             </span>
 
                             <!-- Snakes and ladders say where they go, since
@@ -78,17 +92,26 @@
                              you are working down, which is the only reason to
                              be in a list. -->
                         <div v-if="expanded === row.position" class="px-3 pb-3 pt-1 space-y-3 bg-elevated/50">
-                            <u-form-field :label="$t('tile_editor.task')">
-                                <task-picker
-                                    :model-value="draft.task"
-                                    :event-id="eventId"
-                                    @update:model-value="(task) => (draft.task = task)"
-                                />
-                            </u-form-field>
+                            <!-- Gone rather than disabled on a snake or a
+                                 ladder — see TileEditModal for the same call.
+                                 Nobody ever stands on one, so a task on it is
+                                 a task that cannot be done. -->
+                            <template v-if="draftIsJump">
+                                <p class="text-xs text-muted">{{ $t('tile_editor.jump_has_no_task') }}</p>
+                            </template>
+                            <template v-else>
+                                <u-form-field :label="$t('tile_editor.task')">
+                                    <task-picker
+                                        :model-value="draft.task"
+                                        :event-id="eventId"
+                                        @update:model-value="(task) => (draft.task = task)"
+                                    />
+                                </u-form-field>
 
-                            <u-form-field :label="$t('tile_editor.title_override')">
-                                <u-input v-model="draft.titleOverride" class="w-full" :placeholder="draft.task?.title ?? ''" />
-                            </u-form-field>
+                                <u-form-field :label="$t('tile_editor.title_override')">
+                                    <u-input v-model="draft.titleOverride" class="w-full" :placeholder="draft.task?.title ?? ''" />
+                                </u-form-field>
+                            </template>
 
                             <template v-if="isBingo">
                                 <u-form-field :description="$t('bingo.wildcard_desc')">
@@ -220,15 +243,41 @@ const rows = computed(() => Array.from({ length: props.total }, (_, position) =>
     };
 }));
 
+/** Snake and ladder are the same case throughout: a move, not a task. */
+const draftIsJump = computed(() => !isBingo.value && draft.type !== 'NORMAL');
+
+/**
+ * What the row says about itself when it has no task title.
+ *
+ * A snake tile has no task by design, so "Empty" would be reporting a gap
+ * that nobody is meant to fill — and the progress count below would keep
+ * telling a host they were short of a full board they had already finished.
+ */
+function rowLabel(row) {
+    if (row.title) return { text: row.title, muted: false };
+
+    if (row.isWildcard) return { text: trans('bingo.wildcard'), muted: false };
+
+    if (row.type === 'SNAKE') return { text: trans('tile_editor.type_snake_full'), muted: false };
+
+    if (row.type === 'LADDER') return { text: trans('tile_editor.type_ladder_full'), muted: false };
+
+    return { text: trans('tile_list.empty'), muted: true };
+}
+
 // A square counts as filled once it asks for something — a task, a wording
-// of its own, or the free-square flag.
-const filled = computed(() => rows.value.filter((r) => r.title || r.isWildcard).length);
+// of its own, or the free-square flag. A snake or a ladder counts too: it is
+// finished the moment it has a type, and counting it as a hole would put a
+// fully built board at 90%.
+const filled = computed(() => rows.value.filter((r) => r.title || r.isWildcard || r.type !== 'NORMAL').length);
 const pct = computed(() => (rows.value.length ? Math.round((filled.value / rows.value.length) * 100) : 0));
 
 const onlyEmpty = ref(false);
 
 const visibleRows = computed(() => (
-    onlyEmpty.value ? rows.value.filter((r) => !r.title && !r.isWildcard) : rows.value
+    onlyEmpty.value
+        ? rows.value.filter((r) => !r.title && !r.isWildcard && r.type === 'NORMAL')
+        : rows.value
 ));
 
 const expanded = ref(null);
@@ -299,10 +348,10 @@ function save(row) {
 
     router.post(`/events/${props.eventId}/tiles`, {
         position: row.position,
-        task_id: draft.task?.id ?? null,
-        title_override: draft.titleOverride || null,
+        task_id: draftIsJump.value ? null : (draft.task?.id ?? null),
+        title_override: draftIsJump.value ? null : (draft.titleOverride || null),
         type: draft.type,
-        target_position: draft.type === 'NORMAL' ? null : draft.targetPosition,
+        target_position: draftIsJump.value ? draft.targetPosition : null,
     }, done);
 }
 

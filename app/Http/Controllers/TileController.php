@@ -48,14 +48,23 @@ class TileController extends Controller
             'target_position' => ['nullable', 'integer', 'min:0', "max:{$lastPosition}"],
         ]);
 
+        // A snake or a ladder is a move, not a thing to do. Landing on one
+        // takes the player somewhere else in the same roll, so any task on
+        // it is a task nobody can ever be standing on to complete — and one
+        // that still drew an icon and a title on the board, next to an arrow
+        // saying the tile sends you away. The editors hide the fields; this
+        // is what makes it true of the row, including for a tile that was
+        // given a task while it was still NORMAL.
+        $isJump = $data['type'] !== 'NORMAL';
+
         Tile::updateOrCreate(
             // A tile belongs to the BOARD — `tiles` has no event_id column
             // at all, so this identified nothing.
             ['board_id' => $board->id, 'position' => $data['position']],
             [
                 'id' => (string) str()->uuid(),
-                'task_id' => $data['task_id'] ?? null,
-                'title_override' => $data['title_override'] ?? null,
+                'task_id' => $isJump ? null : ($data['task_id'] ?? null),
+                'title_override' => $isJump ? null : ($data['title_override'] ?? null),
                 'type' => $data['type'],
                 'target_position' => $data['target_position'] ?? null,
             ],

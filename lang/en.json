@@ -2190,6 +2190,7 @@
     "tile_editor.clear_tile": "Clear tile",
     "tile_editor.current_task": "Current task",
     "tile_editor.icon_preview": "Icon preview",
+    "tile_editor.jump_has_no_task": "A snake or a ladder moves the player on straight away, so this tile carries no task.",
     "tile_editor.no_task": "No task selected",
     "tile_editor.no_task_results": "No saved task matches that. Try the OSRS Wiki instead.",
     "tile_editor.no_wiki_results": "The wiki has no page matching that.",
