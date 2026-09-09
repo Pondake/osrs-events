@@ -118,6 +118,7 @@
                     :can-edit="canEdit"
                     :viewing-as-admin="viewingAsAdmin"
                     :admin-edit-url="adminEditUrl"
+                    :webhook-failed-at="webhookFailedAt"
                     class="mb-6"
                 />
 
@@ -1023,6 +1024,9 @@ watch(() => props.finishes, (value) => (liveFinishes.value = [...value]));
  * every visitor to a listed invite-only board that its whole roster left.
  */
 function playerName(p) {
+    // Withheld from a non-editor for the same reason the URL is: it is
+    // about a field only a host can reach. See EventNotices.
+    webhookFailedAt: { type: String, default: null },
     if (!props.namesArePublic) return trans('events.anonymous_player');
 
     return p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? trans('common.deleted_user');

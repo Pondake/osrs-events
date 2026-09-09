@@ -453,6 +453,10 @@ class BoardController extends Controller
             // which every viewer of a public event receives — and which the
             // live channel pushes to all of them every few seconds.
             'webhookUrl' => $canEdit ? $event->discord_webhook_url : null,
+            // Withheld the same way, for a plainer reason than the URL: this
+            // is a warning about a settings field, so it only means anything
+            // to somebody who can open that field.
+            'webhookFailedAt' => $canEdit ? $event->discord_webhook_failed_at : null,
             'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
             'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
             // Hosts get the review queue on the same page as the board —
@@ -649,6 +653,10 @@ class BoardController extends Controller
             'pending' => $canEdit ? $bingo->pendingQueue($card) : [],
             'canEdit' => $canEdit,
             'webhookUrl' => $canEdit ? $event->discord_webhook_url : null,
+            // Withheld the same way, for a plainer reason than the URL: this
+            // is a warning about a settings field, so it only means anything
+            // to somebody who can open that field.
+            'webhookFailedAt' => $canEdit ? $event->discord_webhook_failed_at : null,
             'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
             'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
         ]);
@@ -676,6 +684,7 @@ class BoardController extends Controller
                 || $event->standings()->where('user_id', $user?->id)->exists(),
             'canEdit' => $user?->canEditEvent($event) ?? false,
             'webhookUrl' => $user?->canEditEvent($event) ? $event->discord_webhook_url : null,
+            'webhookFailedAt' => $user?->canEditEvent($event) ? $event->discord_webhook_failed_at : null,
             'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
             'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
         ]);

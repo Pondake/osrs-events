@@ -72,6 +72,10 @@ class Event extends Model
         'paused_at' => 'datetime',
         'closed_at' => 'datetime',
         'standings_stale_since' => 'datetime',
+        // Deliberately NOT fillable: this is written by DiscordAnnouncer from
+        // what Discord answered, never by the form that sets the URL beside
+        // it. A host clears it by fixing the webhook, not by posting a field.
+        'discord_webhook_failed_at' => 'datetime',
     ];
 
     /**
