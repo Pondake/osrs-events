@@ -21,6 +21,8 @@ class AnimationController extends Controller
             // Only the movement switches: the override is rendered on its
             // own, and only on a machine that asks for reduced motion.
             'keys' => DisplayPreference::MOVEMENT,
+            // The site-wide switches, in their own card — see the catalogue.
+            'ambientKeys' => DisplayPreference::AMBIENT,
             'overrideKey' => DisplayPreference::PLAY_WHEN_REDUCED,
         ]);
     }

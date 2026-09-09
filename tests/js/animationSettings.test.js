@@ -34,7 +34,7 @@ const stubs = {
     'u-switch': { props: ['modelValue'], template: '<button class="switch" />' },
 };
 
-function mountPage({ reduced, overrideOn = false }) {
+function mountPage({ reduced, overrideOn = false, backgroundOn = true }) {
     window.matchMedia = vi.fn((query) => ({
         matches: query.includes('prefers-reduced-motion') ? reduced : false,
         media: query,
@@ -48,8 +48,10 @@ function mountPage({ reduced, overrideOn = false }) {
                 animate_own_moves: true,
                 animate_other_moves: true,
                 play_when_reduced_motion: overrideOn,
+                animate_background: backgroundOn,
             },
             keys: ['animate_own_moves', 'animate_other_moves'],
+            ambientKeys: ['animate_background'],
             overrideKey: 'play_when_reduced_motion',
         },
         global: {
@@ -119,6 +121,7 @@ describe('Settings/Animations — the reduced-motion notice', () => {
         const app = createSSRApp(Animations, {
             preferences: { animate_own_moves: true, animate_other_moves: true, play_when_reduced_motion: false },
             keys: ['animate_own_moves', 'animate_other_moves'],
+            ambientKeys: ['animate_background'],
             overrideKey: 'play_when_reduced_motion',
         });
 
@@ -130,5 +133,63 @@ describe('Settings/Animations — the reduced-motion notice', () => {
         expect(html).not.toContain('alert');
         expect(html).not.toContain('t:animations.play_when_reduced_motion');
         expect(html).toContain('t:animations.animate_own_moves');
+        expect(html).toContain('t:animations.animate_background');
+    });
+});
+
+/**
+ * The page background switch, which is not about a board at all.
+ *
+ * It earns its own card because the one above it is titled "Board animation"
+ * and this changes something on the landing and info pages — including for a
+ * signed-out visitor, who has no stored answer and gets the catalogue's
+ * default. The grouping is the behaviour worth pinning: it comes from the
+ * server (`ambientKeys`), so a setting moved between the two groups moves on
+ * the page without this file being touched, and a setting that lands in the
+ * wrong group is exactly the kind of thing nobody notices.
+ */
+describe('Settings/Animations — the page background switch', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('renders in a card of its own, under its own heading', async () => {
+        const wrapper = mountPage({ reduced: false });
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('t:animations.ambient_title');
+        expect(wrapper.text()).toContain('t:animations.animate_background');
+
+        // Two cards, and the background switch is in the second one — not a
+        // fourth row under a heading that says "board".
+        const cards = wrapper.findAll('div').filter((node) => node.text().includes('t:animations.ambient_title'));
+        expect(cards.length).toBeGreaterThan(0);
+        expect(wrapper.text().indexOf('t:animations.animate_own_moves'))
+            .toBeLessThan(wrapper.text().indexOf('t:animations.animate_background'));
+    });
+
+    /**
+     * Reduced motion already stills the background on its own, so the switch
+     * is not a duplicate of that question and must not disappear with the
+     * movement ones — it is the only way to remove the thing entirely.
+     */
+    it('stays offered on a machine that asks for reduced motion', async () => {
+        const wrapper = mountPage({ reduced: true });
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('t:animations.animate_background');
+    });
+
+    it('reads its state from the stored preferences', async () => {
+        const on = mountPage({ reduced: false, backgroundOn: true });
+        await flushPromises();
+        expect(on.findAll('.switch').length).toBe(3);
+
+        // Off is a stored answer like any other; the row stays, the value
+        // does not. Asserted through the model rather than the stub's markup,
+        // which renders the same either way.
+        const off = mountPage({ reduced: false, backgroundOn: false });
+        await flushPromises();
+        expect(off.vm.values.animate_background).toBe(false);
     });
 });

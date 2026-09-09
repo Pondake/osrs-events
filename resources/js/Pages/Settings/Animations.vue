@@ -2,6 +2,7 @@
     <settings-layout>
         <Head :title="$t('animations.title')" />
 
+        <div class="flex flex-col gap-6">
         <u-card>
             <template #header>
                 <p class="font-medium">{{ $t('animations.title') }}</p>
@@ -52,6 +53,29 @@
                 </template>
             </div>
         </u-card>
+
+        <!-- Its own card rather than a fourth switch above, because the card
+             above is titled "Board animation" and this is not about a board.
+             It is also the only switch here that changes something a
+             signed-out visitor sees — for them the catalogue's default is the
+             whole answer. -->
+        <u-card>
+            <template #header>
+                <p class="font-medium">{{ $t('animations.ambient_title') }}</p>
+                <p class="text-sm text-muted">{{ $t('animations.ambient_desc') }}</p>
+            </template>
+
+            <div class="flex flex-col gap-5">
+                <div v-for="key in ambientKeys" :key="key" class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="font-medium">{{ $t(`animations.${key}`) }}</p>
+                        <p class="text-sm text-muted">{{ $t(`animations.${key}_desc`) }}</p>
+                    </div>
+                    <u-switch v-model="values[key]" class="shrink-0 mt-0.5" @update:model-value="save" />
+                </div>
+            </div>
+        </u-card>
+        </div>
     </settings-layout>
 </template>
 
@@ -67,6 +91,8 @@ const props = defineProps({
     // The catalogue's order, so adding a setting server-side puts it on the
     // page without touching this file.
     keys: { type: Array, required: true },
+    // Site-wide rather than board-wide, so its own card below.
+    ambientKeys: { type: Array, required: true },
     // Rendered apart from the list above, because it is only a question on a
     // machine that asks for reduced motion.
     overrideKey: { type: String, required: true },
