@@ -968,6 +968,9 @@ const props = defineProps({
     // Editors only — see BoardSettingsModal's own note on why this is not
     // part of the event payload.
     webhookUrl: { type: String, default: null },
+    // Withheld from a non-editor for the same reason the URL is: it is
+    // about a field only a host can reach. See EventNotices.
+    webhookFailedAt: { type: String, default: null },
     joined: { type: Boolean, default: false },
     // The host's review queue — see BoardReviewService::pendingQueue(). Empty
     // for anyone else, so asking for it costs a player nothing.
@@ -1024,9 +1027,6 @@ watch(() => props.finishes, (value) => (liveFinishes.value = [...value]));
  * every visitor to a listed invite-only board that its whole roster left.
  */
 function playerName(p) {
-    // Withheld from a non-editor for the same reason the URL is: it is
-    // about a field only a host can reach. See EventNotices.
-    webhookFailedAt: { type: String, default: null },
     if (!props.namesArePublic) return trans('events.anonymous_player');
 
     return p.team?.name ?? p.user?.nickname ?? p.user?.discord_username ?? trans('common.deleted_user');
