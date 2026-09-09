@@ -37,8 +37,18 @@ class DisplayPreference
     public const PLAY_WHEN_REDUCED = 'play_when_reduced_motion';
 
     /**
-     * The movement switches are on by default: somebody who has never seen
-     * the animation cannot know to turn it on. The override is off for the
+     * The drifting pattern behind the landing and content pages.
+     *
+     * Not a board setting at all, which is why the settings page renders it
+     * apart from the two above: it is on pages a signed-out visitor sees, and
+     * for them there is no stored answer — only this default. Reduced motion
+     * already stills it without this switch; this one removes it.
+     */
+    public const BACKGROUND = 'animate_background';
+
+    /**
+     * On by default except the override: somebody who has never seen the
+     * animation cannot know to turn it on. PLAY_WHEN_REDUCED is off for the
      * opposite reason — a stated accessibility preference wins until its
      * owner says otherwise.
      *
@@ -47,6 +57,7 @@ class DisplayPreference
     public const ALL = [
         self::OWN_MOVES => true,
         self::OTHER_MOVES => true,
+        self::BACKGROUND => true,
         self::PLAY_WHEN_REDUCED => false,
     ];
 
@@ -62,6 +73,19 @@ class DisplayPreference
     public const MOVEMENT = [
         self::OWN_MOVES,
         self::OTHER_MOVES,
+    ];
+
+    /**
+     * The switches about the site itself rather than about a board.
+     *
+     * Its own group because the card it lands in has its own heading: the
+     * movement switches are answered while thinking about a roll, and this
+     * one is answered while looking at a page.
+     *
+     * @var array<int, string>
+     */
+    public const AMBIENT = [
+        self::BACKGROUND,
     ];
 
     /** @return array<string, bool> every setting, stored value or default. */
