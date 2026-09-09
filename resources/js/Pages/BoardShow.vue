@@ -226,7 +226,18 @@
                                  underneath, then the same drawing clipped to each
                                  connector's own two tiles on top. -->
                             <board-connectors :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" />
-                            <div :class="gridClass" class="grid gap-1">
+                            <!-- Pass-through until the menu has loaded, then
+                                 the menu itself — see BoardTileMenu.vue for
+                                 why it cannot simply be written here. The
+                                 grid below is the trigger; which tile the
+                                 menu is about is set by the tile's own
+                                 @contextmenu, which runs first. -->
+                            <component
+                                :is="tileMenuWrapper"
+                                :items="tileMenuItems"
+                                :disabled="!tileMenuTarget"
+                            >
+                            <div :class="gridClass" class="grid gap-1" @contextmenu.capture="tileMenuTarget = null">
                                 <!-- Not gated on playerBoard existing — reaching this
                                      page at all already implies BoardAccess (see
                                      BoardController::show()'s access-gate redirect),
@@ -247,6 +258,7 @@
                                     :class="tileClasses(tile)"
                                     :title="tileTitle(tile) ?? trans('board.tile', { n: tile.position + 1 })"
                                     @click="handleTileClick(tile)"
+                                    @contextmenu="tileMenuTarget = tile"
                                     @mouseenter="highlightConnector(tile)"
                                     @mouseleave="clearConnector"
                                     @focus="highlightConnector(tile)"
@@ -339,6 +351,7 @@
                                     </span>
                                 </button>
                             </div>
+                            </component>
 
                             <board-connectors :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" clip-ends />
 
@@ -932,7 +945,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, defineComponent, onMounted, ref, shallowRef, watch } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
@@ -1140,6 +1153,141 @@ onMounted(() => {
     }
 });
 const editMode = ref(false);
+
+// ------------------------------------------------------- tile context menu
+
+/**
+ * Renders its children and nothing else — what wraps the grid until the real
+ * menu has loaded, and what the SERVER renders, always. `<ClientOnly>` would
+ * have been the usual way to keep @nuxt/ui's interactive components out of
+ * the SSR graph, but it renders nothing on the server and the board is the
+ * page; this keeps the grid in the server's HTML unchanged and adds no
+ * element of its own.
+ */
+const TileMenuPassthrough = defineComponent({
+    name: 'TileMenuPassthrough',
+    inheritAttrs: false,
+    setup: (_, { slots }) => () => slots.default?.(),
+});
+
+const tileMenuWrapper = shallowRef(TileMenuPassthrough);
+
+onMounted(() => {
+    tileMenuWrapper.value = defineAsyncComponent(() => import('@/Components/BoardTileMenu.vue'));
+});
+
+/**
+ * The tile the menu is about.
+ *
+ * Set by the tile's own `contextmenu` handler, cleared by a capture-phase
+ * handler on the grid — capture runs on the way down, so the reset always
+ * lands before a tile sets itself, and a right-click on the gap between two
+ * tiles ends with null. Null disables the menu, which gives the browser's
+ * own back: on a plain background that is the more useful menu.
+ */
+const tileMenuTarget = ref(null);
+
+/**
+ * What acting on this tile means, mirroring the sidebar card's buttons
+ * exactly rather than inventing a second set of rules — the two are the same
+ * decision reached from two places, and a menu that offers "Mark as
+ * complete" where the card offers a claim dialog would be lying about what
+ * the click does.
+ *
+ * Only ever the tile the player is standing on: completion is a claim about
+ * where you are, not about a square you happened to right-click.
+ */
+function tileMenuActions(tile) {
+    if (!isCurrentTile(tile)) return [];
+
+    if (requiresApproval.value) {
+        // A verdict already given stays readable after the event closes —
+        // same split as claimAreaIsShown(): making a move needs a live
+        // event, reading the ruling on one does not.
+        if (currentClaim.value) {
+            return [{
+                label: trans('board.view_claim'),
+                icon: 'i-lucide-file-search',
+                onSelect: () => (showClaimModal.value = true),
+            }];
+        }
+
+        return canPlay.value ? [{
+            label: trans('board.complete_tile'),
+            icon: 'i-lucide-check',
+            onSelect: () => (showClaimModal.value = true),
+        }] : [];
+    }
+
+    return canPlay.value ? [{
+        label: currentTileCompleted.value ? trans('board.uncomplete_tile') : trans('board.complete_tile'),
+        icon: currentTileCompleted.value ? 'i-lucide-x' : 'i-lucide-check',
+        onSelect: () => toggleTile(tile),
+    }] : [];
+}
+
+/**
+ * Groups render with a separator between them, host tools first: they are
+ * the rows a player will never see, so putting them anywhere else would
+ * shift every other row's position depending on who is reading.
+ */
+const tileMenuItems = computed(() => {
+    const tile = tileMenuTarget.value;
+
+    if (!tile) return [];
+
+    const groups = [];
+
+    if (props.canEdit) {
+        groups.push([
+            { label: trans('board.menu_host'), type: 'label' },
+            {
+                label: trans('board.menu_edit_tile'),
+                icon: 'i-lucide-pencil',
+                // Deliberately not gated on editMode: needing to turn a mode
+                // on before a right-click will offer the one thing a host
+                // right-clicks a tile for is the kind of step that makes a
+                // menu not worth opening.
+                onSelect: () => (editingTile.value = tile),
+            },
+        ]);
+    }
+
+    const details = [];
+
+    // Not offered on the tile you are standing on: the sidebar's own
+    // "Selected tile" card hides itself for that one (the current-task card
+    // above it is already saying the same thing), so the row would have
+    // closed the menu and changed nothing on screen.
+    if (!isCurrentTile(tile)) {
+        details.push({
+            label: trans('board.menu_details'),
+            icon: 'i-lucide-panel-right',
+            onSelect: () => (clickedTile.value = tile),
+        });
+    }
+
+    // Only when there is one. A row that is present but dead on most tiles
+    // teaches people the menu is mostly greyed out.
+    if (tile.task?.wiki_url && !isJumpTile(tile)) {
+        details.push({
+            label: trans('tile_editor.open_wiki_page'),
+            icon: 'i-lucide-book-open',
+            to: tile.task.wiki_url,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+        });
+    }
+
+    if (details.length) groups.push(details);
+
+    const actions = tileMenuActions(tile);
+
+    if (actions.length) groups.push(actions);
+
+    return groups;
+});
+
 const rolling = ref(false);
 const lastRoll = ref(null);
 const showCompleted = ref(false);
