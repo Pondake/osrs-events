@@ -42,6 +42,9 @@ final class NotificationCategory
     /** Your event's standings stopped updating. Hosts only. */
     public const STANDINGS_HEALTH = 'standings_health';
 
+    /** Your event's Discord webhook has stopped accepting posts. Hosts only. */
+    public const DISCORD_WEBHOOK = 'discord_webhook';
+
     /** Your dice rolls reset and you have a board in progress. */
     public const ROLLS_AVAILABLE = 'rolls_available';
 
@@ -75,6 +78,11 @@ final class NotificationCategory
         self::TEAM_ACTIVITY => ['audience' => 'player', 'default' => false, 'throttle' => 3600, 'icon' => 'i-lucide-users'],
         self::REVIEW_QUEUE => ['audience' => 'host', 'default' => true, 'throttle' => 3600, 'icon' => 'i-lucide-gavel'],
         self::STANDINGS_HEALTH => ['audience' => 'host', 'default' => true, 'throttle' => 86400, 'icon' => 'i-lucide-triangle-alert'],
+        // Rare by construction, not by luck: DiscordAnnouncer only sends this
+        // on the transition into a broken state, so a webhook that refuses
+        // fifty posts still produces one. The day-long throttle is a backstop
+        // for the case that reasoning is wrong, not the mechanism.
+        self::DISCORD_WEBHOOK => ['audience' => 'host', 'default' => true, 'throttle' => 86400, 'icon' => 'i-lucide-webhook'],
         // Not high-frequency by nature — an admin has to press the button —
         // so this defaults on like the other important player-facing
         // categories, rather than off the way an automated, frequent one would.

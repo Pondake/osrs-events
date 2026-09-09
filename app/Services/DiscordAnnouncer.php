@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Event;
 use App\Models\Setting;
+use App\Support\NotificationCategory;
+use App\Support\PushMessage;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -29,6 +31,22 @@ class DiscordAnnouncer
 {
     /** Discord's own limit on a webhook message body. */
     private const MAX_CONTENT = 2000;
+
+    /**
+     * The statuses that mean the webhook itself is gone, as opposed to
+     * Discord having a bad minute.
+     *
+     * 404 is what a deleted webhook actually answers — measured, not
+     * assumed; the guess going in was 401. 401 and 403 are here because a
+     * token that no longer matches looks the same to a host: the URL in
+     * their settings is dead either way and only they can replace it.
+     *
+     * Everything else is deliberately absent. A 429 means Discord is pacing
+     * us, a 5xx means Discord is unwell, and a timeout means the network is
+     * — none of those are the host's to fix, and telling them their webhook
+     * is broken because Discord hiccupped is worse than saying nothing.
+     */
+    private const REVOKED_STATUSES = [401, 403, 404];
 
     /**
      * Short: a webhook that does not answer must not hold a request open.
@@ -70,6 +88,8 @@ class DiscordAnnouncer
             && preg_match('#^/api/(v\d+/)?webhooks/#', $parts['path'] ?? '') === 1;
     }
 
+    public function __construct(private readonly PushNotifier $push) {}
+
     /**
      * @return bool whether Discord accepted it — false covers "no webhook
      *              configured" as well as a failed post, because the caller
@@ -99,7 +119,17 @@ class DiscordAnnouncer
                     'allowed_mentions' => ['parse' => []],
                 ]);
 
-            return $response->successful();
+            if ($response->successful()) {
+                $this->clearFailure($event);
+
+                return true;
+            }
+
+            if (in_array($response->status(), self::REVOKED_STATUSES, true)) {
+                $this->recordFailure($event);
+            }
+
+            return false;
         } catch (Throwable $error) {
             // Logged, not raised: the event has already been paused, resumed
             // or deleted by the time we get here, and failing the request
@@ -108,5 +138,59 @@ class DiscordAnnouncer
 
             return false;
         }
+    }
+
+    /**
+     * Remember that this event's webhook is dead, and tell its hosts once.
+     *
+     * **Once is the whole point.** The flag is set on the transition, not on
+     * every refusal — an event that announces four times a day with a dead
+     * webhook would otherwise notify four times a day about the same broken
+     * URL, which is exactly the chattiness the category catalogue exists to
+     * prevent. A second push only becomes possible after a post lands again
+     * and the flag clears, which is to say after somebody fixed it and it
+     * broke a second time. That is worth hearing about.
+     *
+     * The write is unguarded on purpose: the caller is mid-pause, and a
+     * failure to record a failure must not turn into a failure to pause.
+     */
+    private function recordFailure(Event $event): void
+    {
+        if ($event->discord_webhook_failed_at !== null) {
+            return;
+        }
+
+        $event->forceFill(['discord_webhook_failed_at' => now()])->save();
+
+        $hosts = $event->loadMissing('authors.user')->authors->pluck('user')->filter();
+
+        if ($hosts->isEmpty()) {
+            return;
+        }
+
+        $this->push->toUsers($hosts, new PushMessage(
+            title: trans('notifications.push_discord_webhook_title'),
+            body: trans('notifications.push_discord_webhook_body', ['event' => $event->title]),
+            path: "/events/{$event->id}",
+            category: NotificationCategory::DISCORD_WEBHOOK,
+            tag: 'discord-webhook:'.$event->id,
+        ));
+    }
+
+    /**
+     * A post landed, so whatever was wrong is not wrong any more.
+     *
+     * Cleared on every success rather than only when a host edits the field:
+     * a webhook can come back without anybody touching this app — Discord
+     * recovers, a channel is un-archived — and a warning about a problem
+     * that has gone away teaches people to ignore the warning.
+     */
+    private function clearFailure(Event $event): void
+    {
+        if ($event->discord_webhook_failed_at === null) {
+            return;
+        }
+
+        $event->forceFill(['discord_webhook_failed_at' => null])->save();
     }
 }

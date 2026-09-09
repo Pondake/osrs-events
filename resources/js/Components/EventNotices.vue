@@ -31,6 +31,27 @@
             :description="$t('events.viewing_as_admin')"
         />
 
+        <!-- The channel link is dead, and only the host can fix it.
+             Discord answers a deleted webhook with a 404 and the app
+             swallows it by design — the pause still pauses — so without
+             this the event just stops announcing and nobody finds out.
+             Measured against a real server on 2026-09-07; before that it was
+             not even a log line.
+
+             Host-only, and the prop is null for everybody else: the field it
+             is about lives in a settings tab a player cannot open, so to
+             them it would be a warning about something they cannot act on.
+             Above the paused banner on purpose — a dead webhook is the
+             reason the clan never heard about that pause. -->
+        <u-alert
+            v-if="canEdit && webhookFailedAt"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-webhook"
+            :title="$t('events.webhook_broken_title')"
+            :description="$t('events.webhook_broken_body')"
+        />
+
         <!-- On hold, said once and where everybody looks.
              Here rather than on each event page for the same reason the
              save-as-template prompt is: this component is the one thing all
@@ -128,6 +149,11 @@ const props = defineProps({
     // The podium as it stands — see EventFinishService::places(). Empty
     // until somebody finishes, which is most of an event's life.
     finishes: { type: Array, default: () => [] },
+    // When Discord last refused a post from this event's webhook. Null for
+    // a healthy webhook, for an event that never had one, and for every
+    // viewer who cannot edit — the controller withholds it the same way it
+    // withholds the URL itself.
+    webhookFailedAt: { type: String, default: null },
 });
 
 const status = computed(() => eventStatus(props.event));
@@ -166,6 +192,7 @@ const finishNotice = computed(() => {
 // the page its own margin.
 const hasNotice = computed(() => Boolean(props.adminEditUrl)
     || props.viewingAsAdmin
+    || (props.canEdit && Boolean(props.webhookFailedAt))
     || status.value === 'paused'
     || finishNotice.value !== null
     || (props.canEdit && status.value === 'ended'));

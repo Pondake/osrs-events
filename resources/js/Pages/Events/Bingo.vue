@@ -71,6 +71,7 @@
                     :can-edit="canEdit"
                     :viewing-as-admin="viewingAsAdmin"
                     :admin-edit-url="adminEditUrl"
+                    :webhook-failed-at="webhookFailedAt"
                     class="mb-6"
                 />
 
@@ -519,6 +520,9 @@ const props = defineProps({
     // Editors only — see BoardSettingsModal's own note on why this is not
     // part of the event payload.
     webhookUrl: { type: String, default: null },
+    // Withheld from a non-editor for the same reason the URL is: it is
+    // about a field only a host can reach. See EventNotices.
+    webhookFailedAt: { type: String, default: null },
     joined: { type: Boolean, default: false },
     // A team card with no team of theirs on it, and the teams they run that
     // could be brought in — see TeamEntryModal.
