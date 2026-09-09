@@ -2,13 +2,28 @@
     <u-modal v-model:open="isOpen" :title="`${$t('tile_editor.title')} ${position + 1}`" :dismissible="false">
         <template #body>
             <div class="space-y-4 py-2">
-                <u-form-field :label="$t('tile_editor.task_label')" :description="$t('tile_editor.task_desc')">
-                    <task-picker v-model="selectedTask" :event-id="eventId" />
-                </u-form-field>
+                <!-- A snake or a ladder moves the player on in the same
+                     roll, so nobody is ever standing on one to do anything.
+                     The fields are not disabled but gone: a greyed-out task
+                     picker still reads as "a task belongs here, just not
+                     yet". -->
+                <template v-if="isJump">
+                    <u-alert
+                        icon="i-lucide-info"
+                        color="neutral"
+                        variant="subtle"
+                        :description="$t('tile_editor.jump_has_no_task')"
+                    />
+                </template>
+                <template v-else>
+                    <u-form-field :label="$t('tile_editor.task_label')" :description="$t('tile_editor.task_desc')">
+                        <task-picker v-model="selectedTask" :event-id="eventId" />
+                    </u-form-field>
 
-                <u-form-field :label="$t('tile_editor.title_override')" :description="$t('tile_editor.title_override_desc')">
-                    <u-input v-model="form.title_override" class="w-full" :placeholder="selectedTask?.title ?? ''" />
-                </u-form-field>
+                    <u-form-field :label="$t('tile_editor.title_override')" :description="$t('tile_editor.title_override_desc')">
+                        <u-input v-model="form.title_override" class="w-full" :placeholder="selectedTask?.title ?? ''" />
+                    </u-form-field>
+                </template>
 
                 <div class="grid grid-cols-2 gap-4">
                     <u-form-field :label="$t('tile_editor.tile_type')">
@@ -85,6 +100,9 @@ const typeOptions = [
 
 const selectedTask = ref(null);
 
+/** Snake and ladder are the same case everywhere below: a move, not a task. */
+const isJump = computed(() => form.type !== 'NORMAL');
+
 /**
  * The board stores positions from zero and prints them from one. Everything
  * a host reads — the tile they clicked, the badge on the list, the arrow's
@@ -126,8 +144,16 @@ watch(
 );
 
 function submit() {
-    form.transform((data) => ({ ...data, position: props.position, task_id: selectedTask.value?.id ?? null }))
-        .post(`/events/${props.eventId}/tiles`, { onSuccess: () => (isOpen.value = false) });
+    // The task is dropped here as well as on the server, rather than only
+    // there: a host who typed a title, then changed the type, then changed
+    // it back would otherwise get the old title silently reinstated by a
+    // form field they can no longer see.
+    form.transform((data) => ({
+        ...data,
+        position: props.position,
+        task_id: isJump.value ? null : (selectedTask.value?.id ?? null),
+        title_override: isJump.value ? '' : data.title_override,
+    })).post(`/events/${props.eventId}/tiles`, { onSuccess: () => (isOpen.value = false) });
 }
 
 function clearTile() {

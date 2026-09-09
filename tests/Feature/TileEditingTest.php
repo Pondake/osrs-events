@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\Tile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -200,5 +201,105 @@ class TileEditingTest extends TestCase
             ->assertNotFound();
 
         $this->assertSame(0, Tile::whereNull('board_id')->count());
+    }
+
+    // ------------------------------------------------- a jump carries no task
+
+    /**
+     * A snake or a ladder moves the player on within the same roll, so
+     * nobody is ever standing on one to complete anything: a task there is
+     * unreachable by construction, and it still drew an icon and a title on
+     * the board next to an arrow saying the tile sends you away.
+     *
+     * The editors hide the fields, which is why this is asserted against the
+     * ROW rather than the form — hidden inputs are a suggestion, and the
+     * request is what the database believes.
+     */
+    #[Test]
+    #[DataProvider('jumpTypes')]
+    public function a_jump_tile_is_saved_without_the_task_it_was_sent(string $type): void
+    {
+        [$owner, $event] = $this->board();
+        $task = Task::create(['title' => 'Kill 50 cows']);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 3,
+            'task_id' => $task->id,
+            'title_override' => 'Not this either',
+            'type' => $type,
+            'target_position' => 9,
+        ])->assertRedirect();
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        $this->assertNull($tile->task_id);
+        $this->assertNull($tile->title_override);
+        // The move itself is the point of the tile and must survive.
+        $this->assertSame(9, $tile->target_position);
+    }
+
+    /**
+     * The case the form alone cannot cover: the task was put there while the
+     * tile was still NORMAL, and only the type changed afterwards. Nothing
+     * in that request carries a task at all, so stripping only what was
+     * submitted would have left the old row untouched.
+     */
+    #[Test]
+    public function turning_a_normal_tile_into_a_jump_drops_the_task_it_already_had(): void
+    {
+        [$owner, $event] = $this->board();
+        $task = Task::create(['title' => 'Kill 50 cows']);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 3,
+            'task_id' => $task->id,
+            'type' => 'NORMAL',
+        ])->assertRedirect();
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 3,
+            'type' => 'LADDER',
+            'target_position' => 9,
+        ])->assertRedirect();
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        $this->assertSame('LADDER', $tile->type);
+        $this->assertNull($tile->task_id);
+    }
+
+    /** And the ordinary tile keeps everything, which is the other half. */
+    #[Test]
+    public function turning_a_jump_back_into_a_normal_tile_accepts_a_task_again(): void
+    {
+        [$owner, $event] = $this->board();
+        $task = Task::create(['title' => 'Kill 50 cows']);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 3,
+            'type' => 'SNAKE',
+            'target_position' => 1,
+        ])->assertRedirect();
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 3,
+            'task_id' => $task->id,
+            'title_override' => 'Fifty of them',
+            'type' => 'NORMAL',
+        ])->assertRedirect();
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+
+        $this->assertSame($task->id, $tile->task_id);
+        $this->assertSame('Fifty of them', $tile->title_override);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function jumpTypes(): array
+    {
+        return [
+            'snake' => ['SNAKE'],
+            'ladder' => ['LADDER'],
+        ];
     }
 }
