@@ -179,6 +179,46 @@ sindsdien negen dagen aan werk bijgekomen dat ook niet live staat.
   - **VAPID-sleutels** voor push (`php artisan webpush:vapid`, één keer per
     omgeving) — en nooit roteren op een omgeving die al draait.
 
+- [ ] **Ná het deployen: de Discord-webhook live afmaken.** Besloten
+  2026-09-09. Van de vijf punten in §5 zijn er drie afgevinkt en de laatste
+  twee kúnnen lokaal niet — niet uit luiheid, ze zijn hier onmeetbaar:
+  - **Unfurlen.** De post hoort een embed te worden met de titel en
+    omschrijving van het event. Dat doet Discords crawler, die de URL moet
+    kunnen ophalen — lokaal staat er `osrs-events.test` in en die bestaat
+    voor niemand anders. Let op: staat er een wachtwoordmuur voor de
+    omgeving, dan krijgt de crawler een 401 en zie je een kale link. **De
+    pre-launch deur laat `/events/*` niet door**, dus dit werkt pas op een
+    event dat publiek leesbaar is, of het schuift op tot de deur opengaat.
+  - **Pingt niets.** `allowed_mentions` gaat leeg mee en er is een test die
+    dat vastlegt, maar of Discord het dan ook echt niet als mention
+    behandelt is alleen zichtbaar **in de client van iemand anders dan de
+    webhook-eigenaar**. Eén persoon kan dit niet vaststellen; er is een
+    tweede account voor nodig dat de ping zou krijgen.
+
+  Stappen, in deze volgorde:
+  1. Webhook `OSRS Events` uit `#announcements` kopiëren (Serverinstellingen
+     → Integraties → Webhooks → Copy Webhook URL). Voor een eerste ronde
+     liever `OSRS Events (test)` uit `#dev-announcements` — dat kanaal is er
+     precies voor.
+  2. admin → Site settings → **Discord announcements** op **aan**. Zolang die
+     uit staat is het veld in stap 3 onzichtbaar en wordt er nooit iets
+     verstuurd.
+  3. Een testevent openen → **Settings** → tabblad **Access** → webhook
+     plakken. Alleen bij *bewerken*; de create-stepper toont dit veld niet.
+  4. Pauzeren met een reden, hervatten, annuleren — drie verschillende
+     zinnen. Kijk of de link unfurlt en of de host in de URL klopt (staat er
+     `.test`, dan klopt `APP_URL` niet en is de rest zinloos).
+  5. Event hernoemen naar `@everyone bingo` en pauzeren. Laat **iemand
+     anders** kijken: de tekst hoort er letterlijk te staan, zonder ping,
+     zonder badge, zonder "1 mention". Herhaal met `@here` en met een echte
+     rol-mention.
+  6. Schakelaar weer **uit** tot dit alle vijf groen is.
+
+  Wat hier níet meer bij hoeft: de dode webhook. Die is op 2026-09-07 tegen
+  een echte server gemeten (404, geen 401) en het gat dat dat blootlegde is
+  dichtgemaakt — een dode webhook zet nu een vlag op het event, zet er een
+  banner bij voor de host en stuurt één push. Zie §5.
+
 ## 1. Legal — de eigen pass van de eigenaar
 
 De pagina's zijn accuraat; dat was de technische helft. Dit is de andere. Geen
