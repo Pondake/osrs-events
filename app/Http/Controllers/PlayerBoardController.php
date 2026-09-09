@@ -87,16 +87,24 @@ class PlayerBoardController extends Controller
         // A forced number for working on the movement animation locally.
         // Gated on the environment, not a role: a chosen die on production
         // would be cheating with extra steps.
+        //
+        // Negatives are allowed, and no die can produce one. Walking back to
+        // a tile you already passed is the only way to reach a snake head or
+        // a ladder foot a second time, and testing what happens there — the
+        // uncomplete sweep, the podium losing a row — otherwise means
+        // editing the board out from under the player.
         if (app()->environment('local') && $request->filled('force')) {
             $forced = (int) $request->input('force');
 
-            if ($forced >= 1 && $forced <= 6) {
+            if ($forced !== 0 && abs($forced) <= 6) {
                 $rolled = $forced;
             }
         }
 
         $previousPosition = $playerBoard->current_position;
-        $newPosition = min($previousPosition + $rolled, $maxPosition);
+        // Clamped at both ends now that the step can be negative — tile 0 is
+        // the start, and there is nothing behind it to walk onto.
+        $newPosition = max(min($previousPosition + $rolled, $maxPosition), 0);
         $landedOn = $newPosition;
 
         $tile = $tiles->firstWhere('position', $newPosition);
