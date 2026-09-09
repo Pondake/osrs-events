@@ -461,19 +461,47 @@
                             <!-- Local only: a chosen die, for the animation.
                                  Inside the playable branch, so it cannot
                                  offer a roll the server would refuse. -->
-                            <div v-if="canForceRoll" class="flex flex-wrap items-center justify-center gap-1 mb-3">
-                                <span class="text-[10px] uppercase tracking-wide text-muted w-full text-center">dev: force roll</span>
-                                <u-button
-                                    v-for="face in 6"
-                                    :key="face"
-                                    size="xs"
-                                    color="neutral"
-                                    variant="outline"
-                                    :disabled="rolling"
-                                    @click="roll(face)"
-                                >
-                                    {{ face }}
-                                </u-button>
+                            <!-- Two rows of six, in a grid rather than a wrap:
+                                 the same six steps forwards and backwards, so
+                                 -3 sits under 3 and the pair reads as one
+                                 control. Left to wrap, the twelve buttons
+                                 broke 7/5 across the sidebar's width and the
+                                 columns lined up with nothing. -->
+                            <div v-if="canForceRoll" class="mb-3">
+                                <span class="block text-[10px] uppercase tracking-wide text-muted text-center mb-1">dev: force roll</span>
+                                <div class="grid grid-cols-6 gap-1">
+                                    <u-button
+                                        v-for="face in 6"
+                                        :key="face"
+                                        size="xs"
+                                        color="neutral"
+                                        variant="outline"
+                                        class="justify-center"
+                                        :disabled="rolling"
+                                        @click="roll(face)"
+                                    >
+                                        {{ face }}
+                                    </u-button>
+                                    <!-- Backwards, which no die can do.
+                                         Reaching a snake head or a ladder foot
+                                         a second time is otherwise only
+                                         possible by editing the board out from
+                                         under the player. Same button, one
+                                         shade quieter: it is the same action,
+                                         but not one a real roll can produce. -->
+                                    <u-button
+                                        v-for="face in 6"
+                                        :key="`back-${face}`"
+                                        size="xs"
+                                        color="neutral"
+                                        variant="soft"
+                                        class="justify-center"
+                                        :disabled="rolling"
+                                        @click="roll(-face)"
+                                    >
+                                        −{{ face }}
+                                    </u-button>
+                                </div>
                             </div>
 
                             <dice-roller
