@@ -23,6 +23,7 @@ declare module 'vue' {
     UColorModeButton: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/color-mode/ColorModeButton.vue')['default']
     UCommandPalette: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/CommandPalette.vue')['default']
     UContainer: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Container.vue')['default']
+    UContextMenu: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/ContextMenu.vue')['default']
     UDashboardGroup: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/DashboardGroup.vue')['default']
     UDashboardNavbar: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/DashboardNavbar.vue')['default']
     UDashboardPanel: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/DashboardPanel.vue')['default']
