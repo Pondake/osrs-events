@@ -297,6 +297,16 @@ php artisan push:sweep --dry-run   # what the time-based sweep would send
   own devices, their own inbox) or be an explicit rehearsal. That rule is why
   the sweep button is dry-run only.
 
+### Site settings — `Setting::DEFAULTS` is the contract
+- A setting is a key in `Setting::DEFAULTS`, a validation rule in
+  `SiteSettingsController`, and a `<setting-field name="<key>" section="…">`
+  in `Pages/Admin/Site.vue`. The field renders its label from
+  `admin.setting_<key>` and its description from `admin.setting_<key>_desc`
+  (optional) in `lang/en.json` — there is no label prop.
+- The admin navbar search (`AdminLayout.vue`) reads `Setting::searchIndex()`,
+  built from those same keys, so a new setting is searchable with no extra
+  step. `SettingsSearchTest` fails on a setting without a label.
+
 ### Auth
 - Discord OAuth via `laravel/socialite` + `socialiteproviders/discord` — not a first-party
   Socialite driver. Use `->setScopes([...])`, never `->scopes([...])` (the latter merges

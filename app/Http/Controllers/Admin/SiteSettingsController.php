@@ -96,8 +96,8 @@ class SiteSettingsController extends Controller
         ], [], [
             // Without this the message reads "The kofi url field ...", from
             // Laravel's snake_case-to-words fallback.
-            'kofi_url' => __('admin.site_kofi_url'),
-            'discord_invite_url' => __('admin.site_discord_invite'),
+            'kofi_url' => __('admin.setting_kofi_url'),
+            'discord_invite_url' => __('admin.setting_discord_invite_url'),
         ]);
 
         // Only the validated keys are written, so the request can't

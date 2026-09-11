@@ -133,6 +133,27 @@ class Setting extends Model
         return [...self::DEFAULTS, ...$stored];
     }
 
+    /**
+     * One row per setting for the admin search box. Derived from DEFAULTS,
+     * so a new setting is searchable as soon as it exists — its label is
+     * `admin.setting_<key>`, the same key the form field renders.
+     * SettingsSearchTest fails on a setting without one.
+     *
+     * @return list<array{key: string, label: string, description: ?string}>
+     */
+    public static function searchIndex(): array
+    {
+        return array_map(function (string $key) {
+            $description = __("admin.setting_{$key}_desc");
+
+            return [
+                'key' => $key,
+                'label' => __("admin.setting_{$key}"),
+                'description' => $description === "admin.setting_{$key}_desc" ? null : $description,
+            ];
+        }, array_keys(self::DEFAULTS));
+    }
+
     public static function get(string $key): mixed
     {
         return self::cached()[$key] ?? null;

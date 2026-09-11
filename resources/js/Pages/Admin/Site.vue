@@ -36,7 +36,7 @@
                     <span class="font-semibold">{{ $t('admin.site_access_title') }}</span>
                 </template>
 
-                <u-form-field :label="$t('admin.site_registration')" :description="$t('admin.site_registration_desc')" :error="form.errors.registration_open">
+                <setting-field name="registration_open" section="access" :error="form.errors.registration_open">
                     <!-- Disabled while the lock is on, not merely annotated.
                          A live switch under a note saying the note wins is a
                          control that does nothing, and the only way to find
@@ -53,7 +53,7 @@
                         <u-icon name="i-lucide-lock" class="size-3.5 shrink-0 mt-0.5" />
                         <span>{{ $t('admin.site_registration_locked_note') }}</span>
                     </p>
-                </u-form-field>
+                </setting-field>
 
                 <u-separator class="my-6" />
 
@@ -64,16 +64,12 @@
                      so it ships switched off and gets turned on knowingly.
                      While it is off the field is not offered on any event and
                      nothing is ever sent, whatever is already stored. -->
-                <u-form-field
-                    :label="$t('admin.site_discord_webhooks')"
-                    :description="$t('admin.site_discord_webhooks_desc')"
-                    :error="form.errors.discord_webhooks_enabled"
-                >
+                <setting-field name="discord_webhooks_enabled" section="access" :error="form.errors.discord_webhooks_enabled">
                     <u-switch
                         v-model="form.discord_webhooks_enabled"
                         :label="form.discord_webhooks_enabled ? $t('common.on') : $t('common.off')"
                     />
-                </u-form-field>
+                </setting-field>
 
                 <u-separator class="my-6" />
 
@@ -81,22 +77,19 @@
                      running and answering, it just asks for a shared password
                      first — see EnsureSiteUnlocked for why the two are
                      different tools. -->
-                <u-form-field
-                    :label="$t('admin.site_lock')"
-                    :description="$t('admin.site_lock_desc')"
-                    :error="form.errors.site_lock_enabled"
-                >
+                <setting-field name="site_lock_enabled" section="access" :error="form.errors.site_lock_enabled">
                     <u-switch
                         v-model="form.site_lock_enabled"
                         :label="form.site_lock_enabled ? $t('admin.site_lock_on') : $t('admin.site_lock_off')"
                     />
-                </u-form-field>
+                </setting-field>
 
-                <u-form-field
+                <setting-field
                     v-if="form.site_lock_enabled"
+                    name="site_lock_password"
+                    section="access"
                     class="mt-4 max-w-sm"
-                    :label="$t('admin.site_lock_password')"
-                    :description="settings.site_lock_has_password ? $t('admin.site_lock_password_keep') : $t('admin.site_lock_password_desc')"
+                    :description="settings.site_lock_has_password ? $t('admin.site_lock_password_keep') : null"
                     :error="form.errors.site_lock_password"
                 >
                     <!-- Never pre-filled. The stored value is a hash and the
@@ -109,7 +102,7 @@
                         class="w-full"
                         :placeholder="settings.site_lock_has_password ? '••••••••' : ''"
                     />
-                </u-form-field>
+                </setting-field>
 
                 <u-alert
                     v-if="form.site_lock_enabled"
@@ -127,17 +120,13 @@
                      everyone but an admin, including people already signed in
                      and the shared password itself, so it must not read as
                      "the same lock, one notch further". -->
-                <u-form-field
-                    :label="$t('admin.site_full_lockdown')"
-                    :description="$t('admin.site_full_lockdown_desc')"
-                    :error="form.errors.admin_lockdown_enabled"
-                >
+                <setting-field name="admin_lockdown_enabled" section="access" :error="form.errors.admin_lockdown_enabled">
                     <u-switch
                         v-model="form.admin_lockdown_enabled"
                         color="error"
                         :label="form.admin_lockdown_enabled ? $t('admin.site_full_lockdown_on') : $t('admin.site_full_lockdown_off')"
                     />
-                </u-form-field>
+                </setting-field>
 
                 <u-alert
                     v-if="form.admin_lockdown_enabled"
@@ -156,18 +145,14 @@
                 <p class="text-sm text-muted mb-4">{{ $t('admin.site_defaults_desc') }}</p>
 
                 <div class="space-y-4 max-w-sm">
-                    <u-form-field :label="$t('admin.board_size')" :error="form.errors.default_board_size">
+                    <setting-field name="default_board_size" section="boards" :error="form.errors.default_board_size">
                         <u-select v-model="form.default_board_size" :items="sizeOptions" class="w-full" />
-                    </u-form-field>
+                    </setting-field>
 
                     <!-- Pre-fills the create form's end date, counted from
                          the start date. A default, not a rule — the dates
                          stay editable on the event itself. -->
-                    <u-form-field
-                        :label="$t('admin.site_event_duration')"
-                        :description="$t('admin.site_event_duration_desc')"
-                        :error="form.errors.default_event_duration"
-                    >
+                    <setting-field name="default_event_duration" section="boards" :error="form.errors.default_event_duration">
                         <u-input
                             v-model="form.default_event_duration"
                             class="w-full sm:max-w-xs"
@@ -178,9 +163,9 @@
                              month, not wait for somebody to create an event
                              and count the days. -->
                         <p v-if="durationReads" class="text-xs text-muted mt-1">{{ durationReads }}</p>
-                    </u-form-field>
+                    </setting-field>
 
-                    <u-form-field :label="$t('admin.dice_roll_limit')" :error="form.errors.default_dice_roll_limit">
+                    <setting-field name="default_dice_roll_limit" section="boards" :error="form.errors.default_dice_roll_limit">
                         <div class="flex items-center gap-3 flex-wrap">
                             <u-input
                                 v-model.number="form.default_dice_roll_limit"
@@ -192,7 +177,7 @@
                             />
                             <u-checkbox v-model="unlimitedRolls" :label="$t('admin.dice_roll_unlimited')" />
                         </div>
-                    </u-form-field>
+                    </setting-field>
                 </div>
             </u-card>
 
@@ -201,28 +186,18 @@
                     <span class="font-semibold">{{ $t('admin.site_support_title') }}</span>
                 </template>
 
-                <u-form-field
-                    :label="$t('admin.site_kofi_url')"
-                    :description="$t('admin.site_kofi_url_desc')"
-                    :error="form.errors.kofi_url"
-                    class="max-w-lg"
-                >
+                <setting-field name="kofi_url" section="support" :error="form.errors.kofi_url" class="max-w-lg">
                     <u-input v-model="form.kofi_url" type="url" class="w-full" placeholder="https://ko-fi.com/yourname" />
-                </u-form-field>
+                </setting-field>
 
                 <!-- Kept out of the repository on purpose — anyone holding an
                      invite URL can walk into the server, so it lives here and
                      nowhere a checkout would carry it. Blank is a valid
                      answer: the pages that use it render no button at all
                      rather than a link to nowhere. -->
-                <u-form-field
-                    :label="$t('admin.site_discord_invite')"
-                    :description="$t('admin.site_discord_invite_desc')"
-                    :error="form.errors.discord_invite_url"
-                    class="max-w-lg mt-6"
-                >
+                <setting-field name="discord_invite_url" section="support" :error="form.errors.discord_invite_url" class="max-w-lg mt-6">
                     <u-input v-model="form.discord_invite_url" type="url" class="w-full" placeholder="https://discord.gg/..." />
-                </u-form-field>
+                </setting-field>
             </u-card>
 
             <u-card v-show="active === 'announcement'">
@@ -230,9 +205,9 @@
                     <span class="font-semibold">{{ $t('admin.site_announcement_title') }}</span>
                 </template>
 
-                <u-form-field :description="$t('admin.site_announcement_desc')" :error="form.errors.announcement">
+                <setting-field name="announcement" section="announcement" :error="form.errors.announcement">
                     <u-textarea ref="announcementInput" v-model="form.announcement" :rows="2" :maxlength="280" class="w-full" :placeholder="$t('admin.site_announcement_placeholder')" />
-                </u-form-field>
+                </setting-field>
 
                 <div class="flex items-center justify-between gap-3 mt-1 flex-wrap">
                     <div class="flex items-center gap-2">
@@ -242,7 +217,7 @@
                     <p class="text-xs text-muted">{{ (form.announcement ?? '').length }} / 280</p>
                 </div>
 
-                <u-form-field :label="$t('admin.site_announcement_type')" :error="form.errors.announcement_type" class="mt-4 max-w-xs">
+                <setting-field name="announcement_type" section="announcement" :error="form.errors.announcement_type" class="mt-4 max-w-xs">
                     <!-- The icon slots make the dropdown show what each type
                          looks like, rather than four indistinguishable words. -->
                     <u-select v-model="form.announcement_type" :items="typeOptions" class="w-full">
@@ -253,21 +228,16 @@
                             <u-icon :name="item.icon" class="size-4" />
                         </template>
                     </u-select>
-                </u-form-field>
+                </setting-field>
 
                 <!-- Only does anything while the pre-launch door is shut, so
                      it says so rather than sitting there looking inert on an
                      open site. Off by default: an announcement is normally
                      written for people already using the site, and the lock
                      screen is the one page a stranger can reach. -->
-                <u-form-field
-                    :label="$t('admin.site_announcement_public')"
-                    :description="$t('admin.site_announcement_public_desc')"
-                    :error="form.errors.announcement_public"
-                    class="mt-4"
-                >
+                <setting-field name="announcement_public" section="announcement" :error="form.errors.announcement_public" class="mt-4">
                     <u-switch v-model="form.announcement_public" :label="$t('admin.site_announcement_public_label')" />
-                </u-form-field>
+                </setting-field>
 
                 <!-- Shows exactly what a visitor would see, since a banner
                      that's live site-wide is worth previewing before saving.
@@ -295,11 +265,12 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, provide, ref, watch } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import AdminLayout from '@/Components/AdminLayout.vue';
 import RichText from '@/Components/RichText.vue';
+import SettingField from '@/Components/SettingField.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
 import { announcementTypeOptions, styleFor } from '@/Support/announcement';
 import { describeDuration } from '@/Support/duration';
@@ -339,6 +310,42 @@ const sections = computed(() => [
 
 const active = ref('access');
 
+// Every <setting-field> registers itself here, which is how a search hit
+// (?setting=<key>) finds its section without a second list of fields.
+//
+// Pull, not push: the fields live inside AdminLayout's <client-only> slot, so
+// they mount AFTER this page does. Reading the map once in onMounted found it
+// empty every time — instead the wanted key is parked and each field checks
+// against it as it arrives.
+const settingFields = new Map();
+const pendingSetting = ref(null);
+
+function openPendingSetting() {
+    const field = settingFields.get(pendingSetting.value);
+    if (! field) {
+        return;
+    }
+
+    // Deliberately NOT cleared here. AdminLayout's <client-only> renders its
+    // fallback first, so every field mounts twice a few milliseconds apart —
+    // consuming the request on the first mount left the real field, the one
+    // that stays on screen, unhighlighted. Cleared in select() instead: the
+    // moment the admin picks a section themselves, the search is over.
+    active.value = field.section;
+    window.history.replaceState(null, '', `#${field.section}`);
+    nextTick(() => field.highlight());
+}
+
+provide('settingFields', {
+    register(name, field) {
+        settingFields.set(name, field);
+        openPendingSetting();
+    },
+    unregister(name) {
+        settingFields.delete(name);
+    },
+});
+
 // Hash rather than a query param or per-section route: it makes a section
 // linkable and reload-safe without a controller action per section. Read in
 // onMounted because `location` doesn't exist during SSR.
@@ -347,9 +354,13 @@ onMounted(() => {
     if (sections.value.some((section) => section.key === hash)) {
         active.value = hash;
     }
+
+    pendingSetting.value = new URLSearchParams(window.location.search).get('setting');
+    openPendingSetting();
 });
 
 function select(key) {
+    pendingSetting.value = null;
     active.value = key;
     // replaceState, not pushState: back should leave settings, not step
     // through every section the user happened to click.

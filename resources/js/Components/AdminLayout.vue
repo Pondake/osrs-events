@@ -61,6 +61,22 @@
                         </template>
 
                         <template #right>
+                            <u-button
+                                v-if="isAdmin"
+                                icon="i-lucide-search"
+                                color="neutral"
+                                variant="ghost"
+                                :label="$t('admin.search_settings')"
+                                :ui="{ label: 'hidden sm:inline' }"
+                                @click="searchOpen = true"
+                            >
+                                <template #trailing>
+                                    <span class="hidden sm:flex items-center gap-0.5">
+                                        <u-kbd value="meta" size="sm" />
+                                        <u-kbd value="K" size="sm" />
+                                    </span>
+                                </template>
+                            </u-button>
                             <slot name="actions" />
                         </template>
                     </u-dashboard-navbar>
@@ -79,6 +95,20 @@
             </u-dashboard-panel>
         </u-dashboard-group>
 
+        <u-modal v-model:open="searchOpen" :title="$t('admin.search_settings')" :ui="{ content: 'sm:max-w-lg' }">
+            <template #content>
+                <u-command-palette
+                    :groups="searchGroups"
+                    :placeholder="$t('admin.search_settings_placeholder')"
+                    :fuse="{ fuseOptions: { keys: ['label', 'suffix', 'key'] } }"
+                    close
+                    class="h-80"
+                    @update:model-value="openSetting"
+                    @update:open="searchOpen = $event"
+                />
+            </template>
+        </u-modal>
+
         <template #fallback>
             <div class="flex min-h-screen">
                 <div class="hidden lg:block w-64 shrink-0 border-r border-default bg-elevated/30" />
@@ -93,7 +123,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import AppLogo from '@/Components/AppLogo.vue';
@@ -108,6 +139,39 @@ const props = defineProps({
 const { isAdmin, canCreateTiles, canCreateBoards } = useAuth();
 
 const sidebarOpen = ref(false);
+
+const searchOpen = ref(false);
+const inertiaPage = usePage();
+
+// Built from the shared index (Setting::searchIndex), never a list kept
+// here — a new setting shows up on its own.
+const searchGroups = computed(() => [{
+    id: 'settings',
+    label: trans('admin.search_settings_group'),
+    items: (inertiaPage.props.settingsIndex ?? []).map((setting) => ({
+        key: setting.key,
+        label: setting.label,
+        suffix: setting.description ?? undefined,
+        icon: 'i-lucide-sliders-horizontal',
+        value: setting.key,
+    })),
+}]);
+
+function openSetting(item) {
+    if (!item?.value) return;
+    searchOpen.value = false;
+    router.visit(`/admin/site?setting=${item.value}`);
+}
+
+function onKeydown(event) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && isAdmin.value) {
+        event.preventDefault();
+        searchOpen.value = !searchOpen.value;
+    }
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 /**
  * Grouped so the content and system halves read as separate concerns rather
