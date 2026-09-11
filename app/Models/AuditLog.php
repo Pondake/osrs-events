@@ -100,6 +100,7 @@ class AuditLog extends Model
         'team.deleted',
         'team.member_added',
         'team.member_removed',
+        'team.member_role_changed',
         'board.team_added',
         'board.team_removed',
         // Stopping an event, in both senses. Logged because each of these
@@ -108,12 +109,28 @@ class AuditLog extends Model
         // touched, and a soft-deleted one is invisible by design.
         'event.paused',
         'event.resumed',
+        // The end of an event, which arrives two ways: a competitor crossing
+        // the line, and the standings being shut. `event.closed` covers both
+        // the automatic close and the host's button, which is why its
+        // metadata carries a `reason` — the row otherwise cannot say which.
+        'event.finished',
+        'event.closed',
+        'event.reopened',
         'event.deleted',
         'event.restored',
         'page.updated',
         'invite.created',
         'invite.revoked',
         'task.deleted',
+        'task.restored',
+        'blueprint.created',
+        'blueprint.updated',
+        'blueprint.deleted',
+        // Not a setting anyone changed: these two are an admin acting on
+        // somebody else's account from the diagnostics page, which is the
+        // one place there that reaches another person.
+        'diagnostics.osrs_nudge_sent',
+        'diagnostics.osrs_username_reset',
         'settings.updated',
     ];
 

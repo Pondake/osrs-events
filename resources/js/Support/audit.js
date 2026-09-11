@@ -21,16 +21,26 @@ export const AUDIT_STYLES = {
     'team.deleted': { color: 'error', icon: 'i-lucide-users-round' },
     'team.member_added': { color: 'success', icon: 'i-lucide-user-plus' },
     'team.member_removed': { color: 'warning', icon: 'i-lucide-user-minus' },
+    'team.member_role_changed': { color: 'neutral', icon: 'i-lucide-user-cog' },
     'board.team_added': { color: 'success', icon: 'i-lucide-layout-grid' },
     'board.team_removed': { color: 'warning', icon: 'i-lucide-layout-grid' },
     'event.paused': { color: 'warning', icon: 'i-lucide-pause' },
     'event.resumed': { color: 'success', icon: 'i-lucide-play' },
+    'event.finished': { color: 'success', icon: 'i-lucide-flag' },
+    'event.closed': { color: 'neutral', icon: 'i-lucide-lock' },
+    'event.reopened': { color: 'warning', icon: 'i-lucide-lock-open' },
     'event.deleted': { color: 'error', icon: 'i-lucide-trash-2' },
     'event.restored': { color: 'success', icon: 'i-lucide-undo-2' },
     'page.updated': { color: 'neutral', icon: 'i-lucide-file-pen' },
     'invite.created': { color: 'success', icon: 'i-lucide-ticket' },
     'invite.revoked': { color: 'error', icon: 'i-lucide-ticket-x' },
     'task.deleted': { color: 'error', icon: 'i-lucide-trash-2' },
+    'task.restored': { color: 'success', icon: 'i-lucide-undo-2' },
+    'blueprint.created': { color: 'success', icon: 'i-lucide-shapes' },
+    'blueprint.updated': { color: 'neutral', icon: 'i-lucide-pencil' },
+    'blueprint.deleted': { color: 'error', icon: 'i-lucide-trash-2' },
+    'diagnostics.osrs_nudge_sent': { color: 'neutral', icon: 'i-lucide-bell' },
+    'diagnostics.osrs_username_reset': { color: 'warning', icon: 'i-lucide-user-x' },
     'settings.updated': { color: 'neutral', icon: 'i-lucide-sliders-horizontal' },
 };
 
@@ -153,6 +163,27 @@ const FIELDS = {
         label: 'audit.field_roles',
         format: (value) => (value?.length ? text(value.map(roleLabel).join(', ')) : empty()),
     },
+    competitor: { label: 'audit.field_competitor', format: (value) => (value ? text(value) : empty()) },
+    // Bare number: the label already says "Place", so formatting the value
+    // as "Place 1" renders the word twice on one row.
+    place: { label: 'audit.field_place', format: (value) => (value ? text(String(value)) : empty()) },
+    // Why an event closed: the host pressed the button, or the finish
+    // condition did it. Without this the row says "host", which reads like
+    // the name of a person.
+    reason: {
+        label: 'audit.field_reason',
+        format: (value) => {
+            const key = `audit.value_reason_${value}`;
+            const label = trans(key);
+
+            return text(label === key ? String(value) : label);
+        },
+    },
+    previous_username: {
+        label: 'audit.field_previous_username',
+        format: (value) => (value ? text(value) : empty()),
+    },
+    from_event: { label: 'audit.field_from_event', format: (value) => (value ? text(value) : empty()) },
 };
 
 function describe(key, value) {
