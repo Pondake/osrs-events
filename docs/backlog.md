@@ -1464,6 +1464,30 @@ noot.
 - [ ] **Beslissen of `docs/README.md` terug naar de repo-root moet.** Nu
   rendert GitHub geen landings-readme voor de repo.
 
+- [ ] **Het webhookveld is onvindbaar.** Gemeld 2026-09-12: schakelaar op
+  staging aangezet en het veld daarna nergens kunnen vinden. Het staat er
+  wél — nagemeten in de browser, Access-tab, onder de drie toegangskaarten —
+  maar er zijn vier drempels achter elkaar en geen enkele legt zichzelf uit:
+  1. **De site-schakelaar staat uit.** Zolang die uit staat bestaat het veld
+     nergens, en niets op het eventscherm zegt dat er iets verborgen is.
+  2. **Alleen bij bewerken, niet bij aanmaken.** Bewuste keuze — je stuurt
+     iemand niet halverwege het aanmaken weg om een URL te kopiëren — maar
+     wie het net heeft aangemaakt zoekt het daar wel.
+  3. **Onder de Access-tab**, wat je pas raadt als je "who can join" al
+     doorhebt. Het is niet een toegangsinstelling, het is een
+     meldingsinstelling.
+  4. **Een admin die geen host is ziet zelfs de Manage-knop niet.** De
+     eventpagina zegt dan alleen "de admin-omgeving is waar die macht
+     woont" — klopt, maar het is geen route naar dit veld.
+  Daar komt bij dat het veld **"Announcements webhook"** heet en de
+  schakelaar **"Discord announcements"**: wie "webhook" zoekt vindt de een
+  niet vanuit de ander.
+  Nog te beslissen wat de fix is. Goedkoopste: een regel op de Access-tab die
+  ook zichtbaar is als de schakelaar uit staat ("Discord-aankondigingen staan
+  sitebreed uit"), plus het veld noemen in de beschrijving van de schakelaar
+  in admin. Duurder maar beter: een eigen tab of kaart "Meldingen" op het
+  event, waar dit hoort in plaats van bij toegang.
+
 ## 7. Discord-server
 
 De server bestaat sinds 2026-08-30 (§0). Sindsdien hangt er een bot in die
