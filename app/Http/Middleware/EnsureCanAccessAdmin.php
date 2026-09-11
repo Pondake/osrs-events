@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Setting;
 use Closure;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -33,6 +35,10 @@ class EnsureCanAccessAdmin
             || $user->hasPermission('canCreateTiles')
             || $user->hasPermission('canCreateBoards')
         ), 403);
+
+        // What the search box in the admin navbar searches. Labels only,
+        // never values.
+        Inertia::share('settingsIndex', fn () => Setting::searchIndex());
 
         return $next($request);
     }
