@@ -138,6 +138,7 @@ class DiscordAnnouncer
 
             if ($response->successful()) {
                 $this->clearFailure($event);
+                $this->stampThrottle($event, $trigger);
 
                 return true;
             }
@@ -167,13 +168,31 @@ class DiscordAnnouncer
      */
     private function throttled(Event $event, string $trigger): bool
     {
+        return isset(AnnouncementTrigger::THROTTLE[$trigger])
+            && Cache::has($this->throttleKey($event, $trigger));
+    }
+
+    /**
+     * Start the clock, and only once something actually arrived.
+     *
+     * Claiming the window before the post — which is what an atomic
+     * Cache::add on the way in would do — means a refused webhook or a
+     * Discord outage costs the next hour of announcements too. The race this
+     * leaves open is two posts from two processes in the same second, which
+     * is a smaller problem than an hour of silence bought by a failure.
+     */
+    private function stampThrottle(Event $event, string $trigger): void
+    {
         $window = AnnouncementTrigger::THROTTLE[$trigger] ?? 0;
 
-        if ($window === 0) {
-            return false;
+        if ($window > 0) {
+            Cache::put($this->throttleKey($event, $trigger), true, $window);
         }
+    }
 
-        return ! Cache::add("discord:{$trigger}:{$event->id}", true, $window);
+    private function throttleKey(Event $event, string $trigger): string
+    {
+        return "discord:{$trigger}:{$event->id}";
     }
 
     /**
