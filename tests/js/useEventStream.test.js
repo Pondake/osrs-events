@@ -10,7 +10,21 @@ import { useEventStream } from '@/Composables/useEventStream';
  * The composable asks Inertia for fresh props when the event itself was
  * edited, so the router is the observable end of that.
  */
-vi.mock('@inertiajs/vue3', () => ({ router: { reload: vi.fn() } }));
+vi.mock('@inertiajs/vue3', () => {
+    const listeners = {};
+
+    return {
+        router: {
+            reload: vi.fn(),
+            on: vi.fn((name, handler) => {
+                (listeners[name] ??= new Set()).add(handler);
+
+                return () => listeners[name].delete(handler);
+            }),
+            fire: (name) => listeners[name]?.forEach((handler) => handler()),
+        },
+    };
+});
 
 /**
  * The live channel's connection handling.
@@ -271,6 +285,41 @@ describe('the staleness indicator', () => {
         await nextTick();
 
         expect(wrapper.text()).toBe('true/false');
+        spy.mockRestore();
+    });
+
+    /**
+     * A host pausing or resuming on a single-worker server stalls the stream
+     * behind their own request. The response is fresh data, so the page must
+     * not keep calling itself out of date.
+     */
+    it('clears when a visit brings fresh props', async () => {
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { wrapper } = mountStream();
+
+        FakeEventSource.live[0].emit('error', new Event('error'));
+        vi.advanceTimersByTime(7000);
+        await nextTick();
+        expect(wrapper.text()).toBe('true/true');
+
+        router.fire('success');
+        await nextTick();
+
+        expect(wrapper.text()).toBe('true/false');
+        spy.mockRestore();
+    });
+
+    it('goes stale again if the stream still does not come back', async () => {
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { wrapper } = mountStream();
+
+        FakeEventSource.live[0].emit('error', new Event('error'));
+        vi.advanceTimersByTime(7000);
+        router.fire('success');
+        vi.advanceTimersByTime(7000);
+        await nextTick();
+
+        expect(wrapper.text()).toBe('true/true');
         spy.mockRestore();
     });
 
