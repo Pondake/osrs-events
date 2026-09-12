@@ -1482,11 +1482,70 @@ noot.
   Daar komt bij dat het veld **"Announcements webhook"** heet en de
   schakelaar **"Discord announcements"**: wie "webhook" zoekt vindt de een
   niet vanuit de ander.
-  Nog te beslissen wat de fix is. Goedkoopste: een regel op de Access-tab die
-  ook zichtbaar is als de schakelaar uit staat ("Discord-aankondigingen staan
-  sitebreed uit"), plus het veld noemen in de beschrijving van de schakelaar
-  in admin. Duurder maar beter: een eigen tab of kaart "Meldingen" op het
-  event, waar dit hoort in plaats van bij toegang.
+  **Besloten 2026-09-12: de dure variant.** Zie het item hieronder; dit
+  wordt daardoor opgelost en hoeft geen eigen fix.
+
+- [ ] **Een tabblad "Announcements", met een vinklijst per event.** Besloten
+  2026-09-12, en het lost drie dingen tegelijk op: het veld is vindbaar, een
+  host kiest zelf wat er doorgaat, en de races krijgen eindelijk iets te
+  zeggen.
+
+  *Waar het vandaan komt.* Op staging is op 2026-09-12 een bingo helemaal
+  uitgespeeld met een werkende webhook — zes claims, één afgewezen, gewonnen.
+  Er kwam **één** bericht in het kanaal: de finish. Dat was geen storing
+  (handmatige post gaf 204, URL geldig, schakelaar aan) maar het ontwerp:
+  claims keuren post niet, en niets zegt dat. Wat er nu wél gaat, is acht
+  dingen:
+
+  | Trigger | S&L | Bingo | Skill Race | Drop Race |
+  |---|:--:|:--:|:--:|:--:|
+  | pauzeren (+ reden) | ✓ | ✓ | ✓ | ✓ |
+  | hervatten | ✓ | ✓ | ✓ | ✓ |
+  | beëindigen | ✓ | ✓ | ✓ | ✓ |
+  | heropenen | ✓ | ✓ | ✓ | ✓ |
+  | annuleren | ✓ | ✓ | ✓ | ✓ |
+  | herstellen (admin) | ✓ | ✓ | ✓ | ✓ |
+  | iemand komt binnen | ✓ | ✓ | ✗ | ✗ |
+  | iemand wint, event sluit | ✓ | ✓ | ✗ | ✗ |
+
+  **Een metric race post dus niets over de race zelf** — alleen de zes
+  host-acties. `EventFinishService` kent alleen `evaluateSnakesLadders()` en
+  `evaluateBingo()`; het dichtstbijzijnde voor een race is
+  `RaceRankNotifier`, en dat is bewust push-only omdat een sync per tien
+  minuten anders het luidruchtigste ding in de app wordt.
+
+  *Ontwerp.* Een catalogus, dezelfde vorm als `NotificationCategory` — dat is
+  hier al de huisstijl en het beantwoordt meteen "welke trigger hoort bij
+  welk type":
+  - **`App\Support\AnnouncementTrigger::ALL`**, `key => [types, default,
+    icon]`. De tab rendert eruit, de validator whitelist ertegen, en
+    `DiscordAnnouncer` leest het. Een trigger toevoegen is één rij.
+  - **`events.discord_announcements`**, een JSON-array met de aangevinkte
+    keys. Bestaande rijen krijgen elke trigger die nu al vuurt, zodat niemands
+    kanaal stiller wordt van deze wijziging.
+  - **`announce()` krijgt de trigger als argument** en toetst hem daar, naast
+    de site-schakelaar en `isValidUrl()`. Dat is met opzet dezelfde plek: het
+    is het enige punt waar er echt een request uitgaat, en dus het enige punt
+    dat een aanroeper niet kan overslaan.
+  - **De webhook-URL verhuist** van de Access-tab naar deze tab. Access gaat
+    over wie binnenkomt; dit gaat over wie er iets van hoort.
+  - **Staat de site-schakelaar uit, dan toont de tab dat** in plaats van te
+    verdwijnen — dat is de hele bug hierboven.
+
+  *De race-momenten, besloten 2026-09-12.* Drie, en de standaardwaarden
+  volgen uit hoe vaak ze kunnen vuren:
+  - **Eindstand bij het sluiten** — top 3 in één bericht zodra het event
+    eindigt. Vuurt één keer per event en kan dus nooit luidruchtig worden;
+    standaard **aan**. Dit is het equivalent van de finish-post die S&L en
+    bingo al hebben.
+  - **Nieuwe koploper** — alleen als plek 1 wisselt, nooit bij beweging
+    lager op de lijst, met een throttle per event. Een spannende race kan dit
+    alsnog vaak laten vuren, dus standaard **uit** — dezelfde redenering als
+    `rank_change` in de pushcatalogus.
+  - **Dagelijkse tussenstand** — één bericht per dag, top 3 plus wie er
+    gestegen is. Standaard **uit**: het ritme is voorspelbaar maar op een
+    rustige dag post het niets nieuws, en dat is precies hoe een kanaal
+    gemute raakt.
 
 ## 7. Discord-server
 
