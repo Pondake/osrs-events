@@ -28,6 +28,7 @@ export function useEventStream({ url, event, onMessage }) {
     let source = null;
     let staleTimer = null;
     let target = null;
+    let stopListening = null;
 
     // The event's own details as a hash. Every channel sends one, and sends
     // the details alongside it — see the note on applyEventVersion for why
@@ -45,6 +46,25 @@ export function useEventStream({ url, event, onMessage }) {
         clearTimeout(staleTimer);
         staleTimer = null;
         stale.value = false;
+    }
+
+    function startStaleTimer() {
+        if (staleTimer !== null) return;
+
+        staleTimer = setTimeout(() => {
+            stale.value = true;
+            console.error('Event stream went stale', { url: target, event });
+        }, STALE_AFTER_MS);
+    }
+
+    // A visit that just returned props means the page is current, even if the
+    // stream stalled while that request held the worker. The grace period
+    // restarts, so a stream that stays down still turns amber.
+    function onVisitSuccess() {
+        if (!source) return;
+
+        markLive();
+        if (source.readyState !== EventSource.OPEN) startStaleTimer();
     }
 
     function connect() {
@@ -80,14 +100,7 @@ export function useEventStream({ url, event, onMessage }) {
                 console.error(error);
             }
 
-            if (staleTimer === null) {
-                staleTimer = setTimeout(() => {
-                    stale.value = true;
-                    // The reconnect never landed. Logged once per stall
-                    // rather than once per disconnect.
-                    console.error('Event stream went stale', { url: target, event });
-                }, STALE_AFTER_MS);
-            }
+            startStaleTimer();
         });
     }
 
@@ -180,6 +193,7 @@ export function useEventStream({ url, event, onMessage }) {
         if (!target) return;
 
         document.addEventListener('visibilitychange', onVisibilityChange);
+        stopListening = router.on('success', onVisitSuccess);
 
         // A tab restored from the background starts hidden, so this is not
         // always true at mount.
@@ -190,6 +204,8 @@ export function useEventStream({ url, event, onMessage }) {
         if (typeof document !== 'undefined') {
             document.removeEventListener('visibilitychange', onVisibilityChange);
         }
+
+        stopListening?.();
 
         disconnect();
     });
