@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\DiscordAnnouncer;
 use App\Services\WebPushService;
+use App\Support\AnnouncementTrigger;
 use App\Support\NotificationCategory;
 use App\Support\PushMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -91,7 +92,9 @@ class DiscordWebhookHealthTest extends TestCase
 
     private function announce(Event $event): bool
     {
-        return app(DiscordAnnouncer::class)->announce($event, 'anything');
+        // PAUSED because it fires for every type and is on by default, so
+        // nothing here is testing the trigger gate by accident.
+        return app(DiscordAnnouncer::class)->announce($event, AnnouncementTrigger::PAUSED, 'anything');
     }
 
     // ------------------------------------------------- the webhook is gone

@@ -458,6 +458,7 @@
                     v-model:open="showSettingsModal"
                     :board="liveEvent"
                     :webhook-url="webhookUrl"
+                    :announcements="announcements"
                     :initial-tab="settingsTab"
                     :finishes="liveFinishes"
                 />
@@ -523,6 +524,9 @@ const props = defineProps({
     // Withheld from a non-editor for the same reason the URL is: it is
     // about a field only a host can reach. See EventNotices.
     webhookFailedAt: { type: String, default: null },
+    // The announcements tab's contents, server-resolved. Null for anyone
+    // who cannot edit 2014 see BoardController::announcementSettings().
+    announcements: { type: Object, default: null },
     joined: { type: Boolean, default: false },
     // A team card with no team of theirs on it, and the teams they run that
     // could be brought in — see TeamEntryModal.

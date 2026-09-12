@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Notifications\EventStatusChanged;
 use App\Services\BingoService;
 use App\Services\DiscordAnnouncer;
+use App\Support\AnnouncementTrigger;
 use App\Support\EventCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -822,7 +823,7 @@ class EventPauseTest extends TestCase
         $announcer = app(DiscordAnnouncer::class);
 
         foreach (range(1, 6) as $nth) {
-            $announcer->announce($event, "Finisher {$nth}");
+            $announcer->announce($event, AnnouncementTrigger::FINISH, "Finisher {$nth}");
         }
 
         Http::assertSentCount(6);

@@ -13,6 +13,7 @@ use App\Notifications\EventStatusChanged;
 use App\Services\BoardAccessService;
 use App\Services\EventFinishService;
 use App\Services\EventNotificationService;
+use App\Support\AnnouncementTrigger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +67,12 @@ class BoardController extends Controller
 
         return Inertia::render('Admin/Boards', [
             'boards' => $boards,
+            // Keyed by event id, because this page edits whichever row was
+            // clicked. Built from the same catalogue the event page uses, so
+            // the two forms cannot disagree about what an event can announce.
+            'announcements' => $boards->mapWithKeys(
+                fn (Event $event) => [$event->id => AnnouncementTrigger::settingsFor($event)],
+            ),
             // Echoed back rather than read straight off the request client
             // side, so the search box and status select reflect what the
             // server actually filtered on — including the fallback to 'all'

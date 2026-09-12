@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Event;
 use App\Models\Setting;
+use App\Support\AnnouncementTrigger;
 use App\Support\NotificationCategory;
 use App\Support\PushMessage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -91,16 +93,31 @@ class DiscordAnnouncer
     public function __construct(private readonly PushNotifier $push) {}
 
     /**
+     * @param  string  $trigger  an AnnouncementTrigger constant — what
+     *                           happened, so the host's own checklist can
+     *                           decide whether their channel hears about it
      * @return bool whether Discord accepted it — false covers "no webhook
-     *              configured" as well as a failed post, because the caller
-     *              only ever asks "did the channel hear about this"
+     *              configured" and "the host switched this one off" as well
+     *              as a failed post, because the caller only ever asks "did
+     *              the channel hear about this"
      */
-    public function announce(Event $event, string $message): bool
+    public function announce(Event $event, string $trigger, string $message): bool
     {
         // The site-wide switch, checked here rather than at each call site:
         // this is the one place an outbound request is actually made, so it
         // is the one place that cannot be bypassed by a caller that forgot.
         if (! Setting::get('discord_webhooks_enabled')) {
+            return false;
+        }
+
+        // The host's own answer, checked in the same place and for the same
+        // reason. It also covers a trigger that cannot fire for this type at
+        // all, so a caller cannot post a bingo finish into a skill race.
+        if (! $event->announcesOnDiscord($trigger)) {
+            return false;
+        }
+
+        if ($this->throttled($event, $trigger)) {
             return false;
         }
 
@@ -138,6 +155,25 @@ class DiscordAnnouncer
 
             return false;
         }
+    }
+
+    /**
+     * A per-event floor for the triggers that can fire back to back.
+     *
+     * Only RACE_LEAD has one: a close race can swap its lead several times
+     * inside a sync run, and three posts in a minute saying the same thing is
+     * how a channel gets muted. Stamped on the way out rather than on the way
+     * in, so a post that never left does not start the clock.
+     */
+    private function throttled(Event $event, string $trigger): bool
+    {
+        $window = AnnouncementTrigger::THROTTLE[$trigger] ?? 0;
+
+        if ($window === 0) {
+            return false;
+        }
+
+        return ! Cache::add("discord:{$trigger}:{$event->id}", true, $window);
     }
 
     /**

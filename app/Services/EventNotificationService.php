@@ -66,7 +66,9 @@ class EventNotificationService
         // cannot reach. Same message, said once, no pings — see
         // DiscordAnnouncer. It is not gated on `$except`: a webhook posts to
         // a room, not to a person, so there is nobody to leave out.
-        $posted = $this->discord->announce($event, $this->discordMessage($event, $change));
+        // The change IS the trigger key — AnnouncementTrigger's six status
+        // constants are EventStatusChanged's, on purpose.
+        $posted = $this->discord->announce($event, $change, $this->discordMessage($event, $change));
 
         // The third channel, and the one that reaches the people the other
         // two cannot. Email misses every Discord-only account (no address to

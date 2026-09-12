@@ -23,6 +23,8 @@ use App\Services\EventParticipationService;
 use App\Services\EventStandingsService;
 use App\Services\BoardReviewService;
 use App\Services\PlayerBoardService;
+use App\Services\RaceAnnouncer;
+use App\Support\AnnouncementTrigger;
 use App\Support\DiscordCdn;
 use App\Support\EventCard;
 use Illuminate\Http\JsonResponse;
@@ -42,7 +44,7 @@ class BoardController extends Controller
     /** How many of each kind the hub shows before "view all". */
     private const HUB_SLICE = 3;
 
-    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'finish_rule', 'discord_webhook_url'];
+    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'finish_rule', 'discord_webhook_url', 'discord_announcements'];
 
     private const BOARD_FIELDS = ['size', 'dice_roll_limit', 'requires_approval'];
 
@@ -457,6 +459,7 @@ class BoardController extends Controller
             // is a warning about a settings field, so it only means anything
             // to somebody who can open that field.
             'webhookFailedAt' => $canEdit ? $event->discord_webhook_failed_at : null,
+            'announcements' => $this->announcementSettings($event, $canEdit),
             'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
             'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
             // Hosts get the review queue on the same page as the board —
@@ -657,6 +660,7 @@ class BoardController extends Controller
             // is a warning about a settings field, so it only means anything
             // to somebody who can open that field.
             'webhookFailedAt' => $canEdit ? $event->discord_webhook_failed_at : null,
+            'announcements' => $this->announcementSettings($event, $canEdit),
             'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
             'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
         ]);
@@ -685,6 +689,7 @@ class BoardController extends Controller
             'canEdit' => $user?->canEditEvent($event) ?? false,
             'webhookUrl' => $user?->canEditEvent($event) ? $event->discord_webhook_url : null,
             'webhookFailedAt' => $user?->canEditEvent($event) ? $event->discord_webhook_failed_at : null,
+            'announcements' => $this->announcementSettings($event, $user?->canEditEvent($event) ?? false),
             'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
             'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
         ]);
@@ -961,6 +966,12 @@ class BoardController extends Controller
                     $fail(trans('validation.discord_webhook_invalid'));
                 }
             }],
+            // Whitelisted against the catalogue for THIS event's type, so a
+            // request cannot store a bingo trigger on a skill race — the
+            // announcer would refuse it anyway, but a stored value nothing
+            // will ever read is a lie the settings tab would render back.
+            'discord_announcements' => ['sometimes', 'array'],
+            'discord_announcements.*' => [Rule::in(AnnouncementTrigger::forType($event->type))],
         ]);
 
         // Outside the transaction and before it, because it can refuse: a
@@ -1162,6 +1173,14 @@ class BoardController extends Controller
                 $request->user(),
             );
 
+            // A race has no finishers to announce, so "it ended" was the last
+            // thing its channel ever heard — and never who won. Separate from
+            // the status post rather than folded into it: they are two
+            // sentences, and a host can want one without the other.
+            if ($closed && $event->needsMetric()) {
+                app(RaceAnnouncer::class)->final($event);
+            }
+
             $message .= ' '.$this->notifiedSummary($counts);
         }
 
@@ -1196,6 +1215,17 @@ class BoardController extends Controller
         }
 
         return route('admin.events').'?event='.$event->id;
+    }
+
+    /**
+     * Null for a non-editor, same as the webhook URL beside it: it describes
+     * a form only a host can open.
+     *
+     * @return array{chosen: list<string>, available: list<array{key: string, icon: string}>}|null
+     */
+    private function announcementSettings(Event $event, bool $canEdit): ?array
+    {
+        return $canEdit ? AnnouncementTrigger::settingsFor($event) : null;
     }
 
     public function destroy(

@@ -937,6 +937,7 @@
                     v-model:open="showSettingsModal"
                     :board="liveBoard"
                     :webhook-url="webhookUrl"
+                    :announcements="announcements"
                     :initial-tab="settingsTab"
                     :finishes="liveFinishes"
                 />
@@ -1027,6 +1028,9 @@ const props = defineProps({
     // Withheld from a non-editor for the same reason the URL is: it is
     // about a field only a host can reach. See EventNotices.
     webhookFailedAt: { type: String, default: null },
+    // The announcements tab's contents, server-resolved. Null for anyone
+    // who cannot edit 2014 see BoardController::announcementSettings().
+    announcements: { type: Object, default: null },
     joined: { type: Boolean, default: false },
     // The host's review queue — see BoardReviewService::pendingQueue(). Empty
     // for anyone else, so asking for it costs a player nothing.
