@@ -11,6 +11,7 @@ use App\Services\DiscordAnnouncer;
 use App\Services\RaceAnnouncer;
 use App\Support\AnnouncementTrigger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -62,6 +63,21 @@ class AnnouncementTriggerTest extends TestCase
     private function announce(Event $event, string $trigger): bool
     {
         return app(DiscordAnnouncer::class)->announce($event, $trigger, 'anything');
+    }
+
+    /**
+     * Replace setUp's stub instead of adding to it.
+     *
+     * Http::fake() MERGES, and the first stub matching a URL wins — so a
+     * second call in a test silently keeps returning setUp's 204 and the test
+     * passes while proving nothing. Dropping the resolved factory is what
+     * actually starts from nothing.
+     */
+    private function refake(array $stubs): void
+    {
+        $this->app->forgetInstance(Factory::class);
+        Http::clearResolvedInstances();
+        Http::fake($stubs);
     }
 
     // ------------------------------------------------------- the host's list
@@ -183,6 +199,29 @@ class AnnouncementTriggerTest extends TestCase
         $this->assertFalse($this->announce($event->fresh(), AnnouncementTrigger::RACE_LEAD));
 
         Http::assertSentCount(1);
+    }
+
+    /**
+     * A post that never arrived must not buy the next hour of silence.
+     *
+     * Found by running the real thing rather than a fake: the window was
+     * claimed on the way in, so a refused webhook or a Discord outage cost
+     * the following hour too — and the comment above it claimed otherwise.
+     */
+    #[Test]
+    public function a_failed_post_does_not_start_the_clock(): void
+    {
+        $this->refake(['discord.com/*' => Http::sequence()
+            ->push('', 500)
+            ->push('', 204)]);
+
+        $event = $this->event('SKILL_RACE');
+        $event->update(['discord_announcements' => [AnnouncementTrigger::RACE_LEAD]]);
+
+        $this->assertFalse($this->announce($event->fresh(), AnnouncementTrigger::RACE_LEAD));
+        $this->assertTrue($this->announce($event->fresh(), AnnouncementTrigger::RACE_LEAD));
+
+        Http::assertSentCount(2);
     }
 
     /** A throttle is per event, not per app — two races do not gag each other. */
