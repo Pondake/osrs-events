@@ -5,7 +5,7 @@ fixed once. They are easy to reintroduce, which is why they live in their own
 file rather than scrolling away inside a backlog — `CLAUDE.md` points here, and
 reading it before touching anything render-related is the point.
 
-Extracted 2026-08-30 from `docs/backlog.md` when that file was archived; the
+Extracted 2026-08-30 from the backlog when that file was archived; the
 list itself is unchanged.
 
 ---

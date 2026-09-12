@@ -8,7 +8,7 @@ everything it described is gone — kept in git history, not here. Rewritten
 from scratch rather than edited, because a progress file that half-describes
 a stack nobody runs is worse than no progress file.
 
-For decisions and the traps behind them, read **`docs/backlog.md`** — that is
+For decisions and the traps behind them, read the backlog (kept outside this repo) — that is
 the long-form record, and this is the summary.
 
 ---
