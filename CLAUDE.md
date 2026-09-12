@@ -62,7 +62,7 @@ so: **write it into one of these, never into a new document.**
 
 | It is… | It goes in |
 |---|---|
-| still to do, and will actually be picked up | the backlog — kept outside this repo |
+| still to do, and will actually be picked up | the backlog — see Backlog below |
 | a real idea, thought through, not scheduled | `docs/ideas.md` |
 | a render/SSR trap that bit us once | `docs/ssr-gotchas.md` |
 | a Discord server detail | `docs/discord.md` — always gitignored |
@@ -342,3 +342,12 @@ php artisan push:sweep --dry-run   # what the time-based sweep would send
   use `trans()` (i18n) directly, and restructure around `route()`'s template-only requirement
 - Do not add `ssr.noExternal` for `@nuxt/ui` in `vite.config.js` — it silently breaks Vue's
   component resolution globally instead of crashing loudly (see `docs/ssr-gotchas.md`)
+
+## Backlog
+
+The backlog is **not in this repo**; it lives in the Obsidian vault as `OSRS Events backlog.md` and `OSRS Events backlog-archief 2026-08.md` in
+the project folder, found via the `repo:` field in its frontmatter, which points at this checkout. Read it there
+before starting work and keep it up to date there.
+
+Do not create `docs/backlog.md`, `BACKLOG.md` or anything like it here — that
+path is gitignored, so the file would silently get lost.
