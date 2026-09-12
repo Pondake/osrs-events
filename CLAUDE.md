@@ -46,11 +46,9 @@ osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.
 ├── routes/web.php
 ├── ui.config.ts          Nuxt UI theme (colors, component overrides) — wired into vite.config.js
 ├── lang/en.json           flat dotted-key translations (see i18n below)
-├── docs/backlog.md         living priority list — only what is still open
 ├── docs/ideas.md           thought through, not scheduled
 ├── docs/ssr-gotchas.md     sixteen render traps, every one hit for real
-├── docs/discord.md         local notes — always gitignored
-└── docs/backlog-archive-2026-08.md   the old backlog, kept whole
+└── docs/discord.md         local notes — always gitignored
 ```
 
 Stack: Laravel 13 · Inertia.js v2 · Vue 3 · `@nuxt/ui` v4 · Tailwind v4 ·
@@ -64,11 +62,11 @@ so: **write it into one of these, never into a new document.**
 
 | It is… | It goes in |
 |---|---|
-| still to do, and will actually be picked up | `docs/backlog.md` |
+| still to do, and will actually be picked up | the backlog — kept outside this repo |
 | a real idea, thought through, not scheduled | `docs/ideas.md` |
 | a render/SSR trap that bit us once | `docs/ssr-gotchas.md` |
 | a Discord server detail | `docs/discord.md` — always gitignored |
-| finished — `[x]` plus what was built | stays put in `docs/backlog.md` |
+| finished — `[x]` plus what was built | stays put in the backlog |
 
 Three rules that are easy to get wrong:
 
@@ -76,11 +74,11 @@ Three rules that are easy to get wrong:
   it in place. A `[x]` is "I built it", which is not the same claim as "it
   works" — only the owner deletes a line, after verifying it. Never tidy them
   away on your own initiative.
-- **`docs/backlog-archive-2026-08.md` is closed.** Read it for history and for
-  the reasoning behind a decision; don't add to it, don't delete from it. Code
-  comments across `app/`, `database/` and `resources/js` that cite
-  `docs/backlog.md` as provenance mean that archive — same convention as the
-  deleted `stale/` paths.
+- **The backlog archive (2026-08) is closed.** It lives with the backlog,
+  outside this repo. Read it for history and for the reasoning behind a
+  decision; don't add to it, don't delete from it. Code comments across `app/`,
+  `database/` and `resources/js` that cite `docs/backlog.md` as provenance mean
+  that archive — same convention as the deleted `stale/` paths.
 - **Moving an item between backlog and ideas is normal.** Something that keeps
   getting skipped belongs in `ideas.md`; something whose turn has come moves
   back. That is the mechanism, not a failure of planning.

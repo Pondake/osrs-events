@@ -1,7 +1,7 @@
 # Ideeën
 
 Werk dat echt is bedacht maar niet gepland. Alles hier is uitgezocht ver genoeg
-om te weten wat het zou kosten, en bewust niet in `docs/backlog.md` gezet —
+om te weten wat het zou kosten, en bewust niet in de backlog gezet —
 die lijst is alleen wat er op afzienbare termijn opgepakt wordt, en een idee
 dat daartussen staat concurreert met werk dat wél af moet.
 

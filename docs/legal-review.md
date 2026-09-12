@@ -80,11 +80,11 @@ cannot see your email address or your other events.
 ## Still a judgement call, and still yours
 
 The owner is taking a second pass at this — see section 1, "Legal — de eigen
-pass van de eigenaar", in `docs/backlog.md` for what they want to look at
+pass van de eigenaar", in the backlog for what they want to look at
 (licensed policy sources, writing for a worldwide playerbase rather than an
 EU-shaped one, whether to publish a personal address at all, and a retention
 number for sessions and push subscriptions). The heading it used to point at,
-"Legal, round two", now lives in `docs/backlog-archive-2026-08.md`.
+"Legal, round two", now lives in the backlog archive (2026-08).
 
 - **The deletion address.** `mailto:dev@absolit.nl` is what the page offers as
   the route to erasure. If that is not the address you want handling those, it

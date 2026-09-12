@@ -180,7 +180,6 @@ routes/console.php           scheduled work (standings sync, push sweep)
 ui.config.ts                 Nuxt UI theme, wired into vite.config.js
 lang/en.json                 flat dotted-key translations
 lang/en/validation.php       the one exception — :attribute names must live here
-docs/backlog.md              what is done, what is not, and why
 ```
 
 ### Scheduled work
@@ -485,8 +484,8 @@ and read the tail of `storage/logs/laravel.log` after requesting a reset.
 ## Before you change anything
 
 Read **`CLAUDE.md`** for the conventions this codebase actually follows,
-**`docs/PROGRESS.md`** for what is built, and **`docs/backlog.md`** for the
-current state of play. The backlog is not a
+**`docs/PROGRESS.md`** for what is built, and the backlog (kept outside this
+repo) for the current state of play. The backlog is not a
 changelog — it records decisions and the traps behind them, including a list
 of SSR gotchas that have each cost real debugging time at least once.
 

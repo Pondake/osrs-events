@@ -7,11 +7,11 @@
 Thumbs.db
 
 # Old NestJS + Nuxt stack, kept on disk for reference during the Laravel
-# migration (see docs/backlog.md) but not tracked — a full second stack's
+# migration but not tracked — a full second stack's
 # node_modules/vendor/lockfiles have no business bloating this repo's history.
 /stale/
 
-# Laravel (moved here from laravel-app/ — see docs/backlog.md)
+# Laravel (moved here from laravel-app/)
 *.log
 .env
 .env.backup
@@ -41,3 +41,11 @@ lang/php_*.json
 /storage/framework/lsp-*.php
 
 /docs/discord.md
+
+# Backlog hoort niet in deze repo
+/BACKLOG.md
+/backlog.md
+/docs/BACKLOG.md
+/docs/backlog.md
+/docs/backlog-*.md
+/docs/FEATURE_BACKLOG.md
