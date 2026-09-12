@@ -61,7 +61,6 @@
                     <access-fields
                         :form="form"
                         is-edit
-                        :discord-webhooks-enabled="discordWebhooksEnabled"
                         :guilds="guilds"
                         :loading-guilds="loadingGuilds"
                         :has-discord="hasDiscord"
@@ -72,6 +71,13 @@
                         @update:author-search="onAuthorSearch"
                         @add-author="addAuthor"
                         @remove-author="removeAuthor"
+                    />
+                </template>
+                <template #announcements>
+                    <announcement-fields
+                        :form="form"
+                        :settings="announcements"
+                        :discord-webhooks-enabled="discordWebhooksEnabled"
                     />
                 </template>
                 <template #invites>
@@ -261,6 +267,7 @@ import { useAuth } from '@/Composables/useAuth';
 import { useInvites } from '@/Composables/useInvites';
 import { xsrfHeader } from '@/Support/csrf';
 import AccessFields from '@/Components/BoardSettings/AccessFields.vue';
+import AnnouncementFields from '@/Components/BoardSettings/AnnouncementFields.vue';
 import BasicsFields from '@/Components/BoardSettings/BasicsFields.vue';
 import FormatFields from '@/Components/BoardSettings/FormatFields.vue';
 import InviteFields from '@/Components/BoardSettings/InviteFields.vue';
@@ -281,6 +288,10 @@ const props = defineProps({
     // a webhook URL is a capability rather than a fact about the event. The
     // server only fills this in for somebody who may edit.
     webhookUrl: { type: String, default: null },
+    // What this event can announce and what it does — resolved server-side
+    // from AnnouncementTrigger, because both halves are the catalogue's
+    // answer and a second copy here would drift on the first new row.
+    announcements: { type: Object, default: null },
     // Where this modal's writes go. The admin section passes '/admin/events'
     // because an admin editing somebody else's event is a different route
     // with a different check behind it — on the public side an admin is an
@@ -380,6 +391,10 @@ function blankForm() {
         dice_roll_limit: settings.defaultDiceRollLimit ?? null,
         is_listed: true,
         discord_webhook_url: '',
+        // Null, not an empty array: nobody has chosen, and the server reads
+        // that as the catalogue's defaults. An empty array would mean a host
+        // switched everything off.
+        discord_announcements: null,
         access_mode: 'OPEN',
         required_guild_id: '',
         author_ids: [],
@@ -462,6 +477,10 @@ const tabs = computed(() => [
     { value: 'basics', slot: 'basics', label: trans('admin.step_basics') },
     { value: 'format', slot: 'format', label: trans('admin.step_format') },
     { value: 'access', slot: 'access', label: trans('admin.step_access') },
+    // Always present, including while the site switch is off — the tab then
+    // says so. It used to be a field on Access that simply vanished, which
+    // is how a host ends up certain the feature does not exist.
+    { value: 'announcements', slot: 'announcements', label: trans('announcements.tab') },
     ...(form.access_mode === 'INVITE' ? [{ value: 'invites', slot: 'invites', label: trans('admin.invite_links') }] : []),
     ...(form.mode === 'TEAM' ? [{ value: 'teams', slot: 'teams', label: trans('admin.team_assignment') }] : []),
     // Last, because it is where you go on purpose. The tabs only render
@@ -699,7 +718,17 @@ function cardFields(board) {
  */
 function seedFromBoard(board) {
         form.defaults(board
-            ? { ...blankForm(), ...board, ...dateFields(board), ...cardFields(board), discord_webhook_url: props.webhookUrl ?? '' }
+            ? {
+                ...blankForm(),
+                ...board,
+                ...dateFields(board),
+                ...cardFields(board),
+                discord_webhook_url: props.webhookUrl ?? '',
+                // Seeded with what the server resolved, so opening the tab and
+                // saving without touching a box writes the same set that was
+                // already firing rather than clearing it.
+                discord_announcements: props.announcements?.chosen ?? null,
+            }
             : blankForm());
         form.reset();
         form.clearErrors();
@@ -1061,6 +1090,8 @@ const FIELD_TABS = {
     required_guild_id: 'access',
     is_listed: 'access',
     author_ids: 'access',
+    discord_webhook_url: 'announcements',
+    discord_announcements: 'announcements',
     team_ids: 'teams',
 };
 

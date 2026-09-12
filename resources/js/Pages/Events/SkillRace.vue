@@ -335,7 +335,13 @@
         <!-- Async + client-only for the same reason BoardShow does it: the
              modal reaches @nuxt/ui composables that break the SSR build. -->
         <client-only>
-            <board-settings-modal v-if="canEdit" v-model:open="showSettingsModal" :board="liveEvent" :webhook-url="webhookUrl" />
+            <board-settings-modal
+                v-if="canEdit"
+                v-model:open="showSettingsModal"
+                :board="liveEvent"
+                :webhook-url="webhookUrl"
+                :announcements="announcements"
+            />
         </client-only>
 </template>
 
@@ -407,6 +413,9 @@ const props = defineProps({
     // Withheld from a non-editor for the same reason the URL is: it is
     // about a field only a host can reach. See EventNotices.
     webhookFailedAt: { type: String, default: null },
+    // The announcements tab's contents, server-resolved. Null for anyone
+    // who cannot edit 2014 see BoardController::announcementSettings().
+    announcements: { type: Object, default: null },
 });
 
 /**

@@ -75,6 +75,7 @@
                 :open="editingBoard !== null"
                 :board="editingBoard"
                 :webhook-url="editingBoard?.discord_webhook_url ?? null"
+                :announcements="editingBoard ? (announcements?.[editingBoard.id] ?? null) : null"
                 base-path="/admin/events"
                 @update:open="(v) => !v && (editingBoard = null)"
             />
@@ -94,6 +95,8 @@ const BoardSettingsModal = defineAsyncComponent(() => import('@/Components/Board
 const props = defineProps({
     boards: { type: Array, required: true },
     filters: { type: Object, required: true },
+    // Keyed by event id — the settings modal edits whichever row was clicked.
+    announcements: { type: Object, default: () => ({}) },
 });
 
 // Kept across a full navigation away and back, not just within this page's

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AnnouncementTrigger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -58,6 +59,7 @@ class Event extends Model
         // Where announcements go, when a host wires one up. An ordinary
         // setting: changing it announces nothing by itself.
         'discord_webhook_url',
+        'discord_announcements',
         // `paused_at` and `pause_reason` are deliberately absent: pausing is
         // its own action with its own permission check and its own audit
         // entry, not a field somebody can slip into an ordinary settings save.
@@ -76,7 +78,27 @@ class Event extends Model
         // what Discord answered, never by the form that sets the URL beside
         // it. A host clears it by fixing the webhook, not by posting a field.
         'discord_webhook_failed_at' => 'datetime',
+        'discord_announcements' => 'array',
     ];
+
+    /**
+     * Does this event post `$trigger` to its channel?
+     *
+     * Null means nobody has been to the tab yet, and resolves to the
+     * catalogue's defaults — which are what fired before the column existed.
+     * An empty array is a host who ticked everything off, and must stay a
+     * different answer from that.
+     */
+    public function announcesOnDiscord(string $trigger): bool
+    {
+        if (! AnnouncementTrigger::appliesTo($trigger, $this)) {
+            return false;
+        }
+
+        $chosen = $this->discord_announcements ?? AnnouncementTrigger::defaultsFor($this->type);
+
+        return in_array($trigger, $chosen, true);
+    }
 
     /**
      * On hold: readable, not playable.

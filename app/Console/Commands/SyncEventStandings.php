@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Event;
 use App\Models\EventStanding;
 use App\Services\EventStandingsService;
+use App\Services\RaceAnnouncer;
 use App\Services\RaceRankNotifier;
 use App\Services\WiseOldManService;
 use Illuminate\Console\Command;
@@ -127,6 +128,10 @@ class SyncEventStandings extends Command
             // overtakes that unwind two rows later.
             try {
                 $ranks->announce($event, $ranksBefore);
+
+                // The channel's version of the same moment. Push tells the
+                // person who lost the lead; this tells the room who took it.
+                app(RaceAnnouncer::class)->leadChanged($event, $ranksBefore, $ranks->snapshot($event));
             } catch (Throwable $e) {
                 // A failed notification must never cost more than the
                 // notification — the standings are already correct by now.

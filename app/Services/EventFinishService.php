@@ -10,6 +10,7 @@ use App\Models\Event;
 use App\Models\EventFinish;
 use App\Models\PlayerBoard;
 use App\Models\User;
+use App\Support\AnnouncementTrigger;
 use App\Support\NotificationCategory;
 use App\Support\Ordinal;
 use App\Support\PushMessage;
@@ -625,7 +626,7 @@ class EventFinishService
     {
         $name = $finish->label();
 
-        $this->discord->announce($event, trans(
+        $this->discord->announce($event, AnnouncementTrigger::FINISH, trans(
             'notifications.discord_event_finished',
             ['event' => $event->title, 'name' => $name, 'place' => Ordinal::of($place)],
         ).' '.route('events.show', $event));
@@ -663,7 +664,7 @@ class EventFinishService
     {
         $name = $winner->label();
 
-        $this->discord->announce($event, trans(
+        $this->discord->announce($event, AnnouncementTrigger::WON, trans(
             'notifications.discord_event_won',
             ['event' => $event->title, 'name' => $name],
         ).' '.route('events.show', $event));

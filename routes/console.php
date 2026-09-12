@@ -41,6 +41,19 @@ Schedule::command('events:sync-standings')
     ->onSuccess(fn () => ScheduleHeartbeat::record('events:sync-standings'));
 
 /**
+ * The daily standing of a race, for the hosts who ticked it.
+ *
+ * Morning rather than midnight: it is a thing people read, and a post timed
+ * to land while everyone is asleep is one that arrives already buried. Off by
+ * default per event, so an empty run is the normal case.
+ */
+Schedule::command('events:race-digest')
+    ->dailyAt('09:00')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->onSuccess(fn () => ScheduleHeartbeat::record('events:race-digest'));
+
+/**
  * The time-based notifications.
  *
  * Every fifteen minutes rather than hourly: the windows this checks are an
