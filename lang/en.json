@@ -829,6 +829,7 @@
     "board.rolled_with_jump": "Rolled a :n and hit a :jump!",
     "board.rolling": "Rolling...",
     "board.rolls_today": "Rolls today",
+    "board.runelite_no_proof_desc": "Detected by the RuneLite plugin, so there is no screenshot to check.",
     "board.runelite_teaser_badge": "Soon",
     "board.runelite_teaser_placeholder": "Detected automatically — no screenshot needed",
     "board.runelite_teaser_title": "RuneLite plugin",

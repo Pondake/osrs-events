@@ -124,6 +124,14 @@
                 </div>
 
                 <u-alert
+                    v-else-if="claim.completedVia === 'RUNELITE'"
+                    color="neutral"
+                    variant="subtle"
+                    icon="i-lucide-puzzle"
+                    :description="$t('board.runelite_no_proof_desc')"
+                />
+
+                <u-alert
                     v-else
                     color="warning"
                     variant="subtle"
