@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ReviewsClaims;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class BingoCard extends Model
 {
-    use HasUuids;
+    use HasUuids, ReviewsClaims;
 
     /** How a card is won. */
     public const WIN_CONDITIONS = ['LINE', 'FULL_HOUSE'];
@@ -33,12 +34,13 @@ class BingoCard extends Model
      */
     public const SIZES = [3, 4, 5, 6, 7, 8, 9, 10];
 
-    protected $fillable = ['event_id', 'size', 'win_condition', 'line_bonus', 'requires_approval', 'win_lines'];
+    protected $fillable = ['event_id', 'size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'win_lines'];
 
     protected $casts = [
         'size' => 'integer',
         'line_bonus' => 'integer',
         'requires_approval' => 'boolean',
+        'trust_runelite_completions' => 'boolean',
         'win_lines' => 'array',
     ];
 

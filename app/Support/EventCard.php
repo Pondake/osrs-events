@@ -45,6 +45,7 @@ final class EventCard
             // Whether a tile claim needs a host's sign-off before it counts
             // — the S&L half of the same setting bingo's card carries.
             'requires_approval' => $event->board?->requires_approval,
+            'trust_runelite_completions' => $event->board?->trust_runelite_completions,
             // Bingo's grid is a side length, not a size enum — a separate
             // field so a card never has to guess which kind of grid it holds.
             'bingo_size' => $event->bingoCard?->size,
@@ -57,6 +58,7 @@ final class EventCard
                 'winCondition' => $event->bingoCard->win_condition,
                 'lineBonus' => $event->bingoCard->line_bonus,
                 'requiresApproval' => $event->bingoCard->requires_approval,
+                'trustRuneliteCompletions' => $event->bingoCard->trust_runelite_completions,
                 'winLines' => $event->bingoCard->winLines(),
             ] : null,
             'authors' => $event->authors,

@@ -383,6 +383,7 @@ function blankForm() {
         win_lines: ['ROW', 'COLUMN', 'DIAGONAL'],
         line_bonus: 0,
         requires_approval: true,
+        trust_runelite_completions: false,
         mode: 'SOLO',
         // What happens when the first competitor gets home. CONTINUE is the
         // forgiving default — see the finish_rule migration.
@@ -697,6 +698,7 @@ function cardFields(board) {
         win_lines: board.card.winLines ?? ['ROW', 'COLUMN', 'DIAGONAL'],
         line_bonus: board.card.lineBonus ?? 0,
         requires_approval: board.card.requiresApproval ?? true,
+        trust_runelite_completions: board.card.trustRuneliteCompletions ?? false,
     };
 }
 
@@ -1007,6 +1009,7 @@ function submit() {
             // nothing for it to gate.
             if (data.type !== 'BINGO' && data.type !== 'SNAKES_LADDERS') {
                 delete payload.requires_approval;
+                delete payload.trust_runelite_completions;
             }
 
             if (data.mode !== 'TEAM') delete payload.team_ids;
@@ -1052,6 +1055,7 @@ function submit() {
         // reopened modal read the unchanged value back as "on".
         if (data.type !== 'BINGO' && data.type !== 'SNAKES_LADDERS') {
             delete payload.requires_approval;
+            delete payload.trust_runelite_completions;
         }
 
         return payload;
@@ -1085,6 +1089,7 @@ const FIELD_TABS = {
     win_condition: 'format',
     line_bonus: 'format',
     requires_approval: 'format',
+    trust_runelite_completions: 'format',
     dice_roll_limit: 'format',
     access_mode: 'access',
     required_guild_id: 'access',

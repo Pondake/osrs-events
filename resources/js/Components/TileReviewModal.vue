@@ -17,7 +17,10 @@
                         <img v-if="claim.iconUrl" :src="claim.iconUrl" alt="" class="size-6 object-contain shrink-0" />
                         <div class="min-w-0">
                             <p class="font-medium truncate">{{ claim.label || $t('tile_editor.no_task') }}</p>
-                            <p class="text-xs text-muted">{{ $t('board.tile', { n: claim.position + 1 }) }}</p>
+                            <p class="text-xs text-muted flex items-center gap-2">
+                                {{ $t('board.tile', { n: claim.position + 1 }) }}
+                                <claim-source-badge :via="claim.completedVia" />
+                            </p>
                         </div>
                     </div>
 
@@ -161,6 +164,7 @@
 </template>
 
 <script setup>
+import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
 import { ordinal } from '@/Support/board';
 import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';

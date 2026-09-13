@@ -46,7 +46,7 @@ class BoardController extends Controller
 
     private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'finish_rule', 'discord_webhook_url', 'discord_announcements'];
 
-    private const BOARD_FIELDS = ['size', 'dice_roll_limit', 'requires_approval'];
+    private const BOARD_FIELDS = ['size', 'dice_roll_limit', 'requires_approval', 'trust_runelite_completions'];
 
     /**
      * The author's user is loaded by column, not whole.
@@ -327,7 +327,7 @@ class BoardController extends Controller
         // so the guard is here rather than inside it — reading an event is
         // the only path that reaches these services without one.
         $playerBoard = $user === null ? null : $playerBoards->find($event, $user)?->load(
-            'completedTiles:id,player_board_id,tile_id,status,proof_url,note,review_note,reviewed_at',
+            'completedTiles:id,player_board_id,tile_id,completed_via,status,proof_url,note,review_note,reviewed_at',
         );
 
         $canEdit = $user?->canEditEvent($event) ?? false;
@@ -406,6 +406,7 @@ class BoardController extends Controller
                 'claims' => $playerBoard->completedTiles->mapWithKeys(fn ($c) => [$c->tile_id => [
                     'id' => $c->id,
                     'status' => $c->status,
+                    'completedVia' => $c->completed_via,
                     'proofUrl' => $c->proof_url,
                     'note' => $c->note,
                     'reviewNote' => $c->review_note,
@@ -599,6 +600,7 @@ class BoardController extends Controller
                 'winCondition' => $card->win_condition,
                 'lineBonus' => $card->line_bonus,
                 'requiresApproval' => $card->requires_approval,
+                'trustRuneliteCompletions' => $card->trust_runelite_completions,
                 // Which shapes count, so the page can draw the same lines the
                 // server scores — a hint pointing at a diagonal on a
                 // rows-only card would be a lie the grid tells.
@@ -626,6 +628,7 @@ class BoardController extends Controller
             'claims' => $claims->map(fn ($claim) => [
                 'id' => $claim->id,
                 'status' => $claim->status,
+                'completedVia' => $claim->completed_via,
                 'reviewNote' => $claim->review_note,
                 'proofUrl' => $claim->proof_url,
                 'note' => $claim->note,
@@ -762,6 +765,7 @@ class BoardController extends Controller
             'win_condition' => ['nullable', Rule::in(BingoCard::WIN_CONDITIONS)],
             'line_bonus' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['nullable', 'boolean'],
+            'trust_runelite_completions' => ['nullable', 'boolean'],
             // At least one shape, or "first line wins" is a condition no card
             // can ever meet.
             'win_lines' => ['nullable', 'array', 'min:1'],
@@ -834,6 +838,7 @@ class BoardController extends Controller
                     // Defaults to on, matching the column default: a card
                     // nobody checks is a shared checklist, not a competition.
                     'requires_approval' => $data['requires_approval'] ?? true,
+                    'trust_runelite_completions' => $data['trust_runelite_completions'] ?? false,
                 ]);
 
                 // Filled out immediately, unlike S&L tiles which appear on
@@ -942,6 +947,7 @@ class BoardController extends Controller
             'win_condition' => ['sometimes', 'nullable', Rule::in(BingoCard::WIN_CONDITIONS)],
             'line_bonus' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['sometimes', 'nullable', 'boolean'],
+            'trust_runelite_completions' => ['sometimes', 'nullable', 'boolean'],
             'win_lines' => ['sometimes', 'nullable', 'array', 'min:1'],
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
@@ -979,7 +985,7 @@ class BoardController extends Controller
         // validation error rather than half-applied alongside the rest.
         if ($event->type === 'BINGO' && $event->bingoCard) {
             $cardChanges = collect($data)
-                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval', 'win_lines'])
+                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'win_lines'])
                 // Nulls are "not submitted for this type", not "clear it" —
                 // see the nullable note on the rules above.
                 ->reject(fn ($value) => $value === null)

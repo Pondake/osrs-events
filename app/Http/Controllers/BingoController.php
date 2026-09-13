@@ -122,7 +122,8 @@ class BingoController extends Controller
             ...$competitor,
             'bingo_square_id' => $square->id,
             'marked_by' => $request->user()->id,
-            'status' => $card->requires_approval ? 'PENDING' : 'APPROVED',
+            'completed_via' => 'MANUAL',
+            'status' => $card->initialClaimStatus('MANUAL'),
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);
@@ -248,6 +249,7 @@ class BingoController extends Controller
             'win_condition' => ['sometimes', Rule::in(BingoCard::WIN_CONDITIONS)],
             'line_bonus' => ['sometimes', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['sometimes', 'boolean'],
+            'trust_runelite_completions' => ['sometimes', 'boolean'],
             'win_lines' => ['sometimes', 'array', 'min:1'],
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
         ]);

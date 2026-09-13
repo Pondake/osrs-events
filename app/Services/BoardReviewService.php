@@ -68,6 +68,7 @@ class BoardReviewService
                 'submittedBy' => $c->markedBy?->nickname ?: $c->markedBy?->discord_username,
                 'submittedByAvatar' => $c->markedBy?->avatar_url,
                 'submittedByOsrs' => $c->markedBy?->osrs_username,
+                'completedVia' => $c->completed_via,
                 'proofUrl' => $c->proof_url,
                 'note' => $c->note,
                 'submittedAt' => $c->completed_at?->toIso8601String(),

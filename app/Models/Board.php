@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ReviewsClaims;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,12 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Board extends Model
 {
-    use HasUuids;
+    use HasUuids, ReviewsClaims;
 
-    protected $fillable = ['event_id', 'size', 'dice_roll_limit', 'requires_approval'];
+    protected $fillable = ['event_id', 'size', 'dice_roll_limit', 'requires_approval', 'trust_runelite_completions'];
 
     protected $casts = [
         'requires_approval' => 'boolean',
+        'trust_runelite_completions' => 'boolean',
     ];
 
     /**

@@ -21,7 +21,10 @@
                         <img v-if="claim.iconUrl" :src="claim.iconUrl" alt="" class="size-6 object-contain shrink-0" />
                         <div class="min-w-0">
                             <p class="font-medium truncate">{{ claim.label || $t('bingo.empty_square') }}</p>
-                            <p class="text-xs text-muted">{{ $t('bingo.square_number', { n: claim.position + 1 }) }}</p>
+                            <p class="text-xs text-muted flex items-center gap-2">
+                                {{ $t('bingo.square_number', { n: claim.position + 1 }) }}
+                                <claim-source-badge :via="claim.completedVia" />
+                            </p>
                         </div>
                     </div>
 
@@ -170,6 +173,7 @@
 </template>
 
 <script setup>
+import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
 import { computed, ref, watch } from 'vue';
 import { ordinal } from '@/Support/board';
 import { router } from '@inertiajs/vue3';

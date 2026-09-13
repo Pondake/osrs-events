@@ -10,6 +10,7 @@
                     <u-icon :name="statusIcon" class="size-5 shrink-0" :class="statusClass" />
                     <span class="font-medium" :class="statusClass">{{ $t(`board.status_${claim.status.toLowerCase()}`) }}</span>
                     <span v-if="claim.reviewedAt" class="text-xs text-muted">{{ reviewedAt }}</span>
+                    <claim-source-badge v-if="claim.completedVia === 'RUNELITE'" :via="claim.completedVia" class="ms-auto" />
                 </div>
 
                 <div v-if="claim.reviewNote" class="rounded-lg ring ring-default px-3 py-2">
@@ -102,6 +103,7 @@
 </template>
 
 <script setup>
+import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
 import { computed, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';

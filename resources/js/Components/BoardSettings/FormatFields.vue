@@ -91,6 +91,10 @@
             <u-form-field :description="$t('bingo.requires_approval_desc')">
                 <u-switch v-model="form.requires_approval" :label="$t('bingo.requires_approval')" />
             </u-form-field>
+
+            <u-form-field v-if="form.requires_approval" :description="$t('board.trust_runelite_desc')">
+                <u-switch v-model="form.trust_runelite_completions" :label="$t('board.trust_runelite')" />
+            </u-form-field>
         </template>
 
         <!-- Snakes & Ladders is the only type with a grid to size or dice to
@@ -123,6 +127,10 @@
                  bingo square was, unsolved on this board type until now. -->
             <u-form-field :description="$t('board.requires_approval_desc')">
                 <u-switch v-model="form.requires_approval" :label="$t('board.requires_approval')" />
+            </u-form-field>
+
+            <u-form-field v-if="form.requires_approval" :description="$t('board.trust_runelite_desc')">
+                <u-switch v-model="form.trust_runelite_completions" :label="$t('board.trust_runelite')" />
             </u-form-field>
         </template>
 

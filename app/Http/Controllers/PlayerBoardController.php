@@ -287,7 +287,7 @@ class PlayerBoardController extends Controller
             'completed_at' => now(),
             'completed_via' => 'MANUAL',
             'marked_by' => Auth::id(),
-            'status' => $board->requires_approval ? 'PENDING' : 'APPROVED',
+            'status' => $board->initialClaimStatus('MANUAL'),
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);

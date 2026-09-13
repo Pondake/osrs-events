@@ -27,7 +27,7 @@ class BingoCompletion extends Model
     public const STATUSES = ['PENDING', 'APPROVED', 'REJECTED'];
 
     protected $fillable = [
-        'bingo_square_id', 'team_id', 'user_id', 'marked_by',
+        'bingo_square_id', 'team_id', 'user_id', 'marked_by', 'completed_via',
         'status', 'proof_url', 'note', 'reviewed_by', 'reviewed_at', 'review_note',
     ];
 
