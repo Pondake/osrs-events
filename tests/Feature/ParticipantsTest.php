@@ -173,4 +173,14 @@ class ParticipantsTest extends TestCase
 
         $this->assertTrue($this->props($admin, $event)['named']);
     }
+
+    #[Test]
+    public function a_stranger_cannot_open_the_participants_of_a_private_event(): void
+    {
+        $event = $this->event(['is_listed' => false, 'access_mode' => 'INVITE']);
+
+        $this->actingAs($this->player('Stranger'))
+            ->get("/events/{$event->id}/participants")
+            ->assertForbidden();
+    }
 }

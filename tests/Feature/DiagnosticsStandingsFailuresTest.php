@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AuditLog;
 use App\Models\Event;
 use App\Models\EventStanding;
+use App\Models\Permission;
 use App\Models\PushSubscription;
 use App\Models\Role;
 use App\Models\User;
@@ -167,5 +168,19 @@ class DiagnosticsStandingsFailuresTest extends TestCase
         $this->actingAs($stranger)->getJson('/admin/diagnostics/standings')->assertForbidden();
         $this->actingAs($stranger)->post("/admin/diagnostics/standings/{$player->id}/nudge")->assertForbidden();
         $this->actingAs($stranger)->delete("/admin/diagnostics/standings/{$player->id}/username")->assertForbidden();
+    }
+
+    #[Test]
+    public function a_creator_who_can_open_the_admin_area_still_cannot_reach_diagnostics(): void
+    {
+        $player = User::factory()->create(['osrs_username' => 'Wrongname']);
+        $creator = User::factory()->create(['osrs_username' => 'Creator']);
+        $creator->givePermissionTo(Permission::findOrCreate('canCreateBoards', 'web'));
+
+        $this->actingAs($creator)->get('/admin/diagnostics')->assertForbidden();
+        $this->actingAs($creator)->post('/admin/diagnostics/sweep')->assertForbidden();
+        $this->actingAs($creator)->delete("/admin/diagnostics/standings/{$player->id}/username")->assertForbidden();
+
+        $this->assertSame('Wrongname', $player->fresh()->osrs_username);
     }
 }

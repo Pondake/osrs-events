@@ -138,7 +138,7 @@
                      longer renders Boards/AccessGate — and the code field
                      lived there. Directly under the header, because it is the
                      first thing a reader without access needs. -->
-                <invite-code-card v-if="needsInvite" :event-id="event.id" class="mb-6" />
+                <invite-code-card v-if="needsInvite && status !== 'ended'" :event-id="event.id" class="mb-6" />
 
                 <!-- Without an RSN there is nothing to look up on the hiscores, so
                      this person is not in the race no matter that they joined. Said

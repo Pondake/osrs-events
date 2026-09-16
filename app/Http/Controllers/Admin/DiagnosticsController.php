@@ -13,10 +13,13 @@ use App\Services\WebPushService;
 use App\Services\WiseOldManService;
 use App\Support\NotificationCategory;
 use App\Support\PushMessage;
+use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
@@ -50,8 +53,20 @@ use Throwable;
  * that's been nudged three times reads as "reset it" rather than "nudge it
  * again" — see `standingsFailures()`.
  */
-class DiagnosticsController extends Controller
+class DiagnosticsController extends Controller implements HasMiddleware
 {
+    /** Admin only; the /admin group also lets creators and editors in. */
+    public static function middleware(): array
+    {
+        return [
+            new Middleware(function (Request $request, Closure $next) {
+                abort_unless($request->user()?->isAdmin(), 403);
+
+                return $next($request);
+            }),
+        ];
+    }
+
     public function index(Request $request, DiagnosticsService $diagnostics): Response
     {
         return Inertia::render('Admin/Diagnostics', [

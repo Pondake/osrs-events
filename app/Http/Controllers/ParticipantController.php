@@ -9,6 +9,7 @@ use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\BoardAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -30,9 +31,11 @@ use Inertia\Response;
  */
 class ParticipantController extends Controller
 {
-    public function index(Request $request, Event $event): Response
+    public function index(Request $request, Event $event, BoardAccessService $access): Response
     {
         $user = $request->user();
+
+        abort_unless($access->canView($user, $event), 403);
 
         $canEdit = $user->canEditEvent($event);
 

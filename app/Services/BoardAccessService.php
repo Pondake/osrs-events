@@ -78,7 +78,7 @@ class BoardAccessService
      */
     public function canJoin(User $user, Event $event): array
     {
-        if ($this->canBypass($user, $event)) {
+        if ($this->isAuthor($user, $event)) {
             return ['allowed' => true];
         }
 
@@ -149,7 +149,7 @@ class BoardAccessService
             return false;
         }
 
-        return $user === null || ! $this->hasAccess($user, $event);
+        return $user === null || ! $this->hasAccess($user, $event) || $this->isAdminOnlyView($user, $event);
     }
 
     /**
@@ -210,11 +210,10 @@ class BoardAccessService
             return $this->useInvite($event, $tokenOrCode, $user);
         }
 
-        if (! $this->canBypass($user, $event)) {
-            $check = $this->canJoin($user, $event);
-            if (! $check['allowed']) {
-                throw ValidationException::withMessages(['access' => $check['reason']]);
-            }
+        // Not canBypass(): an admin may read a private event, not join it uninvited.
+        $check = $this->canJoin($user, $event);
+        if (! $check['allowed']) {
+            throw ValidationException::withMessages(['access' => $check['reason']]);
         }
 
         // Note for metric events: access is not participation. Entering a

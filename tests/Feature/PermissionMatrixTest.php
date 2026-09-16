@@ -431,6 +431,19 @@ class PermissionMatrixTest extends TestCase
         ]);
     }
 
+    /** The /admin gate lets creators and editors in, so every admin-only page has to shut them out itself. */
+    #[Test]
+    public function the_admin_only_pages_are_shut_to_creators_and_editors(): void
+    {
+        $editor = $this->player('Editor');
+        $editor->givePermissionTo(Permission::findOrCreate('canCreateTiles', 'web'));
+
+        foreach (['/admin/users', '/admin/site', '/admin/events', '/admin/content', '/admin/invites', '/admin/audit', '/admin/diagnostics', '/admin/boss-icons'] as $url) {
+            $this->assertMatrix('GET', $url, ['creator' => 403, 'admin' => 200]);
+            $this->actingAs($editor)->get($url)->assertForbidden();
+        }
+    }
+
     /**
      * Except the two pages that are not about being an admin at all. Tasks
      * needs `canCreateTiles` and blueprints needs `canCreateBoards`, which is
@@ -629,6 +642,20 @@ class PermissionMatrixTest extends TestCase
         $this->actingAs($this->player('Stranger'))
             ->get("/events/{$this->event->id}")
             ->assertInertia(fn ($page) => $page->where('needsInvite', true));
+    }
+
+    #[Test]
+    public function an_admin_needs_an_invite_to_join_an_invite_only_event(): void
+    {
+        $this->event->update(['access_mode' => 'INVITE']);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->get("/events/{$this->event->id}")
+            ->assertInertia(fn ($page) => $page->where('needsInvite', true));
+
+        $this->actingAs($admin)->post("/events/{$this->event->id}/join")->assertSessionHasErrors('access');
+
+        $this->assertDatabaseMissing('event_participants', ['event_id' => $this->event->id, 'user_id' => $admin->id]);
     }
 
     /** Nobody who is already in it should be asked for a code. */

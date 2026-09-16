@@ -67,6 +67,10 @@ class EventParticipationService
             throw ValidationException::withMessages(['participation' => trans('events.paused_notice')]);
         }
 
+        if ($event->isEnded()) {
+            throw ValidationException::withMessages(['participation' => trans('events.ended_notice')]);
+        }
+
         // Throws when the event is not theirs to join. Idempotent for
         // somebody who already has access.
         $this->access->joinEvent($user, $event, $tokenOrCode);

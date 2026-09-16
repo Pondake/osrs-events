@@ -152,6 +152,17 @@ class EventParticipationTest extends TestCase
         $this->assertSame(1, EventParticipant::where('user_id', $user->id)->count());
     }
 
+    #[Test]
+    public function an_ended_event_takes_no_new_entries(): void
+    {
+        $event = $this->event('BINGO', ['start_date' => now()->subDays(20), 'end_date' => now()->subDays(3)]);
+        $user = $this->player();
+
+        $this->actingAs($user)->post("/events/{$event->id}/join")->assertSessionHas('board-save-error');
+
+        $this->assertFalse($this->joined($user, $event));
+    }
+
     // ------------------------------------------------------------- looking
 
     /**

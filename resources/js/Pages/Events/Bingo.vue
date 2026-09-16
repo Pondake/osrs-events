@@ -56,7 +56,7 @@
                         <!-- Bingo had no way of saying you were playing at
                              all: taking part was inferred from having claimed
                              a square, so an empty card meant an empty event. -->
-                        <join-event-button v-if="joined || !isPaused" :event-id="liveEvent.id" :joined="joined" :needs-team="needsTeam" :teams="teamOptions" size="sm" />
+                        <join-event-button v-if="joined || (!isPaused && status !== 'ended')" :event-id="liveEvent.id" :joined="joined" :needs-team="needsTeam" :teams="teamOptions" size="sm" />
 
                         <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
                     </div>
@@ -80,7 +80,7 @@
                      longer renders Boards/AccessGate — and the code field
                      lived there. Directly under the header, because it is the
                      first thing a reader without access needs. -->
-                <invite-code-card v-if="needsInvite" :event-id="event.id" class="mb-6" />
+                <invite-code-card v-if="needsInvite && status !== 'ended'" :event-id="event.id" class="mb-6" />
 
                 <!-- A rejected claim used to explain itself only in the
                      square's `title` attribute — invisible on touch, and a
@@ -365,7 +365,7 @@
                                             {{ row.name ?? $t('events.anonymous_player') }}
                                         </p>
                                         <p class="text-xs text-muted">
-                                            {{ $t('bingo.lines_done', { count: row.lines }) }} · {{ row.squares }}
+                                            {{ $tChoice('bingo.lines_done', row.lines, { count: row.lines }) }} · {{ row.squares }}
                                         </p>
                                     </div>
                                     <span class="text-sm font-medium text-highlighted tabular-nums shrink-0">

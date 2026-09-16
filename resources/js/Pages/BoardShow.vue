@@ -127,7 +127,7 @@
                      longer renders Boards/AccessGate — and the code field
                      lived there. Directly under the header, because it is the
                      first thing a reader without access needs. -->
-                <invite-code-card v-if="needsInvite" :event-id="liveBoard.id" class="mb-6" />
+                <invite-code-card v-if="needsInvite && !isEnded" :event-id="liveBoard.id" class="mb-6" />
 
                 <!-- Being teamless used to REPLACE the board with this,
                      which meant somebody arriving at a public team event —
@@ -763,7 +763,7 @@
                                     {{ formatBoardSize(liveBoard.size) }}
                                 </u-badge>
                                 <u-badge v-if="liveBoard.dice_roll_limit" color="neutral" variant="subtle" icon="i-lucide-dice-6" :title="$t('board.roll_limit_hint')">
-                                    {{ $t('boards.roll_limit', { limit: liveBoard.dice_roll_limit }) }}
+                                    {{ $tChoice('boards.roll_limit', liveBoard.dice_roll_limit, { limit: liveBoard.dice_roll_limit }) }}
                                 </u-badge>
                                 <u-badge v-else color="neutral" variant="subtle" icon="i-lucide-dice-6" :title="$t('board.roll_limit_hint')">
                                     {{ $t('dice.unlimited') }}
