@@ -181,6 +181,16 @@
                 </div>
             </u-card>
 
+            <u-card v-show="active === 'plugin'">
+                <template #header>
+                    <span class="font-semibold">{{ $t('admin.site_plugin_title') }}</span>
+                </template>
+
+                <setting-field name="runelite_plugin_mode" section="plugin" :error="form.errors.runelite_plugin_mode" class="max-w-xs">
+                    <u-select v-model="form.runelite_plugin_mode" :items="pluginModeOptions" class="w-full" />
+                </setting-field>
+            </u-card>
+
             <u-card v-show="active === 'support'">
                 <template #header>
                     <span class="font-semibold">{{ $t('admin.site_support_title') }}</span>
@@ -292,6 +302,7 @@ const form = useForm({
     discord_webhooks_enabled: props.settings.discord_webhooks_enabled ?? false,
     site_lock_enabled: props.settings.site_lock_enabled ?? false,
     admin_lockdown_enabled: props.settings.admin_lockdown_enabled ?? false,
+    runelite_plugin_mode: props.settings.runelite_plugin_mode ?? 'off',
     // Always blank. The server sends null for this on purpose (the stored
     // value is a bcrypt hash) and reads a blank submission as "unchanged".
     site_lock_password: '',
@@ -304,9 +315,12 @@ const durationReads = computed(() => describeDuration(form.default_event_duratio
 const sections = computed(() => [
     { key: 'access', icon: 'i-lucide-door-open', label: trans('admin.site_section_access') },
     { key: 'boards', icon: 'i-lucide-layout-grid', label: trans('admin.site_section_boards') },
+    { key: 'plugin', icon: 'i-lucide-puzzle', label: trans('admin.site_section_plugin') },
     { key: 'support', icon: 'i-lucide-coffee', label: trans('admin.site_section_support') },
     { key: 'announcement', icon: 'i-lucide-megaphone', label: trans('admin.site_section_announcement') },
 ]);
+
+const pluginModeOptions = ['off', 'testing', 'live'].map((value) => ({ value, label: trans(`admin.plugin_mode_${value}`) }));
 
 const active = ref('access');
 

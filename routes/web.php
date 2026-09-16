@@ -35,6 +35,7 @@ use App\Http\Controllers\Settings\AnimationController;
 use App\Http\Controllers\Settings\ConnectionsController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
+use App\Http\Controllers\Settings\RunelitePluginController;
 use App\Http\Controllers\SiteLockController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SkillRaceController;
@@ -338,6 +339,9 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::patch('/settings/profile', [SettingsProfileController::class, 'update'])->name('settings.profile.update');
     Route::get('/settings/animations', [AnimationController::class, 'show'])->name('settings.animations');
     Route::put('/settings/animations', [AnimationController::class, 'update'])->name('settings.animations.update');
+    Route::get('/settings/runelite', [RunelitePluginController::class, 'show'])->name('settings.runelite');
+    Route::post('/settings/runelite/code', [RunelitePluginController::class, 'store'])->middleware('throttle:10,1')->name('settings.runelite.code');
+    Route::delete('/settings/runelite/code', [RunelitePluginController::class, 'destroy'])->name('settings.runelite.revoke');
     Route::get('/settings/account', [AccountController::class, 'show'])->name('settings.account');
     Route::put('/settings/account/email', [AccountController::class, 'updateEmail'])
         ->middleware('throttle:5,1')

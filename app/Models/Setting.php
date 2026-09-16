@@ -101,7 +101,12 @@ class Setting extends Model
         // for the rarer case of actually taking the app away from everyone
         // but the person working on it.
         'admin_lockdown_enabled' => false,
+        // off: nothing about the plugin is reachable. testing and live both
+        // offer the settings tab; testing labels it as a test.
+        'runelite_plugin_mode' => 'off',
     ];
+
+    public const PLUGIN_MODES = ['off', 'testing', 'live'];
 
     /** Banner styles. Keys are stored; the UI maps them to colour and icon. */
     public const ANNOUNCEMENT_TYPES = ['info', 'success', 'warning', 'error'];

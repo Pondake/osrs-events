@@ -6,6 +6,7 @@
  * is installed.
  */
 import { trans } from 'laravel-vue-i18n';
+import { usePage } from '@inertiajs/vue3';
 
 /** @returns {Array<{key: string, to: string, icon: string, label: string}>} */
 export function settingsItems() {
@@ -15,7 +16,16 @@ export function settingsItems() {
         { key: 'connections', to: '/settings/connections', icon: 'i-lucide-plug', label: trans('settings.nav_connections') },
         { key: 'notifications', to: '/settings/notifications', icon: 'i-lucide-bell', label: trans('settings.nav_notifications') },
         { key: 'animations', to: '/settings/animations', icon: 'i-lucide-play', label: trans('settings.nav_animations') },
+        ...(pluginAvailable()
+            ? [{ key: 'runelite', to: '/settings/runelite', icon: 'i-lucide-puzzle', label: trans('settings.nav_runelite') }]
+            : []),
     ];
+}
+
+function pluginAvailable() {
+    const mode = usePage().props?.site?.runelitePluginMode;
+
+    return Boolean(mode) && mode !== 'off';
 }
 
 /** The same list, grouped the way the sidebar prints it. */

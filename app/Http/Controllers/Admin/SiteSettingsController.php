@@ -82,6 +82,7 @@ class SiteSettingsController extends Controller
             'discord_webhooks_enabled' => ['required', 'boolean'],
             'site_lock_enabled' => ['required', 'boolean'],
             'admin_lockdown_enabled' => ['required', 'boolean'],
+            'runelite_plugin_mode' => ['sometimes', Rule::in(Setting::PLUGIN_MODES)],
             // Required only when turning the lock on without one already
             // stored — otherwise blank means "keep the current password",
             // which is what an admin editing any other field on this page

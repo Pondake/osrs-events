@@ -132,6 +132,7 @@ class HandleInertiaRequests extends Middleware
                 // invite is meant to be handed to strangers, which is the
                 // opposite of a secret.
                 'discordInviteUrl' => Setting::get('discord_invite_url'),
+                'runelitePluginMode' => Setting::get('runelite_plugin_mode'),
                 // Only the ones an admin overrode, keyed by metric. The
                 // committed pet sprites are already known client-side
                 // (Support/bossIcons.js, generated alongside the files), so
