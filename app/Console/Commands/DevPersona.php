@@ -30,7 +30,7 @@ class DevPersona extends Command
 {
     protected $signature = 'dev:persona
         {persona : guest|player|creator|cohost|owner|admin|newcomer|no-email|restore|show}
-        {--as=admin : discord_username of the account the browser is signed in as}
+        {--as=admin : discord_username or email of the account the browser is signed in as}
         {--event= : title fragment of the event to co-host, for the cohost persona}';
 
     protected $description = 'Reshape one account into a test persona (local only)';
@@ -46,10 +46,12 @@ class DevPersona extends Command
             return self::FAILURE;
         }
 
-        $user = User::where('discord_username', $this->option('as'))->first();
+        $user = User::where('discord_username', $this->option('as'))
+            ->orWhere('email', $this->option('as'))
+            ->first();
 
         if ($user === null) {
-            $this->error("No account with discord_username \"{$this->option('as')}\".");
+            $this->error("No account with discord_username or email \"{$this->option('as')}\".");
 
             return self::FAILURE;
         }
@@ -110,6 +112,7 @@ class DevPersona extends Command
             'osrs_username' => $user->osrs_username,
             'email' => $user->email,
             'onboarding_completed_at' => $user->onboarding_completed_at?->toIso8601String(),
+            'co_hosting' => BoardAuthor::where('user_id', $user->id)->where('is_owner', false)->pluck('event_id')->all(),
         ], JSON_PRETTY_PRINT));
     }
 
@@ -132,6 +135,11 @@ class DevPersona extends Command
         ])->save();
 
         $this->clearCoHosting($user);
+
+        foreach ($state['co_hosting'] ?? [] as $eventId) {
+            BoardAuthor::firstOrCreate(['event_id' => $eventId, 'user_id' => $user->id], ['is_owner' => false]);
+        }
+
         Storage::delete(self::SNAPSHOT);
 
         return $this->report($user->fresh(), 'restored');

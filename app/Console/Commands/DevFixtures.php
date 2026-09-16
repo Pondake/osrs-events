@@ -71,7 +71,7 @@ class DevFixtures extends Command
                 'description' => 'Seeded by dev:fixtures to test an edge of the layout.',
                 'mode' => $spec['mode'] ?? 'SOLO',
                 'access_mode' => $spec['access'] ?? 'OPEN',
-                'is_listed' => true,
+                'is_listed' => $spec['listed'] ?? true,
                 'start_date' => Carbon::now()->addDays($spec['starts']),
                 'end_date' => Carbon::now()->addDays($spec['ends']),
             ]);
@@ -266,6 +266,7 @@ class DevFixtures extends Command
             ['title' => 'On hold', 'type' => 'SNAKES_LADDERS', 'starts' => -1, 'ends' => 6, 'paused' => true],
             ['title' => 'Zulrah sprint', 'type' => 'DROP_RACE', 'metric' => 'zulrah', 'starts' => -1, 'ends' => 6],
             ['title' => 'Invite only night', 'type' => 'BINGO', 'starts' => -1, 'ends' => 6, 'access' => 'INVITE'],
+            ['title' => 'Unlisted invite night', 'type' => 'BINGO', 'starts' => -1, 'ends' => 6, 'access' => 'INVITE', 'listed' => false],
             ['title' => 'Teams of four', 'type' => 'SNAKES_LADDERS', 'starts' => -1, 'ends' => 6, 'mode' => 'TEAM'],
         ];
     }

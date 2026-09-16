@@ -550,6 +550,16 @@ Route::redirect('/boards', '/events');
 Route::redirect('/my-boards', '/my-events');
 Route::redirect('/boards/{path}', '/events/{path}')->where('path', '.*');
 
+// Walkthrough sign-in, local only; links come from `php artisan dev:login-link`.
+if (app()->environment('local')) {
+    Route::get('/dev/login/{user}', function (Illuminate\Http\Request $request, App\Models\User $user) {
+        Illuminate\Support\Facades\Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect('/');
+    })->middleware('signed')->withoutMiddleware(App\Http\Middleware\EnsureSiteUnlocked::class)->name('dev.login');
+}
+
 Route::get('/{page}', [PageController::class, 'show'])->name('pages.show');
 
 /**

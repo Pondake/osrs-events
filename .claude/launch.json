@@ -16,6 +16,13 @@
       "port": 5173,
       "autoPort": true,
       "url": "http://osrs-events.test"
+    },
+    {
+      "name": "ssr",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["bootstrap/ssr/ssr.js"],
+      "cwd": ".",
+      "port": 13714
     }
   ]
 }
