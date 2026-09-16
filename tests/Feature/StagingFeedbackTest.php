@@ -45,8 +45,8 @@ class StagingFeedbackTest extends TestCase
             'mode' => 'SOLO',
             'access_mode' => 'OPEN',
             'is_listed' => true,
-            'start_date' => '2026-08-01',
-            'end_date' => '2026-08-31',
+            'start_date' => now()->subDays(15)->toDateString(),
+            'end_date' => now()->addDays(15)->toDateString(),
             ...$attributes,
         ]);
     }
@@ -369,6 +369,21 @@ class StagingFeedbackTest extends TestCase
 
         $this->assertSame(0, $props['hostedTotal']);
         $this->assertSame(0, $props['playingTotal']);
+    }
+
+    #[Test]
+    public function open_to_join_leaves_out_ended_invite_only_and_your_own_events(): void
+    {
+        $owner = $this->player('Owner');
+        $open = $this->race(['title' => 'Open', 'start_date' => now()->subDay(), 'end_date' => now()->addWeek()]);
+        $this->race(['title' => 'Over', 'start_date' => now()->subMonth(), 'end_date' => now()->subWeek()]);
+        $this->race(['title' => 'Invite', 'access_mode' => 'INVITE', 'start_date' => now()->subDay(), 'end_date' => now()->addWeek()]);
+        $mine = $this->race(['title' => 'Mine', 'start_date' => now()->subDay(), 'end_date' => now()->addWeek()]);
+        BoardAuthor::create(['event_id' => $mine->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $joinable = collect($this->actingAs($owner)->get('/events')->viewData('page')['props']['joinable'])->pluck('id');
+
+        $this->assertEquals([$open->id], $joinable->all());
     }
 
     /**

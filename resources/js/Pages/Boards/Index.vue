@@ -86,7 +86,7 @@
                             />
                         </div>
 
-                        <div v-if="!boards.length" class="text-center py-12 rounded-lg ring ring-default bg-default">
+                        <div v-if="!publicSlice.length" class="text-center py-12 rounded-lg ring ring-default bg-default">
                             <u-icon name="i-lucide-layout-grid" class="size-10 text-dimmed mx-auto mb-3" />
                             <p class="text-sm text-muted">{{ $t('events.hub_public_empty') }}</p>
                         </div>
@@ -149,6 +149,7 @@ const props = defineProps({
     hostedTotal: { type: Number, default: 0 },
     playing: { type: Array, default: () => [] },
     playingTotal: { type: Number, default: 0 },
+    joinable: { type: Array, default: () => [] },
     /** /events/all renders the same component without the hub slicing. */
     showAll: { type: Boolean, default: false },
 });
@@ -156,7 +157,7 @@ const props = defineProps({
 // The hub shows a slice; /events/all renders the same prop in full.
 const HUB_SLICE = 6;
 
-const publicSlice = computed(() => (props.showAll ? props.boards : props.boards.slice(0, HUB_SLICE)));
+const publicSlice = computed(() => (props.showAll ? props.boards : props.joinable.slice(0, HUB_SLICE)));
 
 const { canCreateBoards } = useAuth();
 const showCreateModal = ref(false);

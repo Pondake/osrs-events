@@ -33,9 +33,8 @@ class LeaderboardController extends Controller
         // Tiles live on the board; an event without one has none.
         $tiles = $event->board?->tiles()->orderBy('position')->get() ?? collect();
 
-        // Floored at zero, so a board whose grid is not filled in yet reports
-        // nothing left rather than minus one tile left.
-        $maxPosition = max($tiles->count() - 1, 0);
+        // From the board size, not the tile rows: only configured tiles have a row.
+        $maxPosition = max($event->board->tileCount() - 1, 0);
 
         // Who got home, and when. Keyed by whichever id the event's mode
         // makes the competitor, so a row can look itself up in one go.

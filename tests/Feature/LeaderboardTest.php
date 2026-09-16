@@ -202,6 +202,10 @@ class LeaderboardTest extends TestCase
 
         $entry = $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->viewData('page')['props']['entries'][0];
 
-        $this->assertGreaterThanOrEqual(0, $entry['tilesRemaining']);
+        $this->assertSame(24, $entry['tilesRemaining']);
+
+        $onPage = $this->actingAs($this->reader())->get("/events/{$event->id}")->viewData('page')['props']['players'][0];
+
+        $this->assertSame(24, $onPage['tilesRemaining']);
     }
 }

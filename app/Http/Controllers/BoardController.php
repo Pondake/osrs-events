@@ -104,6 +104,18 @@ class BoardController extends Controller
             'hostedTotal' => Event::hostedBy($user)->count(),
             'playing' => $slice($playing()),
             'playingTotal' => $playing()->count(),
+            // "Open to join" means it: not over, not invite-only, not already yours.
+            'joinable' => Event::where('is_listed', true)
+                ->where('access_mode', '!=', 'INVITE')
+                ->whereNull('closed_at')
+                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()->startOfDay()))
+                ->whereNot(fn ($q) => $q->involving($user))
+                ->with(self::EVENT_WITH)
+                ->orderBy('start_date')
+                ->take(6)
+                ->get()
+                ->map(fn (Event $event) => EventCard::for($event))
+                ->values(),
         ]);
     }
 
@@ -338,7 +350,8 @@ class BoardController extends Controller
         // LeaderboardController's same computation (kept duplicated rather than
         // extracted — it's a handful of lines with exactly two call sites).
         $tiles = $event->board?->tiles ?? collect();
-        $maxPosition = $tiles->count() - 1;
+        // From the board size, not the tile rows: only configured tiles have a row.
+        $maxPosition = max(($event->board?->tileCount() ?? 1) - 1, 0);
         $namesArePublic = $access->canSeeParticipants($user, $event);
         $players = $event->playerBoards()
             ->with(['user:id,discord_username,nickname,avatar_url', 'team:id,name,icon_url,guild_id,guild_icon'])
