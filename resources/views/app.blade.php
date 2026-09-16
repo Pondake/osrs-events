@@ -19,15 +19,15 @@
             $iconAppName = config('app.name').($isProdIcons ? '' : ' (dev)');
         @endphp
 
-        {{-- Favicons — transparent, monochrome toasting mugs. favicon.svg adapts to
-             light/dark tab chrome; the .ico/PNGs are the legacy fallback.
+        {{-- Favicons — de tossende kroezen in merkkleur, transparante achtergrond.
+             favicon.svg is leidend; de .ico/PNG's zijn de legacy fallback.
              Deliberately NOT varied per flavour: there is no background to put a
              texture on at 16px, and the tab already shows the URL. --}}
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-        <link rel="icon" type="image/x-icon" href="/favicon.ico">
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
+        <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=2">
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2">
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png?v=2">
         <link rel="apple-touch-icon" sizes="180x180" href="{{ $isProdIcons ? '/apple-touch-icon.png' : '/apple-touch-icon-dev.png' }}">
         {{-- crossorigin, even though the manifest is same-origin and served
              as a static file. The manifest is fetched with credentials
