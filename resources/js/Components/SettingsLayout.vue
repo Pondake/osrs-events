@@ -25,7 +25,7 @@
                                     v-for="item in group.items"
                                     :key="item.to"
                                     :href="item.to"
-                                    class="flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors shrink-0 whitespace-nowrap"
+                                    class="flex min-h-11 items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors shrink-0 whitespace-nowrap md:min-h-0"
                                     :class="current === item.key ? 'bg-elevated text-highlighted font-medium' : 'text-muted hover:bg-elevated/50'"
                                 >
                                     <u-icon :name="item.icon" class="size-4 shrink-0" />

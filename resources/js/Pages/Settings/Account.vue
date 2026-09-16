@@ -121,7 +121,7 @@
                             <p class="text-xs text-muted">
                                 {{ event.participants === 0
                                     ? $t('profile.delete_event_nobody')
-                                    : $t('profile.delete_event_players', { count: event.participants }) }}
+                                    : $tChoice('profile.delete_event_players', event.participants, { count: event.participants }) }}
                             </p>
                         </div>
                     </div>
@@ -173,7 +173,7 @@
                 <div v-for="team in visibleTeams" :key="team.id" class="border border-default rounded-md p-3 space-y-2">
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-highlighted">{{ team.name }}</p>
-                        <p class="text-xs text-muted">{{ $t('profile.delete_team_members', { count: team.members }) }}</p>
+                        <p class="text-xs text-muted">{{ $tChoice('profile.delete_team_members', team.members, { count: team.members }) }}</p>
                     </div>
 
                     <client-only>

@@ -37,6 +37,11 @@ export const uiConfig = {
             },
         ],
     },
+    breadcrumb: {
+        slots: {
+            link: 'max-sm:min-h-11',
+        },
+    },
     main: {
         base: 'min-h-[calc(100vh-var(--ui-header-height)-var(--ui-footer-height,0px))]',
     },

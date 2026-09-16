@@ -86,7 +86,7 @@ class SkillRaceController extends Controller
             ]));
         }
 
-        return back()->with('board-save', trans('events.sync_done', ['count' => $result['synced']]));
+        return back()->with('board-save', trans_choice('events.sync_done', $result['synced'], ['count' => $result['synced']]));
     }
 
     public function leave(

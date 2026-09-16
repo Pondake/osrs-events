@@ -129,7 +129,7 @@
 
                     <div v-if="board.dice_roll_limit" class="flex items-center gap-2 text-sm text-muted">
                         <u-icon name="i-lucide-dice-6" class="size-4" />
-                        <span>{{ $t('boards.roll_limit', { limit: board.dice_roll_limit }) }}</span>
+                        <span>{{ $tChoice('boards.roll_limit', board.dice_roll_limit, { limit: board.dice_roll_limit }) }}</span>
                     </div>
 
                     <div v-if="access" class="flex items-center gap-2 text-sm text-muted">

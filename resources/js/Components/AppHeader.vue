@@ -34,7 +34,7 @@
          would fight it and land the pixel face on a fractional size. -->
     <u-header to="">
         <template #left>
-            <a href="/" class="flex items-center gap-2 text-highlighted" :aria-label="$t('common.app_name')">
+            <a href="/" class="flex min-h-11 items-center gap-2 text-highlighted" :aria-label="$t('common.app_name')">
                 <app-logo />
                 <span class="osrs-game-font">{{ $t('common.app_name') }}</span>
             </a>

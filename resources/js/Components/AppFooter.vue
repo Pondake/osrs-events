@@ -8,14 +8,14 @@
         </template>
 
         <template #right>
-            <nav class="flex flex-wrap items-center gap-x-4 gap-y-1 justify-center lg:justify-end">
+            <nav class="flex flex-wrap items-center gap-x-4 lg:gap-y-1 justify-center lg:justify-end">
                 <a
                     v-for="link in footerLinks"
                     :key="link.to"
                     :href="link.to"
                     :target="link.external ? '_blank' : undefined"
                     :rel="link.external ? 'noopener noreferrer' : undefined"
-                    class="text-xs text-muted hover:text-primary transition-colors"
+                    class="inline-flex min-h-11 items-center text-xs text-muted hover:text-primary transition-colors lg:min-h-0"
                 >
                     {{ link.label }}
                 </a>

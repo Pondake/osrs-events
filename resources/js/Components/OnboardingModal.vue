@@ -129,7 +129,7 @@
                             >
                                 <div class="min-w-0">
                                     <p class="font-medium text-sm truncate">{{ board.title }}</p>
-                                    <p class="text-xs text-muted">{{ formatBoardSize(board.size) }} · {{ board.mode === 'TEAM' ? $t('board.mode_team') : $t('board.mode_solo') }}</p>
+                                    <p class="text-xs text-muted"><template v-if="board.size">{{ formatBoardSize(board.size) }} · </template>{{ board.mode === 'TEAM' ? $t('board.mode_team') : $t('board.mode_solo') }}</p>
                                 </div>
                                 <u-icon name="i-lucide-arrow-right" class="size-4 text-muted shrink-0" />
                             </a>
@@ -423,7 +423,11 @@ function next() {
         osrsForm.post('/welcome/osrs-username', {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => stepIndex.value++,
+            // Saving the name removes this step from the list, which already
+            // moves the next one into its index; advancing again skipped it.
+            onSuccess: () => {
+                if (step.value === 'osrs') stepIndex.value++;
+            },
             onError: (errors) => console.error(errors),
         });
 

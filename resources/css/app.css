@@ -57,6 +57,11 @@ a[href] {
     cursor: pointer;
 }
 
+button:disabled,
+[aria-disabled='true'] {
+    cursor: not-allowed;
+}
+
 h1,
 h2,
 h3,
@@ -334,6 +339,11 @@ html:not(.dark) .text-warning {
 
 html:not(.dark) .text-error {
     color: var(--color-red-700);
+}
+
+/* "Upcoming" — info measured 3.76 on white. */
+html:not(.dark) .text-info {
+    color: var(--color-blue-700);
 }
 
 /* The quiet end of the neutral scale, which was quiet past the point of

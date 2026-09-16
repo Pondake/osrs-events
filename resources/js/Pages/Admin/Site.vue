@@ -45,13 +45,13 @@
                          hands it straight back. -->
                     <u-switch
                         v-model="form.registration_open"
-                        :disabled="form.site_lock_enabled || form.admin_lockdown_enabled"
+                        :disabled="form.admin_lockdown_enabled"
                         :label="form.registration_open ? $t('admin.site_registration_on') : $t('admin.site_registration_off')"
                     />
 
-                    <p v-if="form.site_lock_enabled || form.admin_lockdown_enabled" class="text-xs text-warning mt-2 flex items-start gap-1.5">
+                    <p v-if="form.admin_lockdown_enabled || (form.site_lock_enabled && form.registration_open)" class="text-xs text-warning mt-2 flex items-start gap-1.5">
                         <u-icon name="i-lucide-lock" class="size-3.5 shrink-0 mt-0.5" />
-                        <span>{{ $t('admin.site_registration_locked_note') }}</span>
+                        <span>{{ form.admin_lockdown_enabled ? $t('admin.site_registration_locked_note') : $t('admin.site_registration_door_note') }}</span>
                     </p>
                 </setting-field>
 

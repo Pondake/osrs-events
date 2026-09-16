@@ -55,7 +55,7 @@
                                     />
                                 </div>
                                 <p class="text-sm text-muted mt-3">
-                                    {{ $t('teams.member_count', { count: team.memberCount }) }}
+                                    {{ $tChoice('teams.member_count', team.memberCount, { count: team.memberCount }) }}
                                 </p>
                             </u-card>
                         </div>
