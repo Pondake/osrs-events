@@ -113,7 +113,7 @@ class SiteLockTest extends TestCase
         $this->get('/osrs-skill-race')->assertOk();
         $this->get('/osrs-drop-race')->assertOk();
         $this->get('/about')->assertOk();
-        $this->get('/sitemap.xml')->assertOk();
+        $this->get('/sitemap.xml')->assertOk()->assertDontSee(url('/events').'<', false);
     }
 
     /** Including the CMS pages, which is where Privacy and Terms live. */

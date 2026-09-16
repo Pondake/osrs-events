@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Page;
+use App\Models\Setting;
 use Illuminate\Http\Response;
 
 /**
@@ -48,7 +49,14 @@ class SitemapController extends Controller
     {
         $urls = [];
 
+        // Behind the lock /events only redirects to the door.
+        $locked = Setting::get('site_lock_enabled') || Setting::get('admin_lockdown_enabled');
+
         foreach (self::STATIC_PATHS as $path => $meta) {
+            if ($locked && $path === '/events') {
+                continue;
+            }
+
             $urls[] = [
                 'loc' => url($path),
                 'priority' => $meta['priority'],

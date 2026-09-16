@@ -15,7 +15,7 @@
                 v-for="section in sections"
                 :key="section.key"
                 type="button"
-                class="flex items-center gap-2 px-3 py-2 rounded-t-md text-sm shrink-0 whitespace-nowrap border-b-2 -mb-px transition-colors"
+                class="flex min-h-11 items-center gap-2 px-3 py-2 rounded-t-md text-sm shrink-0 whitespace-nowrap border-b-2 -mb-px transition-colors sm:min-h-0"
                 :class="active === section.key
                     ? 'border-primary text-highlighted font-medium'
                     : 'border-transparent text-muted hover:text-highlighted'"

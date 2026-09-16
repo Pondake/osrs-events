@@ -97,7 +97,7 @@
                      shared password to reach a site they run. -->
                 <p class="text-xs text-muted" :class="fullLockdown && !discordInviteUrl ? 'mt-4' : 'mt-6'">
                     {{ $t('lock.admin_hint') }}
-                    <a href="/login" class="text-primary hover:underline">{{ $t('common.login') }}</a>
+                    <a href="/login" class="inline-flex min-h-11 items-center text-primary hover:underline sm:min-h-0">{{ $t('common.login') }}</a>
                 </p>
             </div>
         </u-container>

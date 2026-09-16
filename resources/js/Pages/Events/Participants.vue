@@ -67,7 +67,7 @@
                                         <span class="block font-medium truncate">{{ team.name }}</span>
                                         <span class="block text-xs text-muted truncate">
                                             {{ team.guildName || $t('teams.private_team') }} ·
-                                            {{ $t('participants.member_count', { count: team.memberCount }) }}
+                                            {{ $tChoice('participants.member_count', team.memberCount, { count: team.memberCount }) }}
                                         </span>
                                     </span>
                                     <u-icon

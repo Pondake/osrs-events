@@ -23,8 +23,9 @@
                         :href="task.wiki_url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-muted hover:text-primary transition-colors p-1.5"
+                        class="inline-flex items-center justify-center text-muted hover:text-primary transition-colors p-1.5 max-sm:min-h-11 max-sm:min-w-11"
                         :title="$t('tile_editor.open_wiki_page')"
+                        :aria-label="$t('tile_editor.open_wiki_page')"
                     >
                         <u-icon name="i-lucide-external-link" class="size-4" />
                     </a>

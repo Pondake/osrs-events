@@ -91,6 +91,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { trans } from 'laravel-vue-i18n';
+import { usePage } from '@inertiajs/vue3';
 import SeoHead from '@/Components/SeoHead.vue';
 import AppLogo from '@/Components/AppLogo.vue';
 
@@ -106,8 +107,13 @@ const props = defineProps({
  * `trans()` rather than `$t()`: this is script scope, where the template-only
  * global does not exist (see CLAUDE.md's i18n section).
  */
+const inertiaPage = usePage();
+
 const COPY = {
-    403: () => ({ heading: trans('errors.forbidden_heading'), body: trans('errors.forbidden_body') }),
+    403: () => ({
+        heading: trans('errors.forbidden_heading'),
+        body: trans(inertiaPage.url?.startsWith('/admin') ? 'errors.forbidden_admin_body' : 'errors.forbidden_body'),
+    }),
     404: () => ({ heading: trans('errors.not_found_heading'), body: trans('errors.not_found_body') }),
     419: () => ({ heading: trans('errors.expired_heading'), body: trans('errors.expired_body') }),
     429: () => ({ heading: trans('errors.throttled_heading'), body: trans('errors.throttled_body') }),

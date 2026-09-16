@@ -7,6 +7,5 @@ Disallow: /admin
 Disallow: /settings
 Disallow: /my-events
 Disallow: /welcome
-Disallow: /dev-login
 
 Sitemap: https://osrs-events.com/sitemap.xml

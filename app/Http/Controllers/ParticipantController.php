@@ -23,11 +23,9 @@ use Inertia\Response;
  * (handing somebody the right to run a team is a thing you do while looking
  * at who is in it, not from a settings modal three clicks away).
  *
- * **Names are not public.** A listed, open event is indexed and reachable by
- * anyone, and turning it into a directory of who plays what is not something
- * anybody opted into by joining a board game. So the page tells a stranger
- * how many are taking part and nothing else; the names appear for people who
- * are in it themselves, and for whoever runs it.
+ * **Names follow BoardAccessService::canSeeParticipants()**, the same rule as
+ * the event page and its leaderboard: public on an OPEN event, and otherwise
+ * only for people in it and whoever runs it. Everyone else gets a count.
  */
 class ParticipantController extends Controller
 {
@@ -59,7 +57,10 @@ class ParticipantController extends Controller
         // change — BoardAccessService::canBypass() already lets an admin open
         // any event, so hiding the names on the way in would protect nothing
         // and stop a moderator answering "who is actually in this".
-        $named = $canEdit || $user->isAdmin() || $this->isParticipant($user, $userIds, $event);
+        $named = $canEdit
+            || $user->isAdmin()
+            || $access->canSeeParticipants($user, $event)
+            || $this->isParticipant($user, $userIds, $event);
 
         return Inertia::render('Events/Participants', [
             'event' => $event->only(['id', 'title', 'type', 'mode', 'access_mode', 'start_date', 'end_date']),

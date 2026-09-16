@@ -102,7 +102,7 @@
                         <button
                             v-if="log.team_label"
                             type="button"
-                            class="inline-flex items-center gap-1 text-xs text-muted hover:text-highlighted transition-colors"
+                            class="inline-flex max-sm:min-h-11 items-center gap-1 text-xs text-muted hover:text-highlighted transition-colors"
                             @click="scope = `team:${log.team_id}`"
                         >
                             <u-icon name="i-lucide-users" class="size-3 shrink-0" />
@@ -111,7 +111,7 @@
                         <button
                             v-if="log.guild_label"
                             type="button"
-                            class="inline-flex items-center gap-1 text-xs text-muted hover:text-highlighted transition-colors"
+                            class="inline-flex max-sm:min-h-11 items-center gap-1 text-xs text-muted hover:text-highlighted transition-colors"
                             @click="scope = `guild:${log.guild_id}`"
                         >
                             <u-icon name="i-lucide-shield" class="size-3 shrink-0" />

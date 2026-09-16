@@ -61,7 +61,7 @@
                         <u-button :href="route('auth.discord.redirect')" color="neutral" variant="outline" block icon="i-simple-icons-discord" class="mt-4" :label="$t('auth.continue_with_discord')" />
                         <p class="text-center text-sm text-muted mt-4">
                             {{ $t('auth.have_account') }}
-                            <a :href="route('login')" class="text-primary hover:underline">{{ $t('auth.cta_login') }}</a>
+                            <a :href="route('login')" class="inline-flex min-h-11 items-center text-primary hover:underline sm:min-h-0">{{ $t('auth.cta_login') }}</a>
                         </p>
                     </template>
                 </u-card>

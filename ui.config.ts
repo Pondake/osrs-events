@@ -37,6 +37,11 @@ export const uiConfig = {
             },
         ],
     },
+    // Same 44px floor for form triggers on phones.
+    input: { slots: { base: 'max-sm:min-h-11' } },
+    select: { slots: { base: 'max-sm:min-h-11' } },
+    selectMenu: { slots: { base: 'max-sm:min-h-11' } },
+    inputMenu: { slots: { base: 'max-sm:min-h-11', trailing: 'max-sm:min-w-11 justify-center' } },
     breadcrumb: {
         slots: {
             link: 'max-sm:min-h-11',

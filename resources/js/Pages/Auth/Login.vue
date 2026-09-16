@@ -22,7 +22,7 @@
                         </u-form-field>
 
                         <div class="text-right">
-                            <a :href="route('password.request')" class="text-xs text-muted hover:text-primary hover:underline">{{ $t('auth.forgot_password') }}</a>
+                            <a :href="route('password.request')" class="inline-flex min-h-11 items-center text-xs text-muted hover:text-primary hover:underline sm:min-h-0">{{ $t('auth.forgot_password') }}</a>
                         </div>
 
                         <u-button type="submit" color="primary" block :loading="form.processing" :label="$t('auth.cta_login')" />
@@ -37,7 +37,7 @@
                         <u-button :href="route('auth.discord.redirect')" color="neutral" variant="outline" block icon="i-simple-icons-discord" class="mt-4" :label="$t('auth.continue_with_discord')" />
                         <p class="text-center text-sm text-muted mt-4">
                             {{ $t('auth.no_account') }}
-                            <a :href="route('register')" class="text-primary hover:underline">{{ $t('auth.cta_register') }}</a>
+                            <a :href="route('register')" class="inline-flex min-h-11 items-center text-primary hover:underline sm:min-h-0">{{ $t('auth.cta_register') }}</a>
                         </p>
                     </template>
                 </u-card>

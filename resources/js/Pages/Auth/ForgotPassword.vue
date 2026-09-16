@@ -21,7 +21,7 @@
                     </form>
 
                     <template #footer>
-                        <a :href="route('login')" class="text-sm text-primary hover:underline">{{ $t('auth.back_to_login') }}</a>
+                        <a :href="route('login')" class="inline-flex min-h-11 items-center text-sm text-primary hover:underline sm:min-h-0">{{ $t('auth.back_to_login') }}</a>
                     </template>
                 </u-card>
             </u-container>

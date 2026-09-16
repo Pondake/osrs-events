@@ -18,10 +18,8 @@ use Tests\TestCase;
 /**
  * Who is taking part, and who is allowed to know.
  *
- * The rule worth pinning down is the privacy one: a listed OPEN event is
- * indexed and reachable by anyone, and nobody joined a board game expecting
- * to end up in a public directory of who plays what. Counts are public;
- * names are for the people in it and the people running it.
+ * Names follow the same rule as the event page and its leaderboard: public on
+ * an OPEN event, otherwise only for the people in it and the people running it.
  */
 class ParticipantsTest extends TestCase
 {
@@ -93,11 +91,23 @@ class ParticipantsTest extends TestCase
         $this->assertTrue($this->props($entrant, $event)['named']);
     }
 
-    /** The rule this page exists to get right. */
+    /** Same rule as the event page and its leaderboard. */
     #[Test]
-    public function a_stranger_on_a_public_event_sees_a_count_and_no_names(): void
+    public function a_stranger_on_an_open_event_sees_the_names(): void
     {
         $event = $this->event();
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $this->player('Host')->id, 'is_owner' => true]);
+
+        $props = $this->props($this->player('Nosy'), $event);
+
+        $this->assertTrue($props['named']);
+        $this->assertCount(1, $props['participants']);
+    }
+
+    #[Test]
+    public function a_stranger_on_a_listed_invite_only_event_sees_a_count_and_no_names(): void
+    {
+        $event = $this->event(['access_mode' => 'INVITE']);
         BoardAuthor::create(['event_id' => $event->id, 'user_id' => $this->player('Host')->id, 'is_owner' => true]);
 
         $entrant = $this->player('Pondake');
@@ -165,7 +175,7 @@ class ParticipantsTest extends TestCase
     #[Test]
     public function an_admin_sees_the_names_of_an_event_they_are_not_in(): void
     {
-        $event = $this->event();
+        $event = $this->event(['access_mode' => 'INVITE']);
         BoardAuthor::create(['event_id' => $event->id, 'user_id' => $this->player('Host')->id, 'is_owner' => true]);
 
         $admin = $this->player('TheAdmin');
