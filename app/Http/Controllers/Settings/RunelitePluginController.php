@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\PluginToken;
 use App\Models\Setting;
+use App\Services\RunelitePluginService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,7 +13,7 @@ use Inertia\Response;
 
 class RunelitePluginController extends Controller
 {
-    public function show(Request $request): Response
+    public function show(Request $request, RunelitePluginService $plugin): Response
     {
         $this->ensureAvailable();
 
@@ -27,6 +28,7 @@ class RunelitePluginController extends Controller
             ],
             'newCode' => $request->session()->get('plugin-code'),
             'osrsUsername' => $request->user()->osrs_username,
+            'status' => $plugin->status($request->user()),
         ]);
     }
 

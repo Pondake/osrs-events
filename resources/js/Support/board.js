@@ -42,6 +42,20 @@ export function formatDate(date, style = 'short') {
     });
 }
 
+export function relativeTime(date, now = new Date()) {
+    if (!date) return '—';
+
+    const diffMinutes = Math.round((new Date(date).getTime() - now.getTime()) / 60000);
+    const rtf = new Intl.RelativeTimeFormat('en-GB', { numeric: 'auto' });
+
+    if (Math.abs(diffMinutes) < 60) return rtf.format(diffMinutes, 'minute');
+
+    const diffHours = Math.round(diffMinutes / 60);
+    if (Math.abs(diffHours) < 24) return rtf.format(diffHours, 'hour');
+
+    return rtf.format(Math.round(diffHours / 24), 'day');
+}
+
 export const BOARD_ACCESS_META = {
     OPEN: { icon: 'i-lucide-globe', labelKey: 'boards.access_open' },
     GUILD: { icon: 'i-lucide-shield', labelKey: 'boards.access_server' },

@@ -36,6 +36,7 @@ use App\Http\Controllers\Settings\ConnectionsController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Settings\RunelitePluginController;
+use App\Http\Controllers\Settings\RunelitePluginStreamController;
 use App\Http\Controllers\SiteLockController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SkillRaceController;
@@ -342,6 +343,8 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::get('/settings/runelite', [RunelitePluginController::class, 'show'])->name('settings.runelite');
     Route::post('/settings/runelite/code', [RunelitePluginController::class, 'store'])->middleware('throttle:10,1')->name('settings.runelite.code');
     Route::delete('/settings/runelite/code', [RunelitePluginController::class, 'destroy'])->name('settings.runelite.revoke');
+    // Per-account live status, not an EventChannel — see the controller.
+    Route::get('/settings/runelite/stream', RunelitePluginStreamController::class)->name('settings.runelite.stream');
     Route::get('/settings/account', [AccountController::class, 'show'])->name('settings.account');
     Route::put('/settings/account/email', [AccountController::class, 'updateEmail'])
         ->middleware('throttle:5,1')

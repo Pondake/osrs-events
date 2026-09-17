@@ -7,6 +7,8 @@ use App\Models\BingoSquare;
 use App\Models\CompletedTile;
 use App\Models\Event;
 use App\Models\EventParticipant;
+use App\Models\PluginCompletion;
+use App\Models\PluginToken;
 use App\Models\Tile;
 use App\Models\User;
 use App\Support\RuneliteName;
@@ -47,6 +49,81 @@ class RunelitePluginService
                 'targets' => $event->type === 'BINGO' ? $this->squareTargets($event, $user) : $this->tileTargets($event, $user),
             ])
             ->values();
+    }
+
+    /** What the settings page shows, and what its live stream pushes. */
+    public function status(User $user): array
+    {
+        $token = PluginToken::where('user_id', $user->id)->first();
+        $watch = $this->watchSummary($user);
+
+        return [
+            'connection' => $this->connectionStatus($token),
+            'watching' => $watch,
+            'reports' => PluginCompletion::where('user_id', $user->id)
+                ->latest('created_at')
+                ->limit(5)
+                ->get()
+                ->map(fn (PluginCompletion $completion) => [
+                    'id' => $completion->id,
+                    'name' => $completion->name,
+                    'createdAt' => $completion->created_at->toIso8601String(),
+                    'claims' => collect($completion->claims ?? [])->map(fn (array $claim) => [
+                        'label' => $claim['label'] ?? $claim['name'] ?? null,
+                        'eventTitle' => $claim['event_title'] ?? null,
+                        'status' => $claim['status'] ?? null,
+                    ])->all(),
+                ])
+                ->all(),
+        ];
+    }
+
+    /** Cheap enough to poll every few seconds: no claim details, just what would change the display. */
+    public function statusFingerprint(User $user): string
+    {
+        $token = PluginToken::where('user_id', $user->id)->first();
+        $latest = PluginCompletion::where('user_id', $user->id)->latest('updated_at')->first();
+        $watch = $this->watchSummary($user);
+
+        return implode('|', [
+            $token?->last_used_at?->timestamp ?? 'none',
+            $latest?->id ?? 'none',
+            $latest?->updated_at?->timestamp ?? 0,
+            $watch['count'],
+            $watch['events'],
+        ]);
+    }
+
+    private function connectionStatus(?PluginToken $token): array
+    {
+        if ($token === null) {
+            return ['state' => 'none', 'lastUsedAt' => null];
+        }
+
+        if ($token->last_used_at === null) {
+            return ['state' => 'never', 'lastUsedAt' => null];
+        }
+
+        $state = $token->last_used_at->gt(now()->subMinutes(10)) ? 'connected' : 'stale';
+
+        return ['state' => $state, 'lastUsedAt' => $token->last_used_at->toIso8601String()];
+    }
+
+    /** The distinct names the plugin watches for, and in how many events. */
+    private function watchSummary(User $user): array
+    {
+        $matches = collect();
+        $eventsWithTargets = 0;
+
+        foreach ($this->openTargets($user) as ['targets' => $targets]) {
+            if ($targets->isNotEmpty()) {
+                $eventsWithTargets++;
+            }
+
+            $matches = $matches->merge($targets->pluck('match'));
+        }
+
+        return ['count' => $matches->unique()->count(), 'events' => $eventsWithTargets];
     }
 
     /** @return list<array> the claims this name created */

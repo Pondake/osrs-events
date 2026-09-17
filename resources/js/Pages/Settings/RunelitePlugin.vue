@@ -36,6 +36,52 @@
             </template>
         </u-alert>
 
+        <u-card v-if="token">
+            <template #header>
+                <span class="font-semibold">{{ $t('plugin.status_title') }}</span>
+            </template>
+
+            <div class="text-sm space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="relative flex size-2.5 shrink-0">
+                        <span
+                            v-if="status.connection.state === 'connected'"
+                            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75"
+                        />
+                        <span class="relative inline-flex size-2.5 rounded-full" :class="connectionDotClass" />
+                    </span>
+                    <span>{{ connectionLabel }}</span>
+                </div>
+
+                <p>
+                    {{ status.watching.count > 0
+                        ? $t('plugin.status_watching', { count: status.watching.count, events: status.watching.events })
+                        : $t('plugin.status_watching_none') }}
+                </p>
+
+                <div>
+                    <p class="font-medium mb-1.5">{{ $t('plugin.status_reports_title') }}</p>
+                    <p v-if="status.reports.length === 0" class="text-muted">{{ $t('plugin.status_no_reports') }}</p>
+                    <ul v-else class="space-y-2">
+                        <li v-for="report in status.reports" :key="report.id" class="rounded-lg ring ring-default px-3 py-2">
+                            <div class="flex items-center justify-between gap-2 flex-wrap">
+                                <span class="font-medium">{{ report.name }}</span>
+                                <span class="text-xs text-muted">{{ formatDate(report.createdAt) }}</span>
+                            </div>
+                            <p v-if="report.claims.length === 0" class="text-muted text-xs mt-0.5">
+                                {{ $t('plugin.status_report_no_match') }}
+                            </p>
+                            <ul v-else class="mt-0.5 space-y-0.5">
+                                <li v-for="(claim, index) in report.claims" :key="index" class="text-xs text-muted">
+                                    {{ claim.label }} — {{ claim.eventTitle }} ({{ claimStatusLabel(claim.status) }})
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </u-card>
+
         <u-card>
             <template #header>
                 <span class="font-semibold">{{ $t('plugin.code_title') }}</span>
@@ -110,22 +156,64 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
-import { formatDate } from '@/Support/board';
+import { formatDate, relativeTime } from '@/Support/board';
+import { useEventStream } from '@/Composables/useEventStream';
 
 const props = defineProps({
     mode: { type: String, required: true },
     token: { type: Object, default: null },
     newCode: { type: String, default: null },
     osrsUsername: { type: String, default: null },
+    status: {
+        type: Object,
+        default: () => ({ connection: { state: 'none', lastUsedAt: null }, watching: { count: 0, events: 0 }, reports: [] }),
+    },
 });
 
 const confirming = ref(null);
 const busy = ref(false);
 const copied = ref(false);
+
+const status = ref(props.status);
+
+// A full Inertia visit (e.g. after creating/revoking the code) re-renders
+// with fresh props on the same mounted component — the stream carries
+// on updating from there, but that reload itself has to reach the ref too.
+watch(() => props.status, (value) => (status.value = value));
+
+useEventStream({
+    url: () => (props.token ? '/settings/runelite/stream' : null),
+    event: 'status',
+    onMessage: (payload) => (status.value = payload),
+});
+
+const connectionLabel = computed(() => {
+    switch (status.value.connection.state) {
+        case 'connected':
+            return trans('plugin.status_connected');
+        case 'stale':
+            return trans('plugin.status_stale', { time: relativeTime(status.value.connection.lastUsedAt) });
+        default:
+            return trans('plugin.status_never');
+    }
+});
+
+const connectionDotClass = computed(() => (status.value.connection.state === 'connected' ? 'bg-success' : 'bg-muted'));
+
+function claimStatusLabel(claimStatus) {
+    switch (claimStatus) {
+        case 'APPROVED':
+            return trans('plugin.status_claim_approved');
+        case 'REJECTED':
+            return trans('plugin.status_claim_rejected');
+        default:
+            return trans('plugin.status_claim_pending');
+    }
+}
 
 let toast = null;
 
