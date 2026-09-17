@@ -30,6 +30,7 @@ class RunelitePluginController extends Controller
                 'url' => url("/events/{$row['event']->id}"),
                 'targets' => $row['targets']->map(fn (array $target) => RunelitePluginService::describe($target))->all(),
             ])->all(),
+            'reviews' => $plugin->recentVerdicts($request->user()),
             'watch' => $events->flatMap(fn (array $row) => $row['targets']->pluck('match'))->unique()->sort()->values()->all(),
         ]);
     }

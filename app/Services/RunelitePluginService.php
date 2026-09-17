@@ -126,6 +126,55 @@ class RunelitePluginService
         return ['count' => $matches->unique()->count(), 'events' => $eventsWithTargets];
     }
 
+    /**
+     * Verdicts on this player's own plugin claims, newest first.
+     *
+     * The plugin announces the ones it has not seen before, so a host
+     * approving a square shows up in game without the player refreshing a page.
+     *
+     * @return list<array>
+     */
+    public function recentVerdicts(User $user, int $limit = 10): array
+    {
+        $squares = BingoCompletion::query()
+            ->where('marked_by', $user->id)
+            ->where('completed_via', 'RUNELITE')
+            ->whereNotNull('reviewed_at')
+            ->with('square.card.event')
+            ->latest('reviewed_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (BingoCompletion $completion) => [
+                'id' => $completion->id,
+                'label' => $completion->square?->label(),
+                'event_title' => $completion->square?->card?->event?->title,
+                'status' => $completion->status,
+                'reviewed_at' => $completion->reviewed_at->toIso8601String(),
+            ]);
+
+        $tiles = CompletedTile::query()
+            ->where('marked_by', $user->id)
+            ->where('completed_via', 'RUNELITE')
+            ->whereNotNull('reviewed_at')
+            ->with('tile.task', 'tile.board.event')
+            ->latest('reviewed_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (CompletedTile $completed) => [
+                'id' => $completed->id,
+                'label' => $completed->tile?->title_override ?: $completed->tile?->task?->title,
+                'event_title' => $completed->tile?->board?->event?->title,
+                'status' => $completed->status,
+                'reviewed_at' => $completed->reviewed_at->toIso8601String(),
+            ]);
+
+        return $squares->merge($tiles)
+            ->sortByDesc('reviewed_at')
+            ->take($limit)
+            ->values()
+            ->all();
+    }
+
     /** @return list<array> the claims this name created */
     public function complete(User $user, string $name): array
     {

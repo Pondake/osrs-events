@@ -337,6 +337,24 @@ class RunelitePluginApiTest extends TestCase
         }
     }
 
+    #[Test]
+    public function the_events_call_reports_verdicts_on_this_players_claims(): void
+    {
+        $card = $this->card([0 => $this->task('Abyssal whip')], ['requires_approval' => true]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip'))->assertCreated();
+        $this->api()->getJson('/api/plugin/v1/events')->assertJsonPath('reviews', []);
+
+        $completion = BingoCompletion::sole();
+        $completion->update(['status' => 'APPROVED', 'reviewed_at' => now(), 'reviewed_by' => $this->player->id]);
+
+        $this->api()->getJson('/api/plugin/v1/events')
+            ->assertJsonCount(1, 'reviews')
+            ->assertJsonPath('reviews.0.id', $completion->id)
+            ->assertJsonPath('reviews.0.status', 'APPROVED')
+            ->assertJsonPath('reviews.0.event_title', $card->event->title);
+    }
+
     public static function names(): array
     {
         return [
