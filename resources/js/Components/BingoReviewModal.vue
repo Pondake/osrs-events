@@ -132,13 +132,15 @@
                     </a>
                 </div>
 
-                <u-alert
-                    v-else-if="claim.completedVia === 'RUNELITE'"
-                    color="neutral"
-                    variant="subtle"
-                    icon="i-lucide-puzzle"
-                    :description="$t('board.runelite_no_proof_desc')"
-                />
+                <div v-else-if="claim.completedVia === 'RUNELITE'" class="space-y-2">
+                    <u-alert
+                        color="neutral"
+                        variant="subtle"
+                        icon="i-lucide-puzzle"
+                        :description="$t('board.runelite_no_proof_desc')"
+                    />
+                    <runelite-context-card :context="claim.runeliteContext" />
+                </div>
 
                 <u-alert
                     v-else
@@ -182,6 +184,7 @@
 
 <script setup>
 import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
+import RuneliteContextCard from '@/Components/RuneliteContextCard.vue';
 import { computed, ref, watch } from 'vue';
 import { ordinal } from '@/Support/board';
 import { router } from '@inertiajs/vue3';

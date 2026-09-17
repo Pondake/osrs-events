@@ -27,7 +27,7 @@ class BingoCompletion extends Model
     public const STATUSES = ['PENDING', 'APPROVED', 'REJECTED'];
 
     protected $fillable = [
-        'bingo_square_id', 'team_id', 'user_id', 'marked_by', 'completed_via',
+        'bingo_square_id', 'team_id', 'user_id', 'marked_by', 'completed_via', 'plugin_completion_id',
         'status', 'proof_url', 'note', 'reviewed_by', 'reviewed_at', 'review_note',
     ];
 
@@ -56,5 +56,10 @@ class BingoCompletion extends Model
     public function markedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'marked_by');
+    }
+
+    public function pluginCompletion(): BelongsTo
+    {
+        return $this->belongsTo(PluginCompletion::class);
     }
 }

@@ -79,6 +79,16 @@
                     :label="$t('bingo.view_proof')"
                 />
 
+                <div v-else-if="claim.completedVia === 'RUNELITE'" class="space-y-2">
+                    <u-alert
+                        color="neutral"
+                        variant="subtle"
+                        icon="i-lucide-puzzle"
+                        :description="$t('board.runelite_no_proof_desc')"
+                    />
+                    <runelite-context-card :context="claim.runeliteContext" />
+                </div>
+
                 <!-- Says what withdrawing costs before it costs it — or,
                      once a host has ruled, why it is no longer on offer. A
                      red button that silently does nothing reads as broken,
@@ -158,6 +168,7 @@
 
 <script setup>
 import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
+import RuneliteContextCard from '@/Components/RuneliteContextCard.vue';
 import { computed, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';

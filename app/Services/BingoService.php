@@ -63,6 +63,7 @@ class BingoService
             ->where('bingo_squares.bingo_card_id', $card->id)
             ->where('bingo_completions.team_id', $competitor['team_id'])
             ->where('bingo_completions.user_id', $competitor['user_id'])
+            ->with('pluginCompletion')
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
             ->keyBy(fn (BingoCompletion $c) => (int) $c->square_position);
     }
@@ -284,6 +285,7 @@ class BingoService
                 'markedBy:id,discord_username,nickname,avatar_url,osrs_username',
                 'square:id,position,title_override,task_id',
                 'square.task:id,title,icon_url',
+                'pluginCompletion',
             ])
             ->orderBy('bingo_completions.created_at')
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
@@ -305,6 +307,10 @@ class BingoService
                 'completedVia' => $c->completed_via,
                 'proofUrl' => $c->proof_url,
                 'note' => $c->note,
+                // What the plugin actually saw, for a claim with no
+                // screenshot — null on a manual claim, and on a RUNELITE
+                // claim that predates this field.
+                'runeliteContext' => $c->pluginCompletion?->reviewContext(),
                 'submittedAt' => $c->created_at?->toIso8601String(),
                 // Approving this one wins the card for its competitor — and
                 // on a STOP event, ends the whole thing.

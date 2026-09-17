@@ -176,7 +176,7 @@ class RunelitePluginService
     }
 
     /** @return list<array> the claims this name created */
-    public function complete(User $user, string $name): array
+    public function complete(User $user, string $name, PluginCompletion $pluginCompletion): array
     {
         $match = RuneliteName::normalize($name);
         $claims = [];
@@ -189,8 +189,8 @@ class RunelitePluginService
                 }
 
                 $status = $target['kind'] === 'bingo_square'
-                    ? $this->claimSquare($event, $target['model'], $user)
-                    : $this->claimTile($event, $target['model'], $user);
+                    ? $this->claimSquare($event, $target['model'], $user, $pluginCompletion)
+                    : $this->claimTile($event, $target['model'], $user, $pluginCompletion);
 
                 if ($status !== null) {
                     $claims[] = [
@@ -282,7 +282,7 @@ class RunelitePluginService
         ];
     }
 
-    private function claimSquare(Event $event, BingoSquare $square, User $user): ?string
+    private function claimSquare(Event $event, BingoSquare $square, User $user, PluginCompletion $pluginCompletion): ?string
     {
         EventParticipant::firstOrCreate(['event_id' => $event->id, 'user_id' => $user->id]);
 
@@ -294,6 +294,7 @@ class RunelitePluginService
                 'bingo_square_id' => $square->id,
                 'marked_by' => $user->id,
                 'completed_via' => 'RUNELITE',
+                'plugin_completion_id' => $pluginCompletion->id,
                 'status' => $event->bingoCard->initialClaimStatus('RUNELITE'),
             ]));
         } catch (UniqueConstraintViolationException) {
@@ -306,7 +307,7 @@ class RunelitePluginService
         return $completion->status;
     }
 
-    private function claimTile(Event $event, Tile $tile, User $user): ?string
+    private function claimTile(Event $event, Tile $tile, User $user, PluginCompletion $pluginCompletion): ?string
     {
         EventParticipant::firstOrCreate(['event_id' => $event->id, 'user_id' => $user->id]);
 
@@ -319,6 +320,7 @@ class RunelitePluginService
                 'tile_id' => $tile->id,
                 'completed_at' => now(),
                 'completed_via' => 'RUNELITE',
+                'plugin_completion_id' => $pluginCompletion->id,
                 'marked_by' => $user->id,
                 'status' => $event->board->initialClaimStatus('RUNELITE'),
             ]));

@@ -237,7 +237,7 @@ class RunelitePluginApiTest extends TestCase
     #[Test]
     public function a_completion_on_an_untrusting_reviewed_card_is_pending(): void
     {
-        $this->card([0 => $this->task('Abyssal whip')], ['requires_approval' => true]);
+        $this->card([0 => $this->task('Abyssal whip')], ['requires_approval' => true, 'trust_runelite_completions' => false]);
 
         $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip'))
             ->assertCreated()
@@ -325,6 +325,79 @@ class RunelitePluginApiTest extends TestCase
         $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip', ['kind' => 'xp', 'quantity' => 0]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['kind', 'quantity']);
+    }
+
+    // ------------------------------------------------------------- context
+
+    #[Test]
+    public function context_is_accepted_and_stored_on_the_report_and_the_claim(): void
+    {
+        $this->card([0 => $this->task('Abyssal whip')]);
+
+        $payload = $this->completion('Abyssal whip', [
+            'kind' => 'npc_kill',
+            'context' => [
+                'source' => 'npc_kill',
+                'npc_id' => 415,
+                'npc_name' => 'Abyssal demon',
+                'npc_level' => 124,
+                'kill_count' => 217,
+                'region_id' => 12441,
+                'items' => [
+                    ['id' => 4151, 'name' => 'Abyssal whip', 'quantity' => 1],
+                    ['id' => 526, 'name' => 'Bones', 'quantity' => 1],
+                ],
+            ],
+        ]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $payload)->assertCreated();
+
+        $report = PluginCompletion::sole();
+        $this->assertSame('npc_kill', $report->context['source']);
+        $this->assertSame('Abyssal demon', $report->context['npc_name']);
+        $this->assertCount(2, $report->context['items']);
+
+        $claim = BingoCompletion::sole();
+        $this->assertSame($report->id, $claim->plugin_completion_id);
+    }
+
+    #[Test]
+    public function context_is_optional(): void
+    {
+        $this->card([0 => $this->task('Abyssal whip')]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip'))
+            ->assertCreated();
+
+        $report = PluginCompletion::sole();
+        $this->assertNull($report->context);
+        $this->assertSame($report->id, BingoCompletion::sole()->plugin_completion_id);
+    }
+
+    #[Test]
+    public function an_unknown_context_key_is_a_422(): void
+    {
+        $this->card([0 => $this->task('Abyssal whip')]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip', [
+            'context' => ['source' => 'loot', 'chat_message' => 'nice drop'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['context']);
+
+        $this->assertSame(0, PluginCompletion::count());
+    }
+
+    #[Test]
+    public function an_unknown_key_on_an_item_is_a_422(): void
+    {
+        $this->card([0 => $this->task('Abyssal whip')]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip', [
+            'context' => ['items' => [['id' => 1, 'name' => 'Bones', 'quantity' => 1, 'exact_x' => 3200]]],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['context.items.0']);
     }
 
     #[Test]

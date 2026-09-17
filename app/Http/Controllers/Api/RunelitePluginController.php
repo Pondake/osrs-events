@@ -44,6 +44,25 @@ class RunelitePluginController extends Controller
             'quantity' => ['required', 'integer', 'min:1', 'max:2147483647'],
             'rsn' => ['required', 'string', 'max:32'],
             'occurred_at' => ['required', 'date'],
+            // Optional context, so a host reviewing a claim sees more than
+            // "the plugin said so". Field by field, and an unknown key is a
+            // 422 rather than silently dropped — see the gotcha in
+            // docs/runelite-plugin.md. Nothing sensitive: no chat, no other
+            // players, region only and never exact coordinates.
+            'context' => ['sometimes', 'nullable', 'array', $this->rejectUnknownKeys([
+                'source', 'npc_id', 'npc_name', 'npc_level', 'kill_count', 'region_id', 'items',
+            ])],
+            'context.source' => ['sometimes', 'nullable', Rule::in(['npc_kill', 'loot', 'collection_log'])],
+            'context.npc_id' => ['sometimes', 'nullable', 'integer'],
+            'context.npc_name' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'context.npc_level' => ['sometimes', 'nullable', 'integer'],
+            'context.kill_count' => ['sometimes', 'nullable', 'integer'],
+            'context.region_id' => ['sometimes', 'nullable', 'integer'],
+            'context.items' => ['sometimes', 'nullable', 'array', 'max:40'],
+            'context.items.*' => ['array', $this->rejectUnknownKeys(['id', 'name', 'quantity'])],
+            'context.items.*.id' => ['required', 'integer'],
+            'context.items.*.name' => ['required', 'string', 'max:64'],
+            'context.items.*.quantity' => ['required', 'integer', 'min:1'],
         ]);
 
         $user = $request->user();
@@ -64,7 +83,7 @@ class RunelitePluginController extends Controller
         try {
             $logged = DB::transaction(function () use ($user, $data, $plugin) {
                 $logged = PluginCompletion::create([...$data, 'user_id' => $user->id]);
-                $logged->update(['claims' => $plugin->complete($user, $data['name'])]);
+                $logged->update(['claims' => $plugin->complete($user, $data['name'], $logged)]);
 
                 return $logged;
             });
@@ -76,6 +95,22 @@ class RunelitePluginController extends Controller
         }
 
         return $this->answer($logged, false);
+    }
+
+    /** A 422 on an unknown key, rather than the strict-validation gotcha of dropping it silently. */
+    private function rejectUnknownKeys(array $allowed): \Closure
+    {
+        return function (string $attribute, $value, \Closure $fail) use ($allowed) {
+            if (! is_array($value)) {
+                return;
+            }
+
+            foreach (array_keys($value) as $key) {
+                if (! in_array($key, $allowed, true)) {
+                    $fail(trans('plugin.api_context_unknown_key', ['key' => $key]));
+                }
+            }
+        };
     }
 
     private function answer(PluginCompletion $logged, bool $duplicate): JsonResponse

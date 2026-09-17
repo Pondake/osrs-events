@@ -53,6 +53,7 @@ class BoardReviewService
                 // the screenshot is what a host actually matches against.
                 'markedBy:id,discord_username,nickname,avatar_url,osrs_username',
                 'tile.task:id,title,icon_url',
+                'pluginCompletion',
             ])
             ->orderBy('completed_tiles.completed_at')
             ->get(['completed_tiles.*', 'tiles.position as tile_position', 'tiles.title_override as tile_title_override'])
@@ -71,6 +72,7 @@ class BoardReviewService
                 'completedVia' => $c->completed_via,
                 'proofUrl' => $c->proof_url,
                 'note' => $c->note,
+                'runeliteContext' => $c->pluginCompletion?->reviewContext(),
                 'submittedAt' => $c->completed_at?->toIso8601String(),
                 // Approving this one ends somebody's run — worth saying
                 // before the click rather than after it, especially on a

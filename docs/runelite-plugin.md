@@ -271,7 +271,16 @@ when its normalised name is in it.
 
 ```json
 { "client_event_id": "uuid", "kind": "item|npc_kill", "name": "Prayer potion(4)",
-  "quantity": 1, "rsn": "Iron Pondake", "occurred_at": "2026-09-17T12:00:00Z" }
+  "quantity": 1, "rsn": "Iron Pondake", "occurred_at": "2026-09-17T12:00:00Z",
+  "context": {
+    "source": "npc_kill",
+    "npc_id": 415,
+    "npc_name": "Abyssal demon",
+    "npc_level": 124,
+    "kill_count": 217,
+    "region_id": 12441,
+    "items": [{ "id": 4151, "name": "Abyssal whip", "quantity": 1 }]
+  } }
 ```
 
 - `201` with `{client_event_id, duplicate: false, claims: [...]}`. `claims`
@@ -279,7 +288,11 @@ when its normalised name is in it.
 - `200` with `duplicate: true` and the original `claims` when
   `(account, client_event_id)` was seen before. Retrying is always safe.
 - `422` when `rsn` is not the account's OSRS username (space, `_` and `-`
-  compare equal, case ignored), or the payload is invalid.
+  compare equal, case ignored), the payload is invalid, or `context` (or an
+  item in it) carries a key outside the ones listed above — added 2026-09-17
+  so a client-side typo in a new field is a loud 422, not a silently dropped
+  value. If you add a field to `context`, add it to the validation in
+  `RunelitePluginController` in the same commit.
 - `401` for an unknown code.
 
 A claim is created the way the manual routes create one, with
@@ -288,6 +301,16 @@ A claim is created the way the manual routes create one, with
 claims or trusts RuneLite completions. Finishes and notifications run as
 usual. `completed_at` is the server clock; `occurred_at` is only logged.
 `quantity` is logged too — no task asks for an amount yet.
+
+`context` is optional and every field in it is optional — send whatever the
+event actually had. It exists so a host reviewing a claim with no screenshot
+sees more than "the plugin said so": what was killed and its level, the kill
+count, everything else that dropped in the same kill, whether it came from
+the collection log, and when. It is stored as-is on the `plugin_completions`
+row and surfaced on the claim it created (`bingo_completions` /
+`completed_tiles` now carry a `plugin_completion_id`). Deliberately nothing
+sensitive goes in it: no chat log, no other players' names, and `region_id`
+only — never exact coordinates.
 
 ### Name matching
 

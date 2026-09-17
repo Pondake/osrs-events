@@ -338,9 +338,10 @@ class BoardController extends Controller
         // is here to look. PlayerBoardService::find() types a real User,
         // so the guard is here rather than inside it — reading an event is
         // the only path that reaches these services without one.
-        $playerBoard = $user === null ? null : $playerBoards->find($event, $user)?->load(
-            'completedTiles:id,player_board_id,tile_id,completed_via,status,proof_url,note,review_note,reviewed_at',
-        );
+        $playerBoard = $user === null ? null : $playerBoards->find($event, $user)?->load([
+            'completedTiles:id,player_board_id,tile_id,completed_via,plugin_completion_id,status,proof_url,note,review_note,reviewed_at',
+            'completedTiles.pluginCompletion',
+        ]);
 
         $canEdit = $user?->canEditEvent($event) ?? false;
 
@@ -424,6 +425,7 @@ class BoardController extends Controller
                     'note' => $c->note,
                     'reviewNote' => $c->review_note,
                     'reviewedAt' => $c->reviewed_at?->toIso8601String(),
+                    'runeliteContext' => $c->pluginCompletion?->reviewContext(),
                 ]]),
             ],
             'players' => $players,
@@ -646,6 +648,7 @@ class BoardController extends Controller
                 'proofUrl' => $claim->proof_url,
                 'note' => $claim->note,
                 'reviewedAt' => $claim->reviewed_at?->toIso8601String(),
+                'runeliteContext' => $claim->pluginCompletion?->reviewContext(),
             ]),
             'completed' => $approved,
             // Who holds each square, for the faces on the grid. Same source
@@ -851,7 +854,11 @@ class BoardController extends Controller
                     // Defaults to on, matching the column default: a card
                     // nobody checks is a shared checklist, not a competition.
                     'requires_approval' => $data['requires_approval'] ?? true,
-                    'trust_runelite_completions' => $data['trust_runelite_completions'] ?? false,
+                    // Owner's call 2026-09-17: new cards trust RuneLite
+                    // completions by default, matching the column default —
+                    // named rather than left to it for the same reason
+                    // every other field here is.
+                    'trust_runelite_completions' => $data['trust_runelite_completions'] ?? true,
                 ]);
 
                 // Filled out immediately, unlike S&L tiles which appear on

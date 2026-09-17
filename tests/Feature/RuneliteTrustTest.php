@@ -63,13 +63,16 @@ class RuneliteTrustTest extends TestCase
     }
 
     #[Test]
-    public function trust_is_off_by_default(): void
+    public function trust_is_on_by_default(): void
     {
+        // Owner's call 2026-09-17: a new board or card trusts RuneLite
+        // completions unless a host turns it off — see the column default
+        // migration.
         $board = $this->event('SNAKES_LADDERS')->board()->create(['size' => 'SIZE_5X5'])->fresh();
         $card = $this->event('BINGO')->bingoCard()->create(['size' => 3])->fresh();
 
-        $this->assertFalse($board->trust_runelite_completions);
-        $this->assertFalse($card->trust_runelite_completions);
+        $this->assertTrue($board->trust_runelite_completions);
+        $this->assertTrue($card->trust_runelite_completions);
     }
 
     #[Test]
@@ -102,7 +105,7 @@ class RuneliteTrustTest extends TestCase
     public function a_player_cannot_change_trust(): void
     {
         $event = $this->event('BINGO');
-        $event->bingoCard()->create(['size' => 3]);
+        $event->bingoCard()->create(['size' => 3, 'trust_runelite_completions' => false]);
 
         $this->actingAs(User::factory()->create())
             ->patch("/events/{$event->id}", ['trust_runelite_completions' => true]);
