@@ -164,4 +164,70 @@ class RuneliteTrustTest extends TestCase
             ->get("/events/{$event->id}")
             ->assertInertia(fn ($page) => $page->where('pending.0.completedVia', 'RUNELITE'));
     }
+
+    /**
+     * A RuneLite claim's identity sits in `marked_by`, not the competitor's
+     * `user_id` — the two agree on a solo card, but the queue must read the
+     * right one regardless, alongside the manual case which has always
+     * worked. Both are covered here so a regression in either shows up.
+     */
+    #[Test]
+    public function the_bingo_queue_shows_the_claimant_for_both_manual_and_runelite_claims(): void
+    {
+        $event = $this->event('BINGO');
+        $card = $event->bingoCard()->create(['size' => 3]);
+        app(BingoService::class)->ensureSquares($card);
+        [$manualSquare, $runeliteSquare] = $card->squares()->orderBy('position')->take(2)->get()->all();
+
+        $manualClaimant = User::factory()->create(['discord_username' => 'manualplayer', 'osrs_username' => 'Manualname']);
+        $runeliteClaimant = User::factory()->create(['discord_username' => 'mbeetje', 'osrs_username' => 'Pondake']);
+
+        BingoCompletion::create([
+            'bingo_square_id' => $manualSquare->id,
+            'user_id' => $manualClaimant->id,
+            'marked_by' => $manualClaimant->id,
+            'status' => 'PENDING',
+            'completed_via' => 'MANUAL',
+        ]);
+        BingoCompletion::create([
+            'bingo_square_id' => $runeliteSquare->id,
+            'user_id' => $runeliteClaimant->id,
+            'marked_by' => $runeliteClaimant->id,
+            'status' => 'PENDING',
+            'completed_via' => 'RUNELITE',
+        ]);
+
+        $queue = collect(app(BingoService::class)->pendingQueue($card->fresh()))->keyBy('completedVia');
+
+        $this->assertSame('Manualname', $queue['MANUAL']['submittedByOsrs']);
+        $this->assertSame('manualplayer', $queue['MANUAL']['submittedBy']);
+        $this->assertSame('Pondake', $queue['RUNELITE']['submittedByOsrs']);
+        $this->assertSame('mbeetje', $queue['RUNELITE']['submittedBy']);
+    }
+
+    /** Same guarantee on the Snakes & Ladders side, via BoardReviewService. */
+    #[Test]
+    public function the_tile_queue_shows_the_claimant_for_a_runelite_claim(): void
+    {
+        $event = $this->event('SNAKES_LADDERS');
+        $board = $event->board()->create(['size' => 'SIZE_5X5']);
+        $tile = Tile::create(['board_id' => $board->id, 'position' => 2, 'type' => 'NORMAL']);
+        $claimant = User::factory()->create(['discord_username' => 'mbeetje', 'osrs_username' => 'Pondake']);
+        $playerBoard = PlayerBoard::create(['user_id' => $claimant->id, 'board_id' => $board->id, 'current_position' => 2]);
+
+        CompletedTile::create([
+            'player_board_id' => $playerBoard->id,
+            'tile_id' => $tile->id,
+            'completed_at' => now(),
+            'completed_via' => 'RUNELITE',
+            'marked_by' => $claimant->id,
+            'status' => 'PENDING',
+        ]);
+
+        $this->actingAs($this->host($event))
+            ->get("/events/{$event->id}")
+            ->assertInertia(fn ($page) => $page
+                ->where('pending.0.submittedBy', 'mbeetje')
+                ->where('pending.0.submittedByOsrs', 'Pondake'));
+    }
 }
