@@ -306,4 +306,4 @@ Non-numeric suffixes stay: `Clue scroll (medium)`, `Berserker ring (i)` and
 `(uncharged)` are different items. `kind` is not used for matching yet; a
 trigger column only gets added if the test set shows name alone is not enough.
 
-The fixed test set is `RunelitePluginTestSeeder` (an unlisted 7×7 bingo card).
+The fixed test set is `RunelitePluginTestSeeder` (an unlisted 8×8 bingo card).

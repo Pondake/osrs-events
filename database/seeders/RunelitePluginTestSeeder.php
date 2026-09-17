@@ -68,6 +68,21 @@ class RunelitePluginTestSeeder extends Seeder
         11003 => ['Ring of dueling', 'charges: Ring of dueling(8)'],
         45332 => ['Grimy ranarr weed', 'herb drop'],
         17097 => ['Ranarr seed', 'seed drop'],
+        14356 => ['Kurask', 'slayer kill'],
+        29067 => ['Leaf-bladed sword', 'rare slayer drop'],
+        80100 => ['Leaf-bladed battleaxe', 'rare slayer drop'],
+        29851 => ['Mystic robe top (light)', 'non-numeric suffix kept'],
+        24087 => ['Kurask head', 'very rare drop'],
+        10351 => ['Mithril kiteshield', 'common drop'],
+        10386 => ['Rune longsword', 'common drop'],
+        10245 => ['Adamant platebody', 'common drop'],
+        11722 => ['Rune axe', 'common drop'],
+        13826 => ['Limpwurt seed', 'seed drop'],
+        10067 => ['Flax', 'common drop'],
+        16742 => ['White berries', 'common drop'],
+        22540 => ['Papaya fruit', 'common drop'],
+        22545 => ['Coconut', 'common drop'],
+        210247 => ['Brimstone key', 'slayer key drop'],
     ];
 
     public const MANUAL_ONLY_TITLE = 'Manual only: screenshot a sunset';
@@ -98,8 +113,8 @@ class RunelitePluginTestSeeder extends Seeder
             ],
         );
 
-        $card = BingoCard::firstOrCreate(['event_id' => $event->id], ['size' => 7]);
-        $card->update(['size' => 7]);
+        $card = BingoCard::firstOrCreate(['event_id' => $event->id], ['size' => 8]);
+        $card->update(['size' => 8]);
         app(BingoService::class)->ensureSquares($card->fresh());
 
         $squares = $card->squares()->orderBy('position')->get();
