@@ -91,6 +91,15 @@ class RunelitePluginTestSeeder extends Seeder
         82093 => ['Dragon harpoon', 'rare minigame reward'],
         306327 => ['Big harpoonfish', 'minigame drop'],
         19630 => ['Raw shark', 'minigame reward, noted'],
+        221996 => ['Zalcano', 'boss kill, group'],
+        224964 => ['Crystal shard', 'always, stackable'],
+        31615 => ['Infernal ashes', 'always'],
+        226071 => ['Zalcano shard', 'very rare drop'],
+        226677 => ['Crystal tool seed', 'rare drop'],
+        226382 => ['Smolcano', 'pet'],
+        11596 => ['Runite ore', 'common drop'],
+        16002 => ['Uncut dragonstone', 'common drop'],
+        18124 => ['Onyx bolt tips', 'common drop'],
     ];
 
     public const MANUAL_ONLY_TITLE = 'Manual only: screenshot a sunset';
