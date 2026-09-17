@@ -277,6 +277,19 @@ php artisan push:doctor            # keys, pair match, encryption, every device
 php artisan push:sweep --dry-run   # what the time-based sweep would send
 ```
 
+### RuneLite plugin — the server half
+- The plugin itself is a separate repo; this app only issues codes and
+  accepts completions.
+- `runelite_plugin_mode` (off/testing/live) gates everything: while off, the
+  settings tab and every plugin route answer 404.
+- `PluginToken`: one per account, only the sha256 is stored, the plain code
+  is shown once. Look one up with `PluginToken::findByPlain()`.
+- A new claim's status always comes from `initialClaimStatus($via)`
+  (`ReviewsClaims`), never from `requires_approval` inline — that is where
+  the per-board "trust RuneLite" toggle is applied.
+- **The plugin is never the only route to a tile.** Anything it can
+  complete must stay claimable by hand.
+
 ### Diagnostics — one service, two surfaces
 - `App\Services\DiagnosticsService` owns every check. `/admin/diagnostics`
   renders all five groups; `push:doctor` prints the push half and exits
