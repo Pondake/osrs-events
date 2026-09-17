@@ -58,6 +58,11 @@ class BingoCompletion extends Model
         return $this->belongsTo(User::class, 'marked_by');
     }
 
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
     public function pluginCompletion(): BelongsTo
     {
         return $this->belongsTo(PluginCompletion::class);

@@ -83,6 +83,14 @@ class RunelitePluginTestSeeder extends Seeder
         22540 => ['Papaya fruit', 'common drop'],
         22545 => ['Coconut', 'common drop'],
         210247 => ['Brimstone key', 'slayer key drop'],
+        291284 => ['Tempoross', 'minigame completion'],
+        306217 => ['Soaked page', 'minigame reward, quantity matters'],
+        291298 => ['Fish barrel', 'minigame reward'],
+        306295 => ['Tackle box', 'minigame reward'],
+        306273 => ['Spirit flakes', 'minigame reward, stackable'],
+        82093 => ['Dragon harpoon', 'rare minigame reward'],
+        306327 => ['Big harpoonfish', 'minigame drop'],
+        19630 => ['Raw shark', 'minigame reward, noted'],
     ];
 
     public const MANUAL_ONLY_TITLE = 'Manual only: screenshot a sunset';
@@ -114,7 +122,7 @@ class RunelitePluginTestSeeder extends Seeder
         );
 
         $card = BingoCard::firstOrCreate(['event_id' => $event->id], ['size' => 8]);
-        $card->update(['size' => 8]);
+        $card->update(['size' => 9]);
         app(BingoService::class)->ensureSquares($card->fresh());
 
         $squares = $card->squares()->orderBy('position')->get();

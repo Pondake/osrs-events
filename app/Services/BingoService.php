@@ -63,7 +63,7 @@ class BingoService
             ->where('bingo_squares.bingo_card_id', $card->id)
             ->where('bingo_completions.team_id', $competitor['team_id'])
             ->where('bingo_completions.user_id', $competitor['user_id'])
-            ->with('pluginCompletion')
+            ->with(['pluginCompletion', 'reviewedBy:id,discord_username,nickname'])
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
             ->keyBy(fn (BingoCompletion $c) => (int) $c->square_position);
     }

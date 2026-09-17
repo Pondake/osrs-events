@@ -339,8 +339,9 @@ class BoardController extends Controller
         // so the guard is here rather than inside it — reading an event is
         // the only path that reaches these services without one.
         $playerBoard = $user === null ? null : $playerBoards->find($event, $user)?->load([
-            'completedTiles:id,player_board_id,tile_id,completed_via,plugin_completion_id,status,proof_url,note,review_note,reviewed_at',
+            'completedTiles:id,player_board_id,tile_id,completed_via,plugin_completion_id,status,proof_url,note,review_note,reviewed_at,reviewed_by',
             'completedTiles.pluginCompletion',
+            'completedTiles.reviewedBy:id,discord_username,nickname',
         ]);
 
         $canEdit = $user?->canEditEvent($event) ?? false;
@@ -425,6 +426,9 @@ class BoardController extends Controller
                     'note' => $c->note,
                     'reviewNote' => $c->review_note,
                     'reviewedAt' => $c->reviewed_at?->toIso8601String(),
+                    // Same reasoning as bingo's 'claims' prop — see
+                    // PlayerBoardController::toggleTile()'s withdrawal refusal.
+                    'reviewedByName' => $c->reviewedBy?->nickname ?: $c->reviewedBy?->discord_username,
                     'runeliteContext' => $c->pluginCompletion?->reviewContext(),
                 ]]),
             ],
@@ -648,6 +652,10 @@ class BoardController extends Controller
                 'proofUrl' => $claim->proof_url,
                 'note' => $claim->note,
                 'reviewedAt' => $claim->reviewed_at?->toIso8601String(),
+                // Who judged it, when it was a human rather than an
+                // auto-approved RuneLite completion — see the withdrawal
+                // refusal wording in BingoController::claim().
+                'reviewedByName' => $claim->reviewedBy?->nickname ?: $claim->reviewedBy?->discord_username,
                 'runeliteContext' => $claim->pluginCompletion?->reviewContext(),
             ]),
             'completed' => $approved,
