@@ -254,9 +254,10 @@
                                     v-for="tile in orderedTiles"
                                     :key="tile.position"
                                     type="button"
-                                    class="aspect-square rounded-md relative cursor-pointer overflow-hidden"
+                                    class="@container aspect-square rounded-md relative cursor-pointer overflow-hidden"
                                     :class="tileClasses(tile)"
-                                    :title="tileTitle(tile) ?? trans('board.tile', { n: tile.position + 1 })"
+                                    :title="tileHint(tile)"
+                                    :aria-label="tileHint(tile)"
                                     @click="handleTileClick(tile)"
                                     @contextmenu="tileMenuTarget = tile"
                                     @mouseenter="highlightConnector(tile)"
@@ -285,7 +286,7 @@
                                         </div>
                                     </transition>
 
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center px-1 overflow-hidden">
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center px-1 overflow-hidden" :class="hasRequirement(tile) ? 'pb-4' : ''">
                                         <img
                                             v-if="tile.task?.icon_url && !isJumpTile(tile)"
                                             :src="tile.task.icon_url"
@@ -312,25 +313,19 @@
                                         </p>
                                         <p v-else-if="!isTileEmpty(tile)" class="w-full text-xs text-center leading-tight line-clamp-2 text-muted shrink-0">
                                             {{ tileTitle(tile) }}
-                                            <!-- "×25". What the tile wants is
-                                                 part of what the tile says —
-                                                 a bar you only meet in the
-                                                 claim dialog is one you find
-                                                 out about after fetching the
-                                                 wrong thing. -->
-                                            <span v-if="tile.min_quantity > 1" class="tabular-nums font-semibold">
-                                                {{ $t('common.min_quantity_badge', { n: tile.min_quantity }) }}
-                                            </span>
-                                            <!-- "2 / 5". A tile that needs
-                                                 doing five times has to say
-                                                 how far along it is, or it
-                                                 sits silent until the last
-                                                 one lands. -->
-                                            <span v-if="tile.required_count > 1" class="tabular-nums font-semibold">
-                                                {{ $t('common.progress_badge', { done: progressOn(tile), total: tile.required_count }) }}
-                                            </span>
                                         </p>
                                     </div>
+
+                                    <!-- What the tile asks for, in the same
+                                         strip the bingo squares use. Both
+                                         numbers used to run on after the
+                                         title, which is the line with the
+                                         least room on the tile. -->
+                                    <requirement-rail
+                                        :required-count="tile.required_count"
+                                        :min-quantity="tile.min_quantity"
+                                        :progress="progressOn(tile)"
+                                    />
 
                                     <span class="absolute top-1 left-1 text-xs font-bold text-muted leading-none">{{ tile.position + 1 }}</span>
 
@@ -345,7 +340,7 @@
                                         <u-icon name="i-lucide-check-circle-2" class="size-5 text-success" />
                                     </span>
 
-                                    <div v-if="playersOnTile(tile.position).length" class="absolute bottom-0.5 right-0.5 flex flex-wrap-reverse justify-end gap-0.5 max-w-[calc(100%-4px)]">
+                                    <div v-if="playersOnTile(tile.position).length" class="absolute right-0.5 flex flex-wrap-reverse justify-end gap-0.5 max-w-[calc(100%-4px)]" :class="hasRequirement(tile) ? 'bottom-4' : 'bottom-0.5'">
                                         <!-- A marker has to survive the tile it sits
                                              on: its own ground and a ring that
                                              does not borrow the tile's colour. -->
@@ -1037,6 +1032,7 @@ import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import HostInviteCard from '@/Components/HostInviteCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
+import RequirementRail from '@/Components/RequirementRail.vue';
 import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
@@ -2170,6 +2166,28 @@ function isJumpTile(tile) {
 
 function tileTitle(tile) {
     return tile.title_override ?? tile.task?.title ?? null;
+}
+
+// Whether the bottom rail is there, so the tile can keep its content and its
+// player markers clear of it — see RequirementRail.
+function hasRequirement(tile) {
+    return tile.required_count > 1 || tile.min_quantity > 1;
+}
+
+// What hovering or focusing the tile says. The rail prints two numbers and no
+// units; this is where they are spelled out, in the same words the claim
+// dialog uses.
+function tileHint(tile) {
+    const name = tileTitle(tile) ?? trans('board.tile', { n: tile.position + 1 });
+
+    const notices = [
+        tile.required_count > 1
+            ? trans('common.progress_notice', { done: progressOn(tile), total: tile.required_count })
+            : null,
+        tile.min_quantity > 1 ? trans('common.min_quantity_notice', { n: tile.min_quantity }) : null,
+    ].filter(Boolean);
+
+    return [name, ...notices].join(' — ');
 }
 
 function isTileCompleted(tile) {

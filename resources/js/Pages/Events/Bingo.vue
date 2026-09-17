@@ -227,10 +227,11 @@
                                 v-for="square in squares"
                                 :key="square.id"
                                 type="button"
-                                class="relative aspect-square overflow-hidden min-w-0 rounded-lg ring p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-150"
-                                :class="squareClass(square)"
+                                class="@container relative aspect-square overflow-hidden min-w-0 rounded-lg ring p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-150"
+                                :class="[squareClass(square), hasRequirement(square) ? 'pb-3.5 sm:pb-5' : '']"
                                 :disabled="(!canPlay && !editing) || (square.isWildcard && !editing)"
                                 :title="squareTitle(square)"
+                                :aria-label="squareTitle(square)"
                                 @click="onSquareClick(square)"
                                 @mouseenter="hoveredPosition = square.position"
                                 @mouseleave="hoveredPosition = null"
@@ -245,30 +246,18 @@
                                     class="absolute top-1 right-1 text-[10px] font-semibold text-muted tabular-nums"
                                 >{{ square.points }}</span>
 
-                                <!-- "×25". Opposite corner from the points,
-                                     because they answer different questions
-                                     and a host setting both should not have
-                                     to read which number is which. What the
-                                     square wants is part of what the square
-                                     says — a bar that only appears in the
-                                     dialog is a rule you find out about
-                                     after you have gone and got the wrong
-                                     thing. -->
-                                <span
-                                    v-if="square.minQuantity > 1"
-                                    class="absolute top-1 left-1 text-[10px] font-semibold text-muted tabular-nums"
-                                >{{ $t('common.min_quantity_badge', { n: square.minQuantity }) }}</span>
-
-                                <!-- "2 / 5". A square that needs doing five
-                                     times and says nothing until the fifth
-                                     is the failure this mode had to avoid —
-                                     the count belongs where the square is,
-                                     not only in the dialog behind it. -->
-                                <span
-                                    v-if="square.requiredCount > 1"
-                                    class="absolute bottom-1 left-1 text-[10px] font-semibold text-muted tabular-nums"
-                                >{{ $t('common.progress_badge', { done: progress[square.position] ?? 0, total: square.requiredCount }) }}</span>
-
+                                <!-- What the square asks for, along its
+                                     bottom edge. Both requirements were loose
+                                     corner badges, and there are two of them
+                                     now: on a 9x9 card they shared 33px with
+                                     the points, the icon and a face. One
+                                     strip, same place on both board types —
+                                     see RequirementRail. -->
+                                <requirement-rail
+                                    :required-count="square.requiredCount"
+                                    :min-quantity="square.minQuantity"
+                                    :progress="progress[square.position] ?? 0"
+                                />
                                 <!-- The icon grows when there is no label to
                                      share the square with — an unnamed square
                                      is mostly empty space, and a 24px glyph
@@ -307,8 +296,10 @@
                                      would otherwise be blank. -->
                                 <span
                                     v-if="square.label"
-                                    class="text-[11px] leading-tight line-clamp-2"
-                                    :class="square.iconUrl ? 'hidden sm:line-clamp-2' : ''"
+                                    class="text-[11px] leading-tight"
+                                    :class="square.iconUrl
+                                        ? 'hidden sm:line-clamp-2'
+                                        : (hasRequirement(square) ? 'line-clamp-1 sm:line-clamp-2' : 'line-clamp-2')"
                                 >{{ square.label }}</span>
                                 <span
                                     v-else-if="!square.iconUrl && !square.isWildcard"
@@ -428,6 +419,21 @@
                                     <span>{{ liveCard.requiresApproval ? $t('bingo.info_reviewed') : $t('bingo.info_instant') }}</span>
                                 </div>
 
+                                <!-- The two numbers a square can carry, named.
+                                     On a 9x9 card the rail has room for the
+                                     figures and nothing else, and "x25" next
+                                     to "2 / 5" is two different questions in
+                                     the same handwriting. Only shown when the
+                                     card actually uses them. -->
+                                <div v-if="usesCounts" class="flex items-start gap-2">
+                                    <u-icon name="i-lucide-repeat-2" class="size-4 text-muted shrink-0 mt-0.5" />
+                                    <span>{{ $t('bingo.legend_required_count') }}</span>
+                                </div>
+                                <div v-if="usesMinQuantity" class="flex items-start gap-2">
+                                    <u-icon name="i-lucide-layers" class="size-4 text-muted shrink-0 mt-0.5" />
+                                    <span>{{ $t('bingo.legend_min_quantity') }}</span>
+                                </div>
+
                                 <!-- The sentence above tells a host that
                                      claims wait for them; the button is
                                      where they act on it. Having the fact
@@ -520,6 +526,7 @@ import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import HostInviteCard from '@/Components/HostInviteCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
+import RequirementRail from '@/Components/RequirementRail.vue';
 
 const BingoSquareModal = defineAsyncComponent(() => import('@/Components/BingoSquareModal.vue'));
 const BingoClaimModal = defineAsyncComponent(() => import('@/Components/BingoClaimModal.vue'));
@@ -894,6 +901,17 @@ function squareClass(square) {
     if (state === 'REJECTED') return 'ring-error/40 bg-error/5';
 
     return 'ring-default bg-default hover:ring-primary';
+}
+
+// Whether the card uses either counting mode at all. The legend is only
+// worth its two lines on a card that has squares it explains.
+const usesCounts = computed(() => squares.value.some((square) => square.requiredCount > 1));
+const usesMinQuantity = computed(() => squares.value.some((square) => square.minQuantity > 1));
+
+// Whether the bottom rail is there, so the square can keep its content
+// clear of it — see RequirementRail.
+function hasRequirement(square) {
+    return square.requiredCount > 1 || square.minQuantity > 1;
 }
 
 function squareTitle(square) {

@@ -633,6 +633,8 @@
     "bingo.host_said": "The host said",
     "bingo.info_instant": "Claims count immediately",
     "bingo.info_reviewed": "Claims are checked by a host",
+    "bingo.legend_min_quantity": "×N asks for one drop of at least that many — smaller ones do not add up.",
+    "bingo.legend_required_count": "A filling bar asks for that many separate times — the same kill only once.",
     "bingo.line_bonus": "Line bonus",
     "bingo.line_bonus_desc": "Extra points for each completed line, on top of the squares themselves. Set 0 for none.",
     "bingo.line_columns": "Columns",
