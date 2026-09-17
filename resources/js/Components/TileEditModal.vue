@@ -23,6 +23,17 @@
                     <u-form-field :label="$t('tile_editor.title_override')" :description="$t('tile_editor.title_override_desc')">
                         <u-input v-model="form.title_override" class="w-full" :placeholder="selectedTask?.title ?? ''" />
                     </u-form-field>
+
+                    <!-- "Only counts from N." Same field the bingo square
+                         editor carries, for the same dispute: a drop that
+                         comes in stacks needs a way to say which stack. -->
+                    <u-form-field
+                        :label="$t('tile_editor.min_quantity')"
+                        :description="$t('tile_editor.min_quantity_desc')"
+                        :error="form.errors.min_quantity"
+                    >
+                        <u-input v-model.number="form.min_quantity" type="number" min="1" class="w-full" />
+                    </u-form-field>
                 </template>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -119,7 +130,7 @@ const targetTileNumber = computed({
 });
 
 function blankForm() {
-    return { title_override: '', type: 'NORMAL', target_position: null, task_id: null };
+    return { title_override: '', min_quantity: 1, type: 'NORMAL', target_position: null, task_id: null };
 }
 
 const form = useForm(blankForm());
@@ -133,6 +144,7 @@ watch(
 
         form.defaults(t ? {
             title_override: t.title_override ?? '',
+            min_quantity: t.min_quantity ?? 1,
             type: t.type,
             target_position: t.target_position,
             task_id: t.task?.id ?? null,
@@ -153,6 +165,9 @@ function submit() {
         position: props.position,
         task_id: isJump.value ? null : (selectedTask.value?.id ?? null),
         title_override: isJump.value ? '' : data.title_override,
+        // A cleared number field is '' rather than 1, and a jump asks for
+        // nothing at all — same reason its task and title go above.
+        min_quantity: isJump.value ? 1 : (Number(data.min_quantity) || 1),
     })).post(`/events/${props.eventId}/tiles`, { onSuccess: () => (isOpen.value = false) });
 }
 

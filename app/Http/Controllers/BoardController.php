@@ -630,6 +630,11 @@ class BoardController extends Controller
                     'label' => $square->label(),
                     'iconUrl' => $square->task?->icon_url,
                     'points' => $square->points,
+                    // "Only counts from N." On the square itself and in the
+                    // claim dialog, so a manual claim is held to the bar the
+                    // plugin is held to rather than to a rule in a Discord
+                    // message somewhere.
+                    'minQuantity' => $square->min_quantity,
                     // For the editor: what is currently set, so opening a
                     // square shows its state rather than a blank form.
                     'titleOverride' => $square->title_override,

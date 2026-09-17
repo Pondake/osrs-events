@@ -1,5 +1,5 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="square?.label || $t('bingo.empty_square')" :dismissible="false">
+    <u-modal v-model:open="isOpen" :title="modalTitle" :dismissible="false">
         <template #body>
             <!-- What the square is asking for — the same icon/description a
                  tile carries elsewhere (see BoardShow's task card), plus a
@@ -36,6 +36,16 @@
                     class="shrink-0"
                 />
             </div>
+
+            <!-- The bar this square sets, stated in the dialog where the
+                 claim is made — including for a MANUAL claim, which is
+                 judged by the same rule the plugin is. Outside the task
+                 block above on purpose: a square can carry a threshold and
+                 a written title with no task behind it at all. -->
+            <p v-if="square?.minQuantity > 1" class="flex items-center gap-1.5 text-xs text-muted mt-3">
+                <u-icon name="i-lucide-layers" class="size-3.5 shrink-0" />
+                {{ $t('common.min_quantity_notice', { n: square.minQuantity }) }}
+            </p>
 
             <!-- Already claimed: what you submitted, what the host said, and
                  the one destructive action, behind a button rather than
@@ -221,6 +231,19 @@ const STATUS_CLASS = {
     APPROVED: 'text-success',
     REJECTED: 'text-error',
 };
+
+/**
+ * "Soaked page ×25" — the requirement is part of the square's name here,
+ * not a detail further down the dialog, because it is the thing that decides
+ * whether what you are about to claim counts at all.
+ */
+const modalTitle = computed(() => {
+    const label = props.square?.label || trans('bingo.empty_square');
+
+    return props.square?.minQuantity > 1
+        ? `${label} ${trans('common.min_quantity_badge', { n: props.square.minQuantity })}`
+        : label;
+});
 
 const statusIcon = computed(() => STATUS_ICON[props.claim?.status] ?? 'i-lucide-circle-dot');
 const statusClass = computed(() => STATUS_CLASS[props.claim?.status] ?? 'text-muted');

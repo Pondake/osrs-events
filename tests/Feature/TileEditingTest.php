@@ -62,6 +62,44 @@ class TileEditingTest extends TestCase
         $this->assertSame($task->id, $tile->task_id);
     }
 
+    /** "This tile only counts from N." 1 by default, and a jump carries none. */
+    #[Test]
+    public function an_author_can_set_what_a_tile_counts_from(): void
+    {
+        [$owner, $event] = $this->board();
+        $task = Task::create(['title' => 'Soaked page']);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 3,
+            'task_id' => $task->id,
+            'type' => 'NORMAL',
+            'min_quantity' => 25,
+        ])->assertRedirect();
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
+        $this->assertSame(25, $tile->min_quantity);
+
+        // Turned into a snake: nobody ever stands on one, so it can ask for
+        // nothing — same reason its task and title are dropped.
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 3,
+            'type' => 'SNAKE',
+            'target_position' => 1,
+            'min_quantity' => 25,
+        ])->assertRedirect();
+
+        $this->assertSame(1, $tile->fresh()->min_quantity);
+    }
+
+    #[Test]
+    public function a_tile_threshold_below_one_is_refused(): void
+    {
+        [$owner, $event] = $this->board();
+
+        $this->actingAs($owner)
+            ->post("/events/{$event->id}/tiles", ['position' => 3, 'type' => 'NORMAL', 'min_quantity' => 0])
+            ->assertSessionHasErrors('min_quantity');
+    }
     /** Editing the same position twice updates rather than duplicating. */
     #[Test]
     public function saving_the_same_position_twice_keeps_one_tile(): void

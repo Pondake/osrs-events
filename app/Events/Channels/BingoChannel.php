@@ -54,7 +54,7 @@ class BingoChannel implements EventChannel
         // mid-event reaches everyone looking at the card.
         $squares = $card->squares()
             ->orderBy('position')
-            ->get(['position', 'task_id', 'title_override', 'points', 'is_wildcard']);
+            ->get(['position', 'task_id', 'title_override', 'points', 'min_quantity', 'is_wildcard']);
 
         // The card's own rules are part of what everybody is looking at, and
         // they were missing. The payload carries winLines so that "a host
@@ -85,7 +85,7 @@ class BingoChannel implements EventChannel
         return md5(
             $this->claimsVersion($card)
             .'#'
-            .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->is_wildcard}")->implode('|')
+            .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->min_quantity}:{$s->is_wildcard}")->implode('|')
             .'#'
             .$rules
             .'#'
@@ -179,6 +179,7 @@ class BingoChannel implements EventChannel
                 'label' => $square->label(),
                 'iconUrl' => $square->task?->icon_url,
                 'points' => $square->points,
+                'minQuantity' => $square->min_quantity,
                 'titleOverride' => $square->title_override,
                 'isWildcard' => $square->is_wildcard,
                 'task' => $square->task,

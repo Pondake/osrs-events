@@ -1,6 +1,13 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="tileTitle" :dismissible="false">
+    <u-modal v-model:open="isOpen" :title="modalTitle" :dismissible="false">
         <template #body>
+            <!-- The bar this tile sets, stated where the claim is made — a
+                 MANUAL claim is judged by the same one the plugin is. -->
+            <p v-if="minQuantity > 1" class="flex items-center gap-1.5 text-xs text-muted mb-3">
+                <u-icon name="i-lucide-layers" class="size-3.5 shrink-0" />
+                {{ $t('common.min_quantity_notice', { n: minQuantity }) }}
+            </p>
+
             <!-- Already claimed: what you submitted, what the host said, and
                  the one destructive action — same shape as BingoClaimModal,
                  the same trust problem solved a second time on this board
@@ -164,6 +171,14 @@ const STATUS_CLASS = {
     APPROVED: 'text-success',
     REJECTED: 'text-error',
 };
+
+/** 1 on a tile row that predates the column, which is "any amount counts". */
+const minQuantity = computed(() => props.tile?.min_quantity ?? 1);
+
+/** "Soaked page ×25" — see BingoClaimModal for why it belongs in the title. */
+const modalTitle = computed(() => (minQuantity.value > 1
+    ? `${props.tileTitle} ${trans('common.min_quantity_badge', { n: minQuantity.value })}`
+    : props.tileTitle));
 
 const statusIcon = computed(() => STATUS_ICON[props.claim?.status] ?? 'i-lucide-circle-dot');
 const statusClass = computed(() => STATUS_CLASS[props.claim?.status] ?? 'text-muted');

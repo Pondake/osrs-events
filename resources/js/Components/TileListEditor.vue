@@ -111,6 +111,18 @@
                                 <u-form-field :label="$t('tile_editor.title_override')">
                                     <u-input v-model="draft.titleOverride" class="w-full" :placeholder="draft.task?.title ?? ''" />
                                 </u-form-field>
+
+                                <!-- "Only counts from N." Carried here as
+                                     well as in the two modals: this list is
+                                     the other way to set what a square or a
+                                     tile asks for, and a field it does not
+                                     send is a field it silently resets. -->
+                                <u-form-field
+                                    :label="$t('tile_editor.min_quantity')"
+                                    :description="$t('tile_editor.min_quantity_desc')"
+                                >
+                                    <u-input v-model.number="draft.minQuantity" type="number" min="1" class="w-full sm:max-w-32" />
+                                </u-form-field>
                             </template>
 
                             <template v-if="isBingo">
@@ -237,6 +249,9 @@ const rows = computed(() => Array.from({ length: props.total }, (_, position) =>
         task: item?.task ?? null,
         titleOverride: item?.titleOverride ?? item?.title_override ?? '',
         points: item?.points ?? 1,
+        // camelCase from the bingo payload, snake_case from a raw Tile row —
+        // this list is fed by both.
+        minQuantity: item?.minQuantity ?? item?.min_quantity ?? 1,
         isWildcard: item?.isWildcard ?? false,
         type: item?.type ?? 'NORMAL',
         targetPosition: item?.target_position ?? null,
@@ -285,7 +300,7 @@ const saving = ref(false);
 
 // The row being edited, held apart from the list so a half-typed change is
 // not written into the grid behind the modal.
-const draft = reactive({ task: null, titleOverride: '', points: 1, isWildcard: false, type: 'NORMAL', targetPosition: null });
+const draft = reactive({ task: null, titleOverride: '', points: 1, minQuantity: 1, isWildcard: false, type: 'NORMAL', targetPosition: null });
 
 function toggle(position) {
     if (expanded.value === position) {
@@ -299,6 +314,7 @@ function toggle(position) {
     draft.task = row.task;
     draft.titleOverride = row.titleOverride ?? '';
     draft.points = row.points ?? 1;
+    draft.minQuantity = row.minQuantity ?? 1;
     draft.isWildcard = row.isWildcard ?? false;
     draft.type = row.type ?? 'NORMAL';
     draft.targetPosition = row.targetPosition;
@@ -340,6 +356,7 @@ function save(row) {
             task_id: draft.isWildcard ? null : (draft.task?.id ?? null),
             title_override: draft.titleOverride || null,
             points: draft.points,
+            min_quantity: draft.isWildcard ? 1 : (Number(draft.minQuantity) || 1),
             is_wildcard: draft.isWildcard,
         }, done);
 
@@ -350,6 +367,7 @@ function save(row) {
         position: row.position,
         task_id: draftIsJump.value ? null : (draft.task?.id ?? null),
         title_override: draftIsJump.value ? null : (draft.titleOverride || null),
+        min_quantity: draftIsJump.value ? 1 : (Number(draft.minQuantity) || 1),
         type: draft.type,
         target_position: draftIsJump.value ? draft.targetPosition : null,
     }, done);

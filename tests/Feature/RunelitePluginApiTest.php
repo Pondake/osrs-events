@@ -232,6 +232,108 @@ class RunelitePluginApiTest extends TestCase
         $this->assertSame(0, BingoCompletion::count());
     }
 
+
+    // ------------------------------------------------------ min_quantity
+
+    #[Test]
+    public function the_threshold_is_sent_with_every_target(): void
+    {
+        $card = $this->card([0 => $this->task('Soaked page')]);
+        $card->squares()->where('position', 0)->update(['min_quantity' => 25]);
+
+        $this->api()->getJson('/api/plugin/v1/events')
+            ->assertOk()
+            ->assertJsonPath('events.0.targets.0.min_quantity', 25);
+    }
+
+    /**
+     * Below, at and above the bar.
+     *
+     * The dispute this exists for: Tempoross drops a Soaked page in stacks of
+     * varying size and a clan had agreed only the 25 stack (1/400) counted.
+     * A smaller report is not an error — the plugin reports every drop.
+     */
+    #[DataProvider('quantitiesAgainstTwentyFive')]
+    #[Test]
+    public function a_square_only_counts_from_its_threshold(int $quantity, bool $claims): void
+    {
+        $card = $this->card([0 => $this->task('Soaked page')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['min_quantity' => 25]);
+
+        $response = $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Soaked page', ['quantity' => $quantity]))
+            ->assertCreated();
+
+        $response->assertJsonCount($claims ? 1 : 0, 'claims');
+        $this->assertSame($claims ? 1 : 0, BingoCompletion::count());
+    }
+
+    public static function quantitiesAgainstTwentyFive(): array
+    {
+        return [
+            'below' => [24, false],
+            'at' => [25, true],
+            'above' => [26, true],
+        ];
+    }
+
+    #[Test]
+    public function a_tile_only_counts_from_its_threshold(): void
+    {
+        $event = $this->event('SNAKES_LADDERS');
+        $board = $event->board()->create(['size' => 'SIZE_5X5', 'requires_approval' => false]);
+        Tile::create([
+            'board_id' => $board->id,
+            'position' => 0,
+            'type' => 'NORMAL',
+            'task_id' => $this->task('Soaked page')->id,
+            'min_quantity' => 25,
+        ]);
+        PlayerBoard::create(['board_id' => $board->id, 'user_id' => $this->player->id, 'current_position' => 0]);
+
+        $this->api()->getJson('/api/plugin/v1/events')->assertJsonPath('events.0.targets.0.min_quantity', 25);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Soaked page', ['quantity' => 24]))
+            ->assertCreated()
+            ->assertJsonPath('claims', []);
+        $this->assertSame(0, CompletedTile::count());
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Soaked page', ['quantity' => 25]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.kind', 'tile');
+        $this->assertSame(1, CompletedTile::count());
+    }
+
+    /**
+     * The deliberate choice: a single drop of 25 is not twenty-five drops of
+     * one. Nothing accumulates — a clan that agreed the 25 stack counts did
+     * not agree that twenty-five single pages do.
+     */
+    #[Test]
+    public function reports_under_the_threshold_never_add_up(): void
+    {
+        $card = $this->card([0 => $this->task('Soaked page')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['min_quantity' => 3]);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Soaked page', ['quantity' => 1]))
+                ->assertCreated()
+                ->assertJsonPath('claims', []);
+        }
+
+        $this->assertSame(0, BingoCompletion::count());
+        $this->assertSame(5, PluginCompletion::count());
+    }
+
+    #[Test]
+    public function a_square_left_at_one_takes_any_amount(): void
+    {
+        $this->card([0 => $this->task('Abyssal whip')], ['requires_approval' => false]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip', ['quantity' => 1]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->assertSame(1, BingoCompletion::count());
+    }
     // ---------------------------------------------------------- completing
 
     #[Test]

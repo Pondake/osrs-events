@@ -183,6 +183,15 @@ class RunelitePluginService
 
         foreach ($this->openTargets($user) as ['event' => $event, 'targets' => $targets]) {
             foreach ($targets->where('match', $match) as $target) {
+                // One report of at least N, not N reports adding up: a clan
+                // that agreed only the 25-stack Soaked page counts did not
+                // agree that twenty-five single pages count. A report under
+                // the bar claims nothing and is not an error — the plugin
+                // reports every drop, most of which are not the one.
+                if ($pluginCompletion->quantity < $target['min_quantity']) {
+                    continue;
+                }
+
                 // A STOP-rule finish from the previous claim closes the event.
                 if ($event->refresh()->isEnded()) {
                     break;
@@ -215,6 +224,10 @@ class RunelitePluginService
             'label' => $target['label'],
             'name' => $target['name'],
             'match' => $target['match'],
+            // Sent to the plugin as well as used here, so it can say what a
+            // target is still waiting for instead of reporting a drop that
+            // silently claims nothing.
+            'min_quantity' => $target['min_quantity'],
         ];
     }
 
@@ -279,6 +292,9 @@ class RunelitePluginService
             'label' => $label,
             'name' => $model->task->title,
             'match' => RuneliteName::normalize($model->task->title),
+            // The bar this target sets. 1 means any amount counts, which is
+            // every target configured before the column existed.
+            'min_quantity' => $model->min_quantity,
         ];
     }
 

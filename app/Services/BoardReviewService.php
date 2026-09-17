@@ -61,6 +61,9 @@ class BoardReviewService
                 'id' => $c->id,
                 'position' => (int) $c->tile_position,
                 'label' => $c->tile_title_override ?? $c->tile?->task?->title,
+                // The bar the tile sets, so a manual claim is judged by the
+                // same one the plugin is held to.
+                'minQuantity' => $c->tile?->min_quantity ?? 1,
                 'iconUrl' => $c->tile?->task?->icon_url,
                 'competitor' => $c->playerBoard?->team?->name
                     ?? ($c->playerBoard?->user?->nickname ?: $c->playerBoard?->user?->discord_username)

@@ -46,7 +46,7 @@ class SnakesLaddersChannel implements EventChannel
         // 45 seconds old by the end of a connection.
         $tiles = $event->board()->first()?->tiles()
             ->orderBy('position')
-            ->get(['position', 'task_id', 'title_override', 'type', 'target_position'])
+            ->get(['position', 'task_id', 'title_override', 'min_quantity', 'type', 'target_position'])
             ?? collect();
 
         // Claim state, same reason bingo's fingerprint carries
@@ -66,7 +66,7 @@ class SnakesLaddersChannel implements EventChannel
         return md5(
             $rows->map(fn ($r) => "{$r->id}:{$r->current_position}:{$r->move_seq}")->implode('|')
             .'#'
-            .$tiles->map(fn ($t) => "{$t->position}:{$t->task_id}:{$t->title_override}:{$t->type}:{$t->target_position}")->implode('|')
+            .$tiles->map(fn ($t) => "{$t->position}:{$t->task_id}:{$t->title_override}:{$t->min_quantity}:{$t->type}:{$t->target_position}")->implode('|')
             .'#'
             .$claimsVersion
             .'#'

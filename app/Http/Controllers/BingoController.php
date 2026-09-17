@@ -216,6 +216,9 @@ class BingoController extends Controller
             // events are actually run. Capped so one square cannot be worth
             // more than a whole card.
             'points' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            // "This square only counts from N." Bounded by what a stack can
+            // hold, so the bar cannot be set where no drop could clear it.
+            'min_quantity' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             // A free square, counted as done for every competitor — see the
             // add_wildcard_to_bingo_squares migration.
             'is_wildcard' => ['nullable', 'boolean'],
@@ -229,6 +232,7 @@ class BingoController extends Controller
             'task_id' => $data['task_id'] ?? null,
             'title_override' => ($data['title_override'] ?? null) ?: null,
             'points' => $data['points'] ?? 1,
+            'min_quantity' => $data['min_quantity'] ?? 1,
             'is_wildcard' => $data['is_wildcard'] ?? false,
         ]);
 

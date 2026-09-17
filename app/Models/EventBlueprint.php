@@ -178,6 +178,7 @@ class EventBlueprint extends Model
                     'target_position' => $tile->target_position,
                     'task_id' => $tile->task_id,
                     'title' => $tile->title_override ?: $tile->task?->title,
+                    'min_quantity' => $tile->min_quantity,
                 ])
                 ->all();
         }
@@ -197,6 +198,7 @@ class EventBlueprint extends Model
                     'task_id' => $square->task_id,
                     'title' => $square->title_override ?: $square->task?->title,
                     'points' => $square->points,
+                    'min_quantity' => $square->min_quantity,
                     'is_wildcard' => $square->is_wildcard,
                 ])
                 ->values()
@@ -252,6 +254,9 @@ class EventBlueprint extends Model
                         'title_override' => $taskFor($entry['task_id'] ?? null) === null
                             ? ($entry['title'] ?? null)
                             : null,
+                        // Absent on a blueprint saved before the column
+                        // existed, which is the same as "any amount counts".
+                        'min_quantity' => $entry['min_quantity'] ?? 1,
                     ],
                 );
             }
@@ -275,6 +280,9 @@ class EventBlueprint extends Model
                             ? ($entry['title'] ?? null)
                             : null,
                         'points' => $entry['points'] ?? 1,
+                        // Absent on a blueprint saved before the column
+                        // existed, which is the same as "any amount counts".
+                        'min_quantity' => $entry['min_quantity'] ?? 1,
                         'is_wildcard' => $entry['is_wildcard'] ?? false,
                     ],
                 );

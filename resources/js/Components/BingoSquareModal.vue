@@ -28,6 +28,19 @@
                 <u-form-field :label="$t('bingo.points_field')" :description="$t('bingo.points_desc')">
                     <u-input v-model.number="form.points" type="number" min="0" max="1000" class="w-full" />
                 </u-form-field>
+
+                <!-- "Only counts from N." A clan that had agreed only the
+                     25-stack Soaked page counted could not say so anywhere,
+                     so every single page claimed the square. Hidden on a
+                     wildcard, which nobody claims at all. -->
+                <u-form-field
+                    v-if="!form.is_wildcard"
+                    :label="$t('tile_editor.min_quantity')"
+                    :description="$t('tile_editor.min_quantity_desc')"
+                    :error="form.errors.min_quantity"
+                >
+                    <u-input v-model.number="form.min_quantity" type="number" min="1" class="w-full" />
+                </u-form-field>
             </div>
         </template>
 
@@ -65,7 +78,7 @@ const emit = defineEmits(['update:open']);
 
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
-const form = useForm({ title_override: '', points: 1, is_wildcard: false });
+const form = useForm({ title_override: '', points: 1, min_quantity: 1, is_wildcard: false });
 const selectedTask = ref(null);
 
 watch(
@@ -73,6 +86,7 @@ watch(
     (square) => {
         form.title_override = square?.titleOverride ?? '';
         form.points = square?.points ?? 1;
+        form.min_quantity = square?.minQuantity ?? 1;
         form.is_wildcard = square?.isWildcard ?? false;
         selectedTask.value = square?.task ?? null;
     },
@@ -82,7 +96,13 @@ watch(
 function submit() {
     // A wildcard drops its task: it is not asking for anything, and leaving
     // one attached would render a claimable-looking square that isn't.
-    form.transform((data) => ({ ...data, task_id: data.is_wildcard ? null : (selectedTask.value?.id ?? null) }))
+    // A cleared number field is '' rather than 1, and a wildcard asks for
+    // nothing so it can hold no threshold either — same reason its task goes.
+    form.transform((data) => ({
+        ...data,
+        task_id: data.is_wildcard ? null : (selectedTask.value?.id ?? null),
+        min_quantity: data.is_wildcard ? 1 : (Number(data.min_quantity) || 1),
+    }))
         .patch(`/events/${props.eventId}/bingo/squares/${props.square.id}`, {
             preserveScroll: true,
             onSuccess: () => (isOpen.value = false),

@@ -11,7 +11,9 @@ class Tile extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['board_id', 'position', 'task_id', 'title_override', 'type', 'target_position'];
+    protected $fillable = ['board_id', 'position', 'task_id', 'title_override', 'min_quantity', 'type', 'target_position'];
+
+    protected $casts = ['position' => 'integer', 'min_quantity' => 'integer', 'target_position' => 'integer'];
 
     public function board(): BelongsTo
     {

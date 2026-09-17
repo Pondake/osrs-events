@@ -42,6 +42,9 @@ class TileController extends Controller
             'position' => ['required', 'integer', 'min:0', "max:{$lastPosition}"],
             'task_id' => ['nullable', 'uuid', 'exists:tasks,id'],
             'title_override' => ['nullable', 'string', 'max:255'],
+            // "This tile only counts from N." Bounded by what a stack can
+            // hold, so the bar cannot be set where no drop could clear it.
+            'min_quantity' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'type' => ['required', 'in:NORMAL,SNAKE,LADDER'],
             // Same bound: a snake pointing off the end of the board sends a
             // player somewhere that does not exist.
@@ -65,6 +68,9 @@ class TileController extends Controller
                 'id' => (string) str()->uuid(),
                 'task_id' => $isJump ? null : ($data['task_id'] ?? null),
                 'title_override' => $isJump ? null : ($data['title_override'] ?? null),
+                // A jump asks for nothing, so it can hold no threshold either
+                // — same reason its task and title are dropped above.
+                'min_quantity' => $isJump ? 1 : ($data['min_quantity'] ?? 1),
                 'type' => $data['type'],
                 'target_position' => $data['target_position'] ?? null,
             ],

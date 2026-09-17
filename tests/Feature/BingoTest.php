@@ -254,6 +254,31 @@ class BingoTest extends TestCase
     }
 
     /**
+     * "This square only counts from N." Defaults to 1 — any amount — and a
+     * PATCH that leaves the field out resets it there, the same way points
+     * and the wildcard flag behave (BingoController::updateSquare).
+     */
+    #[Test]
+    public function an_author_can_set_what_a_square_counts_from(): void
+    {
+        $event = $this->event();
+        $square = $this->card($event, 3)->squares()->first();
+        $author = $this->author($event);
+
+        $this->assertSame(1, $square->min_quantity);
+
+        $this->actingAs($author)
+            ->patch("/events/{$event->id}/bingo/squares/{$square->id}", ['min_quantity' => 25])
+            ->assertRedirect();
+        $this->assertSame(25, $square->fresh()->min_quantity);
+
+        $this->actingAs($author)
+            ->patch("/events/{$event->id}/bingo/squares/{$square->id}", ['min_quantity' => 0])
+            ->assertSessionHasErrors('min_quantity');
+        $this->assertSame(25, $square->fresh()->min_quantity);
+    }
+
+    /**
      * Shrinking a card would delete squares other people have completions
      * on. A size dropdown must not be able to erase progress silently.
      */
