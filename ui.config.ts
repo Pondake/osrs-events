@@ -47,6 +47,33 @@ export const uiConfig = {
             link: 'max-sm:min-h-11',
         },
     },
+    // A modal is portalled to <body> with z-index:auto, and the header is a
+    // sticky z-50 stacking context — so on a short viewport the header
+    // painted over the top of the dialog and cut its title in half. The same
+    // bug AppHeader's hover popover already carries a z-[60] for; fixed here
+    // once instead of per modal, because every dialog in the app is under
+    // that header. The overlay is lifted with it, or it would dim the page
+    // and leave the header bright above its own dialog.
+    modal: {
+        slots: {
+            overlay: 'z-[60]',
+            content: 'z-[60]',
+        },
+    },
+    // Same stacking context, same fix: a slideover and a drawer are the same
+    // kind of portalled panel.
+    slideover: {
+        slots: {
+            overlay: 'z-[60]',
+            content: 'z-[60]',
+        },
+    },
+    drawer: {
+        slots: {
+            overlay: 'z-[60]',
+            content: 'z-[60]',
+        },
+    },
     main: {
         base: 'min-h-[calc(100vh-var(--ui-header-height)-var(--ui-footer-height,0px))]',
     },
