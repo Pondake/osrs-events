@@ -16,10 +16,22 @@
                     <div class="flex items-center gap-2 min-w-0">
                         <img v-if="claim.iconUrl" :src="claim.iconUrl" alt="" class="size-6 object-contain shrink-0" />
                         <div class="min-w-0">
-                            <p class="font-medium truncate">{{ claim.label || $t('tile_editor.no_task') }}</p>
+                            <!-- "Soaked page ×25" — see BingoReviewModal:
+                                 the bar applies to a screenshot exactly as
+                                 it does to a plugin report. -->
+                            <p class="font-medium truncate">
+                                {{ claim.label || $t('tile_editor.no_task') }}
+                                <span v-if="claim.minQuantity > 1" class="text-muted tabular-nums">
+                                    {{ $t('common.min_quantity_badge', { n: claim.minQuantity }) }}
+                                </span>
+                            </p>
                             <p class="text-xs text-muted flex items-center gap-2">
                                 {{ $t('board.tile', { n: claim.position + 1 }) }}
                                 <claim-source-badge :via="claim.completedVia" />
+                            </p>
+                            <!-- One line, not an alert — see BingoReviewModal. -->
+                            <p v-if="claim.minQuantity > 1" class="text-xs text-muted truncate">
+                                {{ $t('common.min_quantity_notice', { n: claim.minQuantity }) }}
                             </p>
                         </div>
                     </div>
@@ -47,7 +59,22 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 rounded-lg bg-elevated px-3 py-2">
+                <!-- A claim already ruled on shows the verdict first — see
+                     BingoReviewModal for why this isn't a fresh
+                     Approve/Reject pair. -->
+                <div v-if="isSettled && !changingVerdict" class="rounded-lg ring ring-default px-3 py-2 space-y-1">
+                    <div class="flex items-center gap-2">
+                        <u-icon :name="verdictIcon" class="size-4 shrink-0" :class="verdictClass" />
+                        <span class="font-medium" :class="verdictClass">{{ $t(`board.status_${claim.status.toLowerCase()}`) }}</span>
+                        <span v-if="claim.reviewedByName" class="text-xs text-muted">— {{ claim.reviewedByName }}</span>
+                        <span v-if="claim.reviewedAt" class="text-xs text-muted ms-auto">{{ reviewedAt }}</span>
+                    </div>
+                    <p v-if="claim.reviewNote" class="text-sm text-muted">{{ claim.reviewNote }}</p>
+                </div>
+
+                <!-- Not shown for a RuneLite claim — that identity now sits
+                     inside the plugin card below. -->
+                <div v-if="claim.completedVia !== 'RUNELITE'" class="flex items-center gap-3 rounded-lg bg-elevated px-3 py-2">
                     <u-avatar :src="claim.submittedByAvatar ?? claim.competitorAvatar ?? undefined" :alt="claim.submittedBy ?? claim.competitor ?? ''" size="sm" />
                     <div class="min-w-0 text-sm">
                         <p class="truncate">
@@ -123,15 +150,14 @@
                     </a>
                 </div>
 
-                <div v-else-if="claim.completedVia === 'RUNELITE'" class="space-y-2">
-                    <u-alert
-                        color="neutral"
-                        variant="subtle"
-                        icon="i-lucide-puzzle"
-                        :description="$t('board.runelite_no_proof_desc')"
-                    />
-                    <runelite-context-card :context="claim.runeliteContext" />
-                </div>
+                <runelite-context-card
+                    v-else-if="claim.completedVia === 'RUNELITE'"
+                    :context="claim.runeliteContext"
+                    :submitted-by="claim.submittedBy"
+                    :submitted-by-avatar="claim.submittedByAvatar"
+                    :submitted-by-osrs="claim.submittedByOsrs"
+                    no-proof-notice
+                />
 
                 <u-alert
                     v-else
@@ -141,7 +167,7 @@
                     :description="$t('bingo.no_proof_desc')"
                 />
 
-                <u-form-field :label="$t('bingo.review_note')" :description="$t('bingo.review_note_desc')">
+                <u-form-field v-if="showingVerdictButtons" :label="$t('bingo.review_note')" :description="$t('bingo.review_note_desc')">
                     <u-input v-model="reviewNote" class="w-full" :placeholder="$t('bingo.review_note_placeholder')" />
                 </u-form-field>
             </div>
@@ -152,20 +178,30 @@
                 <u-button color="neutral" variant="ghost" :label="$t('common.close')" @click="isOpen = false" />
 
                 <div v-if="claims.length" class="flex items-center gap-2">
+                    <template v-if="showingVerdictButtons">
+                        <u-button
+                            color="error"
+                            variant="soft"
+                            icon="i-lucide-x"
+                            :label="$t('bingo.reject')"
+                            :loading="submitting === 'REJECTED'"
+                            @click="review('REJECTED')"
+                        />
+                        <u-button
+                            color="success"
+                            icon="i-lucide-check"
+                            :label="$t('bingo.approve')"
+                            :loading="submitting === 'APPROVED'"
+                            @click="review('APPROVED')"
+                        />
+                    </template>
                     <u-button
-                        color="error"
-                        variant="soft"
-                        icon="i-lucide-x"
-                        :label="$t('bingo.reject')"
-                        :loading="submitting === 'REJECTED'"
-                        @click="review('REJECTED')"
-                    />
-                    <u-button
-                        color="success"
-                        icon="i-lucide-check"
-                        :label="$t('bingo.approve')"
-                        :loading="submitting === 'APPROVED'"
-                        @click="review('APPROVED')"
+                        v-else
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-rotate-ccw"
+                        :label="$t('bingo.change_verdict')"
+                        @click="changingVerdict = true"
                     />
                 </div>
             </div>
@@ -199,8 +235,22 @@ const index = ref(0);
 const reviewNote = ref('');
 const proofFailed = ref(false);
 const submitting = ref(null);
+// See BingoReviewModal — a settled claim opens on its verdict, and this
+// flips true only once a host deliberately asks to change it.
+const changingVerdict = ref(false);
 
 const claim = computed(() => props.claims[Math.min(index.value, props.claims.length - 1)] ?? {});
+
+// Undefined on a claim from the pending queue (pendingQueue() only ever
+// returns PENDING rows) — falls through to the plain buttons just like an
+// explicit PENDING would.
+const isSettled = computed(() => ['APPROVED', 'REJECTED'].includes(claim.value.status));
+const showingVerdictButtons = computed(() => !isSettled.value || changingVerdict.value);
+
+const VERDICT_ICON = { APPROVED: 'i-lucide-circle-check', REJECTED: 'i-lucide-circle-x' };
+const VERDICT_CLASS = { APPROVED: 'text-success', REJECTED: 'text-error' };
+const verdictIcon = computed(() => VERDICT_ICON[claim.value.status] ?? 'i-lucide-circle-dot');
+const verdictClass = computed(() => VERDICT_CLASS[claim.value.status] ?? 'text-muted');
 
 watch(() => props.claims, () => {
     if (index.value > props.claims.length - 1) index.value = Math.max(0, props.claims.length - 1);
@@ -209,6 +259,7 @@ watch(() => props.claims, () => {
 watch(index, () => {
     reviewNote.value = '';
     proofFailed.value = false;
+    changingVerdict.value = false;
 });
 
 watch(() => props.open, (open) => {
@@ -217,6 +268,7 @@ watch(() => props.open, (open) => {
     index.value = 0;
     reviewNote.value = '';
     proofFailed.value = false;
+    changingVerdict.value = false;
 });
 
 function review(status) {
@@ -241,5 +293,9 @@ function review(status) {
 
 const submittedAt = computed(() => (
     claim.value.submittedAt ? new Date(claim.value.submittedAt).toLocaleString() : null
+));
+
+const reviewedAt = computed(() => (
+    claim.value.reviewedAt ? new Date(claim.value.reviewedAt).toLocaleString() : null
 ));
 </script>

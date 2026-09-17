@@ -245,6 +245,20 @@
                                     class="absolute top-1 right-1 text-[10px] font-semibold text-muted tabular-nums"
                                 >{{ square.points }}</span>
 
+                                <!-- "×25". Opposite corner from the points,
+                                     because they answer different questions
+                                     and a host setting both should not have
+                                     to read which number is which. What the
+                                     square wants is part of what the square
+                                     says — a bar that only appears in the
+                                     dialog is a rule you find out about
+                                     after you have gone and got the wrong
+                                     thing. -->
+                                <span
+                                    v-if="square.minQuantity > 1"
+                                    class="absolute top-1 left-1 text-[10px] font-semibold text-muted tabular-nums"
+                                >{{ $t('common.min_quantity_badge', { n: square.minQuantity }) }}</span>
+
                                 <!-- The icon grows when there is no label to
                                      share the square with — an unnamed square
                                      is mostly empty space, and a 24px glyph
@@ -875,6 +889,12 @@ function squareTitle(square) {
     // the dialog where there is room for it.
     if (statusOf(square)) return trans('bingo.open_claim');
 
+    // The threshold spelled out rather than left as a bare "×25" in the
+    // corner — the badge is a reminder, this is what it means.
+    if (square.minQuantity > 1) {
+        return [square.label, trans('common.min_quantity_notice', { n: square.minQuantity })].filter(Boolean).join(' — ');
+    }
+
     return square.label ?? '';
 }
 
@@ -976,10 +996,17 @@ function onSquareClick(square) {
             position: square.position,
             label: square.label || trans('bingo.square_number', { n: square.position + 1 }),
             iconUrl: square.iconUrl,
+            minQuantity: square.minQuantity,
             completedVia: claim.completedVia,
             proofUrl: claim.proofUrl,
             note: claim.note,
             runeliteContext: claim.runeliteContext,
+            // What already happened, so the review dialog opens on the
+            // verdict instead of a fresh Approve/Reject pair.
+            status: claim.status,
+            reviewedByName: claim.reviewedByName,
+            reviewedAt: claim.reviewedAt,
+            reviewNote: claim.reviewNote,
         }];
         squareReviewModalOpen.value = true;
 

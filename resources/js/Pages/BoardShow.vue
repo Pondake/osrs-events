@@ -312,6 +312,15 @@
                                         </p>
                                         <p v-else-if="!isTileEmpty(tile)" class="w-full text-xs text-center leading-tight line-clamp-2 text-muted shrink-0">
                                             {{ tileTitle(tile) }}
+                                            <!-- "×25". What the tile wants is
+                                                 part of what the tile says —
+                                                 a bar you only meet in the
+                                                 claim dialog is one you find
+                                                 out about after fetching the
+                                                 wrong thing. -->
+                                            <span v-if="tile.min_quantity > 1" class="tabular-nums font-semibold">
+                                                {{ $t('common.min_quantity_badge', { n: tile.min_quantity }) }}
+                                            </span>
                                         </p>
                                     </div>
 
@@ -603,8 +612,19 @@
                                 <u-icon v-else name="i-lucide-scroll-text" class="size-10 text-muted shrink-0" />
 
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-semibold text-sm">{{ currentTileTitle }}</p>
+                                    <!-- The bar on the tile you are standing
+                                         on, in the panel that tells you what
+                                         to go and do. -->
+                                    <p class="font-semibold text-sm">
+                                        {{ currentTileTitle }}
+                                        <span v-if="currentTile.min_quantity > 1" class="text-muted tabular-nums">
+                                            {{ $t('common.min_quantity_badge', { n: currentTile.min_quantity }) }}
+                                        </span>
+                                    </p>
                                     <p class="text-xs text-muted mt-0.5">{{ $t('board.tile', { n: currentTile.position + 1 }) }}</p>
+                                    <p v-if="currentTile.min_quantity > 1" class="text-xs text-muted mt-1">
+                                        {{ $t('common.min_quantity_notice', { n: currentTile.min_quantity }) }}
+                                    </p>
                                     <p v-if="currentTile.task?.description" class="text-xs text-muted mt-1 leading-relaxed">
                                         {{ currentTile.task.description }}
                                     </p>
@@ -718,8 +738,16 @@
                                 <u-icon v-else name="i-lucide-scroll-text" class="size-10 text-muted shrink-0" />
 
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-semibold text-sm">{{ clickedTileTitle }}</p>
+                                    <p class="font-semibold text-sm">
+                                        {{ clickedTileTitle }}
+                                        <span v-if="clickedTile.min_quantity > 1" class="text-muted tabular-nums">
+                                            {{ $t('common.min_quantity_badge', { n: clickedTile.min_quantity }) }}
+                                        </span>
+                                    </p>
                                     <p class="text-xs text-muted mt-0.5">{{ $t('board.tile', { n: clickedTile.position + 1 }) }}</p>
+                                    <p v-if="clickedTile.min_quantity > 1" class="text-xs text-muted mt-1">
+                                        {{ $t('common.min_quantity_notice', { n: clickedTile.min_quantity }) }}
+                                    </p>
                                     <p v-if="clickedTile.task?.description" class="text-xs text-muted mt-1 leading-relaxed">
                                         {{ clickedTile.task.description }}
                                     </p>
@@ -1552,6 +1580,12 @@ function onViewClaim() {
             proofUrl: currentClaim.value.proofUrl,
             note: currentClaim.value.note,
             runeliteContext: currentClaim.value.runeliteContext,
+            // What already happened, so the review dialog opens on the
+            // verdict instead of a fresh Approve/Reject pair.
+            status: currentClaim.value.status,
+            reviewedByName: currentClaim.value.reviewedByName,
+            reviewedAt: currentClaim.value.reviewedAt,
+            reviewNote: currentClaim.value.reviewNote,
         }];
         tileReviewModalOpen.value = true;
 

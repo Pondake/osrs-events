@@ -20,10 +20,25 @@
                     <div class="flex items-center gap-2 min-w-0">
                         <img v-if="claim.iconUrl" :src="claim.iconUrl" alt="" class="size-6 object-contain shrink-0" />
                         <div class="min-w-0">
-                            <p class="font-medium truncate">{{ claim.label || $t('bingo.empty_square') }}</p>
+                            <!-- "Soaked page ×25". The bar the square sets is
+                                 part of what a host is judging against, and
+                                 it applies to a screenshot exactly as it
+                                 does to a plugin report. -->
+                            <p class="font-medium truncate">
+                                {{ claim.label || $t('bingo.empty_square') }}
+                                <span v-if="claim.minQuantity > 1" class="text-muted tabular-nums">
+                                    {{ $t('common.min_quantity_badge', { n: claim.minQuantity }) }}
+                                </span>
+                            </p>
                             <p class="text-xs text-muted flex items-center gap-2">
                                 {{ $t('bingo.square_number', { n: claim.position + 1 }) }}
                                 <claim-source-badge :via="claim.completedVia" />
+                            </p>
+                            <!-- One line under the square's own name, not an
+                                 alert: it is a fact about what is being
+                                 judged, not news about this claim. -->
+                            <p v-if="claim.minQuantity > 1" class="text-xs text-muted truncate">
+                                {{ $t('common.min_quantity_notice', { n: claim.minQuantity }) }}
                             </p>
                         </div>
                     </div>
@@ -51,11 +66,32 @@
                     </div>
                 </div>
 
+
+                <!-- A claim already ruled on shows the verdict first, not a
+                     fresh Approve/Reject pair — a host re-opening a settled
+                     square needs to see what happened before being asked to
+                     redo it. Changing the verdict is a deliberate second
+                     step (the footer's "Change verdict" button), not the
+                     default state of this dialog. -->
+                <div v-if="isSettled && !changingVerdict" class="rounded-lg ring ring-default px-3 py-2 space-y-1">
+                    <div class="flex items-center gap-2">
+                        <u-icon :name="verdictIcon" class="size-4 shrink-0" :class="verdictClass" />
+                        <span class="font-medium" :class="verdictClass">{{ $t(`bingo.status_${claim.status.toLowerCase()}`) }}</span>
+                        <span v-if="claim.reviewedByName" class="text-xs text-muted">— {{ claim.reviewedByName }}</span>
+                        <span v-if="claim.reviewedAt" class="text-xs text-muted ms-auto">{{ reviewedAt }}</span>
+                    </div>
+                    <p v-if="claim.reviewNote" class="text-sm text-muted">{{ claim.reviewNote }}</p>
+                </div>
+
                 <!-- Who is asking. Both identities side by side, because the
                      check a host performs is "does the name in this
                      screenshot belong to the person claiming it" — and that
-                     needs the OSRS name next to the Discord one. -->
-                <div class="flex items-center gap-3 rounded-lg bg-elevated px-3 py-2">
+                     needs the OSRS name next to the Discord one.
+
+                     Not shown for a RuneLite claim — that identity now sits
+                     inside the plugin card below, so a host is not reading
+                     the same name twice in two different boxes. -->
+                <div v-if="claim.completedVia !== 'RUNELITE'" class="flex items-center gap-3 rounded-lg bg-elevated px-3 py-2">
                     <u-avatar :src="claim.submittedByAvatar ?? claim.competitorAvatar ?? undefined" :alt="claim.submittedBy ?? claim.competitor ?? ''" size="sm" />
                     <div class="min-w-0 text-sm">
                         <p class="truncate">
@@ -132,15 +168,20 @@
                     </a>
                 </div>
 
-                <div v-else-if="claim.completedVia === 'RUNELITE'" class="space-y-2">
-                    <u-alert
-                        color="neutral"
-                        variant="subtle"
-                        icon="i-lucide-puzzle"
-                        :description="$t('board.runelite_no_proof_desc')"
-                    />
-                    <runelite-context-card :context="claim.runeliteContext" />
-                </div>
+                <!-- Everything the plugin claim is, in one card: who,
+                     no-screenshot note, what was killed, the kill count, the
+                     rest of the loot, when — instead of the claimant box,
+                     a "no screenshot" alert and this card stacked on top of
+                     each other, which used to be three separate reads for
+                     one fact. -->
+                <runelite-context-card
+                    v-else-if="claim.completedVia === 'RUNELITE'"
+                    :context="claim.runeliteContext"
+                    :submitted-by="claim.submittedBy"
+                    :submitted-by-avatar="claim.submittedByAvatar"
+                    :submitted-by-osrs="claim.submittedByOsrs"
+                    no-proof-notice
+                />
 
                 <u-alert
                     v-else
@@ -150,7 +191,7 @@
                     :description="$t('bingo.no_proof_desc')"
                 />
 
-                <u-form-field :label="$t('bingo.review_note')" :description="$t('bingo.review_note_desc')">
+                <u-form-field v-if="showingVerdictButtons" :label="$t('bingo.review_note')" :description="$t('bingo.review_note_desc')">
                     <u-input v-model="reviewNote" class="w-full" :placeholder="$t('bingo.review_note_placeholder')" />
                 </u-form-field>
             </div>
@@ -161,20 +202,33 @@
                 <u-button color="neutral" variant="ghost" :label="$t('common.close')" @click="isOpen = false" />
 
                 <div v-if="claims.length" class="flex items-center gap-2">
+                    <template v-if="showingVerdictButtons">
+                        <u-button
+                            color="error"
+                            variant="soft"
+                            icon="i-lucide-x"
+                            :label="$t('bingo.reject')"
+                            :loading="submitting === 'REJECTED'"
+                            @click="review('REJECTED')"
+                        />
+                        <u-button
+                            color="success"
+                            icon="i-lucide-check"
+                            :label="$t('bingo.approve')"
+                            :loading="submitting === 'APPROVED'"
+                            @click="review('APPROVED')"
+                        />
+                    </template>
+                    <!-- A settled claim gets a deliberate second step before
+                         a verdict changes, not the same two buttons shown as
+                         if nothing had been decided yet. -->
                     <u-button
-                        color="error"
-                        variant="soft"
-                        icon="i-lucide-x"
-                        :label="$t('bingo.reject')"
-                        :loading="submitting === 'REJECTED'"
-                        @click="review('REJECTED')"
-                    />
-                    <u-button
-                        color="success"
-                        icon="i-lucide-check"
-                        :label="$t('bingo.approve')"
-                        :loading="submitting === 'APPROVED'"
-                        @click="review('APPROVED')"
+                        v-else
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-rotate-ccw"
+                        :label="$t('bingo.change_verdict')"
+                        @click="changingVerdict = true"
                     />
                 </div>
             </div>
@@ -212,10 +266,25 @@ const index = ref(0);
 const reviewNote = ref('');
 const proofFailed = ref(false);
 const submitting = ref(null);
+// A settled claim opens showing its verdict, not the buttons that would
+// change it — this flips true once a host deliberately asks to change it.
+const changingVerdict = ref(false);
 
 // Clamped rather than assumed in range: ruling on the last claim shortens
 // the list under the cursor, and the parent's reload replaces it wholesale.
 const claim = computed(() => props.claims[Math.min(index.value, props.claims.length - 1)] ?? {});
+
+// A claim reaching this dialog from the pending queue has no `status` at
+// all (pendingQueue() only ever returns PENDING rows) — undefined is not
+// APPROVED or REJECTED, so it falls through to the plain buttons exactly
+// like an explicit PENDING would.
+const isSettled = computed(() => ['APPROVED', 'REJECTED'].includes(claim.value.status));
+const showingVerdictButtons = computed(() => !isSettled.value || changingVerdict.value);
+
+const VERDICT_ICON = { APPROVED: 'i-lucide-circle-check', REJECTED: 'i-lucide-circle-x' };
+const VERDICT_CLASS = { APPROVED: 'text-success', REJECTED: 'text-error' };
+const verdictIcon = computed(() => VERDICT_ICON[claim.value.status] ?? 'i-lucide-circle-dot');
+const verdictClass = computed(() => VERDICT_CLASS[claim.value.status] ?? 'text-muted');
 
 watch(() => props.claims, () => {
     if (index.value > props.claims.length - 1) index.value = Math.max(0, props.claims.length - 1);
@@ -227,6 +296,7 @@ watch(() => props.claims, () => {
 watch(index, () => {
     reviewNote.value = '';
     proofFailed.value = false;
+    changingVerdict.value = false;
 });
 
 watch(() => props.open, (open) => {
@@ -235,6 +305,7 @@ watch(() => props.open, (open) => {
     index.value = 0;
     reviewNote.value = '';
     proofFailed.value = false;
+    changingVerdict.value = false;
 });
 
 function review(status) {
@@ -260,5 +331,9 @@ function review(status) {
 
 const submittedAt = computed(() => (
     claim.value.submittedAt ? new Date(claim.value.submittedAt).toLocaleString() : null
+));
+
+const reviewedAt = computed(() => (
+    claim.value.reviewedAt ? new Date(claim.value.reviewedAt).toLocaleString() : null
 ));
 </script>
