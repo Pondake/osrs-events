@@ -283,7 +283,7 @@ class BingoService
                 // account that submitted it. That is the whole check.
                 'user:id,discord_username,nickname,avatar_url,osrs_username',
                 'markedBy:id,discord_username,nickname,avatar_url,osrs_username',
-                'square:id,position,title_override,task_id,min_quantity',
+                'square:id,position,title_override,task_id,min_quantity,required_count',
                 'square.task:id,title,icon_url',
                 'pluginCompletion',
             ])
@@ -296,6 +296,9 @@ class BingoService
                 // The bar the square sets, so a manual claim is judged by
                 // the same one the plugin is held to.
                 'minQuantity' => $c->square?->min_quantity ?? 1,
+                // And how many times it asked for, so a host judging a
+                // manual claim knows what the square actually demands.
+                'requiredCount' => $c->square?->required_count ?? 1,
                 'iconUrl' => $c->square?->task?->icon_url,
                 'competitor' => $c->team?->name ?? ($c->user?->nickname ?: $c->user?->discord_username) ?: trans('common.deleted_user'),
                 'competitorAvatar' => $c->team?->icon_url ?? $c->team?->guild_icon_url ?? $c->user?->avatar_url,

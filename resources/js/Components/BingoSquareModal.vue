@@ -43,6 +43,18 @@
                         {{ $t('tile_editor.section_counting') }}
                     </p>
 
+                    <!-- "Do this N times." The other counting mode, and the
+                         one a Tempoross square set to 3 actually meant: three
+                         separate kills, not one drop of three. First, because
+                         it is the question a host asks first. -->
+                    <u-form-field
+                        :label="$t('tile_editor.required_count')"
+                        :description="$t('tile_editor.required_count_desc')"
+                        :error="form.errors.required_count"
+                    >
+                        <u-input v-model.number="form.required_count" type="number" min="1" max="1000" class="w-full" />
+                    </u-form-field>
+
                     <!-- "Only counts from N." A clan that had agreed only
                          the 25-stack Soaked page counted could not say so
                          anywhere, so every single page claimed the square. -->
@@ -91,7 +103,7 @@ const emit = defineEmits(['update:open']);
 
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
-const form = useForm({ title_override: '', points: 1, min_quantity: 1, is_wildcard: false });
+const form = useForm({ title_override: '', points: 1, min_quantity: 1, required_count: 1, is_wildcard: false });
 const selectedTask = ref(null);
 
 watch(
@@ -100,6 +112,7 @@ watch(
         form.title_override = square?.titleOverride ?? '';
         form.points = square?.points ?? 1;
         form.min_quantity = square?.minQuantity ?? 1;
+        form.required_count = square?.requiredCount ?? 1;
         form.is_wildcard = square?.isWildcard ?? false;
         selectedTask.value = square?.task ?? null;
     },
@@ -115,6 +128,7 @@ function submit() {
         ...data,
         task_id: data.is_wildcard ? null : (selectedTask.value?.id ?? null),
         min_quantity: data.is_wildcard ? 1 : (Number(data.min_quantity) || 1),
+        required_count: data.is_wildcard ? 1 : (Number(data.required_count) || 1),
     }))
         .patch(`/events/${props.eventId}/bingo/squares/${props.square.id}`, {
             preserveScroll: true,

@@ -4,6 +4,7 @@ namespace App\Events\Channels;
 
 use App\Events\Channels\Concerns\SignalsEventEdits;
 use App\Models\Event;
+use App\Models\TargetProgress;
 use App\Services\BoardReviewService;
 use App\Services\EventFinishService;
 use App\Support\EventCard;
@@ -46,7 +47,7 @@ class SnakesLaddersChannel implements EventChannel
         // 45 seconds old by the end of a connection.
         $tiles = $event->board()->first()?->tiles()
             ->orderBy('position')
-            ->get(['position', 'task_id', 'title_override', 'min_quantity', 'type', 'target_position'])
+            ->get(['id', 'position', 'task_id', 'title_override', 'min_quantity', 'required_count', 'type', 'target_position'])
             ?? collect();
 
         // Claim state, same reason bingo's fingerprint carries
@@ -63,14 +64,22 @@ class SnakesLaddersChannel implements EventChannel
         // per-viewer-every-few-seconds budget this method has stays intact.
         $finishVersion = app(EventFinishService::class)->version($event);
 
+        // Progress toward a "do this N times" tile — see BingoChannel for
+        // why a count is all this can be on a public channel.
+        $progressVersion = $tiles->contains(fn ($t) => $t->required_count > 1)
+            ? TargetProgress::where('kind', 'tile')->whereIn('target_id', $tiles->pluck('id'))->count()
+            : 0;
+
         return md5(
             $rows->map(fn ($r) => "{$r->id}:{$r->current_position}:{$r->move_seq}")->implode('|')
             .'#'
-            .$tiles->map(fn ($t) => "{$t->position}:{$t->task_id}:{$t->title_override}:{$t->min_quantity}:{$t->type}:{$t->target_position}")->implode('|')
+            .$tiles->map(fn ($t) => "{$t->position}:{$t->task_id}:{$t->title_override}:{$t->min_quantity}:{$t->required_count}:{$t->type}:{$t->target_position}")->implode('|')
             .'#'
             .$claimsVersion
             .'#'
             .$finishVersion
+            .'#'
+            .$progressVersion
             .'#'
             .$this->eventVersion($event)
         );

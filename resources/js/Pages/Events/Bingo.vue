@@ -259,6 +259,16 @@
                                     class="absolute top-1 left-1 text-[10px] font-semibold text-muted tabular-nums"
                                 >{{ $t('common.min_quantity_badge', { n: square.minQuantity }) }}</span>
 
+                                <!-- "2 / 5". A square that needs doing five
+                                     times and says nothing until the fifth
+                                     is the failure this mode had to avoid —
+                                     the count belongs where the square is,
+                                     not only in the dialog behind it. -->
+                                <span
+                                    v-if="square.requiredCount > 1"
+                                    class="absolute bottom-1 left-1 text-[10px] font-semibold text-muted tabular-nums"
+                                >{{ $t('common.progress_badge', { done: progress[square.position] ?? 0, total: square.requiredCount }) }}</span>
+
                                 <!-- The icon grows when there is no label to
                                      share the square with — an unnamed square
                                      is mostly empty space, and a 24px glyph
@@ -467,6 +477,7 @@
                 :square="claimingSquare"
                 :claim="claims[claimingSquare.position] ?? null"
                 :requires-approval="liveCard.requiresApproval"
+                :progress="progress[claimingSquare.position] ?? 0"
             />
             <template v-if="canEdit">
                 <board-settings-modal
@@ -523,6 +534,11 @@ const props = defineProps({
     event: { type: Object, required: true },
     card: { type: Object, required: true },
     claims: { type: Object, default: () => ({}) },
+    // How far this viewer is toward each "do this N times" square, keyed by
+    // position — see BoardController::showBingo. Per competitor, so it comes
+    // from the page render and is refreshed by a partial reload rather than
+    // riding the public live channel.
+    progress: { type: Object, default: () => ({}) },
     completed: { type: Array, default: () => [] },
     completedLines: { type: Array, default: () => [] },
     hasWon: { type: Boolean, default: false },
@@ -745,7 +761,7 @@ function applyClaimsVersion(version) {
 
     // `pending` is the host's review queue; it comes back empty for anyone
     // else, so asking for it costs a player nothing.
-    router.reload({ only: ['pending', 'claims', 'completed', 'completedLines', 'hasWon', 'myFinish'] });
+    router.reload({ only: ['pending', 'claims', 'progress', 'completed', 'completedLines', 'hasWon', 'myFinish'] });
 }
 
 const { streaming, stale } = useEventStream({
@@ -891,8 +907,15 @@ function squareTitle(square) {
 
     // The threshold spelled out rather than left as a bare "×25" in the
     // corner — the badge is a reminder, this is what it means.
-    if (square.minQuantity > 1) {
-        return [square.label, trans('common.min_quantity_notice', { n: square.minQuantity })].filter(Boolean).join(' — ');
+    const notices = [
+        square.requiredCount > 1
+            ? trans('common.progress_notice', { done: props.progress[square.position] ?? 0, total: square.requiredCount })
+            : null,
+        square.minQuantity > 1 ? trans('common.min_quantity_notice', { n: square.minQuantity }) : null,
+    ].filter(Boolean);
+
+    if (notices.length) {
+        return [square.label, ...notices].filter(Boolean).join(' — ');
     }
 
     return square.label ?? '';
@@ -997,6 +1020,7 @@ function onSquareClick(square) {
             label: square.label || trans('bingo.square_number', { n: square.position + 1 }),
             iconUrl: square.iconUrl,
             minQuantity: square.minQuantity,
+            requiredCount: square.requiredCount,
             completedVia: claim.completedVia,
             proofUrl: claim.proofUrl,
             note: claim.note,

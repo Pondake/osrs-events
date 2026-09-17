@@ -47,6 +47,15 @@
                 {{ $t('common.min_quantity_notice', { n: square.minQuantity }) }}
             </p>
 
+            <!-- "2 of 5 done." The whole point of the repetition mode: a
+                 square that is a third of the way there has to say so, or
+                 the only feedback anyone gets is silence until the last
+                 report lands. -->
+            <p v-if="square?.requiredCount > 1" class="flex items-center gap-1.5 text-xs text-muted mt-3">
+                <u-icon name="i-lucide-repeat" class="size-3.5 shrink-0" />
+                {{ $t('common.progress_notice', { done: progress, total: square.requiredCount }) }}
+            </p>
+
             <!-- Already claimed: what you submitted, what the host said, and
                  the one destructive action, behind a button rather than
                  behind a second click on the square.
@@ -203,6 +212,9 @@ const props = defineProps({
     // on one that doesn't, every claim lands APPROVED immediately and stays
     // withdrawable regardless.
     requiresApproval: { type: Boolean, default: true },
+    // How many qualifying reports this competitor has on a "do this N times"
+    // square — see BoardController::showBingo.
+    progress: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['update:open']);
@@ -240,9 +252,14 @@ const STATUS_CLASS = {
 const modalTitle = computed(() => {
     const label = props.square?.label || trans('bingo.empty_square');
 
-    return props.square?.minQuantity > 1
-        ? `${label} ${trans('common.min_quantity_badge', { n: props.square.minQuantity })}`
-        : label;
+    const badges = [
+        props.square?.minQuantity > 1 ? trans('common.min_quantity_badge', { n: props.square.minQuantity }) : null,
+        props.square?.requiredCount > 1
+            ? trans('common.progress_badge', { done: props.progress, total: props.square.requiredCount })
+            : null,
+    ].filter(Boolean);
+
+    return badges.length ? `${label} ${badges.join(' ')}` : label;
 });
 
 const statusIcon = computed(() => STATUS_ICON[props.claim?.status] ?? 'i-lucide-circle-dot');

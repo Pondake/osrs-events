@@ -260,7 +260,7 @@ and what each can complete right now:
   "events": [{ "id": "…", "title": "…", "type": "BINGO", "url": "…",
     "targets": [{ "kind": "bingo_square", "id": "…", "position": 4,
       "label": "Whip", "name": "Abyssal whip", "match": "abyssal whip",
-      "min_quantity": 1 }] }],
+      "min_quantity": 1, "required_count": 1 }] }],
   "watch": ["abyssal whip"]
 }
 ```
@@ -301,7 +301,9 @@ A claim is created the way the manual routes create one, with
 `initialClaimStatus('RUNELITE')`: approved only when the host does not review
 claims or trusts RuneLite completions. Finishes and notifications run as
 usual. `completed_at` is the server clock; `occurred_at` is only logged.
-`quantity` is measured against the target's `min_quantity` — see below.
+`quantity` is measured against the target's `min_quantity`, and a target
+with a `required_count` above 1 is claimed only on the last of the reports it
+asks for — see below.
 
 `context` is optional and every field in it is optional — send whatever the
 event actually had. It exists so a host reviewing a claim with no screenshot
@@ -313,7 +315,18 @@ row and surfaced on the claim it created (`bingo_completions` /
 sensitive goes in it: no chat log, no other players' names, and `region_id`
 only — never exact coordinates.
 
-### Quantity thresholds
+### How a square is counted
+
+Two numbers, two different questions, sent on every target and both applied
+before a claim is made. They are independent and they stack: *"three drops of
+at least twenty each"* is `required_count` 3 and `min_quantity` 20.
+
+| Field | Default | Asks |
+|---|---|---|
+| `min_quantity` | 1 (any amount) | how big a single report has to be |
+| `required_count` | 1 (the first one claims it) | how many qualifying reports it takes |
+
+#### Stack size — `min_quantity`
 
 A square or tile can say **"this only counts from N"** (`min_quantity`, 1 by
 default — any amount). A report whose `quantity` is below the target's
@@ -328,6 +341,33 @@ accumulating variant.
 The bar is sent on every target so the plugin can say what a square is still
 waiting for, and it applies to a MANUAL claim too — the claim and review
 dialogs print it, so a host judging a screenshot judges by the same number.
+
+#### Repetitions — `required_count`
+
+A square or tile can also say **"do this N times"** (`required_count`, 1 by
+default — the first qualifying report claims it). Kill Zalcano five times, get
+three clue scrolls. This is the mode a Tempoross square set to 3 was always
+meant to be, and the one `min_quantity` cannot express.
+
+Only reports that clear `min_quantity` count toward it, and nothing is claimed
+until the last one — the claim, the notification and the finish all land on it.
+
+**Counting is by distinct kill count, not by report.** Three Zalcano kills
+arrive as three reports carrying `context.kill_count` 204, 205 and 206, and
+that is what says they were three different kills: a report the plugin
+replays or duplicates carries a kill count already counted and adds nothing.
+A report with no kill count — a plain item drop has none — falls back to its
+own report id, so each such report is its own event. Send `kill_count` in
+`context` wherever the client has one; without it a repeated kill on the same
+NPC cannot be told apart from a resend.
+
+A report that happened before the event's start date counts for nothing, so a
+client that was offline can send its backlog safely.
+
+Progress is per **competitor**: a team bingo counts the team's kills together,
+a Snakes & Ladders tile counts the player board's. It is shown as `2 / 5` on
+the square or tile and in the claim dialog, so a square three-fifths of the
+way there says so instead of sitting silent until the fifth report.
 
 ### Name matching
 

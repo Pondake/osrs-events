@@ -8,6 +8,12 @@
                 {{ $t('common.min_quantity_notice', { n: minQuantity }) }}
             </p>
 
+            <!-- "2 of 5 done" — see BingoClaimModal for why it is here. -->
+            <p v-if="requiredCount > 1" class="flex items-center gap-1.5 text-xs text-muted mb-3">
+                <u-icon name="i-lucide-repeat" class="size-3.5 shrink-0" />
+                {{ $t('common.progress_notice', { done: progress, total: requiredCount }) }}
+            </p>
+
             <!-- Already claimed: what you submitted, what the host said, and
                  the one destructive action — same shape as BingoClaimModal,
                  the same trust problem solved a second time on this board
@@ -147,6 +153,9 @@ const props = defineProps({
     // waiting to fail. Defaults to true so a caller that has already decided
     // not to render this modal at all needs to say nothing.
     canAct: { type: Boolean, default: true },
+    // How many qualifying reports this player board has on a "do this N
+    // times" tile — see BoardController::show.
+    progress: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['update:open']);
@@ -175,10 +184,20 @@ const STATUS_CLASS = {
 /** 1 on a tile row that predates the column, which is "any amount counts". */
 const minQuantity = computed(() => props.tile?.min_quantity ?? 1);
 
+/** 1 is "claim it on the first one" — every tile set before the column. */
+const requiredCount = computed(() => props.tile?.required_count ?? 1);
+
 /** "Soaked page ×25" — see BingoClaimModal for why it belongs in the title. */
-const modalTitle = computed(() => (minQuantity.value > 1
-    ? `${props.tileTitle} ${trans('common.min_quantity_badge', { n: minQuantity.value })}`
-    : props.tileTitle));
+const modalTitle = computed(() => {
+    const badges = [
+        minQuantity.value > 1 ? trans('common.min_quantity_badge', { n: minQuantity.value }) : null,
+        requiredCount.value > 1
+            ? trans('common.progress_badge', { done: props.progress, total: requiredCount.value })
+            : null,
+    ].filter(Boolean);
+
+    return badges.length ? `${props.tileTitle} ${badges.join(' ')}` : props.tileTitle;
+});
 
 const statusIcon = computed(() => STATUS_ICON[props.claim?.status] ?? 'i-lucide-circle-dot');
 const statusClass = computed(() => STATUS_CLASS[props.claim?.status] ?? 'text-muted');

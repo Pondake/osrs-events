@@ -279,6 +279,34 @@ class BingoTest extends TestCase
     }
 
     /**
+     * "Do this N times." The other counting mode, set where the threshold is
+     * — and, like it, reset to its default by a PATCH that leaves it out.
+     */
+    #[Test]
+    public function an_author_can_set_how_many_times_a_square_asks_for(): void
+    {
+        $event = $this->event();
+        $square = $this->card($event, 3)->squares()->first();
+        $author = $this->author($event);
+
+        $this->assertSame(1, $square->required_count);
+
+        $this->actingAs($author)
+            ->patch("/events/{$event->id}/bingo/squares/{$square->id}", ['required_count' => 5, 'min_quantity' => 20])
+            ->assertRedirect();
+
+        // Both numbers on one square: "five drops of at least twenty each"
+        // has to be expressible without either standing in for the other.
+        $this->assertSame(5, $square->fresh()->required_count);
+        $this->assertSame(20, $square->fresh()->min_quantity);
+
+        $this->actingAs($author)
+            ->patch("/events/{$event->id}/bingo/squares/{$square->id}", ['required_count' => 0])
+            ->assertSessionHasErrors('required_count');
+        $this->assertSame(5, $square->fresh()->required_count);
+    }
+
+    /**
      * Shrinking a card would delete squares other people have completions
      * on. A size dropdown must not be able to erase progress silently.
      */

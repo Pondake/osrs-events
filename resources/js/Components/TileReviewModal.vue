@@ -33,6 +33,13 @@
                             <p v-if="claim.minQuantity > 1" class="text-xs text-muted truncate">
                                 {{ $t('common.min_quantity_notice', { n: claim.minQuantity }) }}
                             </p>
+                            <!-- What the square asked for, not how far this
+                                 claim got: a plugin claim only exists once
+                                 the last one landed, and a manual one is the
+                                 host's call either way. -->
+                            <p v-if="claim.requiredCount > 1" class="text-xs text-muted truncate">
+                                {{ $t('common.required_count_notice', { n: claim.requiredCount }) }}
+                            </p>
                         </div>
                     </div>
 

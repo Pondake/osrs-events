@@ -35,6 +35,16 @@
                         {{ $t('tile_editor.section_counting') }}
                     </p>
 
+                    <!-- "Do this N times." Same pair the square editor
+                         carries, in the same order. -->
+                    <u-form-field
+                        :label="$t('tile_editor.required_count')"
+                        :description="$t('tile_editor.required_count_desc')"
+                        :error="form.errors.required_count"
+                    >
+                        <u-input v-model.number="form.required_count" type="number" min="1" max="1000" class="w-full" />
+                    </u-form-field>
+
                     <u-form-field
                         :label="$t('tile_editor.min_quantity')"
                         :description="$t('tile_editor.min_quantity_desc')"
@@ -138,7 +148,7 @@ const targetTileNumber = computed({
 });
 
 function blankForm() {
-    return { title_override: '', min_quantity: 1, type: 'NORMAL', target_position: null, task_id: null };
+    return { title_override: '', min_quantity: 1, required_count: 1, type: 'NORMAL', target_position: null, task_id: null };
 }
 
 const form = useForm(blankForm());
@@ -153,6 +163,7 @@ watch(
         form.defaults(t ? {
             title_override: t.title_override ?? '',
             min_quantity: t.min_quantity ?? 1,
+            required_count: t.required_count ?? 1,
             type: t.type,
             target_position: t.target_position,
             task_id: t.task?.id ?? null,
@@ -176,6 +187,7 @@ function submit() {
         // A cleared number field is '' rather than 1, and a jump asks for
         // nothing at all — same reason its task and title go above.
         min_quantity: isJump.value ? 1 : (Number(data.min_quantity) || 1),
+        required_count: isJump.value ? 1 : (Number(data.required_count) || 1),
     })).post(`/events/${props.eventId}/tiles`, { onSuccess: () => (isOpen.value = false) });
 }
 

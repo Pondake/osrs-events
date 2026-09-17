@@ -11,6 +11,7 @@ use App\Models\PlayerBoard;
 use App\Models\PluginCompletion;
 use App\Models\PluginToken;
 use App\Models\Setting;
+use App\Models\TargetProgress;
 use App\Models\Task;
 use App\Models\Tile;
 use App\Models\User;
@@ -334,6 +335,157 @@ class RunelitePluginApiTest extends TestCase
             ->assertJsonPath('claims.0.status', 'APPROVED');
         $this->assertSame(1, BingoCompletion::count());
     }
+
+    // ----------------------------------------------------- required_count
+
+    #[Test]
+    public function the_repetition_count_is_sent_with_every_target(): void
+    {
+        $card = $this->card([0 => $this->task('Zalcano shard')]);
+        $card->squares()->where('position', 0)->update(['required_count' => 5]);
+
+        $this->api()->getJson('/api/plugin/v1/events')
+            ->assertOk()
+            ->assertJsonPath('events.0.targets.0.required_count', 5);
+    }
+
+    /**
+     * "Kill Zalcano three times." Three kills arrive as three reports whose
+     * kill counts differ, and only the last one claims the square.
+     */
+    #[Test]
+    public function distinct_kill_counts_walk_a_square_to_its_count(): void
+    {
+        $card = $this->card([0 => $this->task('Zalcano shard')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['required_count' => 3]);
+
+        foreach ([204, 205] as $killCount) {
+            $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+                'context' => ['kill_count' => $killCount],
+            ]))->assertCreated()->assertJsonPath('claims', []);
+        }
+
+        $this->assertSame(0, BingoCompletion::count());
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+            'context' => ['kill_count' => 206],
+        ]))->assertCreated()->assertJsonPath('claims.0.status', 'APPROVED');
+
+        $this->assertSame(1, BingoCompletion::count());
+        $this->assertSame(3, TargetProgress::count());
+    }
+
+    /**
+     * The reason the kill count is the unit rather than the report: a client
+     * that resends the same kill under a fresh client_event_id must not walk
+     * a three-kill square to three on one kill.
+     */
+    #[Test]
+    public function the_same_kill_reported_again_does_not_advance_it(): void
+    {
+        $card = $this->card([0 => $this->task('Zalcano shard')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['required_count' => 3]);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+                'context' => ['kill_count' => 204],
+            ]))->assertCreated()->assertJsonPath('claims', []);
+        }
+
+        $this->assertSame(0, BingoCompletion::count());
+        $this->assertSame(1, TargetProgress::count());
+    }
+
+    /** No kill count - a plain item drop - so each report is its own event. */
+    #[Test]
+    public function reports_without_a_kill_count_each_count_once(): void
+    {
+        $card = $this->card([0 => $this->task('Clue scroll (hard)')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['required_count' => 3]);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Clue scroll (hard)'))->assertCreated();
+        }
+
+        $this->assertSame(1, BingoCompletion::count());
+        $this->assertSame(3, TargetProgress::count());
+    }
+
+    /**
+     * The two modes stack. "Three drops of at least twenty each": a smaller
+     * drop is not a qualifying report, so it does not move the count either.
+     */
+    #[Test]
+    public function a_report_under_the_threshold_does_not_count_toward_the_repetitions(): void
+    {
+        $card = $this->card([0 => $this->task('Soaked page')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['min_quantity' => 20, 'required_count' => 3]);
+
+        foreach ([19, 19, 19] as $quantity) {
+            $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Soaked page', ['quantity' => $quantity]))
+                ->assertCreated()
+                ->assertJsonPath('claims', []);
+        }
+
+        $this->assertSame(0, TargetProgress::count());
+
+        foreach ([20, 25] as $quantity) {
+            $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Soaked page', ['quantity' => $quantity]))
+                ->assertCreated()
+                ->assertJsonPath('claims', []);
+        }
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Soaked page', ['quantity' => 40]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'APPROVED');
+
+        $this->assertSame(1, BingoCompletion::count());
+    }
+
+    /** A tile counts the same way, per player board. */
+    #[Test]
+    public function a_tile_is_claimed_on_the_last_of_its_repetitions(): void
+    {
+        $event = $this->event('SNAKES_LADDERS');
+        $board = $event->board()->create(['size' => 'SIZE_5X5', 'requires_approval' => false]);
+        Tile::create([
+            'board_id' => $board->id,
+            'position' => 0,
+            'type' => 'NORMAL',
+            'task_id' => $this->task('Zalcano shard')->id,
+            'required_count' => 2,
+        ]);
+        PlayerBoard::create(['board_id' => $board->id, 'user_id' => $this->player->id, 'current_position' => 0]);
+
+        $this->api()->getJson('/api/plugin/v1/events')->assertJsonPath('events.0.targets.0.required_count', 2);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', ['context' => ['kill_count' => 11]]))
+            ->assertCreated()
+            ->assertJsonPath('claims', []);
+        $this->assertSame(0, CompletedTile::count());
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', ['context' => ['kill_count' => 12]]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.kind', 'tile');
+        $this->assertSame(1, CompletedTile::count());
+    }
+
+    /** Something killed before the event opened is not something done in it. */
+    #[Test]
+    public function a_report_from_before_the_event_started_counts_for_nothing(): void
+    {
+        $card = $this->card([0 => $this->task('Zalcano shard')], ['requires_approval' => false]);
+        $card->event->update(['start_date' => now()->subDay()]);
+        $card->squares()->where('position', 0)->update(['required_count' => 2]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+            'occurred_at' => now()->subDays(3)->toIso8601String(),
+            'context' => ['kill_count' => 204],
+        ]))->assertCreated()->assertJsonPath('claims', []);
+
+        $this->assertSame(0, TargetProgress::count());
+    }
+
     // ---------------------------------------------------------- completing
 
     #[Test]

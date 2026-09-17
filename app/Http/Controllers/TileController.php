@@ -45,6 +45,9 @@ class TileController extends Controller
             // "This tile only counts from N." Bounded by what a stack can
             // hold, so the bar cannot be set where no drop could clear it.
             'min_quantity' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+            // "Do this N times." See BingoController::updateSquare for the
+            // same bound and the same reason.
+            'required_count' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'type' => ['required', 'in:NORMAL,SNAKE,LADDER'],
             // Same bound: a snake pointing off the end of the board sends a
             // player somewhere that does not exist.
@@ -71,6 +74,7 @@ class TileController extends Controller
                 // A jump asks for nothing, so it can hold no threshold either
                 // — same reason its task and title are dropped above.
                 'min_quantity' => $isJump ? 1 : ($data['min_quantity'] ?? 1),
+                'required_count' => $isJump ? 1 : ($data['required_count'] ?? 1),
                 'type' => $data['type'],
                 'target_position' => $data['target_position'] ?? null,
             ],

@@ -31,6 +31,7 @@ class RunelitePluginService
         private PlayerBoardService $playerBoards,
         private BingoNotifier $notifier,
         private EventFinishService $finishes,
+        private TargetProgressService $progress,
     ) {}
 
     /** @return Collection<int, array{event: Event, targets: Collection<int, array>}> */
@@ -192,9 +193,26 @@ class RunelitePluginService
                     continue;
                 }
 
+                // Something done before the event opened is not something
+                // done in the event. The plugin reports what it sees, and a
+                // client that was offline sends its backlog on reconnect.
+                if ($event->start_date !== null && $pluginCompletion->occurred_at?->lt($event->start_date->copy()->startOfDay())) {
+                    continue;
+                }
+
                 // A STOP-rule finish from the previous claim closes the event.
                 if ($event->refresh()->isEnded()) {
                     break;
+                }
+
+                // "Do this N times": count this report and stop unless it was
+                // the last one. The two modes stack — min_quantity above
+                // decides whether a report qualifies at all, this decides how
+                // many qualifying ones it takes, so "3 drops of at least 20"
+                // is the two numbers together and neither can stand in for
+                // the other.
+                if ($target['required_count'] > 1 && ! $this->advance($event, $target, $user, $pluginCompletion)) {
+                    continue;
                 }
 
                 $status = $target['kind'] === 'bingo_square'
@@ -228,6 +246,9 @@ class RunelitePluginService
             // target is still waiting for instead of reporting a drop that
             // silently claims nothing.
             'min_quantity' => $target['min_quantity'],
+            // How many qualifying reports it takes. 1 is "claim it on the
+            // first one", which is every target set before this existed.
+            'required_count' => $target['required_count'],
         ];
     }
 
@@ -295,7 +316,35 @@ class RunelitePluginService
             // The bar this target sets. 1 means any amount counts, which is
             // every target configured before the column existed.
             'min_quantity' => $model->min_quantity,
+            'required_count' => $model->required_count,
         ];
+    }
+
+    /**
+     * Count this report toward a repetition target; true once it is the last
+     * one and the claim should be made.
+     *
+     * The competitor is resolved here rather than in the target, because it
+     * is the same competitor the claim is written against — a team bingo
+     * counts kills for the team, a board counts them for the player board.
+     */
+    private function advance(Event $event, array $target, User $user, PluginCompletion $pluginCompletion): bool
+    {
+        if ($target['kind'] === 'bingo_square') {
+            $competitor = $this->bingo->competitorFor($event, $user);
+
+            if ($competitor === null) {
+                return false;
+            }
+
+            $key = TargetProgressService::bingoKey($competitor);
+        } else {
+            $key = TargetProgressService::boardKey($this->playerBoards->getOrCreate($event, $user));
+        }
+
+        $done = $this->progress->record($target['kind'], $target['model']->id, $key, $pluginCompletion);
+
+        return $done >= $target['required_count'];
     }
 
     private function claimSquare(Event $event, BingoSquare $square, User $user, PluginCompletion $pluginCompletion): ?string

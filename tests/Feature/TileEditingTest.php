@@ -100,6 +100,43 @@ class TileEditingTest extends TestCase
             ->post("/events/{$event->id}/tiles", ['position' => 3, 'type' => 'NORMAL', 'min_quantity' => 0])
             ->assertSessionHasErrors('min_quantity');
     }
+    /** "Do this N times", and a jump carries none of it either. */
+    #[Test]
+    public function an_author_can_set_how_many_times_a_tile_asks_for(): void
+    {
+        [$owner, $event] = $this->board();
+        $task = Task::create(['title' => 'Zalcano shard']);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 4,
+            'task_id' => $task->id,
+            'type' => 'NORMAL',
+            'required_count' => 5,
+        ])->assertRedirect();
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 4)->firstOrFail();
+        $this->assertSame(5, $tile->required_count);
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 4,
+            'type' => 'LADDER',
+            'target_position' => 6,
+            'required_count' => 5,
+        ])->assertRedirect();
+
+        $this->assertSame(1, $tile->fresh()->required_count);
+    }
+
+    #[Test]
+    public function a_tile_repetition_count_below_one_is_refused(): void
+    {
+        [$owner, $event] = $this->board();
+
+        $this->actingAs($owner)
+            ->post("/events/{$event->id}/tiles", ['position' => 3, 'type' => 'NORMAL', 'required_count' => 0])
+            ->assertSessionHasErrors('required_count');
+    }
+
     /** Editing the same position twice updates rather than duplicating. */
     #[Test]
     public function saving_the_same_position_twice_keeps_one_tile(): void

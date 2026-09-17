@@ -24,6 +24,7 @@ use App\Services\EventStandingsService;
 use App\Services\BoardReviewService;
 use App\Services\PlayerBoardService;
 use App\Services\RaceAnnouncer;
+use App\Services\TargetProgressService;
 use App\Support\AnnouncementTrigger;
 use App\Support\DiscordCdn;
 use App\Support\EventCard;
@@ -414,6 +415,10 @@ class BoardController extends Controller
                 // does not yet unlock the next roll. Same "only approved
                 // scores" rule bingo's standings enforce.
                 'completedTileIds' => $playerBoard->completedTiles->filter->isApproved()->pluck('tile_id')->values(),
+                // How far this player is toward each repeating tile, keyed
+                // by tile id. Inside playerBoard because it is theirs — the
+                // same reason `claims` is.
+                'progress' => app(TargetProgressService::class)->forPlayerBoard($playerBoard),
                 // Every claim this player made, whatever its state, keyed
                 // by tile — they need to see their own pending or rejected
                 // claim, or they will submit it again. Same shape bingo's
@@ -635,6 +640,10 @@ class BoardController extends Controller
                     // plugin is held to rather than to a rule in a Discord
                     // message somewhere.
                     'minQuantity' => $square->min_quantity,
+                    // "Do this N times." The count is here and the running
+                    // total is in `progress` below — the requirement is the
+                    // same for everybody, how far along you are is not.
+                    'requiredCount' => $square->required_count,
                     // For the editor: what is currently set, so opening a
                     // square shows its state rather than a blank form.
                     'titleOverride' => $square->title_override,
@@ -664,6 +673,11 @@ class BoardController extends Controller
                 'runeliteContext' => $claim->pluginCompletion?->reviewContext(),
             ]),
             'completed' => $approved,
+            // How far this viewer is toward each repeating square, keyed by
+            // position. Per competitor, so it cannot ride the live channel
+            // (see BingoChannel) — the page reloads this prop when the
+            // stream says something moved.
+            'progress' => app(TargetProgressService::class)->forCard($card, $competitor),
             // Who holds each square, for the faces on the grid. Same source
             // the live channel pushes, so a card that updates mid-event does
             // not disagree with the one that was rendered.

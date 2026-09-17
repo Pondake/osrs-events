@@ -118,6 +118,13 @@
                                      tile asks for, and a field it does not
                                      send is a field it silently resets. -->
                                 <u-form-field
+                                    :label="$t('tile_editor.required_count')"
+                                    :description="$t('tile_editor.required_count_desc')"
+                                >
+                                    <u-input v-model.number="draft.requiredCount" type="number" min="1" max="1000" class="w-full sm:max-w-32" />
+                                </u-form-field>
+
+                                <u-form-field
                                     :label="$t('tile_editor.min_quantity')"
                                     :description="$t('tile_editor.min_quantity_desc')"
                                 >
@@ -252,6 +259,7 @@ const rows = computed(() => Array.from({ length: props.total }, (_, position) =>
         // camelCase from the bingo payload, snake_case from a raw Tile row —
         // this list is fed by both.
         minQuantity: item?.minQuantity ?? item?.min_quantity ?? 1,
+        requiredCount: item?.requiredCount ?? item?.required_count ?? 1,
         isWildcard: item?.isWildcard ?? false,
         type: item?.type ?? 'NORMAL',
         targetPosition: item?.target_position ?? null,
@@ -300,7 +308,7 @@ const saving = ref(false);
 
 // The row being edited, held apart from the list so a half-typed change is
 // not written into the grid behind the modal.
-const draft = reactive({ task: null, titleOverride: '', points: 1, minQuantity: 1, isWildcard: false, type: 'NORMAL', targetPosition: null });
+const draft = reactive({ task: null, titleOverride: '', points: 1, minQuantity: 1, requiredCount: 1, isWildcard: false, type: 'NORMAL', targetPosition: null });
 
 function toggle(position) {
     if (expanded.value === position) {
@@ -315,6 +323,7 @@ function toggle(position) {
     draft.titleOverride = row.titleOverride ?? '';
     draft.points = row.points ?? 1;
     draft.minQuantity = row.minQuantity ?? 1;
+    draft.requiredCount = row.requiredCount ?? 1;
     draft.isWildcard = row.isWildcard ?? false;
     draft.type = row.type ?? 'NORMAL';
     draft.targetPosition = row.targetPosition;
@@ -357,6 +366,7 @@ function save(row) {
             title_override: draft.titleOverride || null,
             points: draft.points,
             min_quantity: draft.isWildcard ? 1 : (Number(draft.minQuantity) || 1),
+            required_count: draft.isWildcard ? 1 : (Number(draft.requiredCount) || 1),
             is_wildcard: draft.isWildcard,
         }, done);
 
@@ -368,6 +378,7 @@ function save(row) {
         task_id: draftIsJump.value ? null : (draft.task?.id ?? null),
         title_override: draftIsJump.value ? null : (draft.titleOverride || null),
         min_quantity: draftIsJump.value ? 1 : (Number(draft.minQuantity) || 1),
+        required_count: draftIsJump.value ? 1 : (Number(draft.requiredCount) || 1),
         type: draft.type,
         target_position: draftIsJump.value ? draft.targetPosition : null,
     }, done);

@@ -321,6 +321,14 @@
                                             <span v-if="tile.min_quantity > 1" class="tabular-nums font-semibold">
                                                 {{ $t('common.min_quantity_badge', { n: tile.min_quantity }) }}
                                             </span>
+                                            <!-- "2 / 5". A tile that needs
+                                                 doing five times has to say
+                                                 how far along it is, or it
+                                                 sits silent until the last
+                                                 one lands. -->
+                                            <span v-if="tile.required_count > 1" class="tabular-nums font-semibold">
+                                                {{ $t('common.progress_badge', { done: progressOn(tile), total: tile.required_count }) }}
+                                            </span>
                                         </p>
                                     </div>
 
@@ -620,10 +628,16 @@
                                         <span v-if="currentTile.min_quantity > 1" class="text-muted tabular-nums">
                                             {{ $t('common.min_quantity_badge', { n: currentTile.min_quantity }) }}
                                         </span>
+                                        <span v-if="currentTile.required_count > 1" class="text-muted tabular-nums">
+                                            {{ $t('common.progress_badge', { done: progressOn(currentTile), total: currentTile.required_count }) }}
+                                        </span>
                                     </p>
                                     <p class="text-xs text-muted mt-0.5">{{ $t('board.tile', { n: currentTile.position + 1 }) }}</p>
                                     <p v-if="currentTile.min_quantity > 1" class="text-xs text-muted mt-1">
                                         {{ $t('common.min_quantity_notice', { n: currentTile.min_quantity }) }}
+                                    </p>
+                                    <p v-if="currentTile.required_count > 1" class="text-xs text-muted mt-1">
+                                        {{ $t('common.progress_notice', { done: progressOn(currentTile), total: currentTile.required_count }) }}
                                     </p>
                                     <p v-if="currentTile.task?.description" class="text-xs text-muted mt-1 leading-relaxed">
                                         {{ currentTile.task.description }}
@@ -743,10 +757,16 @@
                                         <span v-if="clickedTile.min_quantity > 1" class="text-muted tabular-nums">
                                             {{ $t('common.min_quantity_badge', { n: clickedTile.min_quantity }) }}
                                         </span>
+                                        <span v-if="clickedTile.required_count > 1" class="text-muted tabular-nums">
+                                            {{ $t('common.progress_badge', { done: progressOn(clickedTile), total: clickedTile.required_count }) }}
+                                        </span>
                                     </p>
                                     <p class="text-xs text-muted mt-0.5">{{ $t('board.tile', { n: clickedTile.position + 1 }) }}</p>
                                     <p v-if="clickedTile.min_quantity > 1" class="text-xs text-muted mt-1">
                                         {{ $t('common.min_quantity_notice', { n: clickedTile.min_quantity }) }}
+                                    </p>
+                                    <p v-if="clickedTile.required_count > 1" class="text-xs text-muted mt-1">
+                                        {{ $t('common.progress_notice', { done: progressOn(clickedTile), total: clickedTile.required_count }) }}
                                     </p>
                                     <p v-if="clickedTile.task?.description" class="text-xs text-muted mt-1 leading-relaxed">
                                         {{ clickedTile.task.description }}
@@ -1000,6 +1020,7 @@
                 :tile-title="currentTileTitle"
                 :claim="currentClaim"
                 :can-act="canPlay"
+                :progress="progressOn(currentTile)"
             />
         </client-only>
     </u-main>
@@ -1554,6 +1575,15 @@ const requiresApproval = computed(() => Boolean(liveBoard.value.requires_approva
 const currentClaim = computed(() => (
     currentTile.value ? (props.playerBoard?.claims?.[currentTile.value.id] ?? null) : null
 ));
+
+/**
+ * How far this player is toward a "do this N times" tile, keyed by tile id —
+ * see BoardController::show. Theirs, not the board's, so it travels with
+ * playerBoard rather than with the tiles the live channel pushes to everyone.
+ */
+function progressOn(tile) {
+    return props.playerBoard?.progress?.[tile?.id] ?? 0;
+}
 
 const CLAIM_STATUS_ICON = { PENDING: 'i-lucide-clock', APPROVED: 'i-lucide-circle-check', REJECTED: 'i-lucide-circle-x' };
 const CLAIM_STATUS_CLASS = { PENDING: 'text-warning', APPROVED: 'text-success', REJECTED: 'text-error' };

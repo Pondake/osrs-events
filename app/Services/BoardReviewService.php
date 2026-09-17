@@ -64,6 +64,8 @@ class BoardReviewService
                 // The bar the tile sets, so a manual claim is judged by the
                 // same one the plugin is held to.
                 'minQuantity' => $c->tile?->min_quantity ?? 1,
+                // And how many times — see BingoService::pendingQueue.
+                'requiredCount' => $c->tile?->required_count ?? 1,
                 'iconUrl' => $c->tile?->task?->icon_url,
                 'competitor' => $c->playerBoard?->team?->name
                     ?? ($c->playerBoard?->user?->nickname ?: $c->playerBoard?->user?->discord_username)
