@@ -91,9 +91,15 @@ class BingoController extends Controller
 
         if ($existing) {
             // Withdrawing your own pending claim is fine; undoing a host's
-            // decision is not something the claimant gets to do.
+            // decision is not something the claimant gets to do. Naming the
+            // reviewer when there is one — an auto-approved RuneLite claim
+            // has none, so "already judged" would be a claim nobody made.
             if ($existing->status !== 'PENDING' && $card->requires_approval) {
-                return back()->with('board-save-error', trans('bingo.already_reviewed'));
+                $reviewer = $existing->reviewedBy?->nickname ?: $existing->reviewedBy?->discord_username;
+
+                return back()->with('board-save-error', $reviewer
+                    ? trans('bingo.already_reviewed_by', ['name' => $reviewer])
+                    : trans('bingo.already_reviewed'));
             }
 
             $existing->delete();

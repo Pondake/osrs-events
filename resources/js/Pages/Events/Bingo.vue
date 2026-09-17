@@ -452,6 +452,7 @@
                 :event-id="liveEvent.id"
                 :square="claimingSquare"
                 :claim="claims[claimingSquare.position] ?? null"
+                :requires-approval="liveCard.requiresApproval"
             />
             <template v-if="canEdit">
                 <board-settings-modal
@@ -470,6 +471,11 @@
                     :total="liveCard.size * liveCard.size"
                 />
                 <bingo-review-modal v-model:open="showReviewModal" :event-id="liveEvent.id" :claims="pending" />
+                <!-- The single-claim path onSquareClick() takes for a
+                     reviewed square: same dialog, one claim instead of the
+                     whole queue, so flipping a verdict doesn't require
+                     hunting for it in a list of nothing-else-pending. -->
+                <bingo-review-modal v-model:open="squareReviewModalOpen" :event-id="liveEvent.id" :claims="squareReviewClaims" />
             </template>
         </client-only>
     </u-main>
@@ -920,6 +926,10 @@ const squareModalOpen = ref(false);
 const editingSquare = ref(null);
 const claimModalOpen = ref(false);
 const claimingSquare = ref(null);
+// A host reviewing one specific square's claim rather than the whole pending
+// queue — see the note on squareReviewModalOpen below.
+const squareReviewModalOpen = ref(false);
+const squareReviewClaims = ref([]);
 
 function onSquareClick(square) {
     if (editing.value) {
@@ -947,11 +957,40 @@ function onSquareClick(square) {
     // to start next month. Same gap PlayerBoardController::roll() had.
     if (status.value === 'upcoming') return;
 
+    const existingStatus = statusOf(square);
+
+    // A host clicking a square whose claim has already been reviewed is not
+    // going to ask the claim dialog for a withdrawal the server would refuse
+    // (BingoController::claim's `already_reviewed` branch) — they are the one
+    // who CAN still change it, through review(), not claim(). Sent straight
+    // there instead of into a dialog whose only button is disabled.
+    //
+    // Only reachable on a card that reviews claims at all: on one that
+    // doesn't, nothing is ever "reviewed" in the first place — every claim
+    // lands APPROVED on submission and stays withdrawable by its owner.
+    if (existingStatus && existingStatus !== 'PENDING' && liveCard.value.requiresApproval && props.canEdit) {
+        const claim = props.claims[square.position];
+
+        squareReviewClaims.value = [{
+            id: claim.id,
+            position: square.position,
+            label: square.label || trans('bingo.square_number', { n: square.position + 1 }),
+            iconUrl: square.iconUrl,
+            completedVia: claim.completedVia,
+            proofUrl: claim.proofUrl,
+            note: claim.note,
+            runeliteContext: claim.runeliteContext,
+        }];
+        squareReviewModalOpen.value = true;
+
+        return;
+    }
+
     // An existing claim always opens the dialog, whatever the card's review
     // setting. Withdrawing used to happen on a bare second click — no hover
     // state saying so, nothing confirming it — so a stray click quietly
     // undid a claim and, on a reviewed card, its place in the queue.
-    if (statusOf(square)) {
+    if (existingStatus) {
         claimingSquare.value = square;
         claimModalOpen.value = true;
 

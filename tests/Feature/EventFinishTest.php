@@ -1050,6 +1050,40 @@ class EventFinishTest extends TestCase
     }
 
     /**
+     * The bingo half of "and takes it back again"
+     * (rejecting_an_approved_last_tile_removes_the_finish above): re-reviewing
+     * an already-approved claim to REJECTED breaks the line it completed, and
+     * the finish goes with it.
+     */
+    #[Test]
+    public function flipping_an_approved_bingo_claim_to_rejected_removes_the_finish(): void
+    {
+        Notification::fake();
+        [$event, $card] = $this->card(['requires_approval' => true]);
+        $host = $this->host($event);
+        $user = User::factory()->create(['osrs_username' => 'Bingoer']);
+        EventParticipant::create(['event_id' => $event->id, 'user_id' => $user->id]);
+
+        $row = BingoSquare::where('bingo_card_id', $card->id)
+            ->whereIn('position', [0, 1, 2])->orderBy('position')->get();
+
+        foreach ($row as $square) {
+            $this->claim($user, $event, $square);
+        }
+
+        foreach (BingoCompletion::where('user_id', $user->id)->get() as $completion) {
+            $this->actingAs($host)->patch("/events/{$event->id}/bingo/claims/{$completion->id}", ['status' => 'APPROVED']);
+        }
+
+        $this->assertSame(1, EventFinish::where('event_id', $event->id)->count());
+
+        $claim = BingoCompletion::where('user_id', $user->id)->first();
+        $this->actingAs($host)->patch("/events/{$event->id}/bingo/claims/{$claim->id}", ['status' => 'REJECTED']);
+
+        $this->assertSame(0, EventFinish::where('event_id', $event->id)->count());
+    }
+
+    /**
      * The bingo half of the same rule: the earlier submission wins the card,
      * whatever order the host signs the squares off in.
      */

@@ -188,6 +188,11 @@ const props = defineProps({
     square: { type: Object, default: null },
     // The existing claim for this square, or null to make a new one.
     claim: { type: Object, default: null },
+    // Whether the card reviews claims at all. The server only refuses a
+    // withdrawal when the card requires approval (BingoController::claim) —
+    // on one that doesn't, every claim lands APPROVED immediately and stays
+    // withdrawable regardless.
+    requiresApproval: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:open']);
@@ -226,9 +231,12 @@ const reviewedAt = computed(() => (
 
 /**
  * Undoing a host's decision is the host's call, not the claimant's — the
- * server refuses it too (BingoController::claim).
+ * server refuses it too (BingoController::claim). Mirrors the server's own
+ * condition exactly: `reviewedAt` is NOT a stand-in for "already decided" —
+ * an auto-approved RuneLite claim is APPROVED and locked despite never
+ * having been reviewed by anyone, so it has no reviewedAt either.
  */
-const canWithdraw = computed(() => props.claim?.status === 'PENDING' || !props.claim?.reviewedAt);
+const canWithdraw = computed(() => props.claim?.status === 'PENDING' || !props.requiresApproval);
 
 /**
  * Either what withdrawing will cost, or why it is not on offer. The second
@@ -236,7 +244,11 @@ const canWithdraw = computed(() => props.claim?.status === 'PENDING' || !props.c
  * this the dialog would show a verdict and no account of why it is final.
  */
 const withdrawNotice = computed(() => {
-    if (!canWithdraw.value) return trans('bingo.already_reviewed');
+    if (!canWithdraw.value) {
+        return props.claim?.reviewedByName
+            ? trans('bingo.already_reviewed_by', { name: props.claim.reviewedByName })
+            : trans('bingo.already_reviewed');
+    }
 
     return trans(props.claim?.status === 'PENDING' ? 'bingo.withdraw_pending_warning' : 'bingo.withdraw_warning');
 });

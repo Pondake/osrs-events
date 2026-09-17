@@ -225,6 +225,70 @@ class BingoReviewTest extends TestCase
         $this->assertNotNull($claim->reviewed_at);
     }
 
+    /**
+     * A host can change their mind on a claim they already ruled on — the
+     * wrong screenshot approved, or a second look at a rejected one. The
+     * endpoint accepts a verdict on any claim regardless of its current
+     * status, not only PENDING ones, and each call re-stamps who judged it
+     * and when.
+     */
+    #[Test]
+    public function a_host_can_flip_an_already_approved_claim_to_rejected(): void
+    {
+        $event = $this->event();
+        $card = $this->card($event);
+        $firstHost = $this->host($event);
+
+        $claim = BingoCompletion::create([
+            'bingo_square_id' => $card->squares()->first()->id,
+            'user_id' => $this->player()->id,
+            'status' => 'APPROVED',
+            'reviewed_by' => $firstHost->id,
+            'reviewed_at' => now()->subHour(),
+        ]);
+
+        $secondHost = $this->host($event);
+
+        $this->actingAs($secondHost)
+            ->patch("/events/{$event->id}/bingo/claims/{$claim->id}", [
+                'status' => 'REJECTED',
+                'review_note' => 'Actually, that drop was someone else\'s.',
+            ])
+            ->assertRedirect();
+
+        $claim->refresh();
+        $this->assertSame('REJECTED', $claim->status);
+        $this->assertSame($secondHost->id, $claim->reviewed_by);
+        $this->assertTrue($claim->reviewed_at->greaterThan(now()->subMinute()));
+        $this->assertSame('Actually, that drop was someone else\'s.', $claim->review_note);
+    }
+
+    /** And the other direction — a rejected claim approved on a second look. */
+    #[Test]
+    public function a_host_can_flip_an_already_rejected_claim_to_approved(): void
+    {
+        $event = $this->event();
+        $card = $this->card($event);
+        $host = $this->host($event);
+
+        $claim = BingoCompletion::create([
+            'bingo_square_id' => $card->squares()->first()->id,
+            'user_id' => $this->player()->id,
+            'status' => 'REJECTED',
+            'reviewed_by' => $host->id,
+            'reviewed_at' => now()->subHour(),
+            'review_note' => 'Chatbox cropped out',
+        ]);
+
+        $this->actingAs($host)
+            ->patch("/events/{$event->id}/bingo/claims/{$claim->id}", ['status' => 'APPROVED'])
+            ->assertRedirect();
+
+        $claim->refresh();
+        $this->assertSame('APPROVED', $claim->status);
+        $this->assertSame(1, $this->bingo()->standings($event, $card->fresh())->count());
+    }
+
     /** Kept rather than deleted, so the claimant can see why. */
     #[Test]
     public function a_rejection_keeps_the_row_and_its_reason(): void

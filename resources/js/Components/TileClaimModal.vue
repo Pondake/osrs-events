@@ -192,7 +192,11 @@ const withdrawNotice = computed(() => {
     // stopped. "Only a host can change the result now" is untrue of an event
     // that is over — nobody is going to change it.
     if (!props.canAct) return trans('board.claim_locked_event_over');
-    if (!canWithdraw.value) return trans('board.already_reviewed');
+    if (!canWithdraw.value) {
+        return props.claim?.reviewedByName
+            ? trans('board.already_reviewed_by', { name: props.claim.reviewedByName })
+            : trans('board.already_reviewed');
+    }
     if (isRetry.value) return trans('board.try_again_notice');
 
     return trans(props.claim?.status === 'PENDING' ? 'board.withdraw_pending_warning' : 'board.withdraw_warning');

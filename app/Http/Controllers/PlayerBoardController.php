@@ -245,7 +245,11 @@ class PlayerBoardController extends Controller
             // — requiring it up front would have rejected every withdrawal
             // and every retry before this check ran.
             if ($existing->status === 'APPROVED' && $board->requires_approval) {
-                return back()->with('board-save-error', trans('board.already_reviewed'));
+                $reviewer = $existing->reviewedBy?->nickname ?: $existing->reviewedBy?->discord_username;
+
+                return back()->with('board-save-error', $reviewer
+                    ? trans('board.already_reviewed_by', ['name' => $reviewer])
+                    : trans('board.already_reviewed'));
             }
 
             $existing->delete();

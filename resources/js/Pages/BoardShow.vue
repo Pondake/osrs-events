@@ -659,7 +659,7 @@
                                             color="neutral"
                                             block
                                             :label="$t('board.view_claim')"
-                                            @click="showClaimModal = true"
+                                            @click="onViewClaim"
                                         />
                                     </div>
                                 </template>
@@ -949,6 +949,10 @@
                     :total="tileCount"
                 />
                 <tile-review-modal v-model:open="showReviewModal" :event-id="liveBoard.id" :claims="livePending" />
+                <!-- The single-claim path onViewClaim() takes for a claim
+                     that has already been approved — see BingoReviewModal's
+                     equivalent on the bingo page for the same reasoning. -->
+                <tile-review-modal v-model:open="tileReviewModalOpen" :event-id="liveBoard.id" :claims="tileReviewClaims" />
             </template>
             <tile-edit-modal
                 v-if="editingTile"
@@ -1175,6 +1179,10 @@ const showSettingsModal = ref(false);
 const editingTile = ref(null);
 const showClaimModal = ref(false);
 const showReviewModal = ref(false);
+// A host reviewing this one tile's claim rather than the whole pending
+// queue — see onViewClaim() below.
+const tileReviewModalOpen = ref(false);
+const tileReviewClaims = ref([]);
 
 // Opened automatically on ?setup=tiles — the redirect a freshly created
 // event arrives on. onMounted because `location` does not exist during SSR.
@@ -1367,6 +1375,7 @@ const finishIsProvisional = computed(() => myFinish.value?.provisional === true)
 /** Any dialog that a celebration must not land on top of — or behind. */
 const aDialogIsOpen = computed(() => showReviewModal.value
     || showClaimModal.value
+    || tileReviewModalOpen.value
     || showSettingsModal.value
     || showTileList.value
     || editingTile.value !== null);
@@ -1522,6 +1531,35 @@ const CLAIM_STATUS_ICON = { PENDING: 'i-lucide-clock', APPROVED: 'i-lucide-circl
 const CLAIM_STATUS_CLASS = { PENDING: 'text-warning', APPROVED: 'text-success', REJECTED: 'text-error' };
 const claimStatusIcon = computed(() => CLAIM_STATUS_ICON[currentClaim.value?.status] ?? 'i-lucide-circle-dot');
 const claimStatusClass = computed(() => CLAIM_STATUS_CLASS[currentClaim.value?.status] ?? 'text-muted');
+
+/**
+ * "View claim" on a tile a host has already approved goes to the review
+ * flow instead of the claim dialog — the claim dialog's withdraw button is
+ * refused there anyway (PlayerBoardController::toggleTile's
+ * `already_reviewed` branch), and review() is the endpoint that can
+ * actually flip it. A REJECTED claim is not redirected: the claimant can
+ * still clear that one themselves to try again, so there is nothing here a
+ * host needs to reach that the claim dialog does not already offer.
+ */
+function onViewClaim() {
+    if (props.canEdit && currentClaim.value?.status === 'APPROVED' && requiresApproval.value) {
+        tileReviewClaims.value = [{
+            id: currentClaim.value.id,
+            position: currentTile.value.position,
+            label: currentTileTitle.value,
+            iconUrl: currentTile.value.task?.icon_url,
+            completedVia: currentClaim.value.completedVia,
+            proofUrl: currentClaim.value.proofUrl,
+            note: currentClaim.value.note,
+            runeliteContext: currentClaim.value.runeliteContext,
+        }];
+        tileReviewModalOpen.value = true;
+
+        return;
+    }
+
+    showClaimModal.value = true;
+}
 
 /**
  * Whether the square you are standing on actually asks for anything.

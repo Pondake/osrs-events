@@ -85,18 +85,51 @@ class BingoClaimWithdrawalTest extends TestCase
     {
         [$player, $event, $card] = $this->card();
         $square = $card->squares()->where('position', 0)->firstOrFail();
+        $host = User::factory()->create(['osrs_username' => 'Host 1', 'discord_username' => 'Host', 'nickname' => null]);
 
         BingoCompletion::create([
             'bingo_square_id' => $square->id,
             'user_id' => $player->id,
             'marked_by' => $player->id,
             'status' => 'APPROVED',
+            'reviewed_by' => $host->id,
             'reviewed_at' => now(),
         ]);
 
         $this->actingAs($player)
             ->post("/events/{$event->id}/bingo/squares/{$square->id}/claim")
-            ->assertSessionHas('board-save-error');
+            ->assertSessionHas('board-save-error', trans('bingo.already_reviewed_by', ['name' => 'Host']));
+
+        $this->assertSame(1, $square->completions()->count());
+    }
+
+    /**
+     * A RuneLite claim on a card that trusts the plugin lands APPROVED with
+     * no human reviewer at all — `reviewed_by` and `reviewed_at` stay null.
+     * The withdrawal refusal must not read that absence as "still pending":
+     * it is the same locked state as a manually-approved claim, just without
+     * anyone to name. Regression for the bug where the claim dialog's
+     * canWithdraw check used `reviewedAt` as a stand-in for "reviewed",
+     * which is wrong for exactly this claim.
+     */
+    #[Test]
+    public function an_auto_approved_runelite_claim_cannot_be_withdrawn_either(): void
+    {
+        [$player, $event, $card] = $this->card();
+        $card->update(['trust_runelite_completions' => true]);
+        $square = $card->squares()->where('position', 0)->firstOrFail();
+
+        BingoCompletion::create([
+            'bingo_square_id' => $square->id,
+            'user_id' => $player->id,
+            'marked_by' => $player->id,
+            'completed_via' => 'RUNELITE',
+            'status' => 'APPROVED',
+        ]);
+
+        $this->actingAs($player)
+            ->post("/events/{$event->id}/bingo/squares/{$square->id}/claim")
+            ->assertSessionHas('board-save-error', trans('bingo.already_reviewed'));
 
         $this->assertSame(1, $square->completions()->count());
     }
@@ -133,12 +166,14 @@ class BingoClaimWithdrawalTest extends TestCase
     {
         [$player, $event, $card] = $this->card();
         $square = $card->squares()->where('position', 0)->firstOrFail();
+        $host = User::factory()->create(['osrs_username' => 'Host 1', 'discord_username' => 'Host', 'nickname' => null]);
 
         BingoCompletion::create([
             'bingo_square_id' => $square->id,
             'user_id' => $player->id,
             'marked_by' => $player->id,
             'status' => 'APPROVED',
+            'reviewed_by' => $host->id,
             'reviewed_at' => now(),
             'review_note' => 'Nice one.',
             'proof_url' => 'https://i.imgur.com/x.png',
@@ -157,6 +192,9 @@ class BingoClaimWithdrawalTest extends TestCase
         $this->assertSame('https://i.imgur.com/x.png', $claim['proofUrl']);
         $this->assertSame('Got it on the third try', $claim['note']);
         $this->assertNotNull($claim['reviewedAt']);
+        // Who judged it — what the claim dialog names in its withdrawal
+        // refusal instead of the generic "already reviewed" wording.
+        $this->assertSame('Host', $claim['reviewedByName']);
     }
 
     /** Late claims are refused rather than quietly accepted. */
