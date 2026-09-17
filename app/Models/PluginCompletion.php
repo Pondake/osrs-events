@@ -13,13 +13,14 @@ class PluginCompletion extends Model
 
     public const KINDS = ['item', 'npc_kill'];
 
-    protected $fillable = ['user_id', 'client_event_id', 'kind', 'name', 'quantity', 'rsn', 'occurred_at', 'context', 'claims'];
+    protected $fillable = ['user_id', 'client_event_id', 'kind', 'name', 'quantity', 'rsn', 'occurred_at', 'context', 'claims', 'progress'];
 
     protected $casts = [
         'quantity' => 'integer',
         'occurred_at' => 'datetime',
         'context' => 'array',
         'claims' => 'array',
+        'progress' => 'array',
     ];
 
     public function user(): BelongsTo

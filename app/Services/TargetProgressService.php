@@ -39,13 +39,17 @@ class TargetProgressService
     }
 
     /**
-     * Count one report toward a target and answer how far the competitor now is.
+     * Count one report toward a target and answer how far the competitor now
+     * is, or null when this report was already counted.
      *
      * Idempotent by construction: a second report of the same kill collides
      * with the unique index and is swallowed, so a retrying plugin cannot
-     * walk a square to five on one kill.
+     * walk a square to five on one kill. Null rather than the unchanged
+     * total, so a caller can tell a kill that moved the number from a resend
+     * that did not — the plugin announces the first and stays quiet on the
+     * second.
      */
-    public function record(string $kind, string $targetId, string $competitorKey, PluginCompletion $completion): int
+    public function record(string $kind, string $targetId, string $competitorKey, PluginCompletion $completion): ?int
     {
         $killCount = $completion->context['kill_count'] ?? null;
 
@@ -59,6 +63,7 @@ class TargetProgressService
             ]);
         } catch (UniqueConstraintViolationException) {
             // Already counted. Not an error: the plugin resends.
+            return null;
         }
 
         return $this->count($kind, $targetId, $competitorKey);

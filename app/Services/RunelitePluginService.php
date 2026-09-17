@@ -176,11 +176,21 @@ class RunelitePluginService
             ->all();
     }
 
-    /** @return list<array> the claims this name created */
+    /**
+     * What this name did: the claims it made, and the counted targets it
+     * moved forward without claiming.
+     *
+     * Both are answered, because a "do this N times" square that goes from
+     * one to two is news even though it claimed nothing. The plugin says
+     * "2 / 5" in game instead of sitting silent until the fifth kill.
+     *
+     * @return array{claims: list<array>, progress: list<array>}
+     */
     public function complete(User $user, string $name, PluginCompletion $pluginCompletion): array
     {
         $match = RuneliteName::normalize($name);
         $claims = [];
+        $progress = [];
 
         foreach ($this->openTargets($user) as ['event' => $event, 'targets' => $targets]) {
             foreach ($targets->where('match', $match) as $target) {
@@ -211,8 +221,25 @@ class RunelitePluginService
                 // many qualifying ones it takes, so "3 drops of at least 20"
                 // is the two numbers together and neither can stand in for
                 // the other.
-                if ($target['required_count'] > 1 && ! $this->advance($event, $target, $user, $pluginCompletion)) {
-                    continue;
+                if ($target['required_count'] > 1) {
+                    $done = $this->advance($event, $target, $user, $pluginCompletion);
+
+                    // Null is a report that counted for nothing: a kill
+                    // already counted, or no competitor to count it for.
+                    if ($done === null) {
+                        continue;
+                    }
+
+                    if ($done < $target['required_count']) {
+                        $progress[] = [
+                            'event_id' => $event->id,
+                            'event_title' => $event->title,
+                            ...self::describe($target),
+                            'done' => $done,
+                        ];
+
+                        continue;
+                    }
                 }
 
                 $status = $target['kind'] === 'bingo_square'
@@ -230,7 +257,7 @@ class RunelitePluginService
             }
         }
 
-        return $claims;
+        return ['claims' => $claims, 'progress' => $progress];
     }
 
     public static function describe(array $target): array
@@ -321,20 +348,20 @@ class RunelitePluginService
     }
 
     /**
-     * Count this report toward a repetition target; true once it is the last
-     * one and the claim should be made.
+     * Count this report toward a repetition target and answer how far the
+     * competitor now is, or null when it counted for nothing.
      *
      * The competitor is resolved here rather than in the target, because it
      * is the same competitor the claim is written against — a team bingo
      * counts kills for the team, a board counts them for the player board.
      */
-    private function advance(Event $event, array $target, User $user, PluginCompletion $pluginCompletion): bool
+    private function advance(Event $event, array $target, User $user, PluginCompletion $pluginCompletion): ?int
     {
         if ($target['kind'] === 'bingo_square') {
             $competitor = $this->bingo->competitorFor($event, $user);
 
             if ($competitor === null) {
-                return false;
+                return null;
             }
 
             $key = TargetProgressService::bingoKey($competitor);
@@ -342,9 +369,7 @@ class RunelitePluginService
             $key = TargetProgressService::boardKey($this->playerBoards->getOrCreate($event, $user));
         }
 
-        $done = $this->progress->record($target['kind'], $target['model']->id, $key, $pluginCompletion);
-
-        return $done >= $target['required_count'];
+        return $this->progress->record($target['kind'], $target['model']->id, $key, $pluginCompletion);
     }
 
     private function claimSquare(Event $event, BingoSquare $square, User $user, PluginCompletion $pluginCompletion): ?string

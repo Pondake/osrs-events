@@ -284,8 +284,14 @@ when its normalised name is in it.
   } }
 ```
 
-- `201` with `{client_event_id, duplicate: false, claims: [...]}`. `claims`
-  can be empty: nothing open matched. That is still recorded.
+- `201` with `{client_event_id, duplicate: false, claims: [...], progress:
+  [...]}`. `claims` can be empty: nothing open matched. That is still
+  recorded. `progress` is the counted targets this report moved **without**
+  claiming: each entry is the target as `claims` describes it, plus `done`,
+  the competitor's new total, against the target's own `required_count`. It
+  is what lets the plugin say `Kurask 2 / 5` in game instead of staying
+  silent until the fifth kill. Both lists are stored on the report, so a
+  retry answers what the first attempt answered.
 - `200` with `duplicate: true` and the original `claims` when
   `(account, client_event_id)` was seen before. Retrying is always safe.
 - `422` when `rsn` is not the account's OSRS username (space, `_` and `-`
@@ -351,6 +357,8 @@ meant to be, and the one `min_quantity` cannot express.
 
 Only reports that clear `min_quantity` count toward it, and nothing is claimed
 until the last one — the claim, the notification and the finish all land on it.
+Every report before that answers a `progress` entry instead of a claim, so the
+plugin can announce each step.
 
 **Counting is by distinct kill count, not by report.** Three Zalcano kills
 arrive as three reports carrying `context.kill_count` 204, 205 and 206, and
@@ -363,6 +371,10 @@ NPC cannot be told apart from a resend.
 
 A report that happened before the event's start date counts for nothing, so a
 client that was offline can send its backlog safely.
+
+A report that counted for nothing — a kill already counted under a fresh
+`client_event_id` — answers neither a claim nor a progress entry. Only a
+report that moved the number is news.
 
 Progress is per **competitor**: a team bingo counts the team's kills together,
 a Snakes & Ladders tile counts the player board's. It is shown as `2 / 5` on

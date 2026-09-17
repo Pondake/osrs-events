@@ -83,7 +83,8 @@ class RunelitePluginController extends Controller
         try {
             $logged = DB::transaction(function () use ($user, $data, $plugin) {
                 $logged = PluginCompletion::create([...$data, 'user_id' => $user->id]);
-                $logged->update(['claims' => $plugin->complete($user, $data['name'], $logged)]);
+                $outcome = $plugin->complete($user, $data['name'], $logged);
+                $logged->update(['claims' => $outcome['claims'], 'progress' => $outcome['progress']]);
 
                 return $logged;
             });
@@ -119,6 +120,9 @@ class RunelitePluginController extends Controller
             'client_event_id' => $logged->client_event_id,
             'duplicate' => $duplicate,
             'claims' => $logged->claims ?? [],
+            // Counted targets this report moved without claiming, so the
+            // plugin can say "2 / 5" instead of nothing at all.
+            'progress' => $logged->progress ?? [],
         ], $duplicate ? 200 : 201);
     }
 }

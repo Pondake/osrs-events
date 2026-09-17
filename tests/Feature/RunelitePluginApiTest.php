@@ -470,6 +470,84 @@ class RunelitePluginApiTest extends TestCase
         $this->assertSame(1, CompletedTile::count());
     }
 
+    /**
+     * A counted square that moved says so. A square three of five of the way
+     * there sitting silent until the fifth kill was the whole complaint.
+     */
+    #[Test]
+    public function a_report_that_advances_a_counted_square_answers_its_progress(): void
+    {
+        $card = $this->card([0 => $this->task('Zalcano shard')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['required_count' => 3]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+            'context' => ['kill_count' => 204],
+        ]))
+            ->assertCreated()
+            ->assertJsonPath('claims', [])
+            ->assertJsonPath('progress.0.done', 1)
+            ->assertJsonPath('progress.0.required_count', 3)
+            ->assertJsonPath('progress.0.name', 'Zalcano shard');
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+            'context' => ['kill_count' => 205],
+        ]))
+            ->assertCreated()
+            ->assertJsonPath('progress.0.done', 2);
+    }
+
+    /** The last one claims, so it is a claim and not progress. */
+    #[Test]
+    public function the_claiming_report_answers_no_progress(): void
+    {
+        $card = $this->card([0 => $this->task('Zalcano shard')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['required_count' => 2]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+            'context' => ['kill_count' => 204],
+        ]))->assertCreated();
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+            'context' => ['kill_count' => 205],
+        ]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'APPROVED')
+            ->assertJsonPath('progress', []);
+    }
+
+    /** A resend of a kill already counted is not news: same total, no progress. */
+    #[Test]
+    public function a_resent_kill_answers_no_progress(): void
+    {
+        $card = $this->card([0 => $this->task('Zalcano shard')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['required_count' => 3]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+            'context' => ['kill_count' => 204],
+        ]))->assertCreated()->assertJsonPath('progress.0.done', 1);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Zalcano shard', [
+            'context' => ['kill_count' => 204],
+        ]))->assertCreated()->assertJsonPath('progress', []);
+    }
+
+    /** A retry of the same report answers what the first one answered. */
+    #[Test]
+    public function a_duplicate_answers_the_progress_of_the_original(): void
+    {
+        $card = $this->card([0 => $this->task('Zalcano shard')], ['requires_approval' => false]);
+        $card->squares()->where('position', 0)->update(['required_count' => 3]);
+
+        $payload = $this->completion('Zalcano shard', ['context' => ['kill_count' => 204]]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $payload)->assertCreated();
+
+        $this->api()->postJson('/api/plugin/v1/completions', $payload)
+            ->assertOk()
+            ->assertJsonPath('duplicate', true)
+            ->assertJsonPath('progress.0.done', 1);
+    }
+
     /** Something killed before the event opened is not something done in it. */
     #[Test]
     public function a_report_from_before_the_event_started_counts_for_nothing(): void
