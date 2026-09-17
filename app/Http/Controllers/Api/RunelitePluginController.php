@@ -52,7 +52,7 @@ class RunelitePluginController extends Controller
             'context' => ['sometimes', 'nullable', 'array', $this->rejectUnknownKeys([
                 'source', 'npc_id', 'npc_name', 'npc_level', 'kill_count', 'region_id', 'items',
             ])],
-            'context.source' => ['sometimes', 'nullable', Rule::in(['npc_kill', 'loot', 'collection_log'])],
+            'context.source' => ['sometimes', 'nullable', Rule::in(['npc_kill', 'loot', 'collection_log', 'kill_count'])],
             'context.npc_id' => ['sometimes', 'nullable', 'integer'],
             'context.npc_name' => ['sometimes', 'nullable', 'string', 'max:64'],
             'context.npc_level' => ['sometimes', 'nullable', 'integer'],

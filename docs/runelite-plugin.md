@@ -259,7 +259,8 @@ and what each can complete right now:
   "rsn": "Iron Pondake",
   "events": [{ "id": "…", "title": "…", "type": "BINGO", "url": "…",
     "targets": [{ "kind": "bingo_square", "id": "…", "position": 4,
-      "label": "Whip", "name": "Abyssal whip", "match": "abyssal whip" }] }],
+      "label": "Whip", "name": "Abyssal whip", "match": "abyssal whip",
+      "min_quantity": 1 }] }],
   "watch": ["abyssal whip"]
 }
 ```
@@ -273,7 +274,7 @@ when its normalised name is in it.
 { "client_event_id": "uuid", "kind": "item|npc_kill", "name": "Prayer potion(4)",
   "quantity": 1, "rsn": "Iron Pondake", "occurred_at": "2026-09-17T12:00:00Z",
   "context": {
-    "source": "npc_kill",
+    "source": "npc_kill|loot|collection_log|kill_count",
     "npc_id": 415,
     "npc_name": "Abyssal demon",
     "npc_level": 124,
@@ -300,7 +301,7 @@ A claim is created the way the manual routes create one, with
 `initialClaimStatus('RUNELITE')`: approved only when the host does not review
 claims or trusts RuneLite completions. Finishes and notifications run as
 usual. `completed_at` is the server clock; `occurred_at` is only logged.
-`quantity` is logged too — no task asks for an amount yet.
+`quantity` is measured against the target's `min_quantity` — see below.
 
 `context` is optional and every field in it is optional — send whatever the
 event actually had. It exists so a host reviewing a claim with no screenshot
@@ -311,6 +312,22 @@ row and surfaced on the claim it created (`bingo_completions` /
 `completed_tiles` now carry a `plugin_completion_id`). Deliberately nothing
 sensitive goes in it: no chat log, no other players' names, and `region_id`
 only — never exact coordinates.
+
+### Quantity thresholds
+
+A square or tile can say **"this only counts from N"** (`min_quantity`, 1 by
+default — any amount). A report whose `quantity` is below the target's
+`min_quantity` claims nothing, and that is not an error: the plugin reports
+every drop, most of which are not the one.
+
+It is **one report of at least N, never N reports adding up.** Tempoross drops
+a Soaked page in stacks of varying size, and a clan that agreed only the 25
+stack counted did not agree that twenty-five single pages count. There is no
+accumulating variant.
+
+The bar is sent on every target so the plugin can say what a square is still
+waiting for, and it applies to a MANUAL claim too — the claim and review
+dialogs print it, so a host judging a screenshot judges by the same number.
 
 ### Name matching
 
