@@ -10,6 +10,15 @@
                     <u-switch v-model="form.is_wildcard" :label="$t('bingo.wildcard_field')" />
                 </u-form-field>
 
+                <!-- Two questions, two sections: what the square asks for,
+                     and how what arrives gets counted. They were one flat
+                     list, and a host reading it could not tell which number
+                     meant what. More counting fields are expected, so the
+                     second section is the place they land. -->
+                <p class="text-xs font-medium text-muted uppercase tracking-wide pt-2 border-t border-default">
+                    {{ $t('tile_editor.section_task') }}
+                </p>
+
                 <u-form-field
                     v-if="!form.is_wildcard"
                     :label="$t('tile_editor.task')"
@@ -29,18 +38,22 @@
                     <u-input v-model.number="form.points" type="number" min="0" max="1000" class="w-full" />
                 </u-form-field>
 
-                <!-- "Only counts from N." A clan that had agreed only the
-                     25-stack Soaked page counted could not say so anywhere,
-                     so every single page claimed the square. Hidden on a
-                     wildcard, which nobody claims at all. -->
-                <u-form-field
-                    v-if="!form.is_wildcard"
-                    :label="$t('tile_editor.min_quantity')"
-                    :description="$t('tile_editor.min_quantity_desc')"
-                    :error="form.errors.min_quantity"
-                >
-                    <u-input v-model.number="form.min_quantity" type="number" min="1" class="w-full" />
-                </u-form-field>
+                <template v-if="!form.is_wildcard">
+                    <p class="text-xs font-medium text-muted uppercase tracking-wide pt-2 border-t border-default">
+                        {{ $t('tile_editor.section_counting') }}
+                    </p>
+
+                    <!-- "Only counts from N." A clan that had agreed only
+                         the 25-stack Soaked page counted could not say so
+                         anywhere, so every single page claimed the square. -->
+                    <u-form-field
+                        :label="$t('tile_editor.min_quantity')"
+                        :description="$t('tile_editor.min_quantity_desc')"
+                        :error="form.errors.min_quantity"
+                    >
+                        <u-input v-model.number="form.min_quantity" type="number" min="1" class="w-full" />
+                    </u-form-field>
+                </template>
             </div>
         </template>
 

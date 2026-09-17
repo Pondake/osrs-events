@@ -16,6 +16,13 @@
                     />
                 </template>
                 <template v-else>
+                    <!-- Two sections, the same split BingoSquareModal makes:
+                         what the tile asks for, and how what arrives gets
+                         counted. -->
+                    <p class="text-xs font-medium text-muted uppercase tracking-wide">
+                        {{ $t('tile_editor.section_task') }}
+                    </p>
+
                     <u-form-field :label="$t('tile_editor.task_label')" :description="$t('tile_editor.task_desc')">
                         <task-picker v-model="selectedTask" :event-id="eventId" />
                     </u-form-field>
@@ -24,9 +31,10 @@
                         <u-input v-model="form.title_override" class="w-full" :placeholder="selectedTask?.title ?? ''" />
                     </u-form-field>
 
-                    <!-- "Only counts from N." Same field the bingo square
-                         editor carries, for the same dispute: a drop that
-                         comes in stacks needs a way to say which stack. -->
+                    <p class="text-xs font-medium text-muted uppercase tracking-wide pt-2 border-t border-default">
+                        {{ $t('tile_editor.section_counting') }}
+                    </p>
+
                     <u-form-field
                         :label="$t('tile_editor.min_quantity')"
                         :description="$t('tile_editor.min_quantity_desc')"
