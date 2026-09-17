@@ -122,6 +122,7 @@ class DatabaseSeeder extends Seeder
         // field look broken rather than empty. Safe to re-run on its own.
         $this->call(EventBlueprintSeeder::class);
         $this->call(DemoDataSeeder::class);
+        $this->call(RunelitePluginTestSeeder::class);
         // After the admin seeders — it links its entries to whichever user
         // holds the ADMIN role.
         $this->call(AuditLogSeeder::class);

@@ -234,3 +234,76 @@ Java, following patterns already in that codebase. A purpose-built osrs-events
 plugin is a larger job — loot events, a config panel, token handling, retry — but
 it is a **days** project, not a months one. The client-side APIs are the easy
 part; the real design work is tile matching and the trust model.
+
+---
+
+## Server API — built 2026-09-17
+
+Two routes under `/api/plugin/v1`, both `Authorization: Bearer ose_…` (the
+code from /settings/runelite), 60 requests a minute per code. While
+`runelite_plugin_mode` is `off` both answer **404**, token or not.
+
+### `GET /events`
+
+The player's joined, running events (not paused, closed, ended or upcoming)
+and what each can complete right now:
+
+- **Bingo:** every square with no claim yet from this competitor, not a
+  wildcard, whose task links a wiki page.
+- **Snakes & Ladders:** only the tile the player (or their team) stands on,
+  if its task links a wiki page and it is not already claimed.
+
+```json
+{
+  "mode": "testing",
+  "rsn": "Iron Pondake",
+  "events": [{ "id": "…", "title": "…", "type": "BINGO", "url": "…",
+    "targets": [{ "kind": "bingo_square", "id": "…", "position": 4,
+      "label": "Whip", "name": "Abyssal whip", "match": "abyssal whip" }] }],
+  "watch": ["abyssal whip"]
+}
+```
+
+`watch` is every `match` in one list: the plugin reports a drop or kill only
+when its normalised name is in it.
+
+### `POST /completions`
+
+```json
+{ "client_event_id": "uuid", "kind": "item|npc_kill", "name": "Prayer potion(4)",
+  "quantity": 1, "rsn": "Iron Pondake", "occurred_at": "2026-09-17T12:00:00Z" }
+```
+
+- `201` with `{client_event_id, duplicate: false, claims: [...]}`. `claims`
+  can be empty: nothing open matched. That is still recorded.
+- `200` with `duplicate: true` and the original `claims` when
+  `(account, client_event_id)` was seen before. Retrying is always safe.
+- `422` when `rsn` is not the account's OSRS username (space, `_` and `-`
+  compare equal, case ignored), or the payload is invalid.
+- `401` for an unknown code.
+
+A claim is created the way the manual routes create one, with
+`completed_via = RUNELITE`, no proof URL, and the status from
+`initialClaimStatus('RUNELITE')`: approved only when the host does not review
+claims or trusts RuneLite completions. Finishes and notifications run as
+usual. `completed_at` is the server clock; `occurred_at` is only logged.
+`quantity` is logged too — no task asks for an amount yet.
+
+### Name matching
+
+Only the task **title** of a wiki-linked task counts (the square's override
+label does not). Both sides go through `App\Support\RuneliteName::normalize`,
+and the plugin must apply the same steps:
+
+1. strip `<…>` tags
+2. `_` and non-breaking space become a space
+3. apostrophes (`'`, `’`, `‘`, `` ` ``) are removed
+4. collapse whitespace, trim
+5. drop a trailing **numeric** suffix: `Prayer potion(4)`, `Games necklace (8)`
+6. lowercase
+
+Non-numeric suffixes stay: `Clue scroll (medium)`, `Berserker ring (i)` and
+`(uncharged)` are different items. `kind` is not used for matching yet; a
+trigger column only gets added if the test set shows name alone is not enough.
+
+The fixed test set is `RunelitePluginTestSeeder` (an unlisted 4×4 bingo card).
