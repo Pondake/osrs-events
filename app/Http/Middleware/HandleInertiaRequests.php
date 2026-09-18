@@ -178,6 +178,11 @@ class HandleInertiaRequests extends Middleware
                     // checked and checked-and-missing; neither is confirmed,
                     // and the app treats them identically.
                     'osrsVerified' => $user->osrs_verified_at !== null,
+                    // A different question from osrsVerified, and the one
+                    // that decides whether a claim can skip the queue: has a
+                    // RuneLite client ever reported this account playing that
+                    // name. See the osrs_proven_at migration.
+                    'osrsProven' => $user->hasProvenOsrsName(),
                     // Boolean, not the address itself: the modal only needs
                     // to know whether account recovery is possible, and the
                     // email is already exposed where it's actually shown
@@ -196,5 +201,4 @@ class HandleInertiaRequests extends Middleware
             ],
         ];
     }
-
 }

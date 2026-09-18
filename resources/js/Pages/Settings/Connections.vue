@@ -57,6 +57,38 @@
             </div>
 
             <p v-if="osrsForm.errors.osrs_username" class="text-sm text-error mt-2">{{ osrsForm.errors.osrs_username }}</p>
+
+            <!-- A separate question from the badge above, and the one with a
+                 consequence attached. Wise Old Man knowing the name says the
+                 name exists; this says somebody played it from a client
+                 holding this account's code. Only shown while the plugin is
+                 something you can actually use — off, there is no way to act
+                 on it and the notice would only nag. -->
+            <u-alert
+                v-if="pluginMode !== 'off' && osrsUsername"
+                class="mt-4"
+                :color="osrsProven ? 'success' : 'warning'"
+                variant="subtle"
+                :icon="osrsProven ? 'i-lucide-shield-check' : 'i-lucide-shield-alert'"
+                :title="osrsProven ? $t('profile.osrs_proven') : $t('profile.osrs_unproven')"
+                :description="osrsProven
+                    ? $t('profile.osrs_proven_help', { name: osrsUsername, date: provenDate })
+                    : $t('profile.osrs_unproven_help')"
+            >
+                <template v-if="! osrsProven" #actions>
+                    <div class="w-full space-y-2">
+                        <p class="text-sm">{{ $t('profile.osrs_unproven_how') }}</p>
+                        <u-button
+                            :href="route('settings.runelite')"
+                            color="warning"
+                            variant="outline"
+                            size="sm"
+                            icon="i-lucide-plug"
+                            :label="$t('profile.osrs_unproven_cta')"
+                        />
+                    </div>
+                </template>
+            </u-alert>
         </u-card>
 
         <u-card>
@@ -89,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
 import { useAuth } from '@/Composables/useAuth';
@@ -100,9 +132,17 @@ const props = defineProps({
     hasPassword: { type: Boolean, required: true },
     osrsUsername: { type: String, default: null },
     osrsVerified: { type: Boolean, default: false },
+    // Whether a RuneLite client has reported this account playing the name.
+    osrsProven: { type: Boolean, default: false },
+    provenAt: { type: String, default: null },
+    pluginMode: { type: String, default: 'off' },
 });
 
 const { user } = useAuth();
+
+const provenDate = computed(() => (props.provenAt
+    ? new Date(props.provenAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    : ''));
 
 const osrsInput = ref(props.osrsUsername ?? '');
 const osrsForm = useForm({ osrs_username: '' });

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Rules\OsrsUsername;
 use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
@@ -51,6 +52,12 @@ class ConnectionsController extends Controller
             // OAuth-linked Discord account reads as equally proven, and it
             // isn't.
             'osrsVerified' => $user->osrs_verified_at !== null,
+            // A different question, with a consequence attached: until a
+            // RuneLite client has reported this account playing the name,
+            // every claim goes past a host. See ReviewsClaims.
+            'osrsProven' => $user->hasProvenOsrsName(),
+            'provenAt' => $user->osrs_proven_at?->toIso8601String(),
+            'pluginMode' => Setting::get('runelite_plugin_mode'),
         ]);
     }
 

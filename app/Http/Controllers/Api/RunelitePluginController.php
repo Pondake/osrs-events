@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PluginCompletion;
 use App\Models\Setting;
+use App\Services\OsrsIdentityService;
 use App\Services\RunelitePluginService;
 use App\Support\RuneliteName;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -23,6 +24,9 @@ class RunelitePluginController extends Controller
         return response()->json([
             'mode' => Setting::get('runelite_plugin_mode'),
             'rsn' => $request->user()->osrs_username,
+            // So the plugin can say the name is not proven yet, and what
+            // that costs: claims keep going through a host.
+            'proven' => $request->user()->hasProvenOsrsName(),
             'events' => $events->map(fn (array $row) => [
                 'id' => $row['event']->id,
                 'title' => $row['event']->title,
@@ -32,6 +36,34 @@ class RunelitePluginController extends Controller
             ])->all(),
             'reviews' => $plugin->recentVerdicts($request->user()),
             'watch' => $events->flatMap(fn (array $row) => $row['targets']->pluck('match'))->unique()->sort()->values()->all(),
+        ]);
+    }
+
+    /**
+     * The character this client is signed in as.
+     *
+     * A match proves the name on the account, in the only sense we can get
+     * cheaply: somebody playing that character ran a client that holds this
+     * account's code. It is not a signature — a person with their own code
+     * can post any name they like here — so it buys protection against a
+     * collision and a casual squatter, not against forgery.
+     *
+     * A mismatch is not an error. Plenty of people have a second character;
+     * it simply proves nothing, and says so.
+     */
+    public function identity(Request $request, OsrsIdentityService $identity): JsonResponse
+    {
+        $data = $request->validate([
+            'rsn' => ['required', 'string', 'max:32'],
+        ]);
+
+        $user = $request->user();
+        $matched = $identity->proveFromPlugin($user, $data['rsn']);
+
+        return response()->json([
+            'rsn' => $user->osrs_username,
+            'matched' => $matched,
+            'proven' => $user->fresh()->hasProvenOsrsName(),
         ]);
     }
 

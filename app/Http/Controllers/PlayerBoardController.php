@@ -291,7 +291,7 @@ class PlayerBoardController extends Controller
             'completed_at' => now(),
             'completed_via' => 'MANUAL',
             'marked_by' => Auth::id(),
-            'status' => $board->initialClaimStatus('MANUAL'),
+            'status' => $board->initialClaimStatus('MANUAL', $request->user()),
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);

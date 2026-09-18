@@ -60,6 +60,13 @@ class RunelitePluginService
 
         return [
             'connection' => $this->connectionStatus($token),
+            // Whether a client has ever reported this account playing the
+            // name on it. Shown here because this page is where somebody
+            // goes to fix it, and the fix is "connect once".
+            'proven' => [
+                'at' => $user->osrs_proven_at?->toIso8601String(),
+                'via' => $user->osrs_proven_via,
+            ],
             'watching' => $watch,
             'reports' => PluginCompletion::where('user_id', $user->id)
                 ->latest('created_at')
@@ -88,6 +95,7 @@ class RunelitePluginService
 
         return implode('|', [
             $token?->last_used_at?->timestamp ?? 'none',
+            $user->osrs_proven_at?->timestamp ?? 'none',
             $latest?->id ?? 'none',
             $latest?->updated_at?->timestamp ?? 0,
             $watch['count'],
@@ -385,7 +393,7 @@ class RunelitePluginService
                 'marked_by' => $user->id,
                 'completed_via' => 'RUNELITE',
                 'plugin_completion_id' => $pluginCompletion->id,
-                'status' => $event->bingoCard->initialClaimStatus('RUNELITE'),
+                'status' => $event->bingoCard->initialClaimStatus('RUNELITE', $user),
             ]));
         } catch (UniqueConstraintViolationException) {
             return null;
@@ -412,7 +420,7 @@ class RunelitePluginService
                 'completed_via' => 'RUNELITE',
                 'plugin_completion_id' => $pluginCompletion->id,
                 'marked_by' => $user->id,
-                'status' => $event->board->initialClaimStatus('RUNELITE'),
+                'status' => $event->board->initialClaimStatus('RUNELITE', $user),
             ]));
         } catch (UniqueConstraintViolationException) {
             return null;

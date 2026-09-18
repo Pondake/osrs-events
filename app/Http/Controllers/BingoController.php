@@ -129,7 +129,7 @@ class BingoController extends Controller
             'bingo_square_id' => $square->id,
             'marked_by' => $request->user()->id,
             'completed_via' => 'MANUAL',
-            'status' => $card->initialClaimStatus('MANUAL'),
+            'status' => $card->initialClaimStatus('MANUAL', $request->user()),
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);

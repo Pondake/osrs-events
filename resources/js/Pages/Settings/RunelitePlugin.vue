@@ -53,6 +53,24 @@
                     <span>{{ connectionLabel }}</span>
                 </div>
 
+                <!-- The reason to connect at all for somebody who only
+                     claims by screenshot: one connection proves the name, and
+                     an unproven name means a host checks everything. -->
+                <div class="flex items-start gap-2">
+                    <u-icon
+                        :name="status.proven.at ? 'i-lucide-shield-check' : 'i-lucide-shield-alert'"
+                        class="size-4 mt-0.5 shrink-0"
+                        :class="status.proven.at ? 'text-success' : 'text-warning'"
+                    />
+                    <span>
+                        {{ status.proven.at
+                            ? $t('plugin.status_proven', { date: formatDate(status.proven.at) })
+                            : (osrsUsername
+                                ? $t('plugin.status_unproven', { name: osrsUsername })
+                                : $t('plugin.status_unproven_no_name')) }}
+                    </span>
+                </div>
+
                 <p>
                     {{ status.watching.count > 0
                         ? $t('plugin.status_watching', { count: status.watching.count, events: status.watching.events })

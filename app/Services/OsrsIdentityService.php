@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\RuneliteName;
 use Illuminate\Support\Carbon;
 
 /**
@@ -42,8 +43,17 @@ class OsrsIdentityService
             $username = $result['displayName'];
         }
 
+        // The proof belongs to the name it was made about. A rename hands the
+        // account a name nobody has played from a client yet, so it starts
+        // over — otherwise renaming would be the way around the whole check.
+        // Re-saving the same name (the recheck button, the canonical-casing
+        // rewrite) is not a rename and keeps it.
+        $keepsProof = RuneliteName::sameRsn($user->osrs_username, $username);
+
         $user->forceFill([
             'osrs_username' => $username,
+            'osrs_proven_at' => $keepsProof ? $user->osrs_proven_at : null,
+            'osrs_proven_via' => $keepsProof ? $user->osrs_proven_via : null,
             // Only a confirmed hit sets this. A null answer (their API was
             // unreachable) deliberately leaves the account unconfirmed rather
             // than assuming the best — the recurring notice is a nudge to try
@@ -53,6 +63,30 @@ class OsrsIdentityService
         ])->save();
 
         return $result['found'];
+    }
+
+    /**
+     * Record that a RuneLite client reported this account logged in as the
+     * name on it.
+     *
+     * Only a match counts, and a mismatch changes nothing rather than
+     * clearing an older proof: somebody with two characters who logs into the
+     * other one has not stopped owning the first.
+     *
+     * @return bool whether the reported character is the account's name
+     */
+    public function proveFromPlugin(User $user, string $rsn): bool
+    {
+        if (! RuneliteName::sameRsn($rsn, $user->osrs_username)) {
+            return false;
+        }
+
+        $user->forceFill([
+            'osrs_proven_at' => Carbon::now(),
+            'osrs_proven_via' => 'runelite',
+        ])->save();
+
+        return true;
     }
 
     /**

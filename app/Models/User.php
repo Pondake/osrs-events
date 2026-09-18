@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['discord_id', 'discord_username', 'nickname', 'osrs_username', 'osrs_verified_at', 'avatar_url', 'email', 'password', 'onboarding_completed_at', 'notification_preferences', 'display_preferences', 'push_opted_out_at'])]
+#[Fillable(['discord_id', 'discord_username', 'nickname', 'osrs_username', 'osrs_verified_at', 'osrs_proven_at', 'osrs_proven_via', 'avatar_url', 'email', 'password', 'onboarding_completed_at', 'notification_preferences', 'display_preferences', 'push_opted_out_at'])]
 #[Hidden(['remember_token', 'password'])]
 class User extends Authenticatable
 {
@@ -35,6 +35,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'onboarding_completed_at' => 'datetime',
             'osrs_verified_at' => 'datetime',
+            'osrs_proven_at' => 'datetime',
             'notification_preferences' => 'array',
             'display_preferences' => 'array',
             'push_opted_out_at' => 'datetime',
@@ -65,6 +66,16 @@ class User extends Authenticatable
     public function deletionPhrase(): string
     {
         return $this->osrs_username ?: $this->displayName();
+    }
+
+    /**
+     * Has a RuneLite client ever reported this account playing the name it
+     * claims? See the osrs_proven_at migration for what that proves and what
+     * it does not — it is not the same question as osrs_verified_at.
+     */
+    public function hasProvenOsrsName(): bool
+    {
+        return $this->osrs_proven_at !== null;
     }
 
     public function playerBoards(): HasMany

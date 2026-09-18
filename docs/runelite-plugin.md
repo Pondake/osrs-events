@@ -239,9 +239,9 @@ part; the real design work is tile matching and the trust model.
 
 ## Server API — built 2026-09-17
 
-Two routes under `/api/plugin/v1`, both `Authorization: Bearer ose_…` (the
+Three routes under `/api/plugin/v1`, all `Authorization: Bearer ose_…` (the
 code from /settings/runelite), 60 requests a minute per code. While
-`runelite_plugin_mode` is `off` both answer **404**, token or not.
+`runelite_plugin_mode` is `off` all three answer **404**, token or not.
 
 ### `GET /events`
 
@@ -257,6 +257,7 @@ and what each can complete right now:
 {
   "mode": "testing",
   "rsn": "Iron Pondake",
+  "proven": false,
   "events": [{ "id": "…", "title": "…", "type": "BINGO", "url": "…",
     "targets": [{ "kind": "bingo_square", "id": "…", "position": 4,
       "label": "Whip", "name": "Abyssal whip", "match": "abyssal whip",
@@ -267,6 +268,40 @@ and what each can complete right now:
 
 `watch` is every `match` in one list: the plugin reports a drop or kill only
 when its normalised name is in it.
+
+`proven` says whether a client has ever reported this account logged in as
+`rsn` — see `POST /identity`. False is not an error; it means every claim this
+account makes goes to a host, screenshots included.
+
+### `POST /identity`
+
+```json
+{ "rsn": "Iron Pondake" }
+```
+
+The character the client is signed in as. Send it once per connection, after
+the local player is known.
+
+```json
+{ "rsn": "Iron Pondake", "matched": true, "proven": true }
+```
+
+`matched` is whether the reported character is the name on the account. A
+match stamps `osrs_proven_at`; a mismatch changes nothing at all, because
+somebody logging into their second character has not stopped owning the first.
+Renaming the account on the site clears the proof — re-saving the same name
+(the recheck button, the canonical-casing rewrite) does not.
+
+**What this proves, exactly.** Somebody playing that character ran a client
+holding this account's code. That rules out two accounts claiming one name by
+accident, and it rules out typing a name you do not play. It does **not** rule
+out forgery: this endpoint is an HTTP call, and a person with their own code
+can post any name they like. It is the strongest thing worth asking a game
+client for, not identity.
+
+**What it is not.** `osrs_verified_at` is a different column answering a
+different question — Wise Old Man has heard of the name. Any real name passes
+that, including somebody else's.
 
 ### `POST /completions`
 

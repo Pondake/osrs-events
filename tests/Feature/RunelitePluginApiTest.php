@@ -102,6 +102,7 @@ class RunelitePluginApiTest extends TestCase
 
         $this->api()->getJson('/api/plugin/v1/events')->assertNotFound();
         $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Big bones'))->assertNotFound();
+        $this->api()->postJson('/api/plugin/v1/identity', ['rsn' => 'Iron Pondake'])->assertNotFound();
     }
 
     #[Test]
@@ -232,7 +233,6 @@ class RunelitePluginApiTest extends TestCase
         $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Big bones'))->assertCreated()->assertJsonPath('claims', []);
         $this->assertSame(0, BingoCompletion::count());
     }
-
 
     // ------------------------------------------------------ min_quantity
 
