@@ -484,6 +484,9 @@
                 :claim="claims[claimingSquare.position] ?? null"
                 :requires-approval="liveCard.requiresApproval"
                 :progress="progress[claimingSquare.position] ?? 0"
+                :detail="detailFor(claimingSquare)"
+                :detail-loading="detailLoading"
+                :can-claim="canPlay && !isPaused && status !== 'upcoming'"
             />
             <template v-if="canEdit">
                 <board-settings-modal
@@ -546,6 +549,10 @@ const props = defineProps({
     // from the page render and is refreshed by a partial reload rather than
     // riding the public live channel.
     progress: { type: Object, default: () => ({}) },
+    // Who has the one square the dialog is open on, and who is on the way to
+    // it. An optional prop: it arrives only on the partial reload
+    // openSquareDetail() makes, and is null on every other render.
+    squareDetail: { type: Object, default: null },
     completed: { type: Array, default: () => [] },
     completedLines: { type: Array, default: () => [] },
     hasWon: { type: Boolean, default: false },
@@ -987,6 +994,7 @@ const squareModalOpen = ref(false);
 const editingSquare = ref(null);
 const claimModalOpen = ref(false);
 const claimingSquare = ref(null);
+const detailLoading = ref(false);
 // A host reviewing one specific square's claim rather than the whole pending
 // queue — see the note on squareReviewModalOpen below.
 const squareReviewModalOpen = ref(false);
@@ -1004,19 +1012,6 @@ function onSquareClick(square) {
     // refuses it too; this just stops the click from looking like it did
     // something.
     if (square.isWildcard) return;
-
-    if (!props.canPlay) return;
-
-    // Nothing to claim or withdraw while the event is on hold. The server
-    // refuses both (BingoController::claim) and the banner above the card has
-    // already said why, so a dialog that can only end in a toast is noise.
-    if (isPaused.value) return;
-
-    // Same reasoning as isPaused above — BingoController::claim() already
-    // refuses a claim before the event's own start date, but nothing here
-    // checked it, so a click still opened the claim dialog on a card dated
-    // to start next month. Same gap PlayerBoardController::roll() had.
-    if (status.value === 'upcoming') return;
 
     const existingStatus = statusOf(square);
 
@@ -1055,29 +1050,42 @@ function onSquareClick(square) {
         return;
     }
 
-    // An existing claim always opens the dialog, whatever the card's review
-    // setting. Withdrawing used to happen on a bare second click — no hover
-    // state saying so, nothing confirming it — so a stray click quietly
-    // undid a claim and, on a reviewed card, its place in the queue.
-    if (existingStatus) {
-        claimingSquare.value = square;
-        claimModalOpen.value = true;
+    openSquareDetail(square);
+}
 
-        return;
-    }
+/**
+ * The dialog every non-editing click ends at.
+ *
+ * It used to be a claim dialog, and only a player on a running card ever saw
+ * it: a click while paused, before the start date, or by somebody who had not
+ * joined did nothing at all. What the square asks for, who has it and how far
+ * everyone else is are not privileges of taking part — so the dialog opens
+ * for all of them and offers the form only to whoever may use it (`canClaim`).
+ *
+ * A card that counts claims instantly used to claim on the bare click. That
+ * skipped the one screen that says what the square wants, so it now lands
+ * here too, with a single button and no form.
+ */
+// Only once it is the square actually being asked about: a stale payload
+// from the previously opened square would put the wrong faces on this one
+// for as long as the request takes.
+function detailFor(square) {
+    return props.squareDetail?.position === square?.position ? props.squareDetail : null;
+}
 
-    // A card that trusts its players marks straight away; one that reviews
-    // asks for the screenshot at the only moment the player still has it.
-    if (!liveCard.value.requiresApproval) {
-        router.post(`/events/${liveEvent.value.id}/bingo/squares/${square.id}/claim`, {}, {
-            preserveScroll: true,
-            onError: (errors) => console.error(errors),
-        });
-
-        return;
-    }
-
+function openSquareDetail(square) {
     claimingSquare.value = square;
     claimModalOpen.value = true;
+
+    // Fetched per square rather than shipped with the card — see
+    // BoardController::squareDetail(). `preserveUrl` keeps `?square=` out of
+    // the address bar: it is how the dialog asks, not where the reader is.
+    detailLoading.value = true;
+    router.reload({
+        only: ['squareDetail'],
+        data: { square: square.position },
+        preserveUrl: true,
+        onFinish: () => (detailLoading.value = false),
+    });
 }
 </script>

@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\BingoCard;
 use App\Models\BingoCompletion;
 use App\Models\BoardAuthor;
 use App\Models\Event;
 use App\Models\Role;
+use App\Models\TargetProgress;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
@@ -177,6 +179,105 @@ class BingoTest extends TestCase
         $this->assertNull(
             $this->bingo()->competitorFor($this->event(['mode' => 'TEAM']), $this->player()),
         );
+    }
+
+    // ------------------------------------------------- square detail
+
+    /**
+     * The headers an Inertia partial reload sends. It answers JSON rather
+     * than a rendered page, so these tests read `props.*` straight off it.
+     *
+     * `squareDetail` is an optional prop, so it is *absent* from a normal
+     * render by design — asking for it the way the dialog does is the only
+     * way to see it at all. The version has to be the real one or the
+     * middleware answers 409 instead of the page.
+     */
+    private static function partial(string $component, string $only): array
+    {
+        return [
+            'X-Inertia' => 'true',
+            'X-Inertia-Partial-Component' => $component,
+            'X-Inertia-Partial-Data' => $only,
+            'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+        ];
+    }
+
+
+    /**
+     * The detail dialog's payload. Optional, so it costs a normal render
+     * nothing and only arrives when a square is asked for by position.
+     */
+    #[Test]
+    public function the_square_detail_is_only_sent_when_a_square_is_asked_for(): void
+    {
+        $event = $this->event();
+        $this->card($event, 3);
+
+        $this->actingAs($this->player())
+            ->get("/events/{$event->id}")
+            ->assertInertia(fn ($page) => $page->missing('squareDetail'));
+    }
+
+    #[Test]
+    public function the_square_detail_lists_who_has_it_and_who_is_on_the_way(): void
+    {
+        $event = $this->event();
+        $card = $this->card($event, 3);
+        $square = $card->squares()->where('position', 0)->first();
+        $square->update(['required_count' => 5]);
+
+        $holder = User::factory()->create(['osrs_username' => 'Holder', 'nickname' => 'Holder']);
+        BingoCompletion::create([
+            'bingo_square_id' => $square->id,
+            'user_id' => $holder->id,
+            'marked_by' => $holder->id,
+            'status' => 'APPROVED',
+        ]);
+
+        $walker = User::factory()->create(['osrs_username' => 'Walker', 'nickname' => 'Walker']);
+        foreach ([204, 205] as $killCount) {
+            TargetProgress::create([
+                'kind' => 'bingo_square',
+                'target_id' => $square->id,
+                'competitor_key' => "user:{$walker->id}",
+                'dedupe_key' => "kc:{$killCount}",
+            ]);
+        }
+
+        $this->actingAs($this->player())
+            ->get("/events/{$event->id}?square=0", self::partial('Events/Bingo', 'squareDetail'))
+            ->assertJsonPath('props.squareDetail.position', 0)
+            ->assertJsonPath('props.squareDetail.holders.0.name', 'Holder')
+            ->assertJsonPath('props.squareDetail.inProgress.0.name', 'Walker')
+            ->assertJsonPath('props.squareDetail.inProgress.0.done', 2);
+    }
+
+    /**
+     * The same rule the grid and the standings follow: on a listed
+     * invite-only event the numbers are public and the roster is not — see
+     * BoardAccessService::canSeeParticipants(). A stranger who has not
+     * joined still gets the rows, so the field is not understated.
+     */
+    #[Test]
+    public function the_square_detail_withholds_names_on_an_invite_only_event(): void
+    {
+        $event = $this->event(['access_mode' => 'INVITE']);
+        $card = $this->card($event, 3);
+        $square = $card->squares()->where('position', 0)->first();
+
+        $holder = User::factory()->create(['osrs_username' => 'Holder', 'nickname' => 'Holder']);
+        BingoCompletion::create([
+            'bingo_square_id' => $square->id,
+            'user_id' => $holder->id,
+            'marked_by' => $holder->id,
+            'status' => 'APPROVED',
+        ]);
+
+        $this->actingAs($this->player())
+            ->get("/events/{$event->id}?square=0", self::partial('Events/Bingo', 'squareDetail'))
+            ->assertJsonCount(1, 'props.squareDetail.holders')
+            ->assertJsonPath('props.squareDetail.holders.0.name', null)
+            ->assertJsonPath('props.squareDetail.holders.0.avatarUrl', null);
     }
 
     // ------------------------------------------------------------- routes

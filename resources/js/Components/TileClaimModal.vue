@@ -1,6 +1,39 @@
 <template>
     <u-modal v-model:open="isOpen" :title="modalTitle" :dismissible="false">
         <template #body>
+            <!-- What the tile is asking for. The desktop sidebar has carried
+                 this card all along and the dialog had none of it, so on a
+                 phone — where the sidebar sits far below the board — tapping
+                 a tile opened an action with no statement of the task. Same
+                 block BingoClaimModal shows, for the same reason. -->
+            <div v-if="tile?.task" class="flex items-start gap-3 pb-4 mb-3 border-b border-default">
+                <img
+                    v-if="tile.task.icon_url"
+                    :src="tile.task.icon_url"
+                    alt=""
+                    class="size-10 object-contain shrink-0"
+                />
+                <u-icon v-else name="i-lucide-scroll-text" class="size-10 text-muted shrink-0" />
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-sm">{{ tile.task.title }}</p>
+                    <p v-if="tile.task.description" class="text-xs text-muted mt-1 leading-relaxed">
+                        {{ tile.task.description }}
+                    </p>
+                </div>
+                <u-button
+                    v-if="tile.task.wiki_url"
+                    :href="tile.task.wiki_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="xs"
+                    color="neutral"
+                    variant="outline"
+                    trailing-icon="i-lucide-external-link"
+                    :label="$t('tile_editor.open_wiki_page')"
+                    class="shrink-0"
+                />
+            </div>
+
             <!-- The bar this tile sets, stated where the claim is made — a
                  MANUAL claim is judged by the same one the plugin is. -->
             <p v-if="minQuantity > 1" class="flex items-center gap-1.5 text-xs text-muted mb-3">
@@ -13,6 +46,15 @@
                 <u-icon name="i-lucide-repeat" class="size-3.5 shrink-0" />
                 {{ $t('common.progress_notice', { done: progress, total: requiredCount }) }}
             </p>
+
+            <!-- Who has it and who is on the way — see TargetHolderList. -->
+            <target-holder-list
+                class="py-4 border-b border-default"
+                :holders="detail?.holders ?? []"
+                :in-progress="detail?.inProgress ?? []"
+                :required-count="requiredCount"
+                :loading="detailLoading"
+            />
 
             <!-- Already claimed: what you submitted, what the host said, and
                  the one destructive action — same shape as BingoClaimModal,
@@ -66,6 +108,13 @@
                 />
             </div>
 
+            <!-- A tile that is not yours to claim right now still opens:
+                 the board is readable by anyone who can see the event, and
+                 on a phone this dialog is the only place the task is
+                 written out. What it does not get is a form the server
+                 would refuse. -->
+            <p v-else-if="cannotActReason" class="text-sm text-muted py-2">{{ cannotActReason }}</p>
+
             <div v-else class="space-y-4 py-2">
                 <p class="text-sm text-muted">{{ $t('board.claim_intro') }}</p>
 
@@ -113,7 +162,7 @@
                 />
 
                 <u-button
-                    v-if="!claim"
+                    v-if="!claim && !cannotActReason"
                     color="primary"
                     :disabled="!form.proof_url.trim()"
                     :loading="form.processing"
@@ -128,6 +177,7 @@
 <script setup>
 import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
 import RuneliteContextCard from '@/Components/RuneliteContextCard.vue';
+import TargetHolderList from '@/Components/TargetHolderList.vue';
 import { computed, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
@@ -156,6 +206,14 @@ const props = defineProps({
     // How many qualifying reports this player board has on a "do this N
     // times" tile — see BoardController::show.
     progress: { type: Number, default: 0 },
+    // Who has this tile and who is on the way, fetched when the dialog opens
+    // — see BoardController::tileDetail().
+    detail: { type: Object, default: null },
+    detailLoading: { type: Boolean, default: false },
+    // Why claiming is not on offer, when it is not. A tile you are not
+    // standing on is readable and not claimable, and saying which is the
+    // difference between a dialog that is quiet and one that looks broken.
+    cannotActReason: { type: String, default: null },
 });
 
 const emit = defineEmits(['update:open']);

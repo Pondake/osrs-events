@@ -10,6 +10,7 @@ use App\Models\BoardTeam;
 use App\Models\Event;
 use App\Models\EventBlueprint;
 use App\Models\EventStanding;
+use App\Models\PlayerBoard;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserGuild;
@@ -24,6 +25,7 @@ use App\Services\EventStandingsService;
 use App\Services\BoardReviewService;
 use App\Services\PlayerBoardService;
 use App\Services\RaceAnnouncer;
+use App\Services\TargetDetailService;
 use App\Services\TargetProgressService;
 use App\Support\AnnouncementTrigger;
 use App\Support\DiscordCdn;
@@ -438,6 +440,10 @@ class BoardController extends Controller
                 ]]),
             ],
             'players' => $players,
+            // Who has the one tile the detail dialog is open on, and who is
+            // on the way to it. Optional, so it costs a normal render
+            // nothing — see TargetDetailService and squareDetail() above.
+            'tileDetail' => Inertia::optional(fn () => $this->tileDetail($tiles, $namesArePublic, $playerBoard)),
             // The podium, in the order it was earned. Sent to everyone, not
             // only to the person who finished: "somebody got home" is a fact
             // about the board, and the browser-side guess this replaces
@@ -678,6 +684,11 @@ class BoardController extends Controller
             // (see BingoChannel) — the page reloads this prop when the
             // stream says something moved.
             'progress' => app(TargetProgressService::class)->forCard($card, $competitor),
+            // Who has this one square and who is on the way to it, fetched
+            // when the dialog opens rather than shipped with the page — see
+            // TargetDetailService. Optional, so a normal render and every
+            // other partial reload never touch it.
+            'squareDetail' => Inertia::optional(fn () => $this->squareDetail($card, $bingoNamesArePublic, $competitor)),
             // Who holds each square, for the faces on the grid. Same source
             // the live channel pushes, so a card that updates mid-event does
             // not disagree with the one that was rendered.
@@ -710,6 +721,57 @@ class BoardController extends Controller
             'viewingAsAdmin' => $user !== null && app(BoardAccessService::class)->isAdminOnlyView($user, $event),
             'adminEditUrl' => $user === null ? null : $this->adminEditUrl($user, $event),
         ]);
+    }
+
+    /**
+     * The same, for a Snakes & Ladders tile.
+     *
+     * Keyed by position like its bingo twin, because that is what a tile is
+     * called everywhere on the page — "tile 14", not a uuid.
+     */
+    private function tileDetail(Collection $tiles, bool $namesArePublic, ?PlayerBoard $playerBoard): ?array
+    {
+        $position = request()->integer('tile', -1);
+        $tile = $tiles->firstWhere('position', $position);
+
+        if ($tile === null) {
+            return null;
+        }
+
+        return [
+            'position' => $tile->position,
+            ...app(TargetDetailService::class)->forTile(
+                $tile,
+                $namesArePublic,
+                $playerBoard === null ? null : TargetProgressService::boardKey($playerBoard),
+            ),
+        ];
+    }
+
+    /**
+     * The one square the detail dialog is open on, or null.
+     *
+     * Position rather than id: that is what the grid, the claims map and the
+     * progress map are all keyed by, so the page asks for a square the same
+     * way it talks about one everywhere else.
+     */
+    private function squareDetail(BingoCard $card, bool $namesArePublic, ?array $competitor): ?array
+    {
+        $position = request()->integer('square', -1);
+        $square = $card->squares->firstWhere('position', $position);
+
+        if ($square === null) {
+            return null;
+        }
+
+        return [
+            'position' => $square->position,
+            ...app(TargetDetailService::class)->forSquare(
+                $square,
+                $namesArePublic,
+                $competitor === null ? null : TargetProgressService::bingoKey($competitor),
+            ),
+        ];
     }
 
     private function showMetricRace(Event $event, EventStandingsService $standings): Response

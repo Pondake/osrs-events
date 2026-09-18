@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Board;
 use App\Models\BoardAuthor;
 use App\Models\BoardTeam;
 use App\Models\CompletedTile;
 use App\Models\Event;
 use App\Models\PlayerBoard;
+use App\Models\TargetProgress;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Tile;
@@ -57,6 +59,115 @@ class PlayerBoardTest extends TestCase
         for ($position = 0; $position < $board->tileCount(); $position++) {
             Tile::create(['board_id' => $board->id, 'position' => $position, 'type' => 'NORMAL']);
         }
+    }
+
+    // ------------------------------------------------------------- tile detail
+
+    /**
+     * The headers an Inertia partial reload sends. `tileDetail` is optional,
+     * so it is absent from a normal render by design and asking for it the
+     * way the dialog does is the only way to see it. The reload answers JSON
+     * rather than a rendered page, so the assertions read `props.*`.
+     */
+    private static function partial(string $only): array
+    {
+        return [
+            'X-Inertia' => 'true',
+            'X-Inertia-Partial-Component' => 'BoardShow',
+            'X-Inertia-Partial-Data' => $only,
+            'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+        ];
+    }
+
+    #[Test]
+    public function the_tile_detail_is_only_sent_when_a_tile_is_asked_for(): void
+    {
+        [$owner, $event] = $this->board();
+        $this->fillTiles($event->board);
+
+        $this->actingAs($owner)
+            ->get("/events/{$event->id}")
+            ->assertInertia(fn ($page) => $page->missing('tileDetail'));
+    }
+
+    #[Test]
+    public function the_tile_detail_lists_who_has_it_and_who_is_on_the_way(): void
+    {
+        [$owner, $event] = $this->board();
+        $this->fillTiles($event->board);
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->first();
+        $tile->update(['required_count' => 5]);
+
+        $holder = User::factory()->create(['osrs_username' => 'Holder', 'nickname' => 'Holder']);
+        $holderBoard = PlayerBoard::create([
+            'board_id' => $event->board->id,
+            'user_id' => $holder->id,
+            'current_position' => 3,
+        ]);
+        CompletedTile::create([
+            'player_board_id' => $holderBoard->id,
+            'tile_id' => $tile->id,
+            'completed_at' => now(),
+            'status' => 'APPROVED',
+        ]);
+
+        $walker = User::factory()->create(['osrs_username' => 'Walker', 'nickname' => 'Walker']);
+        $walkerBoard = PlayerBoard::create([
+            'board_id' => $event->board->id,
+            'user_id' => $walker->id,
+            'current_position' => 3,
+        ]);
+        foreach ([204, 205, 206] as $killCount) {
+            TargetProgress::create([
+                'kind' => 'tile',
+                'target_id' => $tile->id,
+                'competitor_key' => "board:{$walkerBoard->id}",
+                'dedupe_key' => "kc:{$killCount}",
+            ]);
+        }
+
+        $this->actingAs($owner)
+            ->get("/events/{$event->id}?tile=3", self::partial('tileDetail'))
+            ->assertJsonPath('props.tileDetail.position', 3)
+            ->assertJsonPath('props.tileDetail.holders.0.name', 'Holder')
+            ->assertJsonPath('props.tileDetail.inProgress.0.name', 'Walker')
+            ->assertJsonPath('props.tileDetail.inProgress.0.done', 3);
+    }
+
+    /**
+     * Numbers are public, the roster is not — the same rule the pieces on the
+     * board already follow. See BoardAccessService::canSeeParticipants().
+     */
+    #[Test]
+    public function the_tile_detail_withholds_names_on_an_invite_only_event(): void
+    {
+        [$owner, $event] = $this->board(['event' => ['access_mode' => 'INVITE']]);
+        $this->fillTiles($event->board);
+
+        $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->first();
+
+        $holder = User::factory()->create(['osrs_username' => 'Holder', 'nickname' => 'Holder']);
+        $holderBoard = PlayerBoard::create([
+            'board_id' => $event->board->id,
+            'user_id' => $holder->id,
+            'current_position' => 3,
+        ]);
+        CompletedTile::create([
+            'player_board_id' => $holderBoard->id,
+            'tile_id' => $tile->id,
+            'completed_at' => now(),
+            'status' => 'APPROVED',
+        ]);
+
+        // A stranger, not the author: an author sees the roster whatever the
+        // access mode says.
+        $stranger = User::factory()->create(['osrs_username' => 'Stranger']);
+
+        $this->actingAs($stranger)
+            ->get("/events/{$event->id}?tile=3", self::partial('tileDetail'))
+            ->assertJsonCount(1, 'props.tileDetail.holders')
+            ->assertJsonPath('props.tileDetail.holders.0.name', null);
     }
 
     // ------------------------------------------------------------------ rolling

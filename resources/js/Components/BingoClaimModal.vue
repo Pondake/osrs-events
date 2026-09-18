@@ -56,6 +56,18 @@
                 {{ $t('common.progress_notice', { done: progress, total: square.requiredCount }) }}
             </p>
 
+            <!-- Who has it and who is on the way. Above the claim form
+                 rather than below it: the dialog is a detail screen that
+                 happens to carry an action, and "four people are on 4 / 5"
+                 is the part a reader came for. -->
+            <target-holder-list
+                class="py-4 border-b border-default"
+                :holders="detail?.holders ?? []"
+                :in-progress="detail?.inProgress ?? []"
+                :required-count="square?.requiredCount ?? 1"
+                :loading="detailLoading"
+            />
+
             <!-- Already claimed: what you submitted, what the host said, and
                  the one destructive action, behind a button rather than
                  behind a second click on the square.
@@ -121,6 +133,18 @@
                 />
             </div>
 
+            <!-- A reader who is not in this event still gets everything
+                 above; what they do not get is a form that would be refused.
+                 Same answer for a paused or not-yet-started card. -->
+            <p v-else-if="!canClaim" class="text-sm text-muted py-2">{{ $t('board.detail_join_to_claim') }}</p>
+
+            <!-- A card that trusts its players asks for nothing: the button
+                 in the footer is the whole claim. The form below is what a
+                 reviewed card needs, and asking for a screenshot on a card
+                 that never looks at one is the kind of friction that gets a
+                 setting turned back off. -->
+            <p v-else-if="!requiresApproval" class="text-sm text-muted py-2">{{ $t('bingo.claim_instant_intro') }}</p>
+
             <div v-else class="space-y-4 py-2">
                 <p class="text-sm text-muted">{{ $t('bingo.claim_intro') }}</p>
 
@@ -173,11 +197,11 @@
                      else-branch would have offered "Submit claim" on a square
                      that already has one. -->
                 <u-button
-                    v-if="!claim"
+                    v-if="!claim && canClaim"
                     color="primary"
-                    :disabled="!form.proof_url.trim()"
+                    :disabled="requiresApproval && !form.proof_url.trim()"
                     :loading="form.processing"
-                    :label="$t('bingo.submit_claim')"
+                    :label="$t(requiresApproval ? 'bingo.submit_claim' : 'bingo.mark_done')"
                     @click="submit"
                 />
             </div>
@@ -188,6 +212,7 @@
 <script setup>
 import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
 import RuneliteContextCard from '@/Components/RuneliteContextCard.vue';
+import TargetHolderList from '@/Components/TargetHolderList.vue';
 import { computed, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
@@ -215,6 +240,14 @@ const props = defineProps({
     // How many qualifying reports this competitor has on a "do this N times"
     // square — see BoardController::showBingo.
     progress: { type: Number, default: 0 },
+    // Who has this square and who is on the way, fetched when the dialog
+    // opens — see BoardController::squareDetail().
+    detail: { type: Object, default: null },
+    detailLoading: { type: Boolean, default: false },
+    // Whether this reader may claim at all. False for someone reading a
+    // public event they have not joined, and while the card is paused or
+    // has not started — they still get the detail, which is the point.
+    canClaim: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:open']);

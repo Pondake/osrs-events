@@ -287,11 +287,24 @@
                                     </transition>
 
                                     <div class="absolute inset-0 flex flex-col items-center justify-center px-1 overflow-hidden" :class="hasRequirement(tile) ? 'pb-4' : ''">
+                                        <!-- On a phone a tile stops being a
+                                             label and becomes a token. A 9x9
+                                             board leaves 44px a side, and two
+                                             lines of 12px text in it carry
+                                             nothing — "Complete a..." is not
+                                             a task. The icon takes the room
+                                             instead and the title is one tap
+                                             away in the dialog. Same trade
+                                             the bingo squares already make.
+                                             Only where an icon is there to
+                                             carry the meaning: a tile with a
+                                             task and no icon keeps its
+                                             words. -->
                                         <img
                                             v-if="tile.task?.icon_url && !isJumpTile(tile)"
                                             :src="tile.task.icon_url"
                                             :alt="tileTitle(tile)"
-                                            class="max-h-[24%] max-w-[36%] object-contain shrink-0 mb-0.5"
+                                            class="object-contain shrink-0 mb-0.5 max-h-[52%] max-w-[64%] sm:max-h-[24%] sm:max-w-[36%]"
                                             loading="lazy"
                                         />
                                         <!-- A jump tile is not an unfilled one.
@@ -311,7 +324,11 @@
                                         >
                                             → {{ tile.target_position + 1 }}
                                         </p>
-                                        <p v-else-if="!isTileEmpty(tile)" class="w-full text-xs text-center leading-tight line-clamp-2 text-muted shrink-0">
+                                        <p
+                                            v-else-if="!isTileEmpty(tile)"
+                                            class="w-full text-xs text-center leading-tight text-muted shrink-0"
+                                            :class="tile.task?.icon_url ? 'hidden sm:line-clamp-2' : 'line-clamp-2'"
+                                        >
                                             {{ tileTitle(tile) }}
                                         </p>
                                     </div>
@@ -1007,6 +1024,24 @@
                 @update:open="(v) => !v && (editingTile = null)"
             />
             <team-entry-modal v-model:open="showTeamEntry" :event-id="liveBoard.id" :teams="teamOptions" />
+            <!-- The tapped tile, on a width where the sidebar card that
+                 normally answers this is far below the board. Same dialog as
+                 the claim one below, because it is the same question with
+                 the action left off unless you are standing on the tile. -->
+            <tile-claim-modal
+                v-if="detailTile"
+                v-model:open="showDetailModal"
+                :event-id="liveBoard.id"
+                :tile="detailTile"
+                :tile-title="tileTitle(detailTile) ?? trans('board.tile', { n: detailTile.position + 1 })"
+                :claim="playerBoard?.claims?.[detailTile.id] ?? null"
+                :can-act="canPlay"
+                :progress="progressOn(detailTile)"
+                :detail="detailFor(detailTile)"
+                :detail-loading="detailLoading"
+                :cannot-act-reason="detailClaimBlockedReason"
+            />
+
             <tile-claim-modal
                 v-if="currentTile"
                 v-model:open="showClaimModal"
@@ -1054,6 +1089,10 @@ const props = defineProps({
     canForceRoll: { type: Boolean, default: false },
     board: { type: Object, required: true },
     tiles: { type: Array, required: true },
+    // Who has the one tile the dialog is open on, and who is on the way to
+    // it. An optional prop: it arrives only on the partial reload
+    // openTileDetail() makes, and is null on every other render.
+    tileDetail: { type: Object, default: null },
     playerBoard: { type: Object, default: null },
     players: { type: Array, default: () => [] },
     // Whether the pieces on this board may be named. False on a listed
@@ -1530,6 +1569,46 @@ const showingOthers = computed(() => isSpectator.value || showOtherPlayers.value
 // can mark it complete, matching the old app (you complete tiles you've
 // actually reached, not any tile you click).
 const clickedTile = ref(null);
+
+// The tapped tile's own dialog, and the payload it opens onto. Separate from
+// `clickedTile` because the sidebar card keeps following every click while
+// the dialog only exists under `lg` — see handleTileClick().
+const detailTile = ref(null);
+const showDetailModal = ref(false);
+const detailLoading = ref(false);
+
+/**
+ * Why the dialog shows no claim form, or null when it shows one.
+ *
+ * A tile is claimed by standing on it, so every other tile is readable and
+ * not claimable. Saying which of the three reasons applies is the difference
+ * between a quiet dialog and one that looks broken.
+ */
+const detailClaimBlockedReason = computed(() => {
+    if (!props.playerBoard) return trans('board.detail_join_to_claim_tile');
+    if (!canPlay.value) return trans('board.detail_event_not_live');
+    if (detailTile.value?.position !== props.playerBoard.current_position) {
+        return trans('board.detail_not_your_tile');
+    }
+
+    return null;
+});
+
+/**
+ * Whether the viewport is narrow enough that the sidebar's tile card is no
+ * longer beside the board. Matches the `lg:` the layout itself splits on.
+ *
+ * Set after mount, never during render — `matchMedia` does not exist on the
+ * server. Same pattern as Bingo.vue's avatar sizing.
+ */
+const narrow = ref(false);
+
+onMounted(() => {
+    const query = window.matchMedia('(max-width: 1023px)');
+
+    narrow.value = query.matches;
+    query.addEventListener('change', (event) => (narrow.value = event.matches));
+});
 
 // Fed by PlayerBoardController::roll()'s 'last-roll' session flash (kept
 // separate from the already-formatted 'board-save' toast text — see
@@ -2238,6 +2317,38 @@ function handleTileClick(tile) {
         return;
     }
     clickedTile.value = tile;
+
+    // Under `lg` the sidebar card this feeds sits below the whole board, so
+    // a tap "did nothing" as far as the screen shows. The dialog is the same
+    // card, in front of the reader — see openTileDetail().
+    if (narrow.value) openTileDetail(tile);
+}
+
+/**
+ * The tapped tile's dialog: what it asks for, who has it, how far everyone
+ * is, and the claim form only when this is the tile you are standing on.
+ *
+ * Fetched per tile rather than shipped with the page — see
+ * BoardController::tileDetail(). `preserveUrl` keeps `?tile=` out of the
+ * address bar: it is how the dialog asks, not where the reader is.
+ */
+function openTileDetail(tile) {
+    detailTile.value = tile;
+    showDetailModal.value = true;
+    detailLoading.value = true;
+
+    router.reload({
+        only: ['tileDetail'],
+        data: { tile: tile.position },
+        preserveUrl: true,
+        onFinish: () => (detailLoading.value = false),
+    });
+}
+
+// Only once it is the tile actually being asked about — a payload still in
+// flight for the previous tile would put the wrong faces on this one.
+function detailFor(tile) {
+    return props.tileDetail?.position === tile?.position ? props.tileDetail : null;
 }
 
 function roll(force = null) {
