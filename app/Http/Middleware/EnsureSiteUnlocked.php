@@ -152,6 +152,10 @@ class EnsureSiteUnlocked
             abort(423, trans('lock.locked'));
         }
 
+        if ($request->isMethod('GET')) {
+            $request->session()->put('url.intended', $request->fullUrl());
+        }
+
         // A HARD navigation, not an Inertia page swap.
         //
         // Reported 2026-08-31 from staging: somebody had the site open before

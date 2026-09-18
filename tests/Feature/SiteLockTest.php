@@ -204,6 +204,17 @@ class SiteLockTest extends TestCase
         $this->assertNotNull(User::where('email', 'beta@example.com')->first());
     }
 
+    #[Test]
+    public function unlocking_returns_to_the_page_that_was_asked_for(): void
+    {
+        $this->lock();
+
+        $this->get('/events?tab=past')->assertRedirect('/locked');
+
+        $this->post('/locked', ['password' => 'clan-secret'])
+            ->assertRedirect(url('/events?tab=past'));
+    }
+
     /** The admin switch still outranks the door — an explicit no is a no. */
     #[Test]
     public function the_shared_password_does_not_beat_a_closed_registration_switch(): void
