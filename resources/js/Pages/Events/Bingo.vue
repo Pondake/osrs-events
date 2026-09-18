@@ -733,6 +733,8 @@ onMounted(() => {
 
     narrow.value = query.matches;
     query.addEventListener('change', (event) => (narrow.value = event.matches));
+
+    warmDialog();
 });
 
 function avatarSize(holders) {
@@ -995,6 +997,28 @@ const editingSquare = ref(null);
 const claimModalOpen = ref(false);
 const claimingSquare = ref(null);
 const detailLoading = ref(false);
+/**
+ * Warm the dialog's chunk while the board is being read.
+ *
+ * It is loaded on demand, which was right while it was a claim dialog you
+ * opened now and then. It is now the way a tile is read at all on a phone —
+ * the connector net and the sidebar card are both gone at that width — and a
+ * tap that does nothing for a second reads as a dead board.
+ *
+ * Idle rather than immediately: it must not compete with the first paint.
+ */
+function warmDialog() {
+    const load = () => import('@/Components/BingoClaimModal.vue');
+
+    if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(load);
+
+        return;
+    }
+
+    setTimeout(load, 1000);
+}
+
 // A host reviewing one specific square's claim rather than the whole pending
 // queue — see the note on squareReviewModalOpen below.
 const squareReviewModalOpen = ref(false);

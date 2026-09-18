@@ -1,5 +1,7 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="modalTitle" :dismissible="false">
+    <!-- Dismissible until there is something to lose — see TileClaimModal
+         for the reasoning; the same dialog, the same one form in it. -->
+    <u-modal v-model:open="isOpen" :title="modalTitle" :dismissible="!hasTypedInput">
         <template #body>
             <!-- What the square is asking for — the same icon/description a
                  tile carries elsewhere (see BoardShow's task card), plus a
@@ -255,6 +257,8 @@ const emit = defineEmits(['update:open']);
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
 const form = useForm({ proof_url: '', note: '' });
+
+const hasTypedInput = computed(() => form.proof_url.trim() !== '' || form.note.trim() !== '');
 const withdrawing = ref(false);
 
 // Reset on every OPENING, not only when the square changes.

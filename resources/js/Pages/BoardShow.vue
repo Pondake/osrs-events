@@ -225,7 +225,18 @@
                                  Two passes with the grid between: the whole drawing
                                  underneath, then the same drawing clipped to each
                                  connector's own two tiles on top. -->
-                            <board-connectors :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" />
+                            <!-- Not on a phone. The net is drawn across the
+                                 whole board and every line crosses tiles it
+                                 has nothing to do with; at 44px a tile that
+                                 is the difference between a readable grid and
+                                 a tangle. What a reader needs from it — is
+                                 there a jump on this tile, and where does it
+                                 go — the ring, the corner arrow and the
+                                 dialog all say without drawing over anything.
+                                 Hovering is a desktop gesture anyway: a tap
+                                 opens the dialog, so highlighting one line on
+                                 touch was never on offer. -->
+                            <board-connectors v-if="!narrow" :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" />
                             <!-- Pass-through until the menu has loaded, then
                                  the menu itself — see BoardTileMenu.vue for
                                  why it cannot simply be written here. The
@@ -317,17 +328,22 @@
                                              which way. -->
                                         <u-icon v-else-if="isTileEmpty(tile) && !isJumpTile(tile)" name="i-lucide-plus" class="size-5 text-muted/50 shrink-0" />
 
+                                        <!-- A task with no icon of its own. Two
+                                             clipped words ("Compl a...", "Comm
+                                             choi...") say nothing and are the
+                                             loudest thing on a 44px tile, so on
+                                             a phone they become one glyph: there
+                                             is a task here, tap it. Above `sm`
+                                             the words fit and stay. -->
+                                        <u-icon
+                                            v-if="!isJumpTile(tile) && !isTileEmpty(tile) && !tile.task?.icon_url"
+                                            name="i-lucide-scroll-text"
+                                            class="size-5 text-muted shrink-0 sm:hidden"
+                                        />
+
                                         <p
-                                            v-if="isJumpTile(tile) && tile.target_position !== null"
-                                            class="w-full text-xs text-center leading-tight shrink-0 tabular-nums"
-                                            :class="tile.type === 'SNAKE' ? 'text-error/80' : 'text-success/80'"
-                                        >
-                                            → {{ tile.target_position + 1 }}
-                                        </p>
-                                        <p
-                                            v-else-if="!isTileEmpty(tile)"
-                                            class="w-full text-xs text-center leading-tight text-muted shrink-0"
-                                            :class="tile.task?.icon_url ? 'hidden sm:line-clamp-2' : 'line-clamp-2'"
+                                            v-if="!isJumpTile(tile) && !isTileEmpty(tile)"
+                                            class="w-full text-xs text-center leading-tight text-muted shrink-0 hidden sm:line-clamp-2"
                                         >
                                             {{ tileTitle(tile) }}
                                         </p>
@@ -362,7 +378,7 @@
                                              on: its own ground and a ring that
                                              does not borrow the tile's colour. -->
                                         <u-avatar
-                                            v-for="p in playersOnTile(tile.position).slice(0, 3)"
+                                            v-for="p in playersOnTile(tile.position).slice(0, narrow ? 1 : 3)"
                                             :key="p.id"
                                             :src="p.avatarUrl ?? undefined"
                                             :alt="namesArePublic ? p.name : undefined"
@@ -370,11 +386,16 @@
                                             size="xs"
                                             class="ring-2 ring-primary bg-elevated shadow-md"
                                         />
+                                        <!-- An avatar is half a tile on a phone,
+                                             so three of them push the icon out.
+                                             One face and a count instead; who is
+                                             actually standing there is in the
+                                             dialog a tap away. -->
                                         <span
-                                            v-if="playersOnTile(tile.position).length > 3"
+                                            v-if="playersOnTile(tile.position).length > (narrow ? 1 : 3)"
                                             class="text-[10px] font-semibold leading-none bg-elevated rounded-full size-5 flex items-center justify-center ring-2 ring-primary shadow-md"
                                         >
-                                            +{{ playersOnTile(tile.position).length - 3 }}
+                                            +{{ playersOnTile(tile.position).length - (narrow ? 1 : 3) }}
                                         </span>
                                     </div>
                                     </span>
@@ -382,7 +403,7 @@
                             </div>
                             </component>
 
-                            <board-connectors :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" clip-ends />
+                            <board-connectors v-if="!narrow" :connections="snakeLadderConnections" :active-key="activeConnector" :passed-position="playerBoard?.current_position ?? null" clip-ends />
 
                             <!-- The piece that moves. Bigger than the avatars
                                  stacked on a tile, and drawn after the top
@@ -1602,12 +1623,41 @@ const detailClaimBlockedReason = computed(() => {
  * server. Same pattern as Bingo.vue's avatar sizing.
  */
 const narrow = ref(false);
+/**
+ * Warm the dialog's chunk while the board is being read.
+ *
+ * It is loaded on demand, which was right while it was a claim dialog you
+ * opened now and then. It is now the way a tile is read at all on a phone —
+ * the connector net and the sidebar card are both gone at that width — and a
+ * tap that does nothing for a second reads as a dead board.
+ *
+ * Idle rather than immediately: it must not compete with the first paint.
+ */
+function warmDialog() {
+    const load = () => import('@/Components/TileClaimModal.vue');
+
+    if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(load);
+
+        return;
+    }
+
+    setTimeout(load, 1000);
+}
+
+
+/** The live answer. `narrow` is the reactive copy the template reads. */
+function isNarrow() {
+    return window.matchMedia('(max-width: 1023px)').matches;
+}
 
 onMounted(() => {
     const query = window.matchMedia('(max-width: 1023px)');
 
     narrow.value = query.matches;
     query.addEventListener('change', (event) => (narrow.value = event.matches));
+
+    warmDialog();
 });
 
 // Fed by PlayerBoardController::roll()'s 'last-roll' session flash (kept
@@ -2321,7 +2371,12 @@ function handleTileClick(tile) {
     // Under `lg` the sidebar card this feeds sits below the whole board, so
     // a tap "did nothing" as far as the screen shows. The dialog is the same
     // card, in front of the reader — see openTileDetail().
-    if (narrow.value) openTileDetail(tile);
+    //
+    // Measured here rather than read off `narrow`: that ref is seeded in
+    // onMounted, and the very first tap after a page load was landing before
+    // it had been. A click only ever happens in a browser, so there is
+    // nothing to guard against.
+    if (isNarrow()) openTileDetail(tile);
 }
 
 /**

@@ -1,6 +1,23 @@
 <template>
-    <u-modal v-model:open="isOpen" :title="modalTitle" :dismissible="false">
+    <!-- Dismissible until there is something to lose. This dialog is mostly
+         a read, and trapping a reader behind a Cancel button to protect a form
+         they never touched is the wrong trade — but a typed screenshot link is
+         worth one deliberate click. -->
+    <u-modal v-model:open="isOpen" :title="modalTitle" :dismissible="!hasTypedInput">
         <template #body>
+            <!-- Where this tile sends you. The tile itself keeps a coloured
+                 ring and a corner arrow and nothing else, and on a phone the
+                 connector net is not drawn at all — so this is where "down to
+                 81" is actually written. -->
+            <u-alert
+                v-if="jumpTarget !== null"
+                class="mb-3"
+                variant="subtle"
+                :color="tile.type === 'SNAKE' ? 'error' : 'success'"
+                :icon="tile.type === 'SNAKE' ? 'i-lucide-move-down' : 'i-lucide-move-up'"
+                :description="$t(tile.type === 'SNAKE' ? 'board.detail_snake_to' : 'board.detail_ladder_to', { n: jumpTarget })"
+            />
+
             <!-- What the tile is asking for. The desktop sidebar has carried
                  this card all along and the dialog had none of it, so on a
                  phone — where the sidebar sits far below the board — tapping
@@ -218,9 +235,18 @@ const props = defineProps({
 
 const emit = defineEmits(['update:open']);
 
+// A snake or a ladder, as a tile number rather than an index.
+const jumpTarget = computed(() => (
+    props.tile?.target_position === null || props.tile?.target_position === undefined
+        ? null
+        : props.tile.target_position + 1
+));
+
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
 const form = useForm({ proof_url: '', note: '' });
+
+const hasTypedInput = computed(() => form.proof_url.trim() !== '' || form.note.trim() !== '');
 const withdrawing = ref(false);
 
 // Reset on every OPENING, not only when the tile changes — same fix
