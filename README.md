@@ -67,7 +67,7 @@ takes it from there.
 ## Prerequisites
 
 - PHP 8.3+ and Composer
-- Node 20+ and **pnpm** (never npm or yarn — see `CLAUDE.md`)
+- Node 20+ and **pnpm** (never npm or yarn — see `CONTRIBUTING.md`)
 - A database: SQLite works out of the box; MySQL 8+ or PostgreSQL for
   anything real (the suite runs green against both)
 - A Discord application, if you want Discord login to work
@@ -483,10 +483,9 @@ and read the tail of `storage/logs/laravel.log` after requesting a reset.
 
 ## Before you change anything
 
-Read **`CLAUDE.md`** for the conventions this codebase follows,
-**`CONTRIBUTING.md`** for how to run and verify a change, and
-**`docs/ssr-gotchas.md`** for the render traps — each of which has cost real
-debugging time at least once.
+Read **`CONTRIBUTING.md`** for the conventions this codebase follows and how
+to run and verify a change, and **`docs/ssr-gotchas.md`** for the render traps
+— each of which has cost real debugging time at least once.
 
 Three that catch people immediately:
 

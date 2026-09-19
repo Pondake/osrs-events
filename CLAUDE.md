@@ -56,9 +56,8 @@ Eloquent/PostgreSQL · Laravel Socialite (Discord OAuth).
 
 ### Which doc gets what — decide this, don't invent a new file
 
-Reorganised 2026-08-30, when the old backlog hit 5432 lines and its open work
-became unfindable. The split only holds if new findings land in the right one,
-so: **write it into one of these, never into a new document.**
+The split only holds if new findings land in the right one, so:
+**write it into one of these, never into a new document.**
 
 | It is… | It goes in |
 |---|---|

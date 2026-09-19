@@ -5,8 +5,7 @@ requests are welcome, but a reply can take a while, and a large change that
 was not discussed first may not be merged. Open an issue before building
 anything big.
 
-Read [`CLAUDE.md`](CLAUDE.md) before you change code — it holds the
-conventions this codebase actually follows. What follows is the short version.
+What follows is what you need to run, change and verify this app.
 
 ## Setup
 
@@ -70,6 +69,6 @@ invite links, ids or personal data.
 
 ## Backlog
 
-The backlog is not in this repository — see the Backlog section of
-[`CLAUDE.md`](CLAUDE.md). Please do not add one here; those paths are
-gitignored and a file there would silently get lost.
+The backlog is not in this repository, and please do not add one here —
+those paths are gitignored, so a file there would silently get lost. Open an
+issue instead.
