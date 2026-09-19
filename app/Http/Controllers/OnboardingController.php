@@ -7,6 +7,8 @@ use App\Models\UserGuild;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * First-run flow state. The flow itself is a client-side modal
@@ -19,6 +21,33 @@ class OnboardingController extends Controller
     public function complete(Request $request): RedirectResponse
     {
         $request->user()->update(['onboarding_completed_at' => now()]);
+
+        return back();
+    }
+
+    /**
+     * Gives an account that has no email one, from inside the tour.
+     *
+     * Not the settings endpoint: that one asks for no password when the
+     * account has none, which is exactly right for a first address but would
+     * also let a bare session replace an existing one. This route only ever
+     * fills an empty slot; changing an address stays behind the settings page.
+     */
+    public function email(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->email !== null) {
+            throw ValidationException::withMessages([
+                'email' => trans('onboarding.email_already_set'),
+            ]);
+        }
+
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
+        ]);
+
+        $user->update(['email' => $data['email']]);
 
         return back();
     }

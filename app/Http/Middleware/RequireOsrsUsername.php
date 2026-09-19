@@ -35,6 +35,7 @@ class RequireOsrsUsername
         // have to survive the gate or the tour cannot finish or record that
         // it finished.
         'onboarding.complete',
+        'onboarding.email',
         'onboarding.joinable',
         // Registering a browser for notifications is not playing, so the
         // gate has no interest in it — and blocking it has a cost the gate

@@ -84,6 +84,64 @@ class OnboardingTest extends TestCase
         $this->get('/onboarding/joinable-boards')->assertRedirect('/login');
     }
 
+    // ------------------------------------------------------------------ email
+
+    #[Test]
+    public function an_account_without_an_email_can_set_one_from_the_intro(): void
+    {
+        $user = User::factory()->create(['osrs_username' => 'Pondake', 'email' => null]);
+
+        $this->actingAs($user)
+            ->post('/onboarding/email', ['email' => 'me@example.com'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('me@example.com', $user->fresh()->email);
+    }
+
+    #[Test]
+    public function an_existing_email_is_never_overwritten(): void
+    {
+        $user = User::factory()->create(['osrs_username' => 'Pondake', 'email' => 'old@example.com']);
+
+        $this->actingAs($user)
+            ->post('/onboarding/email', ['email' => 'new@example.com'])
+            ->assertSessionHasErrors('email');
+
+        $this->assertSame('old@example.com', $user->fresh()->email);
+    }
+
+    #[Test]
+    public function an_address_that_belongs_to_someone_else_is_refused(): void
+    {
+        User::factory()->create(['osrs_username' => 'Other', 'email' => 'taken@example.com']);
+        $user = User::factory()->create(['osrs_username' => 'Pondake', 'email' => null]);
+
+        $this->actingAs($user)
+            ->post('/onboarding/email', ['email' => 'taken@example.com'])
+            ->assertSessionHasErrors('email');
+
+        $this->assertNull($user->fresh()->email);
+    }
+
+    /** The name gate would otherwise bounce this before the tour reaches the name step. */
+    #[Test]
+    public function it_works_before_the_osrs_name_is_set(): void
+    {
+        $user = User::factory()->create(['osrs_username' => null, 'email' => null]);
+
+        $this->actingAs($user)
+            ->post('/onboarding/email', ['email' => 'me@example.com'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('me@example.com', $user->fresh()->email);
+    }
+
+    #[Test]
+    public function it_is_not_reachable_signed_out(): void
+    {
+        $this->post('/onboarding/email', ['email' => 'me@example.com'])->assertRedirect('/login');
+    }
+
     // -------------------------------------------------------- joinable boards
 
     #[Test]

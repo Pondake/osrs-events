@@ -329,6 +329,7 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::get('/my-guilds', [BoardController::class, 'myGuilds'])->name('guilds.mine');
 
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+    Route::post('/onboarding/email', [OnboardingController::class, 'email'])->middleware('throttle:5,1')->name('onboarding.email');
     Route::post('/onboarding/reset', [OnboardingController::class, 'reset'])->name('onboarding.reset');
     Route::get('/onboarding/joinable-boards', [OnboardingController::class, 'joinableBoards'])->name('onboarding.joinable');
 

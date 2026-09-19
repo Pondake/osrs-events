@@ -80,7 +80,17 @@
                                 <p class="font-medium text-sm">{{ $t('onboarding.connect_email_title') }}</p>
                             </div>
                             <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.connect_email_body') }}</p>
-                            <u-button href="/settings/account" color="neutral" variant="outline" size="sm" icon="i-lucide-mail" :label="$t('onboarding.connect_email_cta')" />
+                            <u-form-field :label="$t('auth.field_email')" :error="emailForm.errors.email">
+                                <u-input
+                                    v-model="emailForm.email"
+                                    type="email"
+                                    autocomplete="email"
+                                    icon="i-lucide-mail"
+                                    :placeholder="$t('onboarding.connect_email_placeholder')"
+                                    class="w-full"
+                                    @keydown.enter.prevent="next"
+                                />
+                            </u-form-field>
                         </div>
 
                         <p class="text-xs text-muted italic">{{ $t(missingBoth ? 'onboarding.connect_optional' : 'onboarding.connect_optional_one') }}</p>
@@ -227,7 +237,7 @@
 
                 <div class="flex gap-2">
                     <u-button v-if="stepIndex > 0" color="neutral" variant="outline" :label="$t('common.back')" @click="stepIndex--" />
-                    <u-button v-if="!isLastStep" color="primary" :loading="form.processing || osrsForm.processing" :disabled="nextDisabled" :label="nextLabel" @click="next" />
+                    <u-button v-if="!isLastStep" color="primary" :loading="form.processing || osrsForm.processing || emailForm.processing" :disabled="nextDisabled" :label="nextLabel" @click="next" />
                     <u-button v-else color="primary" :label="$t('onboarding.finish')" @click="finish()" />
                 </div>
             </div>
@@ -276,6 +286,8 @@ const osrsUsername = computed(() => page.props?.auth?.user?.osrsUsername ?? null
 // which would navigate the page out from under this modal and end the tour
 // on its second step.
 const osrsForm = useForm({ osrs_username: '', stay: true });
+
+const emailForm = useForm({ email: '' });
 
 const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', PLAYER: 'primary' };
 const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
@@ -434,6 +446,22 @@ function next() {
         return;
     }
 
+    // Optional: an empty field just moves on. Same trap as above — when the
+    // account already has Discord, saving the address is what removes this
+    // step, so the next one is already at this index by the time it succeeds.
+    if (step.value === 'connect' && !hasEmail.value && emailForm.email.trim()) {
+        emailForm.post('/onboarding/email', {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                if (step.value === 'connect') stepIndex.value++;
+            },
+            onError: (errors) => console.error(errors),
+        });
+
+        return;
+    }
+
     // The board step optionally creates a board on its way past. An empty
     // title just moves on — this whole flow is skippable, so requiring one
     // would turn a tour into a wall.
@@ -462,22 +490,32 @@ function next() {
  * skips. This only stops an answer being thrown away.
  */
 function finish(destination = null) {
-    const typed = osrsForm.osrs_username.trim();
+    saveTypedName(() => saveTypedEmail(() => completeOnboarding(destination)));
+}
 
-    if (!osrsUsername.value && typed) {
-        osrsForm.post('/welcome/osrs-username', {
-            preserveScroll: true,
-            preserveState: true,
-            // Complete either way. A name their hiscores do not know is still
-            // saved (see OsrsIdentityService), and a validation failure is not
-            // a reason to trap somebody in a tour they asked to leave.
-            onFinish: () => completeOnboarding(destination),
-        });
+function saveTypedName(then) {
+    if (osrsUsername.value || !osrsForm.osrs_username.trim()) return then();
 
-        return;
-    }
+    osrsForm.post('/welcome/osrs-username', {
+        preserveScroll: true,
+        preserveState: true,
+        // Complete either way. A name their hiscores do not know is still
+        // saved (see OsrsIdentityService), and a validation failure is not
+        // a reason to trap somebody in a tour they asked to leave.
+        onFinish: then,
+    });
+}
 
-    completeOnboarding(destination);
+// Same reasoning as the name: an address typed and then left behind by Skip
+// or Finish is an answer thrown away.
+function saveTypedEmail(then) {
+    if (hasEmail.value || !emailForm.email.trim()) return then();
+
+    emailForm.post('/onboarding/email', {
+        preserveScroll: true,
+        preserveState: true,
+        onFinish: then,
+    });
 }
 
 // `destination` is the event picked on the join step. Recorded first, then
