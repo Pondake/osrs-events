@@ -121,6 +121,8 @@ class DatabaseSeeder extends Seeder
         // create-event autocomplete offers, and an empty list makes that
         // field look broken rather than empty. Safe to re-run on its own.
         $this->call(EventBlueprintSeeder::class);
+        // Same kind of thing: the tasks hosts pick from, not a demo clan.
+        $this->call(TaskSeeder::class);
         $this->call(DemoDataSeeder::class);
         $this->call(RunelitePluginTestSeeder::class);
         // After the admin seeders — it links its entries to whichever user
