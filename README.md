@@ -483,12 +483,10 @@ and read the tail of `storage/logs/laravel.log` after requesting a reset.
 
 ## Before you change anything
 
-Read **`CLAUDE.md`** for the conventions this codebase actually follows,
-**`CONTRIBUTING.md`** for how to run and verify a change, **`docs/PROGRESS.md`**
-for what is built, and the backlog (kept outside this repo) for the current
-state of play. The backlog is not a changelog — it records decisions and the
-traps behind them. **`docs/ssr-gotchas.md`** is the list of render traps, each
-of which has cost real debugging time at least once.
+Read **`CLAUDE.md`** for the conventions this codebase follows,
+**`CONTRIBUTING.md`** for how to run and verify a change, and
+**`docs/ssr-gotchas.md`** for the render traps — each of which has cost real
+debugging time at least once.
 
 Three that catch people immediately:
 
@@ -507,8 +505,7 @@ Three that catch people immediately:
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE) — Copyright © 2026 Marthijn
-Beilschmidt.
+[GNU Affero General Public License v3.0](LICENSE) — Copyright © 2026 Pondake.
 
 You may run, study, change and share this. If you run a modified version as a
 network service, you have to offer its source to its users.

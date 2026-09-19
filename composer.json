@@ -1,13 +1,17 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "pondake/osrs-events",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Event boards for Old School RuneScape clans: snakes & ladders, skill races, drop races and bingo.",
     "keywords": [
+        "osrs",
+        "runescape",
         "laravel",
-        "framework"
+        "inertia",
+        "vue"
     ],
     "license": "AGPL-3.0-or-later",
+    "homepage": "https://osrs-events.com",
     "require": {
         "php": "^8.3",
         "inertiajs/inertia-laravel": "^3.3",
