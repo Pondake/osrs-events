@@ -71,12 +71,12 @@
              track keeps its own numbering so "step 3" means something
              different depending which one you're reading, on purpose.
 
-             Screenshots aren't ready yet (see docs/backlog.md), so each
-             track ends in a <guide-screenshot> instead of a bare <img>
-             or a code comment — a visible dashed box naming what will go
-             there. Its `alt` text doubles as the placeholder's own
-             content now and becomes the real image's alt text plus a
-             visible caption once a screenshot is dropped in. -->
+             Each track ends in a <guide-screenshot> rather than a bare
+             <img>: it carries the ring, the caption and the placeholder
+             box for a track whose screenshot does not exist yet. Both of
+             these have one now — the host's tile list and the live board
+             — and the `alt` text describes what is in the picture, since
+             it is the only version of it a screen reader gets. -->
         <section id="how-it-works">
             <h2 :class="prose.h2">{{ howItWorksTitle }}</h2>
 
@@ -92,7 +92,13 @@
                         </li>
                     </ol>
 
-                    <guide-screenshot class="mt-4" :alt="$t('landing.snakes.screenshot_editor_alt')" />
+                    <guide-screenshot
+                        class="mt-4"
+                        src="/images/guides/snakes-tiles.webp"
+                        :width="1344"
+                        :height="1584"
+                        :alt="$t('landing.snakes.screenshot_editor_alt')"
+                    />
                 </div>
 
                 <div>
@@ -106,7 +112,13 @@
                         </li>
                     </ol>
 
-                    <guide-screenshot class="mt-4" :alt="$t('landing.snakes.screenshot_board_alt')" />
+                    <guide-screenshot
+                        class="mt-4"
+                        src="/images/guides/snakes-board.webp"
+                        :width="1888"
+                        :height="1888"
+                        :alt="$t('landing.snakes.screenshot_board_alt')"
+                    />
                 </div>
             </div>
         </section>

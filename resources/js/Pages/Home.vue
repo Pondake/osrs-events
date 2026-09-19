@@ -69,11 +69,19 @@
                     <div class="relative">
                         <div class="absolute inset-0 -z-10 bg-primary/20 blur-3xl rounded-full scale-90" aria-hidden="true" />
                         <div class="rounded-xl border border-default shadow-2xl shadow-primary/10 overflow-hidden ring-1 ring-default">
+                            <!-- A real screenshot of a running demo event, not
+                                 a drawing of one: the tiles carry their actual
+                                 OSRS tasks and wiki icons, the snake and the
+                                 ladders are the ones that board really has,
+                                 and the other players' pieces are where they
+                                 stand. `width`/`height` are the file's own 2x
+                                 pixels, so the browser keeps the space while a
+                                 lazily loaded image is still on its way. -->
                             <img
-                                src="/images/demo/board-preview.png"
+                                src="/images/demo/board-preview.webp"
                                 :alt="$t('home.preview_alt')"
-                                width="1100"
-                                height="1030"
+                                width="2528"
+                                height="2262"
                                 loading="lazy"
                                 class="w-full h-auto block"
                             />
