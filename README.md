@@ -504,7 +504,7 @@ Three that catch people immediately:
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE) — Copyright © 2026 Pondake.
+[GNU Affero General Public License v3.0](LICENSE) — Copyright © 2026 Absolit.
 
 You may run, study, change and share this. If you run a modified version as a
 network service, you have to offer its source to its users.
