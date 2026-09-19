@@ -1276,6 +1276,8 @@
     "errors.go_back": "Go back to where you were",
     "errors.maintenance_body": "The site is down for a moment while something is being fixed. Try again shortly.",
     "errors.maintenance_heading": "Back in a moment",
+    "errors.updating_body": "We are rolling out an update. It takes a minute or two.",
+    "errors.updating_note": "This page reloads by itself when the site is back.",
     "errors.network": "Could not reach the server. Check your connection and try again.",
     "errors.not_found": "Page not found",
     "errors.not_found_body": "There is nothing at this address. The event may have been deleted, or the link may have a typo in it.",
