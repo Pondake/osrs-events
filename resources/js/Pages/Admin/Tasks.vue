@@ -6,7 +6,29 @@
             <u-button color="primary" icon="i-lucide-plus" size="sm" :label="$t('admin.create_task')" @click="openCreate" />
         </template>
 
-        <u-input v-model="search" :placeholder="$t('admin.search_tasks_placeholder')" icon="i-lucide-search" class="w-full sm:max-w-sm" @update:model-value="doSearch" />
+        <div class="flex flex-col sm:flex-row gap-3">
+            <u-input
+                v-model="search"
+                :placeholder="$t('admin.search_tasks_placeholder')"
+                icon="i-lucide-search"
+                class="w-full sm:max-w-sm"
+                :ui="{ base: 'max-sm:min-h-11' }"
+            />
+
+            <!-- One list, not two toggles: the three wiki states and "no
+                 icon" are all the same question — which rows are still
+                 missing something — and only ever asked one at a time. -->
+            <u-select
+                v-model="filter"
+                :items="filterOptions"
+                class="w-full sm:max-w-56"
+                :ui="{ base: 'max-sm:min-h-11', value: 'pe-6' }"
+            >
+                <template #item-leading="{ item }">
+                    <u-icon :name="item.icon" class="size-4" />
+                </template>
+            </u-select>
+        </div>
 
         <div class="divide-y divide-default rounded-lg ring ring-default bg-default">
             <div v-for="task in tasks" :key="task.id" class="flex items-center justify-between gap-4 px-4 py-3">
@@ -43,7 +65,7 @@
                     </confirm-popover>
                 </div>
             </div>
-            <p v-if="!tasks.length" class="px-4 py-8 text-center text-muted text-sm">{{ $t('admin.no_tasks') }}</p>
+            <p v-if="!tasks.length" class="px-4 py-8 text-center text-muted text-sm">{{ emptyMessage }}</p>
         </div>
 
         <client-only>
@@ -53,7 +75,7 @@
 </template>
 
 <script setup>
-import { defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
@@ -65,15 +87,58 @@ const TaskSettingsModal = defineAsyncComponent(() => import('@/Components/TaskSe
 const props = defineProps({
     tasks: { type: Array, required: true },
     search: { type: String, default: '' },
+    filter: { type: String, default: '' },
 });
 
+// 'all' rather than null or '': it is a real first entry in the list, so the
+// control always shows a chosen state instead of a placeholder, and there is
+// nothing to clear. The server sees no `filter` param for it.
+const ALL = 'all';
+
 const search = ref(props.search);
+const filter = ref(props.filter || ALL);
 const showModal = ref(false);
 const editingTask = ref(null);
 
-function doSearch(value) {
-    router.get('/admin/tasks', { search: value }, { preserveState: true, replace: true });
-}
+const filterOptions = computed(() => [
+    { value: ALL, label: trans('admin.task_filter_all'), icon: 'i-lucide-list' },
+    { value: 'with_wiki', label: trans('admin.task_filter_with_wiki'), icon: 'i-lucide-book-open' },
+    { value: 'without_wiki', label: trans('admin.task_filter_without_wiki'), icon: 'i-lucide-book-dashed' },
+    { value: 'without_icon', label: trans('admin.task_filter_without_icon'), icon: 'i-lucide-image-off' },
+]);
+
+// "Nothing matched" and "nothing is missing" are opposite news. A search
+// term decides the wording first: with one, an empty list is about the term,
+// whatever the filter says.
+const emptyMessage = computed(() => {
+    if (search.value) {
+        return trans('admin.tasks_empty_search');
+    }
+
+    return {
+        with_wiki: trans('admin.tasks_empty_with_wiki'),
+        without_wiki: trans('admin.tasks_empty_without_wiki'),
+        without_icon: trans('admin.tasks_empty_without_icon'),
+    }[filter.value] ?? trans('admin.no_tasks');
+});
+
+// One shared timer for both controls: it is a single "filters changed"
+// signal either way, and two timers could race into two visits for one
+// change. Same pattern as Admin/Audit.vue.
+let timer;
+watch([search, filter], () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+        router.get(
+            '/admin/tasks',
+            {
+                search: search.value || undefined,
+                filter: filter.value === ALL ? undefined : filter.value,
+            },
+            { preserveState: true, replace: true },
+        );
+    }, 300);
+});
 
 function openCreate() {
     editingTask.value = null;
