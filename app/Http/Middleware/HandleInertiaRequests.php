@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Event;
+use App\Models\PluginToken;
 use App\Models\Setting;
 use App\Services\BossIconService;
 use App\Support\DisplayPreference;
@@ -65,6 +66,11 @@ class HandleInertiaRequests extends Middleware
                 // output rather than a sentence, and a toast is the wrong
                 // shape for twenty lines of it.
                 'sweepOutput' => fn () => $request->session()->get('sweepOutput'),
+                // The plain plugin code, present only on the response to
+                // creating one. The settings page has its own prop for it; this
+                // is for the first-run tour, which stays on whatever page it
+                // opened over and so has no page prop to receive it.
+                'pluginCode' => fn () => $request->session()->get('plugin-code'),
             ],
             // Shared globally because two of these are needed off any page:
             // the announcement renders in AppRoot's layout, and the board
@@ -195,6 +201,11 @@ class HandleInertiaRequests extends Middleware
                     // email is already exposed where it's actually shown
                     // (Settings\AccountController).
                     'hasEmail' => $user->email !== null,
+                    // Only asked while the tour can be showing: a query per
+                    // request for a fact nothing else reads.
+                    'hasPluginCode' => $user->onboarding_completed_at === null
+                        && Setting::get('runelite_plugin_mode') !== 'off'
+                        && PluginToken::where('user_id', $user->id)->exists(),
                     // Read on every page by AppRoot, before the silent
                     // opt-in runs. Push is unusual in needing a shared prop
                     // at all: the browser's own state says permission is

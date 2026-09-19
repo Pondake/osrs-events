@@ -169,16 +169,62 @@
                     <template v-else-if="step === 'runelite'">
                         <div class="flex items-center gap-2">
                             <h3 class="text-lg font-semibold text-highlighted">{{ $t('onboarding.runelite_heading') }}</h3>
-                            <u-badge :label="$t('onboarding.coming_soon')" color="warning" variant="subtle" size="sm" />
+                            <u-badge v-if="pluginMode === 'testing'" :label="$t('plugin.testing_badge')" color="warning" variant="subtle" size="sm" icon="i-lucide-flask-conical" />
                         </div>
                         <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.runelite_body') }}</p>
+
+                        <u-alert
+                            v-if="pluginMode === 'testing'"
+                            color="warning"
+                            variant="subtle"
+                            icon="i-lucide-flask-conical"
+                            :description="$t('plugin.testing_desc')"
+                        />
+
                         <ul class="text-sm text-muted space-y-2">
                             <li v-for="(line, i) in runeliteSteps" :key="i" class="flex items-start gap-2">
                                 <span class="size-5 rounded-full bg-elevated text-xs flex items-center justify-center shrink-0 mt-0.5">{{ i + 1 }}</span>
                                 {{ line }}
                             </li>
                         </ul>
-                        <p class="text-xs text-muted italic">{{ $t('onboarding.runelite_disclaimer') }}</p>
+
+                        <div v-if="pluginCode" class="rounded-lg border border-success/40 bg-success/5 p-3 space-y-2">
+                            <p class="text-sm font-medium">{{ $t('plugin.new_code_title') }}</p>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <code class="flex-1 min-w-0 break-all rounded-md bg-default px-3 py-2 text-sm font-mono select-all">{{ pluginCode }}</code>
+                                <u-button
+                                    color="success"
+                                    icon="i-lucide-copy"
+                                    :label="codeCopied ? $t('plugin.copied') : $t('plugin.copy')"
+                                    @click="copyPluginCode"
+                                />
+                            </div>
+                            <p class="text-xs text-muted">{{ $t('plugin.new_code_desc') }}</p>
+                        </div>
+
+                        <div v-else-if="hasPluginCode" class="flex items-start gap-2 text-sm">
+                            <u-icon name="i-lucide-check-circle-2" class="size-4 text-success mt-0.5 shrink-0" />
+                            <span class="text-muted">{{ $t('onboarding.runelite_code_exists') }}</span>
+                        </div>
+
+                        <div v-else class="space-y-1.5">
+                            <u-button
+                                color="primary"
+                                icon="i-lucide-key-round"
+                                :label="$t('plugin.create_code')"
+                                :loading="creatingCode"
+                                @click="createPluginCode"
+                            />
+                            <p class="text-xs text-muted">{{ $t('onboarding.runelite_code_later') }}</p>
+                        </div>
+
+                        <u-alert
+                            v-if="needsProof"
+                            color="warning"
+                            variant="subtle"
+                            icon="i-lucide-shield-alert"
+                            :description="$t('plugin.status_unproven', { name: osrsUsername })"
+                        />
                     </template>
                 </div>
 
@@ -187,33 +233,13 @@
 
                     <board-preview v-if="step === 'welcome' || step === 'board'" :size="form.size" :mode="form.mode" />
 
-                    <!-- Mock, not a screenshot of anything real — the plugin
-                         doesn't exist yet (docs/runelite-plugin.md). Drawn
-                         rather than shipped as an image so it can't be
-                         mistaken for a real product shot. -->
                     <div v-else-if="step === 'runelite'" class="rounded-xl border border-default bg-elevated/50 p-4 space-y-3">
-                        <div class="flex items-center gap-2 pb-2 border-b border-default">
-                            <div class="size-6 rounded bg-primary/20 flex items-center justify-center">
-                                <u-icon name="i-lucide-puzzle" class="size-4 text-primary" />
-                            </div>
-                            <span class="text-sm font-semibold">RuneLite · Plugin Hub</span>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <div class="size-8 rounded bg-primary/10 shrink-0 flex items-center justify-center">
-                                <u-icon name="i-lucide-swords" class="size-4 text-primary" />
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-sm font-medium">OSRS Events</p>
-                                <p class="text-xs text-muted leading-snug">{{ $t('onboarding.runelite_mock_desc') }}</p>
-                            </div>
-                            <div class="text-[10px] px-2 py-1 rounded bg-primary/20 text-primary font-medium shrink-0">Install</div>
-                        </div>
-                        <div class="pt-2 border-t border-default">
-                            <p class="text-[10px] uppercase tracking-wide text-muted mb-1">{{ $t('onboarding.runelite_mock_token') }}</p>
-                            <div class="h-7 rounded bg-default border border-default flex items-center px-2">
-                                <span class="text-[10px] font-mono text-muted">••••-••••-••••</span>
-                            </div>
-                        </div>
+                        <ul class="space-y-2 text-sm">
+                            <li v-for="row in pluginSummary" :key="row.label" class="flex items-start gap-2">
+                                <u-icon :name="row.ok ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'" class="size-4 mt-0.5 shrink-0" :class="row.ok ? 'text-success' : 'text-muted'" />
+                                <span :class="row.ok ? '' : 'text-muted'">{{ row.label }}</span>
+                            </li>
+                        </ul>
                     </div>
 
                     <!-- connect / join: what the account unlocks, rather than
@@ -246,7 +272,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
@@ -281,6 +307,10 @@ const hasEmail = computed(() => !!page.props?.auth?.user?.hasEmail);
 const missingBoth = computed(() => !hasDiscord.value && !hasEmail.value);
 
 const osrsUsername = computed(() => page.props?.auth?.user?.osrsUsername ?? null);
+
+const pluginMode = computed(() => page.props?.site?.runelitePluginMode ?? 'off');
+const hasPluginCode = computed(() => !!page.props?.auth?.user?.hasPluginCode);
+const needsProof = computed(() => !!page.props?.auth?.user?.needsOsrsProof);
 
 // `stay` is what stops the controller redirecting to /events on success,
 // which would navigate the page out from under this modal and end the tour
@@ -322,12 +352,16 @@ const stepDefs = computed(() => {
     // never reached — you left on step three and came back to a modal
     // starting again from step one. 'board' has no such exit and keeps its
     // place before the plugin.
+    // Left out of the list while the plugin is off, not hidden: the list
+    // shrinks, so nothing may advance stepIndex assuming the step is there.
+    const pluginStep = pluginMode.value === 'off'
+        ? []
+        : [{ key: 'runelite', title: trans('onboarding.step_runelite'), icon: 'i-lucide-puzzle' }];
+
     if (canCreateBoards.value) {
-        defs.push({ key: 'board', title: trans('onboarding.step_board'), icon: 'i-lucide-layout-grid' });
-        defs.push({ key: 'runelite', title: trans('onboarding.step_runelite'), icon: 'i-lucide-puzzle' });
+        defs.push({ key: 'board', title: trans('onboarding.step_board'), icon: 'i-lucide-layout-grid' }, ...pluginStep);
     } else {
-        defs.push({ key: 'runelite', title: trans('onboarding.step_runelite'), icon: 'i-lucide-puzzle' });
-        defs.push({ key: 'join', title: trans('onboarding.step_join'), icon: 'i-lucide-compass' });
+        defs.push(...pluginStep, { key: 'join', title: trans('onboarding.step_join'), icon: 'i-lucide-compass' });
     }
 
     return defs;
@@ -351,6 +385,16 @@ const previewLabel = computed(() => {
     if (step.value === 'connect' || step.value === 'join' || step.value === 'osrs') return trans('onboarding.preview_access');
 
     return trans('onboarding.preview_board', { size: BOARD_SIZE_LABEL[form.size], tiles: BOARD_TILE_COUNT[form.size] });
+});
+
+const pluginSummary = computed(() => {
+    const rows = [{ label: trans('onboarding.plugin_row_code'), ok: hasPluginCode.value || !!pluginCode.value }];
+
+    if (pluginMode.value === 'live') {
+        rows.push({ label: trans('onboarding.plugin_row_proven'), ok: !needsProof.value });
+    }
+
+    return rows;
 });
 
 const runeliteSteps = computed(() => [
@@ -381,6 +425,43 @@ const form = useForm({
     is_listed: true,
     author_ids: [],
 });
+
+// The plain code exists only in the response that created it, so it is kept
+// here; the page prop it arrived in is gone by the next visit.
+const pluginCode = ref(null);
+const creatingCode = ref(false);
+const codeCopied = ref(false);
+
+let toast = null;
+
+onMounted(async () => {
+    const { useToast } = await import('@nuxt/ui/composables/useToast');
+    toast = useToast();
+});
+
+// The same route the settings page posts to, so the mode gate and the
+// throttle apply here too. Nothing to do on the server for this step.
+function createPluginCode() {
+    creatingCode.value = true;
+
+    router.post('/settings/runelite/code', {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: (response) => (pluginCode.value = response.props?.flash?.pluginCode ?? null),
+        onError: (errors) => console.error(errors),
+        onFinish: () => (creatingCode.value = false),
+    });
+}
+
+async function copyPluginCode() {
+    try {
+        await navigator.clipboard.writeText(pluginCode.value ?? '');
+        codeCopied.value = true;
+    } catch (error) {
+        console.error(error);
+        toast?.add({ id: 'plugin-code-copy', title: trans('errors.copy_failed'), color: 'error' });
+    }
+}
 
 const joinableBoards = ref([]);
 const loadingBoards = ref(false);
