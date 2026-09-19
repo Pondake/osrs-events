@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\RequireOsrsUsername;
+use App\Models\Setting;
 use App\Rules\OsrsUsername;
 use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +21,7 @@ use Inertia\Response;
  * here too, which is the point — an untracked account is an account that
  * cannot take part in a skill race.
  *
- * @see \App\Http\Middleware\RequireOsrsUsername
+ * @see RequireOsrsUsername
  */
 class OsrsUsernameController extends Controller
 {
@@ -30,6 +32,9 @@ class OsrsUsernameController extends Controller
             // handle is often the same name, and a wrong guess costs one
             // edit while a right one costs nothing.
             'suggestion' => substr((string) $request->user()->displayName(), 0, 12),
+            // See RegisteredUserController::create — same notice, the other
+            // place a name is first typed.
+            'proofMatters' => Setting::get('runelite_plugin_mode') === 'live',
         ]);
     }
 

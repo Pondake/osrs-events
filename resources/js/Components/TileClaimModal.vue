@@ -117,6 +117,8 @@
                     <runelite-context-card :context="claim.runeliteContext" />
                 </div>
 
+                <osrs-proof-notice v-if="claim.status === 'PENDING'" pending />
+
                 <u-alert
                     :color="canWithdraw ? 'warning' : 'neutral'"
                     variant="subtle"
@@ -133,6 +135,7 @@
             <p v-else-if="cannotActReason" class="text-sm text-muted py-2">{{ cannotActReason }}</p>
 
             <div v-else class="space-y-4 py-2">
+                <osrs-proof-notice />
                 <p class="text-sm text-muted">{{ $t('board.claim_intro') }}</p>
 
                 <u-form-field :label="$t('board.proof_url')" :description="$t('board.proof_url_desc')" :error="form.errors.proof_url" required>
@@ -195,6 +198,7 @@
 import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
 import RuneliteContextCard from '@/Components/RuneliteContextCard.vue';
 import TargetHolderList from '@/Components/TargetHolderList.vue';
+import OsrsProofNotice from '@/Components/OsrsProofNotice.vue';
 import { computed, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';

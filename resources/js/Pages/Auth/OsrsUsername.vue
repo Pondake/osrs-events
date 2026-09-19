@@ -26,6 +26,20 @@
                             />
                         </u-form-field>
 
+
+                        <!-- Not an error on the field: the name is valid, it
+                             is simply unproven, and a red mark on correct
+                             input teaches people to dismiss the mark. A
+                             neutral note, at the moment the question comes
+                             up. -->
+                        <u-alert
+                            v-if="proofMatters"
+                            color="neutral"
+                            variant="subtle"
+                            icon="i-lucide-shield-alert"
+                            :description="$t('auth.osrs_proof_notice')"
+                        />
+
                         <u-button type="submit" color="primary" block :loading="form.processing" :label="$t('common.continue')" />
                     </form>
 
@@ -43,6 +57,8 @@ import { Head, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
     suggestion: { type: String, default: '' },
+    // Whether an unproven name costs anything yet — see the controller.
+    proofMatters: { type: Boolean, default: false },
 });
 
 // Prefilled with whatever we already know them by — often the same name, and

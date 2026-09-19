@@ -27,6 +27,11 @@ class RegisteredUserController extends Controller
     {
         return Inertia::render('Auth/Register', [
             'registrationOpen' => Setting::get('registration_open'),
+            // Said at the moment the name is typed, which is the moment the
+            // question comes up — not only on a settings page nobody has a
+            // reason to open yet. Only while the plugin is live: that is the
+            // only mode where an unproven name costs anything.
+            'proofMatters' => Setting::get('runelite_plugin_mode') === 'live',
         ]);
     }
 

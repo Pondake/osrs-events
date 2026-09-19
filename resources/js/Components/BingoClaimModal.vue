@@ -122,6 +122,8 @@
                     <runelite-context-card :context="claim.runeliteContext" />
                 </div>
 
+                <osrs-proof-notice v-if="claim.status === 'PENDING'" pending />
+
                 <!-- Says what withdrawing costs before it costs it — or,
                      once a host has ruled, why it is no longer on offer. A
                      red button that silently does nothing reads as broken,
@@ -145,9 +147,15 @@
                  reviewed card needs, and asking for a screenshot on a card
                  that never looks at one is the kind of friction that gets a
                  setting turned back off. -->
-            <p v-else-if="!requiresApproval" class="text-sm text-muted py-2">{{ $t('bingo.claim_instant_intro') }}</p>
+            <!-- An unproven name overrules the card's own setting, so the
+                 "this is instant" line would be a straight lie here. -->
+            <div v-else-if="!requiresApproval" class="space-y-4 py-2">
+                <osrs-proof-notice />
+                <p v-if="! needsProof" class="text-sm text-muted">{{ $t('bingo.claim_instant_intro') }}</p>
+            </div>
 
             <div v-else class="space-y-4 py-2">
+                <osrs-proof-notice />
                 <p class="text-sm text-muted">{{ $t('bingo.claim_intro') }}</p>
 
                 <u-form-field :label="$t('bingo.proof_url')" :description="$t('bingo.proof_url_desc')" :error="form.errors.proof_url" required>
@@ -213,11 +221,13 @@
 
 <script setup>
 import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
+import OsrsProofNotice from '@/Components/OsrsProofNotice.vue';
 import RuneliteContextCard from '@/Components/RuneliteContextCard.vue';
 import TargetHolderList from '@/Components/TargetHolderList.vue';
 import { computed, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import { useAuth } from '@/Composables/useAuth';
 
 /**
  * One square's claim: making it, or looking at the one that is already there.
@@ -255,6 +265,12 @@ const props = defineProps({
 const emit = defineEmits(['update:open']);
 
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
+
+const { user } = useAuth();
+
+// Only to drop the "approved straight away" line, which an unproven name
+// makes untrue. The notice itself decides its own visibility.
+const needsProof = computed(() => user.value?.needsOsrsProof ?? false);
 
 const form = useForm({ proof_url: '', note: '' });
 

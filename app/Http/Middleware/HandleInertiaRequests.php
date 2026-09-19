@@ -183,6 +183,13 @@ class HandleInertiaRequests extends Middleware
                     // RuneLite client ever reported this account playing that
                     // name. See the osrs_proven_at migration.
                     'osrsProven' => $user->hasProvenOsrsName(),
+                    // The two conditions of the ReviewsClaims rule collapsed
+                    // into the one answer the client needs: will a claim made
+                    // right now go to a host because the name is unproven.
+                    // Collapsed here so no page has to know the plugin mode
+                    // to work it out, and so the notice can never disagree
+                    // with the status the server actually stamps.
+                    'needsOsrsProof' => ! $user->hasProvenOsrsName() && Setting::get('runelite_plugin_mode') === 'live',
                     // Boolean, not the address itself: the modal only needs
                     // to know whether account recovery is possible, and the
                     // email is already exposed where it's actually shown

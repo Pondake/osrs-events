@@ -202,6 +202,54 @@ class OsrsNameProofTest extends TestCase
         }
     }
 
+    /**
+     * The notice in the claim dialog reads one boolean, so it can never say
+     * something different from what ReviewsClaims stamps.
+     */
+    #[Test]
+    public function every_page_is_told_whether_a_claim_would_go_to_a_host(): void
+    {
+        Setting::set('runelite_plugin_mode', 'live');
+
+        $this->actingAs($this->player)
+            ->get('/events')
+            ->assertInertia(fn ($page) => $page->where('auth.user.needsOsrsProof', true));
+
+        $this->player->forceFill(['osrs_proven_at' => now()])->save();
+
+        $this->actingAs($this->player)
+            ->get('/events')
+            ->assertInertia(fn ($page) => $page->where('auth.user.needsOsrsProof', false));
+    }
+
+    /** Nothing to act on below live, so nothing is said. */
+    #[Test]
+    public function the_notice_stays_quiet_while_the_plugin_is_not_live(): void
+    {
+        Setting::set('runelite_plugin_mode', 'testing');
+
+        $this->actingAs($this->player)
+            ->get('/events')
+            ->assertInertia(fn ($page) => $page->where('auth.user.needsOsrsProof', false));
+    }
+
+    #[Test]
+    public function the_name_gate_says_what_an_unproven_name_costs(): void
+    {
+        Setting::set('runelite_plugin_mode', 'live');
+        $newcomer = User::factory()->create(['osrs_username' => null]);
+
+        $this->actingAs($newcomer)
+            ->get('/welcome/osrs-username')
+            ->assertInertia(fn ($page) => $page->where('proofMatters', true));
+
+        Setting::set('runelite_plugin_mode', 'testing');
+
+        $this->actingAs($newcomer)
+            ->get('/welcome/osrs-username')
+            ->assertInertia(fn ($page) => $page->where('proofMatters', false));
+    }
+
     #[Test]
     public function the_board_and_the_card_answer_the_same_way(): void
     {

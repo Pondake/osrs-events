@@ -37,6 +37,19 @@
                             <u-input v-model="form.osrs_username" maxlength="12" icon="i-lucide-user-round" class="w-full" />
                         </u-form-field>
 
+                        <!-- Not an error on the field: the name is valid, it
+                             is simply unproven, and a red mark on correct
+                             input teaches people to dismiss the mark. Same
+                             note on the post-login gate, the other place a
+                             name is first typed. -->
+                        <u-alert
+                            v-if="proofMatters"
+                            color="neutral"
+                            variant="subtle"
+                            icon="i-lucide-shield-alert"
+                            :description="$t('auth.osrs_proof_notice')"
+                        />
+
                         <u-form-field :label="$t('auth.field_email')" :error="form.errors.email" required>
                             <u-input v-model="form.email" type="email" autocomplete="username" class="w-full" />
                         </u-form-field>
@@ -75,6 +88,8 @@ import { Head, useForm } from '@inertiajs/vue3';
 
 defineProps({
     registrationOpen: { type: Boolean, default: true },
+    // Whether an unproven name costs anything yet — see the controller.
+    proofMatters: { type: Boolean, default: false },
 });
 
 const form = useForm({ nickname: '', osrs_username: '', email: '', password: '', password_confirmation: '' });
