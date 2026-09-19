@@ -1,5 +1,9 @@
 # OSRS Events — Claude Rules
 
+> **This file is public.** Keep it to conventions and the reasons behind them.
+> What still has to happen, how far along it is, and anything you would not
+> post publicly belong in the backlog instead.
+
 This repo migrated from NestJS+Nuxt to Laravel+Inertia on the
 `experiment/laravel-stack` branch. The old stack used to sit on disk at
 `stale/` for reference; it was **deleted 2026-08-20** once the migration was
@@ -141,10 +145,6 @@ Do not extract prematurely. Inline logic is fine for small-to-medium components.
   humanized column name ("The osrs username field is required"). Field-name
   overrides therefore have to live in that PHP file. Everything else stays in
   `lang/en.json`.
-- Longer-term direction (not yet built): most of this copy will eventually move to
-  backend-editable content instead of static JSON, with a small set of stationary
-  exceptions (account/auth strings, button labels, validation messages) staying in
-  `lang/en.json`. Keep using `lang/en.json` for everything until that lands.
 
 ## Naming
 - Vue component files: **PascalCase** (`BoardSettingsModal.vue`, `AccessGate.vue`)

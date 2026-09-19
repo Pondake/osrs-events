@@ -5,7 +5,10 @@ requests are welcome, but a reply can take a while, and a large change that
 was not discussed first may not be merged. Open an issue before building
 anything big.
 
-What follows is what you need to run, change and verify this app.
+What follows is what you need to run, change and verify this app. The
+conventions behind the code — Eloquent and SSR rules, the notification
+catalogue, the settings contract, naming — live in
+[`CLAUDE.md`](CLAUDE.md).
 
 ## Setup
 
@@ -46,13 +49,11 @@ pnpm exec vite build --ssr    # SSR bundle -> bootstrap/ssr/ssr.js
 
 Every user-visible string goes through `lang/en.json`, a flat file with
 literal dotted keys (`"boards.title": "Boards"`). No hardcoded English in a
-template or a script.
+template or a script, and the key goes in the same commit as the component
+that uses it.
 
-- In `<template>`: `$t('boards.title')`.
-- In `<script setup>`: `$t` does not exist there. `import { trans } from 'laravel-vue-i18n'` and call `trans('boards.title')`.
-- Placeholders use Laravel's `:name` syntax, not `{name}`.
-
-Add the key in the same commit as the component that uses it.
+`$t()` is template-only; from `<script setup>` you need `trans()`. The full
+rules, including the placeholder syntax, are in [`CLAUDE.md`](CLAUDE.md).
 
 ## Branches
 
