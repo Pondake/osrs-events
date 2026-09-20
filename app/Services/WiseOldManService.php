@@ -120,7 +120,7 @@ class WiseOldManService
 
     private function client(int $timeout = 15): PendingRequest
     {
-        $request = Http::baseUrl(self::BASE_URL)
+        $request = Http::baseUrl(config('services.wom.base_url', self::BASE_URL))
             ->timeout($timeout)
             ->connectTimeout(8)
             ->withHeaders([

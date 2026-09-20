@@ -21,6 +21,8 @@ Always **pnpm** for JS tooling, **composer** for PHP. Never `npm`, `npx`, or `ya
 pnpm dev            # vite dev server (client HMR)
 pnpm test           # vitest over tests/js (frontend)
 php artisan test    # phpunit over tests/Feature (backend)
+pnpm e2e            # build, then the browser suite in tests/e2e
+pnpm e2e:run        # the browser suite against the existing build
 pnpm build          # client bundle -> public/build
 pnpm exec vite build --ssr   # SSR bundle -> bootstrap/ssr/ssr.js
 php artisan serve --port=<port>
@@ -159,6 +161,40 @@ Do not extract prematurely. Inline logic is fine for small-to-medium components.
 - Create (`entityId = null`): renders `u-stepper` with linear step navigation and per-step validation.
 - Edit (`entityId` set): renders `u-tabs` for free navigation between sections.
 - Never create a dedicated `/*/create` page for entities that have a modal edit flow.
+
+## Browser tests — `tests/e2e`
+
+Playwright, driving a real Chromium against the built app. First time:
+`pnpm exec playwright install chromium`. It answers what the other two suites
+cannot: a request in a feature test succeeds while the page a person gets is
+unusable (a link that opens a page behind a dialog that cannot be closed, a
+panel that renders and then 403s inside, a control offered to a seat that may
+not use it).
+
+- **Its own everything.** `tests/e2e/serve.js` builds a throwaway SQLite
+  database (`DatabaseSeedersE2eSeeder`), storage directory and Wise Old
+  Man stand-in, and serves the app on port 9317. Real environment variables
+  win over `.env`, which is the whole isolation — it never touches the
+  development database. Nothing outside the site is fetched.
+- **A seat per account.** The walkthrough ladder (member, creator, cohost,
+  owner, admin) plus accounts in a particular state (newcomer, emailer…).
+  `auth.setup.js` signs each in once through the local signed sign-in link
+  (`dev:login-link`) and the specs reuse the session. A spec that logs out or
+  changes an account uses an account of its own — logging out destroys the
+  saved session for everyone.
+- **The net.** Every page in a spec fails it on a script error, a
+  `console.error`, or a 4xx/5xx response nobody expected. Say what is
+  expected with `allow()` / `allowConsole()`, don't loosen the net.
+- **`crawl.spec.js`** follows every link each seat is offered and fails on a
+  dead end. **`layout.spec.js`** reads horizontal overflow at 1280, 1024, 768
+  and 375. A bug found this way that is not fixed yet is pinned with
+  `test.fail()` or an explicit list in the spec — equality, so fixing it turns
+  the run red until the marker is removed.
+- **One worker, and no live channel.** PHP's built-in server is one process, so
+  the event stream is answered with an empty one; `EventStreamTest` covers what
+  it carries. The un-named `throttle:N,M` limiters share one counter per
+  account or address, so specs that submit forms call `clearThrottles()`.
+- **Needs `public/build`, and no Vite dev server** (`public/hot`) running.
 
 ## SSR — read `docs/ssr-gotchas.md` before touching anything render-related
 That list documents real, previously-hit bugs (Nuxt UI's `#imports` barrel crashing SSR

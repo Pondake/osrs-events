@@ -9,7 +9,10 @@
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",
         "test": "vitest run",
-        "test:watch": "vitest"
+        "test:watch": "vitest",
+        "e2e": "vite build && playwright test",
+        "e2e:run": "playwright test",
+        "e2e:ui": "playwright test --ui"
     },
     "devDependencies": {
         "@dava96/osrs-icons": "^1.0.29",
@@ -17,6 +20,7 @@
         "@iconify-json/mdi": "^1.2.3",
         "@iconify-json/simple-icons": "^1.2.93",
         "@inertiajs/vue3": "^2.0.0",
+        "@playwright/test": "^1.63.0",
         "@tailwindcss/vite": "^4.0.0",
         "@vitejs/plugin-vue": "^6.0.0",
         "@vue/test-utils": "^2.4.11",

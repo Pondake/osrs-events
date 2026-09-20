@@ -51,6 +51,7 @@ return [
     // the User-Agent. The default below is a fallback, not a good one — set
     // WOM_USER_AGENT for any real deployment.
     'wom' => [
+        'base_url' => env('WOM_BASE_URL', 'https://api.wiseoldman.net/v2'),
         'api_key' => env('WOM_API_KEY'),
         // Paces outbound requests against their rate limit. Only ever turned
         // off where the API is faked (phpunit.xml) — the limit is theirs.
