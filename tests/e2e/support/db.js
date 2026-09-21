@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdirSync, rmSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
@@ -81,4 +82,51 @@ export function resetEvent(title) {
     run('DELETE FROM event_finishes WHERE event_id = ?', [id]);
     run('DELETE FROM event_participants WHERE event_id = ?', [id]);
     run('UPDATE events SET standings_stale_since = NULL, closed_at = NULL WHERE id = ?', [id]);
+}
+
+/**
+ * Puts every site setting back to its default, and forgets the cached copy
+ * the app reads them from. For a spec that changes them, so a failure half
+ * way through cannot leave the site locked for everything that runs after.
+ */
+export function resetSettings() {
+    run('DELETE FROM settings');
+    clearThrottles();
+}
+
+/** The page the content specs edit, back to how the seeder made it. */
+export function resetNotesPage() {
+    run(
+        `UPDATE pages SET title = 'E2E Notes', subtitle = 'A page to edit.', is_published = 1,
+         blocks = '[{"type":"prose","props":{"text":"The original paragraph."}}]' WHERE slug = 'e2e-notes'`,
+    );
+}
+
+/** Every task a spec made, trashed ones included. Specs name theirs "E2E …". */
+export function removeE2eTasks() {
+    run("DELETE FROM tasks WHERE title LIKE 'E2E %'");
+}
+
+/** Every blueprint a spec made. Specs name theirs "E2E …". */
+export function removeE2eBlueprints() {
+    run("DELETE FROM event_blueprints WHERE title LIKE 'E2E %'");
+}
+
+/** Nobody invited, nobody let in: the invite-only event back to how the seeder left it. */
+export function resetInvites(title) {
+    const id = eventId(title);
+
+    run('DELETE FROM board_accesses WHERE event_id = ?', [id]);
+    run('DELETE FROM event_participants WHERE event_id = ?', [id]);
+    run('DELETE FROM board_invites WHERE event_id = ?', [id]);
+}
+
+/** Every boss icon an admin set, and every suggestion waiting for one. */
+export function clearBossIcons() {
+    run('DELETE FROM boss_icons');
+}
+
+/** A suggestion from the weekly check, waiting for an admin to say yes or no. */
+export function suggestBossIcon(metric, url) {
+    run("INSERT INTO boss_icons (id, metric, suggested_url, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))", [randomUUID(), metric, url]);
 }
