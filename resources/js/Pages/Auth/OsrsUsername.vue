@@ -17,7 +17,7 @@
                             :error="form.errors.osrs_username"
                             required
                         >
-                            <osrs-username-field v-model="form.osrs_username" />
+                            <osrs-username-field v-model="form.osrs_username" :error="form.errors.osrs_username" />
                         </u-form-field>
 
 

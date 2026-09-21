@@ -11,7 +11,10 @@
             @blur="check"
         />
 
-        <p v-if="status" class="text-xs mt-1.5 flex items-start gap-1.5" :class="statusClass">
+        <!-- The form's own error wins outright. Both say the same thing
+             when a save is refused, and the same sentence twice in two reds
+             reads as two problems. -->
+        <p v-if="status && !error" class="text-xs mt-1.5 flex items-start gap-1.5" :class="statusClass">
             <u-icon :name="statusIcon" class="size-3.5 shrink-0 mt-px" />
             <span>{{ statusText }}</span>
         </p>
@@ -37,6 +40,8 @@ import { xsrfHeader } from '@/Support/csrf';
 const props = defineProps({
     modelValue: { type: String, default: '' },
     size: { type: String, default: undefined },
+    // The validation error the surrounding form field is already showing.
+    error: { type: String, default: null },
     placeholder: { type: String, default: undefined },
 });
 

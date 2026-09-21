@@ -54,7 +54,7 @@
                             :error="osrsForm.errors.osrs_username"
                             required
                         >
-                            <osrs-username-field v-model="osrsForm.osrs_username" />
+                            <osrs-username-field v-model="osrsForm.osrs_username" :error="osrsForm.errors.osrs_username" />
                         </u-form-field>
 
                         <!-- The step stays in the list once it is answered

@@ -31,6 +31,7 @@
                 <div class="flex items-center gap-2 flex-wrap shrink-0">
                     <osrs-username-field
                         v-model="osrsInput"
+                        :error="osrsForm.errors.osrs_username"
                         size="sm"
                         :placeholder="$t('profile.osrs_username')"
                         class="w-48"
