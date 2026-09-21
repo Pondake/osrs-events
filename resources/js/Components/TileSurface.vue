@@ -33,21 +33,20 @@
             </div>
         </div>
 
-        <!-- The grid can be wider than the column, so it scrolls. The padding
-             is for the edit ring: overflow clips at the padding box, and a
-             2px ring on a child flush against the edge was being sliced down
-             both sides — the board showed a subtle line with coloured corners
-             where the card showed a full ring. The negative margin keeps the
-             scroller the same size it was. -->
-        <div class="overflow-x-auto p-1 -m-1">
+        <!-- The grid can be wider than the column, so it scrolls. -->
+        <div class="overflow-x-auto">
             <!-- osrs-border/board-parchment as Tailwind utilities rather than
                  the old app's custom CSS: this codebase writes custom CSS only
-                 where Tailwind cannot, and it can. `.is-editing` is the one
-                 exception, in app.css, because a ring that has to survive this
-                 scroller is not a utility. -->
+                 where Tailwind cannot, and it can.
+
+                 Nothing marks the surface while editing. It wore a coloured
+                 ring, which framed the tiles it was supposed to be about and
+                 fought with their own states; the pill above says which mode
+                 you are in, and that is the whole job. `sm:pt-5` is only the
+                 room the pill dips into. -->
             <div
                 class="relative rounded-xl p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900"
-                :class="[minWidth, editing ? 'is-editing sm:pt-5' : '']"
+                :class="[minWidth, editing ? 'sm:pt-5' : '']"
             >
                 <slot />
             </div>
