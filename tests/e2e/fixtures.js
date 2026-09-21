@@ -10,7 +10,7 @@ import { authFile } from './support/env.js';
  *
  * A test that *expects* an error says so with `allow()`.
  */
-export function watch(page) {
+export function watch(page, { live = false } = {}) {
     const problems = [];
     const allowed = [];
     let documentsChecked = false;
@@ -31,8 +31,9 @@ export function watch(page) {
         if (text.startsWith('Failed to load resource')) return;
 
         // The live channel is stubbed (see isolate), so it always reports
-        // itself stale after six seconds. That is the stub, not a fault.
-        if (text.includes('Event stream went stale')) return;
+        // itself stale after six seconds. That is the stub, not a fault — but
+        // on a real channel it is exactly the fault stream.spec.js is after.
+        if (!live && text.includes('Event stream went stale')) return;
 
         if (allowedConsole.some((pattern) => pattern.test(text))) return;
 
@@ -91,7 +92,9 @@ export function watch(page) {
  * PHP's built-in server is one process and every event page holds a
  * connection open for ~45 seconds, so one open event would freeze the rest of
  * the run. The channel is answered with an empty stream instead; what it
- * carries is covered by EventStreamTest on the server side.
+ * carries is covered by EventStreamTest on the server side. A spec that needs
+ * the real channel says `test.use({ stream: 'live' })` and runs on a server
+ * that can answer several requests at once (see PHP_WORKERS).
  *
  * And nothing outside this site is fetched: a player's screenshot link, a web
  * font and an embedded image would otherwise make a run depend on other
@@ -104,10 +107,12 @@ const EMPTY = {
     font: { contentType: 'font/woff2', body: '' },
 };
 
-async function isolate(context, origin) {
-    await context.route(/\/(events\/[^/]+\/stream|settings\/runelite\/stream)(\?|$)/, (route) =>
-        route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'retry: 3600000\n\n' }),
-    );
+async function isolate(context, origin, { live = false } = {}) {
+    if (!live) {
+        await context.route(/\/(events\/[^/]+\/stream|settings\/runelite\/stream)(\?|$)/, (route) =>
+            route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'retry: 3600000\n\n' }),
+        );
+    }
 
     await context.route(
         (url) => ['http:', 'https:'].includes(url.protocol) && url.origin !== origin,
@@ -116,6 +121,9 @@ async function isolate(context, origin) {
 }
 
 export const test = base.extend({
+    /** 'stubbed' answers the live channel with an empty stream; 'live' lets it through. */
+    stream: ['stubbed', { option: true }],
+
     watchers: async ({}, use) => {
         const list = [];
 
@@ -127,9 +135,9 @@ export const test = base.extend({
         ).toEqual([]);
     },
 
-    page: async ({ page, watchers, baseURL }, use) => {
-        await isolate(page.context(), new URL(baseURL).origin);
-        watchers.push(watch(page));
+    page: async ({ page, watchers, baseURL, stream }, use) => {
+        await isolate(page.context(), new URL(baseURL).origin, { live: stream === 'live' });
+        watchers.push(watch(page, { live: stream === 'live' }));
         await use(page);
     },
 
@@ -144,17 +152,17 @@ export const test = base.extend({
      *
      *     const host = await as('owner');
      */
-    as: async ({ browser, baseURL, viewport, colorScheme, watchers }, use) => {
+    as: async ({ browser, baseURL, viewport, colorScheme, stream, watchers }, use) => {
         const contexts = [];
 
         await use(async (name, { allow = [], console: logged = [] } = {}) => {
             const context = await browser.newContext({ baseURL, viewport, colorScheme, storageState: authFile(name) });
 
             contexts.push(context);
-            await isolate(context, new URL(baseURL).origin);
+            await isolate(context, new URL(baseURL).origin, { live: stream === 'live' });
 
             const page = await context.newPage();
-            const watcher = watch(page);
+            const watcher = watch(page, { live: stream === 'live' });
 
             allow.forEach(([status, pattern]) => watcher.allow(status, pattern));
             logged.forEach((pattern) => watcher.allowConsole(pattern));

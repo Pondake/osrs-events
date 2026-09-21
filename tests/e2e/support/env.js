@@ -47,6 +47,18 @@ function findPhp() {
 export const PHP = findPhp();
 
 /**
+ * How many requests the app can answer at once. PHP's built-in server is one
+ * process, and every event page holds a connection open for its live channel,
+ * so with one the suite has to stub that channel (see fixtures.js). Where PHP
+ * can fork it does (Linux, macOS); on Windows it cannot, so serve.js starts
+ * that many servers side by side on the same database instead.
+ *
+ * The default is what the platform does natively. Set E2E_PHP_WORKERS=4 on
+ * Windows to run stream.spec.js, which needs more than one.
+ */
+export const PHP_WORKERS = Number(process.env.E2E_PHP_WORKERS ?? (process.platform === 'win32' ? 1 : 4));
+
+/**
  * The environment every PHP process of the suite runs in: the server, and the
  * artisan calls the tests make between requests.
  *
