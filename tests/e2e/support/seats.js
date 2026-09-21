@@ -20,6 +20,7 @@ export const STATES = {
     leaver: { username: 'e2e_leaver' },
     promotee: { username: 'e2e_promotee' },
     changer: { username: 'e2e_changer' },
+    notifier: { username: 'e2e_notifier' },
 };
 
 export const PASSWORD = 'E2e-Password-1';
