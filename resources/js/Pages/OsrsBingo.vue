@@ -39,7 +39,13 @@
                         </li>
                     </ol>
 
-                    <guide-screenshot class="mt-4" :alt="$t('landing.bingo.screenshot_editor_alt')" />
+                    <guide-screenshot
+                        class="mt-4"
+                        src="/images/guides/bingo-editor.webp"
+                        :width="1024"
+                        :height="2232"
+                        :alt="$t('landing.bingo.screenshot_editor_alt')"
+                    />
                 </div>
 
                 <div>
@@ -53,7 +59,13 @@
                         </li>
                     </ol>
 
-                    <guide-screenshot class="mt-4" :alt="$t('landing.bingo.screenshot_board_alt')" />
+                    <guide-screenshot
+                        class="mt-4"
+                        src="/images/guides/bingo-board.webp"
+                        :width="2528"
+                        :height="1994"
+                        :alt="$t('landing.bingo.screenshot_board_alt')"
+                    />
                 </div>
             </div>
         </section>
