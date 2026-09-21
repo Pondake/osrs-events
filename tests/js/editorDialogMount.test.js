@@ -61,6 +61,27 @@ describe.each(PAGES)('$tag', ({ file, tag, target }) => {
     });
 
     /**
+     * Both formats say "you are editing this" with the same component and
+     * switch the mode off the same way. They each had their own version — a
+     * pill with a Done button on the board, a line of small text on the card
+     * that could only be switched off again from the Manage menu — so the
+     * same mode looked and ended differently depending on which event you
+     * happened to be looking at.
+     */
+    it('announces the mode with the shared notice', () => {
+        expect(source).toMatch(/<edit-mode-notice/);
+        // The pill's own markup belongs to the component, nowhere else.
+        expect(source).not.toMatch(/rounded-full bg-default ring-1 ring-primary/);
+    });
+
+    /** And the grid itself pulses with the one rule in app.css, not a glow
+     *  written out per page. */
+    it('marks the grid with the shared editing ring', () => {
+        expect(source).toMatch(/'is-editing/);
+        expect(source).not.toMatch(/shadow-\[0_0_24px/);
+    });
+
+    /**
      * Two refs, not one. With the dialog always mounted, "no tile chosen yet"
      * and "the dialog is closed" stop being the same state, so the open flag
      * has to be its own.

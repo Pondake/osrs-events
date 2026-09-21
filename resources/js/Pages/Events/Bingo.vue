@@ -163,27 +163,16 @@
                              The editing notice stays: that one is about a
                              mode you are currently in, and belongs where the
                              mode is. -->
-                        <!-- The same pill the board shows, carrying the same
-                             way out of the mode. This was a line of small
-                             text with no control in it, so the mode was
-                             announced here and switched off at the other end
-                             of the header — the exact split the board had
-                             already fixed. -->
-                        <div v-if="editing" class="relative z-10 flex justify-start sm:justify-center mb-2">
-                            <div class="inline-flex max-w-full items-center gap-2 rounded-full bg-default ring-1 ring-primary/50 shadow-sm py-1 pl-3 pr-1">
-                                <u-icon name="i-lucide-grid-2x2-plus" class="size-3.5 shrink-0 text-primary" />
-                                <span class="text-xs font-semibold truncate">{{ $t('bingo.editing_squares_notice') }}</span>
-                                <u-button
-                                    size="xs"
-                                    color="neutral"
-                                    variant="solid"
-                                    class="rounded-full shrink-0"
-                                    icon="i-lucide-check"
-                                    :label="$t('bingo.done_editing')"
-                                    @click="editing = false"
-                                />
-                            </div>
-                        </div>
+                        <!-- The board's notice, the same component. This was
+                             a line of small text with no control in it, so the
+                             mode was announced here and switched off at the
+                             other end of the header. No `overlap`: a bingo grid
+                             has no border for the pill to dip into. -->
+                        <edit-mode-notice
+                            v-if="editing"
+                            :label="$t('bingo.editing_squares_notice')"
+                            @done="editing = false"
+                        />
 
                         <!-- While editing, the card itself says so. The mode
                              lived only in a button at the other end of the
@@ -239,7 +228,7 @@
 
                         <div
                             class="grid gap-2 rounded-xl transition-all duration-200"
-                            :class="[gridClass, editing ? 'ring-2 ring-primary/60 shadow-[0_0_24px_-4px_var(--ui-primary)] p-2 -m-2' : '']"
+                            :class="[gridClass, editing ? 'is-editing p-2 -m-2' : '']"
                         >
                             <button
                                 v-for="square in squares"
@@ -547,6 +536,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { eventStatus, formatDate, ordinal } from '@/Support/board';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
+import EditModeNotice from '@/Components/EditModeNotice.vue';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';

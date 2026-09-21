@@ -153,44 +153,23 @@
                          it that z-10 sits in the root stacking context and climbs
                          over a teleported modal. -->
                     <div class="flex-1 w-full min-w-0 isolate">
-                        <!-- One button, not a save/cancel pair: every tile edit
-                             posts and closes on its own, so a cancel here would
-                             guard nothing.
-
-                             It hangs on the board's top border from OUTSIDE the
-                             scroller, which is the only way to have both: the
-                             board needs `overflow-x-auto`, and once one axis
+                        <!-- `overlap` hangs it on the board's top border, from
+                             OUTSIDE the scroller — the only way to have both:
+                             the board needs `overflow-x-auto`, and once one axis
                              stops being `visible` the other does too, so an
                              overhang inside gets sliced. Padding on the scroller
-                             does not buy the room back — clipping happens at the
-                             padding box.
-                             The pill keeps its own height and the BOARD is pulled
-                             up under it; the board's top padding grows to clear
-                             the overlap (20px against a 16px dip), so both
-                             numbers are set here rather than fitted to a screen.
+                             does not buy the room back; clipping happens at the
+                             padding box. The pill keeps its own height and the
+                             BOARD is pulled up under it, so the board's top
+                             padding grows to clear the dip (20px against 16px).
                              Do not invert it into a zero-height row: a flex row
-                             stretches its children to the row's height.
-                             Left aligned below `sm`, where the board is wider
-                             than the screen. -->
-                        <div v-if="editMode" class="relative z-10 flex justify-start sm:justify-center mb-2 sm:-mb-4">
-                            <div class="inline-flex max-w-full items-center gap-2 rounded-full bg-default ring-1 ring-primary/50 shadow-sm py-1 pl-3 pr-1">
-                                <u-icon name="i-lucide-grid-2x2-plus" class="size-3.5 shrink-0 text-primary" />
-                                <span class="text-xs font-semibold truncate">{{ $t('board.editing_tiles_notice') }}</span>
-                                <!-- Round, and inset from the pill's own edge: a
-                                     square-cornered button flush against a fully
-                                     rounded pill reads as two shapes fighting
-                                     rather than one control. -->
-                                <u-button
-                                    size="xs"
-                                    color="neutral"
-                                    variant="solid"
-                                    class="rounded-full shrink-0"
-                                    icon="i-lucide-check"
-                                    :label="$t('board.done_editing')"
-                                    @click="editMode = false"
-                                />
-                            </div>
-                        </div>
+                             stretches its children to the row's height. -->
+                        <edit-mode-notice
+                            v-if="editMode"
+                            overlap
+                            :label="$t('board.editing_tiles_notice')"
+                            @done="editMode = false"
+                        />
 
                         <div class="overflow-x-auto">
                         <!-- board-parchment/osrs-border ported as Tailwind utilities rather
@@ -206,7 +185,7 @@
                              underneath it. -->
                         <div
                             class="relative rounded-xl p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900"
-                            :class="[minWidthClass, editMode ? 'board-editing sm:pt-5' : '']"
+                            :class="[minWidthClass, editMode ? 'is-editing sm:pt-5' : '']"
                         >
 
                             <!-- The overlay is positioned on THIS box, not on the
@@ -1100,6 +1079,7 @@ import RequirementRail from '@/Components/RequirementRail.vue';
 import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
+import EditModeNotice from '@/Components/EditModeNotice.vue';
 import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, claimAreaIsShown, formatBoardSize, formatDate, eventStatus, finishSubtitle as finishSubtitleFor, ordinal, settledPlace } from '@/Support/board';
 import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';
 import { useEventStream } from '@/Composables/useEventStream';
