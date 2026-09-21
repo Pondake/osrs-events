@@ -260,7 +260,20 @@
                                          view on every row, and the unit is
                                          there for a boss race that has no
                                          icon to lean on. -->
-                                    <span v-else-if="entry.syncedAt" class="text-sm font-medium text-highlighted tabular-nums inline-flex items-center gap-1.5 shrink-0">
+                                    <span v-else-if="entry.syncedAt || entry.live > 0" class="text-sm font-medium text-highlighted tabular-nums inline-flex items-center gap-1.5 shrink-0">
+                                        <!-- Kills the RuneLite plugin counted
+                                             are ahead of the hiscores by
+                                             design — they arrive in a second
+                                             and Wise Old Man takes hours — so
+                                             a number carrying them says so
+                                             instead of looking like it
+                                             disagrees with the source below. -->
+                                        <u-icon
+                                            v-if="entry.live > 0 && entry.live >= entry.gained"
+                                            name="i-lucide-zap"
+                                            class="size-3.5 text-primary"
+                                            :title="$t('events.live_from_plugin')"
+                                        />
                                         +{{ formatMetricValue(entry.gained) }}
                                         <img v-if="metricIcon" :src="metricIcon" alt="" class="size-4 object-contain">
                                         <span v-else class="text-xs text-muted">{{ $t(isBossRace ? 'events.unit_kills' : 'events.unit_xp') }}</span>

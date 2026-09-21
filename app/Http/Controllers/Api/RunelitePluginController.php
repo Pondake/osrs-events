@@ -7,6 +7,7 @@ use App\Models\PluginCompletion;
 use App\Models\Setting;
 use App\Services\OsrsIdentityService;
 use App\Services\PluginPlausibilityService;
+use App\Services\RaceKillService;
 use App\Services\RunelitePluginService;
 use App\Support\RuneliteName;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -18,7 +19,7 @@ use Illuminate\Validation\Rule;
 /** The API the RuneLite plugin talks to. Contract: docs/runelite-plugin.md. */
 class RunelitePluginController extends Controller
 {
-    public function events(Request $request, RunelitePluginService $plugin): JsonResponse
+    public function events(Request $request, RunelitePluginService $plugin, RaceKillService $races): JsonResponse
     {
         $events = $plugin->openTargets($request->user());
 
@@ -36,7 +37,13 @@ class RunelitePluginController extends Controller
                 'targets' => $row['targets']->map(fn (array $target) => RunelitePluginService::describe($target))->all(),
             ])->all(),
             'reviews' => $plugin->recentVerdicts($request->user()),
-            'watch' => $events->flatMap(fn (array $row) => $row['targets']->pluck('match'))->unique()->sort()->values()->all(),
+            // One flat list of names, as the shipped plugin reads it. A drop
+            // race's boss is in here without being a target: it claims
+            // nothing, it moves a leaderboard, and the plugin needs no change
+            // to report a kill of a name it is watching.
+            'watch' => $events->flatMap(fn (array $row) => $row['targets']->pluck('match'))
+                ->merge($races->watchNames($request->user()))
+                ->unique()->sort()->values()->all(),
         ]);
     }
 
@@ -68,7 +75,7 @@ class RunelitePluginController extends Controller
         ]);
     }
 
-    public function complete(Request $request, RunelitePluginService $plugin, PluginPlausibilityService $plausibility): JsonResponse
+    public function complete(Request $request, RunelitePluginService $plugin, PluginPlausibilityService $plausibility, RaceKillService $races): JsonResponse
     {
         $data = $request->validate([
             'client_event_id' => ['required', 'string', 'max:100'],
@@ -118,10 +125,14 @@ class RunelitePluginController extends Controller
         $doubts = $plausibility->doubts($user, $data);
 
         try {
-            $logged = DB::transaction(function () use ($user, $data, $plugin, $doubts) {
+            $logged = DB::transaction(function () use ($user, $data, $plugin, $doubts, $races) {
                 $logged = PluginCompletion::create([...$data, 'doubts' => $doubts ?: null, 'user_id' => $user->id]);
                 $outcome = $plugin->complete($user, $data['name'], $logged);
                 $logged->update(['claims' => $outcome['claims'], 'progress' => $outcome['progress']]);
+
+                // A kill can be both: the square it claims and the race it
+                // moves are different questions about the same report.
+                $races->record($user, $logged);
 
                 return $logged;
             });

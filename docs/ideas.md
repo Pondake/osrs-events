@@ -128,31 +128,3 @@ vulcopy.
   en houdt nu elke gepubliceerde CMS-pagina automatisch in de sitemap
   (`SitemapController`), wat voor een betapagina precies verkeerd is.
 
-## RuneLite plugin
-
-- **Boss race op `context.kill_count` in plaats van Wise Old Man.** Uitgezocht
-  2026-09-21; er is niets gebouwd. Wat er al is: `DROP_RACE` bestaat
-  (`Event::EVENT_TYPES`, boss-metriek uit `BOSS_METRICS`) en telt de **meeste
-  kills in het eventvenster**: `EventStandingsService::refresh()` vraagt Wise Old
-  Man om `bosses.{metric}.kills` gained tussen start- en einddatum, en dat is de
-  ranglijst. Er is geen "eerste die N kills haalt". Dat laatste kan al wel als
-  bord- of bingotaak: een vak "Kill Zalcano" met `required_count` 5 telt de
-  kills al op afzonderlijke `context.kill_count` (`TargetProgressService`).
-  Waarom `kill_count` niet zomaar de bron wordt:
-  - Een boss race zit niet in `RunelitePluginService::openTargets()` (alleen
-    BINGO en SNAKES_LADDERS), dus de plugin krijgt geen bossnamen in `watch` en
-    meldt die kills niet.
-  - Wie de plugin niet draait telt dan niet mee, terwijl Wise Old Man iedereen
-    meet. Twee bronnen in één ranglijst geeft een oneerlijke stand.
-  - Een kill count uit de client is vervalsbaar (trust boundary in
-    `docs/runelite-plugin.md`), en hier gaat het om een ranglijst, geen claim
-    die een host kan beoordelen.
-  Voorstel als het toch moet: de plugin-`kill_count` als **live aanvulling** op
-  de Wise Old Man-stand, niet als vervanging. Per deelnemer de hoogste
-  `kill_count` uit `plugin_completions` per baas (naam moet op de
-  `BOSS_METRICS`-sleutel gemapt worden), en de plugin krijgt de racebazen via
-  een nieuwe lijst in `/events` (bv. `races`), want `watch` is een lijst
-  strings en verandert niet. Toon het als "live" naast de gesynchroniseerde
-  waarde en laat Wise Old Man de rangorde beslissen. Kost een mapping
-  npc-naam naar metriek en een plugin-wijziging om alle kills van een racebaas
-  te melden, ook zonder tegel.

@@ -40,7 +40,11 @@ class EventStandingsService
             // left unranked below. Their gained is 0, so without this they
             // tie with everyone who genuinely gained nothing and take a rank
             // off the people who are actually competing.
-            ->orderByRaw('case when sync_error is not null or synced_at is null then 1 else 0 end')
+            // A row the plugin has counted kills for is measured too, even if
+            // Wise Old Man has never answered for it — otherwise the one
+            // player actually killing the boss sorts below everyone who has
+            // done nothing, for as long as their first sync takes.
+            ->orderByRaw('case when live_gained > 0 then 0 when sync_error is not null or synced_at is null then 1 else 0 end')
             ->orderByDesc('gained')
             ->orderBy('username')
             ->get();
@@ -50,7 +54,7 @@ class EventStandingsService
         $previous = null;
 
         return $rows->map(function (EventStanding $row) use (&$rank, &$seen, &$previous) {
-            $measured = $row->sync_error === null && $row->synced_at !== null;
+            $measured = ($row->sync_error === null && $row->synced_at !== null) || $row->live_gained > 0;
 
             if ($measured) {
                 $seen++;
@@ -68,6 +72,10 @@ class EventStandingsService
                 'displayName' => $row->user?->nickname ?: $row->user?->discord_username,
                 'avatarUrl' => $row->user?->avatar_url,
                 'gained' => $row->gained,
+                // How much of that number the plugin reported live. Shown so
+                // a leaderboard can say a count is ahead of the hiscores
+                // rather than looking like it disagrees with them.
+                'live' => $row->live_gained,
                 'start' => $row->start_value,
                 'end' => $row->end_value,
                 // Null synced_at is "never looked up", which the page shows as
@@ -91,9 +99,9 @@ class EventStandingsService
         $rows = EventStanding::query()
             ->where('event_id', $event->id)
             ->orderBy('username')
-            ->get(['username', 'gained', 'sync_error']);
+            ->get(['username', 'gained', 'live_gained', 'sync_error']);
 
-        return md5($rows->map(fn ($r) => "{$r->username}:{$r->gained}:{$r->sync_error}")->implode('|'));
+        return md5($rows->map(fn ($r) => "{$r->username}:{$r->gained}:{$r->live_gained}:{$r->sync_error}")->implode('|'));
     }
 
     /**
@@ -139,11 +147,16 @@ class EventStandingsService
             return $standing;
         }
 
+        // The kills the plugin counted belong to the name that reported them,
+        // so a re-baseline drops them with the rest of the numbers.
+        $standing->exists && $standing->kills()->delete();
+
         $standing->fill([
             'username' => $user->osrs_username,
             'start_value' => null,
             'end_value' => null,
             'gained' => 0,
+            'live_gained' => 0,
             'sync_error' => null,
             'synced_at' => null,
         ])->save();
@@ -208,11 +221,14 @@ class EventStandingsService
                 continue;
             }
 
+            $row->kills()->delete();
+
             $row->fill([
                 'username' => $row->user->osrs_username,
                 'start_value' => null,
                 'end_value' => null,
                 'gained' => 0,
+                'live_gained' => 0,
                 'sync_error' => null,
                 'synced_at' => null,
             ])->save();
@@ -353,7 +369,13 @@ class EventStandingsService
         $standing->forceFill([
             'start_value' => $delta['start'],
             'end_value' => $delta['end'],
-            'gained' => $delta['gained'],
+            // The higher of the two, never the newer. A drop race counts boss
+            // kills the RuneLite plugin has already reported (RaceKillService),
+            // and the hiscores lag by hours — so a sync that lands between two
+            // kills would otherwise walk the number backwards on the one
+            // player who is doing the killing. Their API can only be behind,
+            // so once it catches up it wins on its own.
+            'gained' => max($delta['gained'], $standing->live_gained),
             'sync_error' => null,
             'synced_at' => Carbon::now(),
         ])->save();
