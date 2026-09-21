@@ -114,10 +114,25 @@ import { bannerBgFor, bannerIconFor, styleFor } from '@/Support/announcement';
 
 const props = defineProps({
     fullLockdown: { type: Boolean, default: false },
+    // The Discord name of a signup this door interrupted, when there is
+    // one — see DiscordController::callback. The page then says what the
+    // password is still for instead of asking cold.
+    pendingDiscord: { type: String, default: null },
 });
 
-const heading = computed(() => (props.fullLockdown ? trans('lock.full_lockdown_heading') : trans('lock.heading')));
-const body = computed(() => (props.fullLockdown ? trans('lock.full_lockdown_body') : trans('lock.body')));
+const heading = computed(() => {
+    if (props.fullLockdown) return trans('lock.full_lockdown_heading');
+
+    return props.pendingDiscord ? trans('lock.discord_pending_heading') : trans('lock.heading');
+});
+
+const body = computed(() => {
+    if (props.fullLockdown) return trans('lock.full_lockdown_body');
+
+    return props.pendingDiscord
+        ? trans('lock.discord_pending_body', { name: props.pendingDiscord })
+        : trans('lock.body');
+});
 
 // Read off the shared prop rather than passed in by SiteLockController: the
 // decision about whether this visitor may see the announcement at all lives

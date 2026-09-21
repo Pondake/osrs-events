@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\EnsureSiteUnlocked;
 use App\Models\Setting;
+use App\Services\DiscordAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,8 @@ use Inertia\Response as InertiaResponse;
 /** The shared-password door in front of a pre-launch site. */
 class SiteLockController extends Controller
 {
+    public function __construct(private readonly DiscordAccountService $accounts) {}
+
     /**
      * Union return type, not Symfony's Response: Inertia\Response is a
      * Responsable, not a Response, so declaring the framework's own type
@@ -28,7 +31,7 @@ class SiteLockController extends Controller
         // account already signed in, who the pre-launch door alone would
         // have let straight through.
         if ($fullLockdown && ! $isAdmin) {
-            return Inertia::render('SiteLock', ['fullLockdown' => true]);
+            return Inertia::render('SiteLock', ['fullLockdown' => true, 'pendingDiscord' => null]);
         }
 
         // Past here full lockdown is either off or this is an admin — and
@@ -42,10 +45,23 @@ class SiteLockController extends Controller
         // lock is off, which reads as though the site is locked when it is
         // not.
         if (! Setting::get('site_lock_enabled') || $request->session()->get(EnsureSiteUnlocked::SESSION_KEY)) {
+            // A signup parked here while the door was shut, arriving after
+            // it opened: finish it rather than drop them on the home page
+            // as the stranger they no longer are.
+            if ($this->accounts->completePending($request) !== null) {
+                return redirect('/boards');
+            }
+
             return redirect('/');
         }
 
-        return Inertia::render('SiteLock', ['fullLockdown' => false]);
+        // Somebody halfway through signing up with Discord gets told
+        // what the password is still for, by name — without it the round
+        // trip ends on a password box that looks like it forgot them.
+        return Inertia::render('SiteLock', [
+            'fullLockdown' => false,
+            'pendingDiscord' => $this->accounts->pendingName($request),
+        ]);
     }
 
     public function unlock(Request $request): RedirectResponse
@@ -77,6 +93,13 @@ class SiteLockController extends Controller
         // means a fixated one survives the unlock.
         $request->session()->regenerate();
         $request->session()->put(EnsureSiteUnlocked::SESSION_KEY, true);
+
+        // The other half of the interrupted Discord signup — the identity
+        // was parked here by DiscordController::callback and the password
+        // just answered the only thing that was missing.
+        if ($this->accounts->completePending($request) !== null) {
+            return redirect()->intended('/boards');
+        }
 
         return redirect()->intended('/');
     }

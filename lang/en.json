@@ -1831,6 +1831,8 @@
     "lock.app_not_open": "The app is not open yet. Have a look around, and check back soon.",
     "lock.body": "This site is still being built. If you were given a password, enter it below.",
     "lock.discord_cta": "Join the Discord",
+    "lock.discord_pending_body": "Discord knows you as :name. The site is not open to the public yet — enter the shared password and your account is made.",
+    "lock.discord_pending_heading": "One more thing",
     "lock.full_lockdown_body": "The app has been taken offline for everyone except admins right now. The shared password won't get you in this time — only an admin login will.",
     "lock.full_lockdown_heading": "Taken offline for now",
     "lock.full_lockdown_notice": "The site is in full lockdown right now — only an admin login gets in, not the shared password.",

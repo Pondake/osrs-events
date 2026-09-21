@@ -135,7 +135,19 @@ class Setting extends Model
             fn () => static::query()->pluck('value', 'key')->all(),
         );
 
-        return [...self::DEFAULTS, ...$stored];
+        $merged = [...self::DEFAULTS, ...$stored];
+
+        // A row written by hand holds "1" where the default is a bool.
+        // Truthy in PHP, so every server-side check keeps working, but not
+        // `true` — and the admin toggle bound to it renders off while the
+        // setting is on.
+        foreach (self::DEFAULTS as $key => $default) {
+            if (is_bool($default)) {
+                $merged[$key] = (bool) $merged[$key];
+            }
+        }
+
+        return $merged;
     }
 
     /**

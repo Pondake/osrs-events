@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Http\Middleware\EnsureSiteUnlocked;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\DiscordAccountService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
@@ -134,13 +136,67 @@ class DiscordRegistrationLockTest extends TestCase
         $this->assertGuest();
     }
 
+    /**
+     * The door, not a no — changed 2026-09-21.
+     *
+     * A stranger arriving through Discord used to be refused on the login
+     * page with "new accounts are closed", which was not even true: the
+     * door opens on a password they might well be holding, and there was
+     * nowhere on that page to type it. Nothing is created here; the
+     * identity waits in the session until the password answers for it.
+     */
     #[Test]
-    public function a_stranger_cannot_make_an_account_through_discord_while_locked(): void
+    public function a_stranger_is_sent_to_the_door_rather_than_refused(): void
     {
         $this->lock();
         $this->discordAnswers('999888777');
 
-        $this->get('/auth/discord/callback?code=whatever')->assertRedirect('/login');
+        $this->get('/auth/discord/callback?code=whatever')->assertRedirect(route('site-lock.show'));
+
+        $this->assertNull(User::where('discord_id', '999888777')->first());
+        $this->assertGuest();
+        $this->assertNotNull(session(DiscordAccountService::PENDING_KEY));
+    }
+
+    #[Test]
+    public function the_password_finishes_the_signup_discord_started(): void
+    {
+        Setting::setMany(['site_lock_enabled' => true, 'site_lock_password' => Hash::make('let-me-in')]);
+        $this->discordAnswers('999888777', 'newcomer');
+
+        $this->get('/auth/discord/callback?code=whatever')->assertRedirect(route('site-lock.show'));
+
+        // The screen says who it is still waiting on.
+        $this->get('/locked')->assertInertia(fn ($page) => $page
+            ->component('SiteLock')
+            ->where('pendingDiscord', 'newcomer'));
+
+        $this->post('/locked', ['password' => 'let-me-in'])->assertRedirect('/boards');
+
+        $user = User::where('discord_id', '999888777')->first();
+        $this->assertNotNull($user);
+        $this->assertSame($user->id, Auth::id());
+        $this->assertNull(session(DiscordAccountService::PENDING_KEY));
+    }
+
+    /**
+     * A machine left on the lock screen overnight must not still be holding
+     * somebody's login for whoever walks past it next.
+     */
+    #[Test]
+    public function a_stale_pending_signup_is_dropped_rather_than_finished(): void
+    {
+        Setting::setMany(['site_lock_enabled' => true, 'site_lock_password' => Hash::make('let-me-in')]);
+        $this->discordAnswers('999888777');
+
+        $this->get('/auth/discord/callback?code=whatever');
+
+        $pending = session(DiscordAccountService::PENDING_KEY);
+        $this->withSession([
+            DiscordAccountService::PENDING_KEY => [...$pending, 'expires_at' => now()->subMinute()->timestamp],
+        ]);
+
+        $this->post('/locked', ['password' => 'let-me-in'])->assertRedirect('/');
 
         $this->assertNull(User::where('discord_id', '999888777')->first());
         $this->assertGuest();

@@ -4,15 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureSiteUnlocked;
-use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
-use App\Models\UserGuild;
+use App\Services\DiscordAccountService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
@@ -29,6 +25,13 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  */
 class DiscordController extends Controller
 {
+    /** registrationRefusal()'s one answer that is a detour rather than a no. */
+    private const REFUSED_LOCKED = 'locked';
+
+    private const REFUSED_CLOSED = 'closed';
+
+    public function __construct(private readonly DiscordAccountService $accounts) {}
+
     public function redirect(): SymfonyResponse
     {
         // setScopes(), not scopes() — the latter MERGES with the discord
@@ -172,36 +175,40 @@ class DiscordController extends Controller
             return $this->linkToExistingUser($linkingUserId, $discordId, $discordUsername, $avatarUrl, $discordUser->token);
         }
 
-        // Discord is two things at once: a way to sign in and a way to get an
-        // account without ever seeing a registration form. While the site is
-        // locked only the first is on offer — a shut door that hands out keys
-        // is not shut. An account that already exists signs in as normal, so
+        // Discord is two things at once: a way to sign in and a way to get
+        // an account without ever seeing a registration form. Only the
+        // second is ever refused — a shut door that hands out keys is not
+        // shut — and an account that already exists signs in as normal, so
         // whoever is building the site is not locked out of their own login.
-        if ($this->registrationClosed($request) && ! User::where('discord_id', $discordId)->exists()) {
-            return redirect('/login')->with('board-save-error', trans('lock.registration_closed'));
+        $identity = [
+            'discord_id' => $discordId,
+            'discord_username' => $discordUsername,
+            'avatar_url' => $avatarUrl,
+            'global_name' => $globalName,
+            'token' => $discordUser->token,
+        ];
+
+        if (! User::where('discord_id', $discordId)->exists()) {
+            $refusal = $this->registrationRefusal($request);
+
+            // A door, not a no. Discord has already said who this is;
+            // throwing that away and refusing them on the login page left
+            // somebody who holds the shared password with nowhere to type
+            // it. The identity waits in the session instead, the password
+            // screen asks for the one thing still missing, and
+            // SiteLockController finishes the signup from there.
+            if ($refusal === self::REFUSED_LOCKED) {
+                $this->accounts->rememberPending($request, $identity);
+
+                return redirect()->route('site-lock.show');
+            }
+
+            if ($refusal !== null) {
+                return redirect('/login')->with('board-save-error', trans('lock.registration_closed'));
+            }
         }
 
-        $user = $this->upsertFromDiscord(
-            discordId: $discordId,
-            discordUsername: $discordUsername,
-            avatarUrl: $avatarUrl,
-            globalName: $globalName,
-        );
-
-        // Non-fatal: guild sync failure should not block login — matches the
-        // old NestJS service's try/catch around this same call.
-        try {
-            $this->syncGuilds($user, $discordUser->token);
-        } catch (\Throwable $e) {
-            Log::warning("Guild sync failed for user {$user->id}: {$e->getMessage()}");
-        }
-
-        Auth::login($user, remember: true);
-
-        // Session fixation prevention — this was never here before; a
-        // pre-login session ID stayed valid post-login. Retrofitted while
-        // adding the email/password path below, which needed the same fix.
-        $request->session()->regenerate();
+        $this->accounts->signIn($request, $identity);
 
         return redirect()->intended('/boards');
     }
@@ -228,7 +235,7 @@ class DiscordController extends Controller
         ]);
 
         try {
-            $this->syncGuilds($user, $accessToken);
+            $this->accounts->syncGuilds($user, $accessToken);
         } catch (\Throwable $e) {
             Log::warning("Guild sync failed for user {$user->id}: {$e->getMessage()}");
         }
@@ -237,7 +244,12 @@ class DiscordController extends Controller
     }
 
     /**
-     * Whether the site is shut to newcomers, for any of three reasons.
+     * Why the site is shut to this newcomer, or null when it is not.
+     *
+     * Two answers, and the difference decides what the caller does with
+     * them: REFUSED_CLOSED is an admin saying no and ends the round trip,
+     * REFUSED_LOCKED is a door that opens on a password and sends them to
+     * the screen that takes one.
      *
      * Not `EnsureSiteUnlocked::isShutFor()`: that asks whether THIS visitor
      * may use the site at all, and a request arriving here has already been
@@ -275,75 +287,24 @@ class DiscordController extends Controller
      *    `SiteLockController` after the password matches, so it cannot be
      *    forged from the browser.
      */
-    private function registrationClosed(Request $request): bool
+    private function registrationRefusal(Request $request): ?string
     {
         if (! Setting::get('registration_open')) {
-            return true;
+            return self::REFUSED_CLOSED;
         }
 
         if (Setting::get('admin_lockdown_enabled')) {
-            return true;
+            return self::REFUSED_CLOSED;
         }
 
         if (! Setting::get('site_lock_enabled')) {
-            return false;
+            return null;
         }
 
-        return $request->session()->get(EnsureSiteUnlocked::SESSION_KEY) !== true;
-    }
+        if ($request->session()->get(EnsureSiteUnlocked::SESSION_KEY) === true) {
+            return null;
+        }
 
-    private function upsertFromDiscord(string $discordId, string $discordUsername, ?string $avatarUrl, ?string $globalName): User
-    {
-        return DB::transaction(function () use ($discordId, $discordUsername, $avatarUrl, $globalName) {
-            $isNewUser = ! User::where('discord_id', $discordId)->exists();
-
-            $user = User::updateOrCreate(
-                ['discord_id' => $discordId],
-                ['discord_username' => $discordUsername, 'avatar_url' => $avatarUrl],
-            );
-
-            if ($isNewUser) {
-                $playerRole = Role::firstOrCreate(
-                    ['name' => 'PLAYER'],
-                    ['description' => 'Standaard spelerrol'],
-                );
-                $user->assignRole($playerRole);
-
-                // Only on first creation — a returning user may have already
-                // set their own custom nickname (Profile.vue), which a login
-                // must never silently overwrite.
-                if ($globalName && $globalName !== $discordUsername) {
-                    $user->update(['nickname' => $globalName]);
-                }
-            }
-
-            return $user;
-        });
-    }
-
-    /**
-     * Replace the user's cached Discord guild memberships — delete-all +
-     * re-insert in a transaction, same as the old syncGuilds().
-     */
-    private function syncGuilds(User $user, string $discordAccessToken): void
-    {
-        $response = Http::withToken($discordAccessToken)
-            ->get('https://discord.com/api/users/@me/guilds')
-            ->throw();
-
-        $guilds = $response->json();
-
-        DB::transaction(function () use ($user, $guilds) {
-            UserGuild::where('user_id', $user->id)->delete();
-
-            UserGuild::insert(array_map(fn ($guild) => [
-                'id' => (string) str()->uuid(),
-                'user_id' => $user->id,
-                'guild_id' => $guild['id'],
-                'guild_name' => $guild['name'],
-                'guild_icon' => $guild['icon'] ?? null,
-                'synced_at' => now(),
-            ], $guilds));
-        });
+        return self::REFUSED_LOCKED;
     }
 }

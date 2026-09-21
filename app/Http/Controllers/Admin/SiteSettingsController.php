@@ -101,6 +101,15 @@ class SiteSettingsController extends Controller
             'discord_invite_url' => __('admin.setting_discord_invite_url'),
         ]);
 
+        // `boolean` accepts "1" and "0" and does not cast them, so without
+        // this a form post can store a string where the rest of the app
+        // expects true/false.
+        foreach (Setting::DEFAULTS as $key => $default) {
+            if (is_bool($default) && array_key_exists($key, $data)) {
+                $data[$key] = (bool) $data[$key];
+            }
+        }
+
         // Only the validated keys are written, so the request can't
         // introduce a key that isn't a real setting.
         $values = [
