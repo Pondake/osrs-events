@@ -530,13 +530,32 @@ html:not(.dark) .landing-page :where(.rounded-xl, .rounded-lg):where([class*='ri
 }
 
 /* Edit mode, on the thing being edited: a board's parchment or a bingo grid.
-   A plain 2px edge — no halo, no pulsing. It had both, and a glow around the
-   thing you are working in competes with the tiles and squares it is supposed
-   to be framing. The pill above says which mode you are in; this only has to
-   say where the mode applies. One rule, so the board and the card cannot drift
-   apart again. */
+   A breathing ring — of which only the four corner arcs are ever seen.
+   TileSurface's scroller sits flush against the surface and clips everything
+   outside its own box, so the straight runs of the ring are cut away and the
+   rounded corners, which curve inward, keep theirs. That began as an accident
+   of `overflow-x-auto` and is now the design: corner accents that pulse,
+   instead of a frame around the whole grid. Do not give the scroller padding
+   to "fix" the clipping — that is what turns this into a full orange ring. */
+@keyframes editing-breathe {
+    0%,
+    100% {
+        box-shadow: 0 0 0 2px var(--ui-color-primary-500, #d4a33e), 0 0 18px -6px var(--ui-color-primary-500, #d4a33e);
+    }
+    50% {
+        box-shadow: 0 0 0 4px var(--ui-color-primary-500, #d4a33e), 0 0 34px -2px var(--ui-color-primary-500, #d4a33e);
+    }
+}
+
 .is-editing {
-    box-shadow: 0 0 0 2px var(--ui-color-primary-500, #d4a33e);
+    animation: editing-breathe 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .is-editing {
+        animation: none;
+        box-shadow: 0 0 0 3px var(--ui-color-primary-500, #d4a33e);
+    }
 }
 
 /* Connectors you have already gone past. Faded, never removed: a snake higher

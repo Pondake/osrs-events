@@ -33,13 +33,11 @@
             </div>
         </div>
 
-        <!-- The grid can be wider than the column, so it scrolls. The padding
-             is for the edit ring: overflow clips at the padding box, and a
-             2px ring on a child flush against the edge was being sliced down
-             both sides — the board showed a subtle line with coloured corners
-             where the card showed a full ring. The negative margin keeps the
-             scroller the same size it was. -->
-        <div class="overflow-x-auto p-1 -m-1">
+        <!-- The grid can be wider than the column, so it scrolls. No padding,
+             on purpose: the scroller clips the edit ring along its straight
+             edges and leaves only the corner arcs — see `.is-editing` in
+             app.css. -->
+        <div class="overflow-x-auto">
             <!-- osrs-border/board-parchment as Tailwind utilities rather than
                  the old app's custom CSS: this codebase writes custom CSS only
                  where Tailwind cannot, and it can. `.is-editing` is the one
