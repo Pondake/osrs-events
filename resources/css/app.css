@@ -530,32 +530,13 @@ html:not(.dark) .landing-page :where(.rounded-xl, .rounded-lg):where([class*='ri
 }
 
 /* Edit mode, on the thing being edited: a board's parchment or a bingo grid.
-   A breathing ring rather than a static one: the mode is a state you are IN
-   and can leave, and something quietly pulsing is hard to forget you left
-   switched on. The tiles and squares keep their own outlines underneath —
-   this sits around them, not on them. One rule for both formats; the bingo
-   card used to carry its own ring-and-glow, which read as a different mode
-   for the same thing. */
-@keyframes editing-breathe {
-    0%,
-    100% {
-        box-shadow: 0 0 0 2px var(--ui-color-primary-500, #d4a33e), 0 0 18px -6px var(--ui-color-primary-500, #d4a33e);
-    }
-    50% {
-        box-shadow: 0 0 0 4px var(--ui-color-primary-500, #d4a33e), 0 0 34px -2px var(--ui-color-primary-500, #d4a33e);
-    }
-}
-
+   A plain 2px edge — no halo, no pulsing. It had both, and a glow around the
+   thing you are working in competes with the tiles and squares it is supposed
+   to be framing. The pill above says which mode you are in; this only has to
+   say where the mode applies. One rule, so the board and the card cannot drift
+   apart again. */
 .is-editing {
-    animation: editing-breathe 2.6s ease-in-out infinite;
-}
-
-
-@media (prefers-reduced-motion: reduce) {
-    .is-editing {
-        animation: none;
-        box-shadow: 0 0 0 3px var(--ui-color-primary-500, #d4a33e);
-    }
+    box-shadow: 0 0 0 2px var(--ui-color-primary-500, #d4a33e);
 }
 
 /* Connectors you have already gone past. Faded, never removed: a snake higher
