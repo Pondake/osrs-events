@@ -144,11 +144,11 @@ export const test = base.extend({
      *
      *     const host = await as('owner');
      */
-    as: async ({ browser, baseURL, viewport, watchers }, use) => {
+    as: async ({ browser, baseURL, viewport, colorScheme, watchers }, use) => {
         const contexts = [];
 
         await use(async (name, { allow = [], console: logged = [] } = {}) => {
-            const context = await browser.newContext({ baseURL, viewport, storageState: authFile(name) });
+            const context = await browser.newContext({ baseURL, viewport, colorScheme, storageState: authFile(name) });
 
             contexts.push(context);
             await isolate(context, new URL(baseURL).origin);
