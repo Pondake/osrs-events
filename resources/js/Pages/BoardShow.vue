@@ -2307,7 +2307,12 @@ function tileClasses(tile) {
     if (tile.type === 'SNAKE') classes.push('board-tile--snake');
     if (tile.type === 'LADDER') classes.push('board-tile--ladder');
 
-    if (current !== undefined && current !== null && tile.id !== null) {
+    // Nothing about the game in progress while editing: the pieces are
+    // already gone (see playersOnTile) and the "You are here" label already
+    // hides itself, so the ring around the tile you are standing on was the
+    // last thing left saying where a player is on a board being rewritten —
+    // and the only coloured mark on it, which read as the edit mode's own.
+    if (!editMode.value && current !== undefined && current !== null && tile.id !== null) {
         if (tile.position === current) classes.push('board-tile--current');
         else if (tile.position < current) classes.push('board-tile--past');
     }
