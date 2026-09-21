@@ -74,6 +74,9 @@ class E2eSeeder extends Seeder
         $this->bingo('E2E Bingo instant', requiresApproval: false);
         // Only stream.spec.js plays this one, so what it sees is its own.
         $this->bingo('E2E Stream', requiresApproval: false);
+        // The event the admin event list edits, pauses, deletes and restores. Its card
+        // is set away from the defaults on purpose, so a save that resets it shows.
+        $this->bingo('E2E Admin Event', requiresApproval: false, winCondition: 'FULL_HOUSE');
         $this->dropRace();
         $this->coHost('e2e_cohost', ['Teams of four', 'Invite only night', 'E2E Ladder']);
     }
@@ -110,6 +113,10 @@ class E2eSeeder extends Seeder
             'changer' => [],
             // Saves its notification preferences.
             'notifier' => [],
+            // An admin changes its roles and permissions.
+            'roled' => [],
+            // Has a standing that will not sync; the diagnostics page acts on it.
+            'stranded' => [],
         ];
     }
 
@@ -185,7 +192,7 @@ class E2eSeeder extends Seeder
      * line is three claims. With review, every claim waits for the owner; without,
      * every claim counts the moment it is made.
      */
-    private function bingo(string $title, bool $requiresApproval): void
+    private function bingo(string $title, bool $requiresApproval, string $winCondition = 'LINE'): void
     {
         $owner = User::where('discord_username', 'e2e_owner')->firstOrFail();
 
@@ -205,7 +212,7 @@ class E2eSeeder extends Seeder
         $card = BingoCard::create([
             'event_id' => $event->id,
             'size' => 3,
-            'win_condition' => 'LINE',
+            'win_condition' => $winCondition,
             'requires_approval' => $requiresApproval,
         ]);
 

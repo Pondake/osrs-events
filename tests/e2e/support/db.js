@@ -130,3 +130,66 @@ export function clearBossIcons() {
 export function suggestBossIcon(metric, url) {
     run("INSERT INTO boss_icons (id, metric, suggested_url, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))", [randomUUID(), metric, url]);
 }
+
+const EXTRA_USERS = ['e2e_victim', 'e2e_admin2'];
+
+/**
+ * The accounts the user-management spec changes, back to how the seeder made
+ * them: no roles or permissions for the one an admin edits, and none of the
+ * accounts it creates and deletes. Clears the app's cache too, since roles
+ * and permissions are cached there.
+ */
+export function resetUsers() {
+    const ids = `SELECT id FROM users WHERE discord_username IN ('e2e_roled', ${EXTRA_USERS.map((name) => `'${name}'`).join(', ')})`;
+
+    run(`DELETE FROM model_has_roles WHERE model_uuid IN (${ids})`);
+    run(`DELETE FROM model_has_permissions WHERE model_uuid IN (${ids})`);
+    run(`DELETE FROM users WHERE discord_username IN (${EXTRA_USERS.map((name) => `'${name}'`).join(', ')})`);
+    clearThrottles();
+}
+
+/** An account an admin can act on, made without going through the site. */
+export function addUser(username, nickname, { admin = false } = {}) {
+    const id = randomUUID();
+
+    run("INSERT INTO users (id, discord_id, discord_username, nickname, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))", [id, `e2e-${username}`, username, nickname]);
+
+    if (admin) {
+        run("INSERT INTO model_has_roles (role_id, model_type, model_uuid) SELECT id, 'App\\Models\\User', ? FROM roles WHERE name = 'ADMIN'", [id]);
+    }
+
+    return id;
+}
+
+/** The event the admin list edits, back to its name and to running. */
+export function resetAdminEvent() {
+    run(
+        `UPDATE events SET title = 'E2E Admin Event', deleted_at = NULL, paused_at = NULL, pause_reason = NULL
+         WHERE title IN ('E2E Admin Event', 'E2E Admin Event, renamed')`,
+    );
+    run(
+        `UPDATE bingo_cards SET size = 3, win_condition = 'FULL_HOUSE', requires_approval = 0
+         WHERE event_id IN (SELECT id FROM events WHERE title = 'E2E Admin Event')`,
+    );
+    run(
+        `DELETE FROM bingo_squares WHERE position >= 9 AND bingo_card_id IN
+         (SELECT id FROM bingo_cards WHERE event_id IN (SELECT id FROM events WHERE title = 'E2E Admin Event'))`,
+    );
+}
+
+/** A standing that cannot sync, on an account that can be reset. */
+export function strandAccount() {
+    const eventRow = query("SELECT id FROM events WHERE title = 'E2E Drop Race'")[0];
+    const account = user('e2e_stranded');
+
+    run("UPDATE users SET osrs_username = 'E2E Stranded' WHERE id = ?", [account.id]);
+    run('DELETE FROM event_standings WHERE user_id = ?', [account.id]);
+    run(
+        "INSERT INTO event_standings (id, event_id, user_id, username, gained, sync_error, synced_at, created_at, updated_at) VALUES (?, ?, ?, 'E2E Stranded', 0, 'not_tracked', datetime('now'), datetime('now'), datetime('now'))",
+        [randomUUID(), eventRow.id, account.id],
+    );
+}
+
+export function unstrandAccount() {
+    run("DELETE FROM event_standings WHERE user_id = (SELECT id FROM users WHERE discord_username = 'e2e_stranded')");
+}
