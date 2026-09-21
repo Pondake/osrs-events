@@ -16,6 +16,7 @@
                     <template v-if="step === 'welcome'">
                         <h3 class="text-lg font-semibold text-highlighted">{{ $t('onboarding.welcome_heading', { name: displayName }) }}</h3>
                         <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.welcome_body') }}</p>
+                        <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.welcome_why') }}</p>
 
                         <div class="space-y-2">
                             <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ $t('onboarding.your_access') }}</p>
@@ -202,9 +203,27 @@
                             <p class="text-xs text-muted">{{ $t('plugin.new_code_desc') }}</p>
                         </div>
 
-                        <div v-else-if="hasPluginCode" class="flex items-start gap-2 text-sm">
-                            <u-icon name="i-lucide-check-circle-2" class="size-4 text-success mt-0.5 shrink-0" />
-                            <span class="text-muted">{{ $t('onboarding.runelite_code_exists') }}</span>
+                        <div v-else-if="hasPluginCode" class="space-y-2">
+                            <div class="flex items-start gap-2 text-sm">
+                                <u-icon name="i-lucide-check-circle-2" class="size-4 text-success mt-0.5 shrink-0" />
+                                <span class="text-muted">{{ $t('onboarding.runelite_code_exists') }}</span>
+                            </div>
+
+                            <u-button
+                                v-if="!confirmingReplace"
+                                color="neutral"
+                                variant="outline"
+                                icon="i-lucide-refresh-cw"
+                                :label="$t('plugin.replace_code')"
+                                @click="confirmingReplace = true"
+                            />
+                            <div v-else class="rounded-lg ring ring-default px-3 py-2 space-y-2">
+                                <p class="text-sm">{{ $t('plugin.replace_warning') }}</p>
+                                <div class="flex items-center gap-2">
+                                    <u-button color="neutral" variant="ghost" size="sm" :label="$t('common.cancel')" @click="confirmingReplace = false" />
+                                    <u-button color="primary" size="sm" :label="$t('plugin.replace_code')" :loading="creatingCode" @click="createPluginCode" />
+                                </div>
+                            </div>
                         </div>
 
                         <div v-else class="space-y-1.5">
@@ -234,11 +253,10 @@
                     <board-preview v-if="step === 'welcome' || step === 'board'" :size="form.size" :mode="form.mode" />
 
                     <div v-else-if="step === 'runelite'" class="space-y-3">
-                        <!-- Where to look, then where to paste: the hub listing until
-                             a code has been made here, the plugin's own settings
-                             after. An existing code shows the hub, because that
-                             account may not have installed the plugin yet. -->
-                        <figure v-if="pluginCode" class="space-y-1.5">
+                        <!-- Where to look, then where to paste: the hub listing
+                             until the account has a code, the plugin's own
+                             settings once it does. -->
+                        <figure v-if="pluginCode || hasPluginCode" class="space-y-1.5">
                             <img
                                 src="/images/guides/plugin-settings.png"
                                 :alt="$t('onboarding.runelite_settings_alt')"
@@ -457,6 +475,7 @@ const form = useForm({
 // here; the page prop it arrived in is gone by the next visit.
 const pluginCode = ref(null);
 const creatingCode = ref(false);
+const confirmingReplace = ref(false);
 const codeCopied = ref(false);
 
 let toast = null;
@@ -474,7 +493,10 @@ function createPluginCode() {
     router.post('/settings/runelite/code', {}, {
         preserveScroll: true,
         preserveState: true,
-        onSuccess: (response) => (pluginCode.value = response.props?.flash?.pluginCode ?? null),
+        onSuccess: (response) => {
+            pluginCode.value = response.props?.flash?.pluginCode ?? null;
+            confirmingReplace.value = false;
+        },
         onError: (errors) => console.error(errors),
         onFinish: () => (creatingCode.value = false),
     });
