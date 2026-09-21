@@ -3,11 +3,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-export const RUN_DIR = path.join(ROOT, 'tests/e2e/.run');
+export const PORT = Number(process.env.E2E_PORT ?? 9317);
+
+/**
+ * A run on another port keeps its own database, sessions and results, so two
+ * runs (two checkouts of a task, CI beside a local run) never share a file.
+ */
+export const RUN_NAME = process.env.E2E_PORT ? `-${PORT}` : '';
+export const RUN_DIR = path.join(ROOT, `tests/e2e/.run${RUN_NAME}`);
 export const DB_FILE = path.join(RUN_DIR, 'e2e.sqlite');
 export const STORAGE_DIR = path.join(RUN_DIR, 'storage');
+export const GAINS_FILE = path.join(RUN_DIR, 'wom-gains.json');
 
-export const PORT = Number(process.env.E2E_PORT ?? 9317);
 export const WOM_PORT = PORT + 1;
 export const PHP_PORT = PORT + 2;
 export const ORIGIN = `http://127.0.0.1:${PORT}`;
@@ -80,6 +87,8 @@ export const phpEnv = {
     NO_PROXY: '127.0.0.1,localhost',
 };
 
-export const AUTH_DIR = path.join(ROOT, 'tests/e2e/.auth');
+export const AUTH_DIR = path.join(ROOT, `tests/e2e/.auth${RUN_NAME}`);
+export const RESULTS_DIR = path.join(ROOT, `tests/e2e/.results${RUN_NAME}`);
+export const REPORT_DIR = path.join(ROOT, `playwright-report${RUN_NAME}`);
 
 export const authFile = (name) => path.join(AUTH_DIR, `${name}.json`);

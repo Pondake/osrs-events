@@ -8,11 +8,11 @@
  */
 import { spawn, execFileSync } from 'node:child_process';
 import { createServer, request as httpRequest } from 'node:http';
-import { createReadStream, statSync } from 'node:fs';
+import { createReadStream, readFileSync, statSync } from 'node:fs';
 import net from 'node:net';
 import { existsSync, mkdirSync, openSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { DB_FILE, PHP, PHP_PORT, PORT, ROOT, RUN_DIR, STORAGE_DIR, WOM_PORT, phpEnv } from './support/env.js';
+import { DB_FILE, GAINS_FILE, PHP, PHP_PORT, PORT, ROOT, RUN_DIR, STORAGE_DIR, WOM_PORT, phpEnv } from './support/env.js';
 
 if (existsSync(path.join(ROOT, 'public/hot'))) {
     console.error('public/hot exists — a Vite dev server is running, and the app would load assets from it instead of public/build. Stop it, then rerun.');
@@ -48,14 +48,41 @@ try {
 /**
  * Wise Old Man, as far as this app can tell. A name starting with "Unknown"
  * is one they have never tracked (their real 404), everything else exists and
- * comes back as typed. Gains are never available, which is the honest answer
- * for a player who has no history in a database created a minute ago.
+ * comes back as typed. Gains are available only for what a spec has put in
+ * GAINS_FILE (see support/wom.js) — the honest answer for a player who has no
+ * history in a database created a minute ago is a 404, and it stays the answer
+ * for everybody a spec has not given a number.
  */
 const wom = createServer((request, response) => {
     const match = request.url.match(/^\/v2\/players\/([^/?]+)(\/gained)?/);
     const name = match ? decodeURIComponent(match[1]) : null;
 
     response.setHeader('Content-Type', 'application/json');
+
+    if (name && match[2] && !name.startsWith('Unknown')) {
+        let gains = {};
+
+        try {
+            gains = JSON.parse(readFileSync(GAINS_FILE, 'utf8'));
+        } catch {
+            // No file is the ordinary case: nobody has any gains.
+        }
+
+        if (gains[name]) {
+            const data = { skills: {}, bosses: {} };
+
+            for (const [metric, gained] of Object.entries(gains[name])) {
+                const delta = { gained, start: 100, end: 100 + gained };
+
+                data.skills[metric] = { experience: delta };
+                data.bosses[metric] = { kills: delta };
+            }
+
+            response.end(JSON.stringify({ data }));
+
+            return;
+        }
+    }
 
     if (!name || match[2] || name.startsWith('Unknown')) {
         response.statusCode = 404;

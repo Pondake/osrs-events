@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { ORIGIN, PORT } from './tests/e2e/support/env.js';
+import { ORIGIN, PORT, REPORT_DIR, RESULTS_DIR } from './tests/e2e/support/env.js';
 
 /**
  * The browser suite: a real Chromium against the real built app, on a
@@ -19,13 +19,13 @@ import { ORIGIN, PORT } from './tests/e2e/support/env.js';
  */
 export default defineConfig({
     testDir: 'tests/e2e',
-    outputDir: 'tests/e2e/.results',
+    outputDir: RESULTS_DIR,
     fullyParallel: false,
     workers: 1,
     retries: 1,
     timeout: 45_000,
     expect: { timeout: 8_000 },
-    reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+    reporter: [['list'], ['html', { open: 'never', outputFolder: REPORT_DIR }]],
     use: {
         baseURL: ORIGIN,
         trace: 'retain-on-failure',
