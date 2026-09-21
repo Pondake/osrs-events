@@ -554,21 +554,21 @@ class EventFinishTest extends TestCase
         // their queue top-down does not necessarily follow.
         $this->actingAs($host)->patch("/events/{$event->id}/tiles/completions/{$claims[1]->id}", ['status' => 'APPROVED']);
 
-        $this->get("/events/{$event->id}/leaderboard")
+        $this->get("/events/{$event->id}/participants")
             ->assertInertia(fn ($page) => $page
-                ->where('entries.0.finishPlace', 1)
-                ->where('entries.0.finishProvisional', true));
+                ->where('leaderboard.entries.0.finishPlace', 1)
+                ->where('leaderboard.entries.0.finishProvisional', true));
 
         // Queue cleared: the places settle, and only now may either of them
         // be shown as a place.
         $this->actingAs($host)->patch("/events/{$event->id}/tiles/completions/{$claims[0]->id}", ['status' => 'APPROVED']);
 
-        $this->get("/events/{$event->id}/leaderboard")
+        $this->get("/events/{$event->id}/participants")
             ->assertInertia(fn ($page) => $page
-                ->where('entries.0.finishPlace', 1)
-                ->where('entries.0.finishProvisional', false)
-                ->where('entries.1.finishPlace', 2)
-                ->where('entries.1.finishProvisional', false));
+                ->where('leaderboard.entries.0.finishPlace', 1)
+                ->where('leaderboard.entries.0.finishProvisional', false)
+                ->where('leaderboard.entries.1.finishPlace', 2)
+                ->where('leaderboard.entries.1.finishProvisional', false));
     }
 
     /**
@@ -1244,11 +1244,10 @@ class EventFinishTest extends TestCase
 
         $this->tick($winner, $event, $this->lastTile($event));
 
-        $this->actingAs($winner)->get("/events/{$event->id}/leaderboard")
+        $this->actingAs($winner)->get("/events/{$event->id}/participants")
             ->assertInertia(fn ($page) => $page
-                ->where('entries.0.finishPlace', 1)
-                ->where('entries.1.finishPlace', null)
-                ->has('finishes', 1));
+                ->where('leaderboard.entries.0.finishPlace', 1)
+                ->where('leaderboard.entries.1.finishPlace', null));
 
         $this->assertNotNull($loiterer);
     }

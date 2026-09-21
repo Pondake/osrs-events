@@ -197,6 +197,13 @@ Route::get('/my-events', [BoardController::class, 'mine'])
 // somebody PLAYING without a name to score, and reading is not playing. Every
 // endpoint that acts on an event still carries both — see the group below.
 Route::get('/events/{event}', [BoardController::class, 'show'])->name('events.show');
+// Who is taking part — teams and people — with the ranking beside them on
+// an event that has one. Its own page rather than a panel, because on a clan
+// event it is a list of forty names and it is also where team management is
+// reached from. Names are withheld from strangers on anything but an open
+// event; see ParticipantController.
+Route::get('/events/{event}/participants', [ParticipantController::class, 'index'])->name('events.participants');
+// The ranking's old address; it redirects to the page above.
 Route::get('/events/{event}/leaderboard', [LeaderboardController::class, 'show'])
     ->name('events.leaderboard');
 
@@ -290,12 +297,6 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
 
     Route::post('/events/{event}/tiles', [TileController::class, 'upsert'])->name('events.tiles.upsert');
     Route::delete('/events/{event}/tiles/{tile}', [TileController::class, 'destroy'])->name('events.tiles.destroy');
-
-    // Who is taking part — teams and people. Its own page rather than a
-    // panel, because on a clan event it is a list of forty names and it is
-    // also where team management is reached from. Names are withheld from
-    // strangers on a public event; see ParticipantController.
-    Route::get('/events/{event}/participants', [ParticipantController::class, 'index'])->name('events.participants');
 
     Route::get('/events/{event}/teams', [BoardController::class, 'teamsIndex'])->name('events.teams.index');
     Route::post('/events/{event}/teams', [BoardController::class, 'addTeam'])->name('events.teams.add');

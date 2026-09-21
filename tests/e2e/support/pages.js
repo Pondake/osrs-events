@@ -32,7 +32,6 @@ export const PAGES = {
         '/register',
         '/forgot-password',
         ...EVENT_TITLES.map((title) => `/events/${eventId(title)}`),
-        `/events/${eventId('E2E Ladder')}/leaderboard`,
         `/events/${eventId('E2E Ladder')}/participants`,
     ],
     member: () => [

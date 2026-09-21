@@ -575,14 +575,14 @@ class PermissionMatrixTest extends TestCase
             'current_position' => 7,
         ]);
 
-        $this->get("/events/{$board->id}/leaderboard")
+        $this->get("/events/{$board->id}/participants")
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('namesArePublic', false)
+                ->where('named', false)
                 // Progress kept, identity gone — the same trade the board makes.
-                ->where('entries.0.currentPosition', 7)
-                ->where('entries.0.user', null)
-                ->where('entries.0.team', null));
+                ->where('leaderboard.entries.0.currentPosition', 7)
+                ->where('leaderboard.entries.0.user', null)
+                ->where('leaderboard.entries.0.team', null));
     }
 
     /** On an OPEN event the same reader sees who is playing. */

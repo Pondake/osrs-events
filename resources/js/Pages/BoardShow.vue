@@ -98,14 +98,6 @@
                                 size="sm"
                             />
                             <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
-                            <u-button
-                                :href="`/events/${liveBoard.id}/leaderboard`"
-                                color="neutral"
-                                variant="outline"
-                                size="sm"
-                                icon="i-lucide-trophy"
-                                :label="$t('leaderboard.title')"
-                            />
                     </div>
                 </div>
 
@@ -424,7 +416,7 @@
                                 </p>
                                 <p class="text-sm text-muted leading-relaxed">{{ finishSubtitle }}</p>
                                 <u-button
-                                    :href="`/events/${liveBoard.id}/leaderboard`"
+                                    :href="`/events/${liveBoard.id}/participants#leaderboard`"
                                     variant="soft"
                                     color="primary"
                                     size="sm"
@@ -838,7 +830,7 @@
                             <template #header>
                                 <div class="flex items-center justify-between">
                                     <span class="font-semibold">{{ $t('leaderboard.title') }}</span>
-                                    <u-button :href="`/events/${liveBoard.id}/leaderboard`" variant="ghost" size="xs" color="neutral" trailing-icon="i-lucide-external-link" />
+                                    <u-button :href="`/events/${liveBoard.id}/participants#leaderboard`" variant="ghost" size="xs" color="neutral" trailing-icon="i-lucide-external-link" />
                                 </div>
                             </template>
                             <div class="flex flex-col gap-1">
@@ -919,7 +911,7 @@
                             </div>
                             <div v-if="livePlayers.length > 5" class="mt-1 text-center">
                                 <u-button
-                                    :href="`/events/${liveBoard.id}/leaderboard`"
+                                    :href="`/events/${liveBoard.id}/participants#leaderboard`"
                                     variant="ghost"
                                     size="xs"
                                     color="neutral"

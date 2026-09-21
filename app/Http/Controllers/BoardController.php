@@ -352,7 +352,7 @@ class BoardController extends Controller
         // Every player/team on the board with their current position — feeds
         // BoardShow.vue's "show other players" avatar stacks on tiles and the
         // sidebar's mini leaderboard preview. pathHasSnake/pathHasLadder mirror
-        // LeaderboardController's same computation (kept duplicated rather than
+        // BoardLeaderboardService's same computation (kept duplicated rather than
         // extracted — it's a handful of lines with exactly two call sites).
         $tiles = $event->board?->tiles ?? collect();
         // From the board size, not the tile rows: only configured tiles have a row.

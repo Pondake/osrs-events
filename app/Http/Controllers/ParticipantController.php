@@ -10,6 +10,7 @@ use App\Models\PlayerBoard;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\BoardAccessService;
+use App\Services\BoardLeaderboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -29,13 +30,15 @@ use Inertia\Response;
  */
 class ParticipantController extends Controller
 {
-    public function index(Request $request, Event $event, BoardAccessService $access): Response
+    public function index(Request $request, Event $event, BoardAccessService $access, BoardLeaderboardService $leaderboard): Response
     {
+        // Readable signed out, like the event page: the ranking shown here
+        // has been public on a listed event since 2026-08-31.
         $user = $request->user();
 
         abort_unless($access->canView($user, $event), 403);
 
-        $canEdit = $user->canEditEvent($event);
+        $canEdit = $user?->canEditEvent($event) ?? false;
 
         // Everyone who has a reason to be counted. Joining is its own record
         // now and is the first source read, but the rest stay: an access row
@@ -58,9 +61,9 @@ class ParticipantController extends Controller
         // any event, so hiding the names on the way in would protect nothing
         // and stop a moderator answering "who is actually in this".
         $named = $canEdit
-            || $user->isAdmin()
+            || $user?->isAdmin()
             || $access->canSeeParticipants($user, $event)
-            || $this->isParticipant($user, $userIds, $event);
+            || ($user !== null && $this->isParticipant($user, $userIds, $event));
 
         return Inertia::render('Events/Participants', [
             'event' => $event->only(['id', 'title', 'type', 'mode', 'access_mode', 'start_date', 'end_date']),
@@ -71,6 +74,10 @@ class ParticipantController extends Controller
             'teams' => $this->teams($event, $user, $named),
             'participants' => $named ? $this->participants($event, $userIds) : [],
             'participantCount' => $userIds->count(),
+            // The Snakes & Ladders ranking, or null for a type without one —
+            // bingo and races keep their standings on the event page. Names
+            // in it follow `named`, so the page has one rule, not two.
+            'leaderboard' => $leaderboard->for($event, $named),
         ]);
     }
 
@@ -93,7 +100,7 @@ class ParticipantController extends Controller
     }
 
     /** The teams assigned to this event, with their members. */
-    private function teams(Event $event, User $user, bool $named): array
+    private function teams(Event $event, ?User $user, bool $named): array
     {
         if ($event->mode !== 'TEAM') {
             return [];
@@ -113,7 +120,7 @@ class ParticipantController extends Controller
                 'memberCount' => $team->members->count(),
                 // Managing a team is decided per team, not per event — a host
                 // does not automatically run somebody else's clan roster.
-                'canManage' => $team->isManagedBy($user),
+                'canManage' => $user !== null && $team->isManagedBy($user),
                 'members' => $named ? $team->members->map(fn ($member) => [
                     'id' => $member->user?->id,
                     'name' => $member->user?->nickname ?: $member->user?->discord_username,

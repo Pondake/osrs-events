@@ -179,7 +179,11 @@ class EventExperienceTest extends TestCase
 
         $this->actingAs(User::factory()->create())
             ->get("/events/{$event->id}/leaderboard")
-            ->assertOk();
+            ->assertRedirect("/events/{$event->id}/participants");
+
+        $this->actingAs(User::factory()->create())
+            ->get("/events/{$event->id}/participants")
+            ->assertInertia(fn ($page) => $page->has('leaderboard.entries'));
     }
 
     // ---------------------------------------------- reading over a shoulder

@@ -28,6 +28,14 @@ test('a signed-out visitor who tries to join is taken to the login form', async 
     await expect(page).toHaveURL(/\/login/);
 });
 
+test('the old leaderboard address lands on the participants page, ranking included', async ({ page }) => {
+    await page.goto(`/events/${eventId(LADDER)}/leaderboard`);
+
+    await expect(page).toHaveURL(new RegExp(`/events/${eventId(LADDER)}/participants$`));
+    await expect(page.getByRole('heading', { name: 'Participants' })).toBeVisible();
+    await expect(page.locator('#leaderboard')).toContainText('Leaderboard');
+});
+
 test('joining, leaving and joining again', async ({ as }) => {
     const page = await as('creator');
 

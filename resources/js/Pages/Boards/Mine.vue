@@ -158,7 +158,7 @@
                                 />
                                 <u-button
                                     v-if="entry.kind === 'board'"
-                                    :href="`/events/${entry.board.id}/leaderboard`"
+                                    :href="`/events/${entry.board.id}/participants#leaderboard`"
                                     size="sm"
                                     color="neutral"
                                     variant="ghost"

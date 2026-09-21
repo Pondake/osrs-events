@@ -127,6 +127,31 @@ class ParticipantsTest extends TestCase
         $this->assertSame(2, $props['participantCount']);
     }
 
+    /** Readable signed out, and a guest is the strangest stranger there is. */
+    #[Test]
+    public function a_signed_out_reader_gets_names_only_on_an_open_event(): void
+    {
+        $open = $this->event();
+        BoardAuthor::create(['event_id' => $open->id, 'user_id' => $this->player('Host')->id, 'is_owner' => true]);
+
+        $this->get("/events/{$open->id}/participants")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('named', true)
+                ->where('canEdit', false)
+                ->has('participants', 1));
+
+        $invite = $this->event(['access_mode' => 'INVITE']);
+        BoardAuthor::create(['event_id' => $invite->id, 'user_id' => $this->player('OtherHost')->id, 'is_owner' => true]);
+
+        $this->get("/events/{$invite->id}/participants")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('named', false)
+                ->where('participants', [])
+                ->where('participantCount', 1));
+    }
+
     #[Test]
     public function an_invited_participant_counts_as_taking_part(): void
     {

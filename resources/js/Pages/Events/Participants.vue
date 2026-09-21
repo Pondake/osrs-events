@@ -46,7 +46,7 @@
                     :description="$t('participants.private_desc')"
                 />
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div class="grid grid-cols-1 gap-6 items-start" :class="columns">
                     <u-card v-if="event.mode === 'TEAM'" :ui="{ body: 'p-0 sm:p-0' }">
                         <template #header>
                             <div class="flex items-center justify-between gap-2">
@@ -146,6 +146,21 @@
                             {{ named ? $t('participants.nobody_yet') : $t('participants.members_hidden') }}
                         </p>
                     </u-card>
+
+                    <!-- Last in the source so it sits beside the names on a
+                         wide screen, first on a phone: under forty names
+                         nobody would find it, and it is what most people
+                         open this page for. -->
+                    <u-card v-if="leaderboard" id="leaderboard" class="order-first lg:order-none scroll-mt-24" :ui="{ body: 'p-0 sm:p-0' }">
+                        <template #header>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-semibold">{{ $t('leaderboard.title') }}</span>
+                                <u-badge :label="String(leaderboard.entries.length)" color="neutral" variant="subtle" size="sm" />
+                            </div>
+                        </template>
+
+                        <board-leaderboard :entries="leaderboard.entries" :total-tiles="leaderboard.totalTiles" :named="named" />
+                    </u-card>
                 </div>
             </u-container>
         </u-page>
@@ -156,6 +171,7 @@
 import { computed, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import BoardLeaderboard from '@/Components/BoardLeaderboard.vue';
 import TeamAvatar from '@/Components/TeamAvatar.vue';
 
 const props = defineProps({
@@ -167,6 +183,16 @@ const props = defineProps({
     // do not. See ParticipantController for why.
     named: { type: Boolean, default: false },
     canEdit: { type: Boolean, default: false },
+    // { totalTiles, entries } on an event with a board, null on a type whose
+    // standings live on the event page. See BoardLeaderboardService.
+    leaderboard: { type: Object, default: null },
+});
+
+// One card is a column, two share the width, three only fit from xl up.
+const columns = computed(() => {
+    const cards = 1 + (props.event.mode === 'TEAM' ? 1 : 0) + (props.leaderboard ? 1 : 0);
+
+    return ['max-w-2xl', 'lg:grid-cols-2', 'lg:grid-cols-2 xl:grid-cols-3'][cards - 1];
 });
 
 const expanded = ref(null);

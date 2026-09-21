@@ -533,7 +533,7 @@ class AccountDeletionTest extends TestCase
         $this->service()->delete($user);
 
         $this->actingAs($host)->get("/events/{$event->id}")->assertOk();
-        $this->actingAs($host)->get("/events/{$event->id}/leaderboard")->assertOk();
+        $this->actingAs($host)->get("/events/{$event->id}/participants")->assertOk();
     }
 
     /**

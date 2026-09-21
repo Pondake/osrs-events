@@ -12,25 +12,28 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * The Snakes & Ladders leaderboard.
+ * The Snakes & Ladders leaderboard, shown beside the participants list since
+ * 2026-09-21; `/leaderboard` redirects there.
  *
- * A page listing named people, which makes it two things at once: a ranking
- * and a disclosure. The ranking is easy to check. The disclosure is the part
- * worth being careful about — the route is behind `auth`, but an OPEN event
- * is readable by any account, and making one costs nothing.
+ * A list of named people, which makes it two things at once: a ranking and a
+ * disclosure. The ranking is easy to check. The disclosure is the part worth
+ * being careful about — a listed event is readable by anyone.
  */
 class LeaderboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Somebody signed in who is not on the board. The route is behind `auth`
-     * plus `require-osrs-username`, so this is the least-privileged reader
-     * that can reach the page at all.
-     */
+    /** Somebody signed in who is not on the board. */
     private function reader(): User
     {
         return User::factory()->create(['osrs_username' => 'Reader']);
+    }
+
+    private function leaderboard(Event $event): array
+    {
+        return $this->actingAs($this->reader())
+            ->get("/events/{$event->id}/participants")
+            ->viewData('page')['props']['leaderboard'];
     }
 
     /** @return array{0: User, 1: Event} */
@@ -67,7 +70,7 @@ class LeaderboardTest extends TestCase
         PlayerBoard::create(['user_id' => $owner->id, 'board_id' => $event->board->id, 'current_position' => 4]);
         PlayerBoard::create(['user_id' => $behind->id, 'board_id' => $event->board->id, 'current_position' => 12]);
 
-        $entries = $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->viewData('page')['props']['entries'];
+        $entries = $this->leaderboard($event)['entries'];
 
         $this->assertSame([1, 2], array_column($entries, 'rank'));
         $this->assertSame([12, 4], array_column($entries, 'currentPosition'));
@@ -80,11 +83,11 @@ class LeaderboardTest extends TestCase
 
         PlayerBoard::create(['user_id' => $owner->id, 'board_id' => $event->board->id, 'current_position' => 4]);
 
-        $entries = $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->viewData('page')['props']['entries'];
+        $entries = $this->leaderboard($event)['entries'];
 
         // 25 tiles, so the last is position 24; four in leaves twenty.
         $this->assertSame(20, $entries[0]['tilesRemaining']);
-        $this->assertSame(25, $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->viewData('page')['props']['totalTiles']);
+        $this->assertSame(25, $this->leaderboard($event)['totalTiles']);
     }
 
     /** Whether the run ahead of you is worth watching. */
@@ -100,7 +103,7 @@ class LeaderboardTest extends TestCase
 
         PlayerBoard::create(['user_id' => $owner->id, 'board_id' => $event->board->id, 'current_position' => 10]);
 
-        $entry = $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->viewData('page')['props']['entries'][0];
+        $entry = $this->leaderboard($event)['entries'][0];
 
         $this->assertTrue($entry['pathHasLadder']);
         // Already passed, so not ahead of them any more.
@@ -127,11 +130,11 @@ class LeaderboardTest extends TestCase
 
         PlayerBoard::create(['user_id' => $owner->id, 'board_id' => $event->board->id, 'current_position' => 4]);
 
-        $response = $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard");
+        $response = $this->actingAs($this->reader())->get("/events/{$event->id}/participants");
 
         $response->assertDontSee('real.person@example.com', escape: false);
 
-        $user = $response->viewData('page')['props']['entries'][0]['user'];
+        $user = $response->viewData('page')['props']['leaderboard']['entries'][0]['user'];
 
         $this->assertArrayNotHasKey('email', $user);
         $this->assertArrayNotHasKey('discord_id', $user);
@@ -145,7 +148,7 @@ class LeaderboardTest extends TestCase
 
         PlayerBoard::create(['user_id' => $owner->id, 'board_id' => $event->board->id, 'current_position' => 4]);
 
-        $user = $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->viewData('page')['props']['entries'][0]['user'];
+        $user = $this->leaderboard($event)['entries'][0]['user'];
 
         $this->assertSame('Pond', $user['nickname']);
         $this->assertSame('pondake', $user['discord_username']);
@@ -154,11 +157,71 @@ class LeaderboardTest extends TestCase
     // ------------------------------------------------------------------- access
 
     #[Test]
+    public function the_old_address_redirects_to_the_participants_page(): void
+    {
+        [, $event] = $this->board();
+
+        $this->get("/events/{$event->id}/leaderboard")
+            ->assertRedirect("/events/{$event->id}/participants");
+
+        $this->assertSame(
+            url("/events/{$event->id}/leaderboard"),
+            route('events.leaderboard', $event),
+        );
+    }
+
+    /** The shape the page is built on, in one place. */
+    #[Test]
+    public function the_participants_page_carries_the_ranking_beside_the_people(): void
+    {
+        [$owner, $event] = $this->board();
+
+        PlayerBoard::create(['user_id' => $owner->id, 'board_id' => $event->board->id, 'current_position' => 4]);
+
+        $this->actingAs($this->reader())->get("/events/{$event->id}/participants")
+            ->assertInertia(fn ($page) => $page
+                ->component('Events/Participants')
+                ->where('named', true)
+                ->has('participants', 1)
+                ->where('leaderboard.totalTiles', 25)
+                ->has('leaderboard.entries', 1, fn ($entry) => $entry
+                    ->where('rank', 1)
+                    ->where('currentPosition', 4)
+                    ->where('tilesRemaining', 20)
+                    ->where('finishPlace', null)
+                    ->where('finishProvisional', false)
+                    ->where('finishedAt', null)
+                    ->where('pathHasLadder', false)
+                    ->where('pathHasSnake', false)
+                    ->has('playerId')
+                    ->has('user')
+                    ->where('team', null)));
+    }
+
+    /** A type with no board has no ranking here; its standings are on the event page. */
+    #[Test]
+    public function an_event_without_a_board_has_no_leaderboard_on_the_page(): void
+    {
+        $event = Event::create([
+            'title' => 'Mining week',
+            'type' => 'SKILL_RACE',
+            'metric' => 'mining',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+        ]);
+
+        $this->actingAs($this->reader())->get("/events/{$event->id}/participants")
+            ->assertInertia(fn ($page) => $page->where('leaderboard', null));
+    }
+
+    #[Test]
     public function a_signed_in_stranger_cannot_read_a_private_boards_leaderboard(): void
     {
         [, $event] = $this->board(['access_mode' => 'INVITE', 'is_listed' => false]);
 
         $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->assertForbidden();
+        $this->actingAs($this->reader())->get("/events/{$event->id}/participants")->assertForbidden();
     }
 
     /**
@@ -170,7 +233,9 @@ class LeaderboardTest extends TestCase
     {
         [, $event] = $this->board();
 
-        $this->get("/events/{$event->id}/leaderboard")->assertOk();
+        $this->get("/events/{$event->id}/participants")
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('leaderboard.entries'));
     }
 
     /** An unlisted one still is not: nothing about it was ever public. */
@@ -180,6 +245,7 @@ class LeaderboardTest extends TestCase
         [, $event] = $this->board(['is_listed' => false]);
 
         $this->get("/events/{$event->id}/leaderboard")->assertForbidden();
+        $this->get("/events/{$event->id}/participants")->assertForbidden();
     }
 
     /** An empty grid must not produce a negative "tiles remaining". */
@@ -200,7 +266,7 @@ class LeaderboardTest extends TestCase
 
         PlayerBoard::create(['user_id' => $owner->id, 'board_id' => $event->board->id, 'current_position' => 0]);
 
-        $entry = $this->actingAs($this->reader())->get("/events/{$event->id}/leaderboard")->viewData('page')['props']['entries'][0];
+        $entry = $this->leaderboard($event)['entries'][0];
 
         $this->assertSame(24, $entry['tilesRemaining']);
 

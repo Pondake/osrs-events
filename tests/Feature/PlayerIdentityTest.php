@@ -85,7 +85,7 @@ class PlayerIdentityTest extends TestCase
         [, $event] = $this->boardWithAPlayer();
 
         $this->actingAs($this->stranger())
-            ->get("/events/{$event->id}/leaderboard")
+            ->get("/events/{$event->id}/participants")
             ->assertDontSee(self::EMAIL, escape: false);
     }
 
@@ -116,7 +116,7 @@ class PlayerIdentityTest extends TestCase
         $player->update(['nickname' => 'Pond']);
 
         $this->actingAs($this->stranger())
-            ->get("/events/{$event->id}/leaderboard")
+            ->get("/events/{$event->id}/participants")
             ->assertSee('Pond', escape: false);
     }
 }
