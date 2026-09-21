@@ -86,12 +86,19 @@ class DevPersona extends Command
             'cohost' => $this->coHost($user),
             'owner' => $this->comment('Owner is per event: open one this account already owns, or use --event with cohost and promote in /admin/events.'),
             'admin' => $user->assignRole(Role::findOrCreate('ADMIN', 'web')),
-            'newcomer' => $user->forceFill(['osrs_username' => null, 'onboarding_completed_at' => null])->save(),
+            'newcomer' => $this->newcomer($user),
             'no-email' => $user->forceFill(['email' => null])->save(),
             default => $this->error("Unknown persona \"{$persona}\"."),
         };
 
         return $this->report($user->fresh(), $persona);
+    }
+
+    /** What a brand-new signup looks like: starter access, no name, tour still to do. */
+    private function newcomer(User $user): void
+    {
+        $user->grantStarterAccess();
+        $user->forceFill(['osrs_username' => null, 'onboarding_completed_at' => null])->save();
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PluginCompletion;
 use App\Models\Setting;
 use App\Services\OsrsIdentityService;
+use App\Services\PluginPlausibilityService;
 use App\Services\RunelitePluginService;
 use App\Support\RuneliteName;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -67,7 +68,7 @@ class RunelitePluginController extends Controller
         ]);
     }
 
-    public function complete(Request $request, RunelitePluginService $plugin): JsonResponse
+    public function complete(Request $request, RunelitePluginService $plugin, PluginPlausibilityService $plausibility): JsonResponse
     {
         $data = $request->validate([
             'client_event_id' => ['required', 'string', 'max:100'],
@@ -112,9 +113,13 @@ class RunelitePluginController extends Controller
             ], 422);
         }
 
+        // Never a refusal: a doubtful report is stored with its reasons and
+        // its claims wait for a host, see initialClaimStatus().
+        $doubts = $plausibility->doubts($user, $data);
+
         try {
-            $logged = DB::transaction(function () use ($user, $data, $plugin) {
-                $logged = PluginCompletion::create([...$data, 'user_id' => $user->id]);
+            $logged = DB::transaction(function () use ($user, $data, $plugin, $doubts) {
+                $logged = PluginCompletion::create([...$data, 'doubts' => $doubts ?: null, 'user_id' => $user->id]);
                 $outcome = $plugin->complete($user, $data['name'], $logged);
                 $logged->update(['claims' => $outcome['claims'], 'progress' => $outcome['progress']]);
 

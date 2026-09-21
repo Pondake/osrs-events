@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
 use App\Rules\OsrsUsername;
@@ -73,11 +72,7 @@ class RegisteredUserController extends Controller
                 'password' => $data['password'],
             ]);
 
-            $playerRole = Role::firstOrCreate(
-                ['name' => 'PLAYER'],
-                ['description' => 'Standaard spelerrol'],
-            );
-            $user->assignRole($playerRole);
+            $user->grantStarterAccess();
 
             return $user;
         });

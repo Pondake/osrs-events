@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Role;
 use App\Models\User;
 use App\Models\UserGuild;
 use Illuminate\Http\Request;
@@ -121,11 +120,7 @@ class DiscordAccountService
             );
 
             if ($isNewUser) {
-                $playerRole = Role::firstOrCreate(
-                    ['name' => 'PLAYER'],
-                    ['description' => 'Standaard spelerrol'],
-                );
-                $user->assignRole($playerRole);
+                $user->grantStarterAccess();
 
                 // Only on first creation — a returning user may have already
                 // set their own custom nickname (Profile.vue), which a login

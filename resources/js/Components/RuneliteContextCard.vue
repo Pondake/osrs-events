@@ -22,6 +22,15 @@
             {{ $t('board.runelite_no_proof_desc') }}
         </p>
 
+        <p
+            v-for="code in context?.doubts ?? []"
+            :key="code"
+            class="flex items-start gap-1.5 text-warning"
+        >
+            <u-icon name="i-lucide-triangle-alert" class="size-3.5 shrink-0 mt-0.5" />
+            {{ $t(`board.runelite_doubt_${code}`) }}
+        </p>
+
         <p v-if="context?.npcName" class="flex items-center gap-1.5">
             <u-icon name="i-lucide-skull" class="size-3.5 text-muted shrink-0" />
             <span>{{ npcLabel }}</span>

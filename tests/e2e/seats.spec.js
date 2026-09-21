@@ -1,5 +1,6 @@
 import { test, expect, hydrated } from './fixtures.js';
-import { eventId, query } from './support/db.js';
+import { clearThrottles, eventId, query } from './support/db.js';
+import { PASSWORD } from './support/seats.js';
 
 /**
  * What each seat is offered on the same event, one rung at a time. The ladder
@@ -19,6 +20,26 @@ async function openEvent(page, title = LADDER) {
 }
 
 const manage = (page) => page.getByRole('button', { name: 'Manage', exact: true });
+
+/** The create dialog, walked to the end with every default accepted. */
+async function createThroughTheSteps(page, title) {
+    await page.getByRole('button', { name: 'Create event' }).click();
+
+    const dialog = page.getByRole('dialog');
+
+    await dialog.getByRole('button', { name: 'Next', exact: true }).click();
+
+    // Whatever the type step offers, the default is a valid choice.
+    await dialog.getByRole('button', { name: 'Next', exact: true }).click();
+
+    await dialog.getByLabel('Title').first().fill(title);
+    await dialog.getByRole('button', { name: 'Next', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Next', exact: true }).click();
+    await dialog.getByRole('button', { name: /^Create event$|^Create$/ }).click();
+
+    // A new event opens straight into filling in its tiles.
+    await expect(page.getByRole('dialog').getByText('Fill in the board')).toBeVisible();
+}
 
 test.describe('the event page', () => {
     test('a visitor can read it and is offered to join, nothing more', async ({ page }) => {
@@ -138,22 +159,8 @@ test.describe('making an event', () => {
         await page.goto('/events');
         await hydrated(page);
 
-        await page.getByRole('button', { name: 'Create event' }).click();
+        await createThroughTheSteps(page, 'Made by the suite');
 
-        const dialog = page.getByRole('dialog');
-
-        await dialog.getByRole('button', { name: 'Next', exact: true }).click();
-
-        // Whatever the type step offers, the default is a valid choice.
-        await dialog.getByRole('button', { name: 'Next', exact: true }).click();
-
-        await dialog.getByLabel('Title').first().fill('Made by the suite');
-        await dialog.getByRole('button', { name: 'Next', exact: true }).click();
-        await dialog.getByRole('button', { name: 'Next', exact: true }).click();
-        await dialog.getByRole('button', { name: /^Create event$|^Create$/ }).click();
-
-        // A new event opens straight into filling in its tiles.
-        await expect(page.getByRole('dialog').getByText('Fill in the board')).toBeVisible();
         expect(query('SELECT COUNT(*) AS n FROM events WHERE title = ?', ['Made by the suite'])[0].n).toBe(1);
 
         await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click();
@@ -172,5 +179,32 @@ test.describe('making an event', () => {
         await remove.click();
 
         await expect.poll(() => query('SELECT COUNT(*) AS n FROM events WHERE title = ? AND deleted_at IS NULL', ['Made by the suite'])[0].n).toBe(0);
+    });
+
+    // The seats above are all accounts somebody arranged. This is the one
+    // nobody arranged: what a stranger gets by signing up, which is the case
+    // a locked-down default breaks and no seat can show.
+    test('somebody who has just signed up can make one', async ({ page }) => {
+        clearThrottles();
+
+        const retry = test.info().retry ? `-${test.info().retry}` : '';
+
+        await page.goto('/register');
+        await hydrated(page);
+
+        await page.getByLabel('Display name').fill('Fresh Host');
+        await page.getByLabel('OSRS username').fill('Fresh Host');
+        await page.getByLabel('Email').fill(`fresh-host${retry}@e2e.test`);
+        await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+        await page.getByLabel('Confirm password').fill(PASSWORD);
+        await page.getByRole('button', { name: 'Create account', exact: true }).click();
+
+        await expect(page).toHaveURL(/\/events$/);
+        await page.getByRole('dialog').getByRole('button', { name: 'Skip intro' }).click();
+        await expect(page.getByRole('dialog')).toBeHidden();
+
+        await createThroughTheSteps(page, 'Made by a newcomer');
+
+        expect(query('SELECT COUNT(*) AS n FROM events WHERE title = ?', ['Made by a newcomer'])[0].n).toBe(1);
     });
 });
