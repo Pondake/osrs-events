@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
 use App\Rules\OsrsUsername;
+use App\Rules\RsnNotProvenByAnother;
 use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,7 +57,7 @@ class RegisteredUserController extends Controller
             // only moment where it costs the user nothing extra; the Discord
             // path has no equivalent moment, which is why the middleware
             // exists (RequireOsrsUsername).
-            'osrs_username' => ['required', 'string', new OsrsUsername],
+            'osrs_username' => ['required', 'string', new OsrsUsername, new RsnNotProvenByAnother],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()],
         ]);

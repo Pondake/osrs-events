@@ -73,6 +73,67 @@ class OsrsIdentityServiceTest extends TestCase
         $this->assertFalse($this->identity()->takenByAnother($user, 'Pondake'));
     }
 
+    /**
+     * Proof is the line between a warning and a refusal. Until somebody has
+     * played the account from a client holding their code, nobody can say
+     * whose name it is; after that, they can.
+     */
+    #[Test]
+    public function a_name_another_account_has_proved_cannot_be_claimed(): void
+    {
+        $this->fakeFound('Pondake');
+        User::factory()->create(['osrs_username' => 'Pondake', 'osrs_proven_at' => now()]);
+        $newcomer = User::factory()->create(['osrs_username' => null]);
+
+        $this->actingAs($newcomer)
+            ->post('/welcome/osrs-username', ['osrs_username' => 'pondake'])
+            ->assertSessionHasErrors('osrs_username');
+
+        $this->assertNull($newcomer->fresh()->osrs_username);
+    }
+
+    /** Unproven is still only a warning — the name is stored. */
+    #[Test]
+    public function an_unproven_duplicate_is_not_refused(): void
+    {
+        $this->fakeFound('Pondake');
+        User::factory()->create(['osrs_username' => 'Pondake', 'osrs_proven_at' => null]);
+        $newcomer = User::factory()->create(['osrs_username' => null]);
+
+        $this->actingAs($newcomer)
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Pondake', $newcomer->fresh()->osrs_username);
+    }
+
+    /** Re-saving your own proved name is not somebody else claiming it. */
+    #[Test]
+    public function the_account_that_proved_a_name_can_still_save_it(): void
+    {
+        $this->fakeFound('Pondake');
+        $owner = User::factory()->create(['osrs_username' => 'Pondake', 'osrs_proven_at' => now()]);
+
+        $this->actingAs($owner)
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->assertSessionHasNoErrors();
+    }
+
+    #[Test]
+    public function settings_refuses_a_proved_name_too(): void
+    {
+        $this->fakeFound('Pondake');
+        User::factory()->create(['osrs_username' => 'Pondake', 'osrs_proven_at' => now()]);
+        $other = User::factory()->create(['osrs_username' => 'Zezima']);
+
+        $this->actingAs($other)
+            ->from('/settings/connections')
+            ->put('/settings/connections/osrs', ['osrs_username' => 'Pondake'])
+            ->assertSessionHasErrors('osrs_username');
+
+        $this->assertSame('Zezima', $other->fresh()->osrs_username);
+    }
+
     #[Test]
     public function the_check_endpoint_answers_the_hiscores_and_the_duplicate_question(): void
     {
@@ -83,7 +144,7 @@ class OsrsIdentityServiceTest extends TestCase
         $this->actingAs($newcomer)
             ->postJson('/welcome/osrs-username/check', ['osrs_username' => 'pondake'])
             ->assertOk()
-            ->assertJson(['found' => true, 'displayName' => 'Pondake', 'taken' => true]);
+            ->assertJson(['found' => true, 'displayName' => 'Pondake', 'taken' => true, 'proven' => false]);
 
         // Nothing is stored by asking.
         $this->assertNull($newcomer->fresh()->osrs_username);

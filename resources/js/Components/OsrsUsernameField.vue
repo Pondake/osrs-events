@@ -42,7 +42,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
-// 'checking' | 'found' | 'missing' | 'taken' | 'failed' | null
+// 'checking' | 'found' | 'missing' | 'taken' | 'proven' | 'failed' | null
 const status = ref(null);
 const foundName = ref(null);
 const checked = ref('');
@@ -92,9 +92,12 @@ async function check(event) {
 
         foundName.value = result.displayName ?? name;
 
-        // Taken outranks the hiscores answer: it is the one with a
-        // consequence attached, and a race will refuse the second entrant.
-        if (result.taken) status.value = 'taken';
+        // Worst news first. 'proven' is the only one of these the save
+        // will actually refuse (RsnNotProvenByAnother); 'taken' is a
+        // warning with a consequence waiting in the standings; the hiscores
+        // answer is the mildest of the three.
+        if (result.proven) status.value = 'proven';
+        else if (result.taken) status.value = 'taken';
         else if (result.found === true) status.value = 'found';
         else if (result.found === false) status.value = 'missing';
         else status.value = 'failed';
@@ -115,6 +118,7 @@ const statusText = computed(() => {
     if (status.value === 'found') return trans('auth.osrs_check_found', { name: foundName.value });
     if (status.value === 'missing') return trans('auth.osrs_check_missing');
     if (status.value === 'taken') return trans('auth.osrs_check_taken');
+    if (status.value === 'proven') return trans('auth.osrs_check_proven');
 
     return trans('auth.osrs_check_failed');
 });
@@ -122,6 +126,7 @@ const statusText = computed(() => {
 const statusIcon = computed(() => {
     if (status.value === 'checking') return 'i-lucide-loader-circle';
     if (status.value === 'found') return 'i-lucide-check';
+    if (status.value === 'proven') return 'i-lucide-lock';
 
     return 'i-lucide-triangle-alert';
 });
@@ -129,6 +134,9 @@ const statusIcon = computed(() => {
 const statusClass = computed(() => {
     if (status.value === 'found') return 'text-success';
     if (status.value === 'checking') return 'text-muted';
+    // Red, not amber: this one is a refusal, and the form will say the same
+    // thing in the same colour if it is submitted anyway.
+    if (status.value === 'proven') return 'text-error';
 
     return 'text-warning';
 });

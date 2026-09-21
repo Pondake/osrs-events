@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Support\RuneliteName;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -24,6 +25,20 @@ use Illuminate\Support\Carbon;
 class OsrsIdentityService
 {
     public function __construct(private readonly WiseOldManService $wom) {}
+
+    /**
+     * Whether another account has PROVED this name with the plugin.
+     *
+     * The line between a warning and a refusal — see RsnNotProvenByAnother.
+     * A null user is a registration, where there is no account yet to
+     * exclude.
+     */
+    public function provenByAnother(?User $user, string $username): bool
+    {
+        return $this->sameRsnQuery($user, $username)
+            ->whereNotNull('osrs_proven_at')
+            ->exists();
+    }
 
     /**
      * Ask Wise Old Man about a name without storing anything.
@@ -49,19 +64,31 @@ class OsrsIdentityService
      * the same character (RuneliteName::sameRsn), normalised in SQL so this
      * stays one query.
      */
-    public function takenByAnother(User $user, string $username): bool
+    public function takenByAnother(?User $user, string $username): bool
+    {
+        return $this->sameRsnQuery($user, $username)->exists();
+    }
+
+    /** Every OTHER account carrying this name, compared the way the game does. */
+    private function sameRsnQuery(?User $user, string $username): Builder
     {
         $normalised = mb_strtolower(trim(preg_replace('/[\s_\-]+/u', ' ', $username)));
 
+        $query = User::query()
+            ->whereNotNull('osrs_username')
+            ->whereRaw("lower(replace(replace(osrs_username, '_', ' '), '-', ' ')) = ?", [$normalised]);
+
         if ($normalised === '') {
-            return false;
+            // Matches nothing rather than everything — a blank name is not a
+            // claim on anything.
+            $query->whereRaw('1 = 0');
         }
 
-        return User::query()
-            ->whereKeyNot($user->id)
-            ->whereNotNull('osrs_username')
-            ->whereRaw("lower(replace(replace(osrs_username, '_', ' '), '-', ' ')) = ?", [$normalised])
-            ->exists();
+        if ($user !== null) {
+            $query->whereKeyNot($user->id);
+        }
+
+        return $query;
     }
 
     /**

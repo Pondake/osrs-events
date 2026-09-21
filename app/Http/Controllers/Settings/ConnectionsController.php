@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Rules\OsrsUsername;
+use App\Rules\RsnNotProvenByAnother;
 use App\Services\OsrsIdentityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -77,7 +78,7 @@ class ConnectionsController extends Controller
             // time it gets here (RequireOsrsUsername sees to that), so
             // allowing a blank would let someone quietly undo it and drop
             // out of every race they had entered.
-            'osrs_username' => ['required', 'string', new OsrsUsername],
+            'osrs_username' => ['required', 'string', new OsrsUsername, new RsnNotProvenByAnother($request->user())],
         ]);
 
         $found = $identity->apply($request->user(), $data['osrs_username']);

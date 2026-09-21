@@ -111,6 +111,13 @@
                         </div>
 
                         <p v-if="!hasDiscord || !hasEmail" class="text-xs text-muted italic">{{ $t(missingBoth ? 'onboarding.connect_optional' : 'onboarding.connect_optional_one') }}</p>
+
+                        <!-- Under the done rows rather than in them: a green
+                             tick says it is settled, and somebody who has
+                             just settled it wrongly needs to know where to
+                             go back to. Muted, because it is a footnote to
+                             good news. -->
+                        <p v-if="hasDiscord || hasEmail" class="text-xs text-muted">{{ $t('onboarding.connect_change_later') }}</p>
                     </template>
 
                     <template v-else-if="step === 'board'">

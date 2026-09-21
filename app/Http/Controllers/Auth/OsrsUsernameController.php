@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Middleware\RequireOsrsUsername;
 use App\Models\Setting;
 use App\Rules\OsrsUsername;
+use App\Rules\RsnNotProvenByAnother;
 use App\Services\OsrsIdentityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -43,11 +44,13 @@ class OsrsUsernameController extends Controller
      * What the hiscores and this site already know about a name, asked
      * while it is being typed rather than after it is saved.
      *
-     * Every form that takes an RSN calls this on blur. Nothing is stored and
-     * nothing is refused — a name Wise Old Man has never heard of is normal
-     * for a new player, and a name another account carries is a thing to be
-     * told about, not stopped by. The answer is advice; store() is still
-     * where the decision is made.
+     * Every form that takes an RSN calls this on blur. Nothing is stored,
+     * and nothing is refused here even when the save would refuse it — this
+     * reports, the form decides. Three answers, in what they cost: the
+     * hiscores not knowing the name is normal for a new player, another
+     * account carrying it is worth saying, and another account having
+     * PROVED it is the one that will be rejected on save
+     * (RsnNotProvenByAnother).
      */
     public function check(Request $request, OsrsIdentityService $identity): JsonResponse
     {
@@ -62,13 +65,14 @@ class OsrsUsernameController extends Controller
             'found' => $found['found'],
             'displayName' => $found['displayName'],
             'taken' => $identity->takenByAnother($request->user(), $name),
+            'proven' => $identity->provenByAnother($request->user(), $name),
         ]);
     }
 
     public function store(Request $request, OsrsIdentityService $identity): RedirectResponse
     {
         $data = $request->validate([
-            'osrs_username' => ['required', 'string', new OsrsUsername],
+            'osrs_username' => ['required', 'string', new OsrsUsername, new RsnNotProvenByAnother($request->user())],
             // The first-run wizard posts this from inside its own modal, and
             // the redirect below would navigate the page out from under it —
             // closing the tour on the step that was meant to be one of
