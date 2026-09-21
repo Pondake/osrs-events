@@ -187,13 +187,37 @@ not use it).
   expected with `allow()` / `allowConsole()`, don't loosen the net.
 - **`crawl.spec.js`** follows every link each seat is offered and fails on a
   dead end. **`layout.spec.js`** reads horizontal overflow at 1280, 1024, 768
-  and 375. A bug found this way that is not fixed yet is pinned with
-  `test.fail()` or an explicit list in the spec — equality, so fixing it turns
-  the run red until the marker is removed.
+  and 375, in both themes. **`theme.spec.js`** measures text contrast in both
+  themes (4.5:1, 3:1 for large text) on landing, events list, event page,
+  settings and an admin page; a spec picks a theme with
+  `test.use({ colorScheme })`. A bug found this way that is not fixed yet is
+  pinned with `test.fail()` or an explicit list in the spec — equality, so
+  fixing it turns the run red until the marker is removed.
+- **Play-throughs and admin mutations** (`bingo`, `drop-race`, `notifications`,
+  `admin-*`) are checked from both ends: the person who acts and the person it
+  is about. The seeder has a running event of each kind for them
+  (`E2eSeeder`). Anything a spec changes it changes back through the database
+  helpers in `support/db.js` — `resetEvent()`, `resetSettings()`, `resetInvites()`
+  and the like, run in `beforeEach`/`afterEach` so a failed run and its retry
+  start from the same place. Records a spec makes are named "E2E …" so they can
+  be removed.
+- **Wise Old Man.** The stand-in answers 404 for gains until a spec gives a
+  name a number with `setGains()` (`support/wom.js`), which is how standings get
+  data. The suite runs with no VAPID keys — the state of a fresh clone.
 - **One worker, and no live channel.** PHP's built-in server is one process, so
   the event stream is answered with an empty one; `EventStreamTest` covers what
-  it carries. The un-named `throttle:N,M` limiters share one counter per
+  it carries. `stream.spec.js` is the exception: `test.use({ stream: 'live' })`
+  lets the real channel through, and it needs a server that answers several
+  requests at once (`PHP_WORKERS`). Linux gets that from PHP itself; on Windows
+  run with `E2E_PHP_WORKERS=4` and `serve.js` starts that many servers on the
+  same database. The un-named `throttle:N,M` limiters share one counter per
   account or address, so specs that submit forms call `clearThrottles()`.
+- **Two runs at once** (a second checkout, another session): `E2E_PORT=9500`
+  gives a run its own port, database, sessions and report directories. Without
+  it two runs fight over port 9317 and one's `.run` directory is deleted by the
+  other's start.
+- **CI:** `.github/workflows/tests.yml` runs `php artisan test`, `pnpm test`
+  and `pnpm e2e`, and keeps `playwright-report` when the browser suite fails.
 - **Needs `public/build`, and no Vite dev server** (`public/hot`) running.
 
 ## SSR — read `docs/ssr-gotchas.md` before touching anything render-related

@@ -12,7 +12,7 @@ import { createReadStream, readFileSync, statSync } from 'node:fs';
 import net from 'node:net';
 import { existsSync, mkdirSync, openSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { DB_FILE, GAINS_FILE, PHP, PHP_PORT, PORT, ROOT, RUN_DIR, STORAGE_DIR, WOM_PORT, phpEnv } from './support/env.js';
+import { DB_FILE, GAINS_FILE, PHP, PHP_PORT, PHP_WORKERS, PORT, ROOT, RUN_DIR, STORAGE_DIR, WOM_PORT, phpEnv } from './support/env.js';
 
 if (existsSync(path.join(ROOT, 'public/hot'))) {
     console.error('public/hot exists — a Vite dev server is running, and the app would load assets from it instead of public/build. Stop it, then rerun.');
@@ -98,28 +98,37 @@ wom.listen(WOM_PORT, '127.0.0.1');
 
 const log = openSync(path.join(RUN_DIR, 'server.log'), 'w');
 
-const server = spawn(
-    PHP,
-    ['-S', `127.0.0.1:${PHP_PORT}`, path.join(ROOT, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],
-    {
-        cwd: path.join(ROOT, 'public'),
-        // PHP's built-in server is one process, and every event page holds a
-        // connection open for its live channel. Where it can fork it does so;
-        // on Windows it cannot, which is why the suite stubs that channel.
-        env: process.platform === 'win32' ? phpEnv : { ...phpEnv, PHP_CLI_SERVER_WORKERS: '4' },
-        stdio: ['ignore', log, log],
-    },
+// Where PHP can fork, one server with workers; where it cannot, several
+// servers, and the front below hands each request to the least busy one.
+const forks = process.platform !== 'win32';
+const ports = forks ? [PHP_PORT] : Array.from({ length: PHP_WORKERS }, (_, i) => PHP_PORT + i);
+
+const servers = ports.map((port) =>
+    spawn(
+        PHP,
+        ['-S', `127.0.0.1:${port}`, path.join(ROOT, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],
+        {
+            cwd: path.join(ROOT, 'public'),
+            env: forks ? { ...phpEnv, PHP_CLI_SERVER_WORKERS: String(PHP_WORKERS) } : phpEnv,
+            stdio: ['ignore', log, log],
+        },
+    ),
 );
 
 const stop = () => {
-    server.kill();
+    servers.forEach((server) => server.kill());
     wom.close();
     process.exit(0);
 };
 
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
-server.on('exit', (code) => process.exit(code ?? 1));
+servers.forEach((server) => server.on('exit', (code) => process.exit(code ?? 1)));
+
+/** Requests in flight per upstream, so a held-open stream keeps its server to itself. */
+const busy = new Map(ports.map((port) => [port, 0]));
+
+const leastBusy = () => ports.reduce((best, port) => (busy.get(port) < busy.get(best) ? port : best), ports[0]);
 
 const PUBLIC = path.join(ROOT, 'public');
 
@@ -186,8 +195,13 @@ const front = createServer((request, response) => {
         return;
     }
 
+    const port = leastBusy();
+
+    busy.set(port, busy.get(port) + 1);
+    response.on('close', () => busy.set(port, busy.get(port) - 1));
+
     const upstream = httpRequest(
-        { host: '127.0.0.1', port: PHP_PORT, path: request.url, method: request.method, headers: request.headers },
+        { host: '127.0.0.1', port, path: request.url, method: request.method, headers: request.headers },
         (answer) => {
             response.writeHead(answer.statusCode, answer.headers);
             answer.pipe(response);
@@ -199,14 +213,17 @@ const front = createServer((request, response) => {
         response.end(String(error));
     });
 
+    // A viewer who leaves closes the stream, and the server should hear it.
+    response.on('close', () => upstream.destroy());
+
     request.pipe(upstream);
 });
 
 // Listening only once PHP does, so Playwright's wait for this port means the app is up.
-const waitForPhp = () =>
+const waitForPhp = (port) =>
     new Promise((resolve) => {
         const attempt = () => {
-            const socket = net.connect(PHP_PORT, '127.0.0.1');
+            const socket = net.connect(port, '127.0.0.1');
 
             socket.on('connect', () => {
                 socket.destroy();
@@ -218,6 +235,6 @@ const waitForPhp = () =>
         attempt();
     });
 
-await waitForPhp();
+await Promise.all(ports.map(waitForPhp));
 
 front.listen(PORT, '127.0.0.1');

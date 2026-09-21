@@ -72,6 +72,8 @@ class E2eSeeder extends Seeder
         $this->ladder();
         $this->bingo('E2E Bingo', requiresApproval: true);
         $this->bingo('E2E Bingo instant', requiresApproval: false);
+        // Only stream.spec.js plays this one, so what it sees is its own.
+        $this->bingo('E2E Stream', requiresApproval: false);
         $this->dropRace();
         $this->coHost('e2e_cohost', ['Teams of four', 'Invite only night', 'E2E Ladder']);
     }
