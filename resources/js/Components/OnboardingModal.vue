@@ -16,7 +16,7 @@
                     <template v-if="step === 'welcome'">
                         <h3 class="text-lg font-semibold text-highlighted">{{ $t('onboarding.welcome_heading', { name: displayName }) }}</h3>
                         <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.welcome_body') }}</p>
-                        <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.welcome_why') }}</p>
+                        <p class="text-sm text-muted leading-relaxed">{{ $t(canCreateBoards ? 'onboarding.welcome_why_host' : 'onboarding.welcome_why') }}</p>
 
                         <div class="space-y-2">
                             <p class="text-xs font-semibold uppercase tracking-wide text-muted">{{ $t('onboarding.your_access') }}</p>

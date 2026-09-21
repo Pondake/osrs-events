@@ -245,6 +245,25 @@ class OnboardingTest extends TestCase
             ->json('boards'));
     }
 
+    #[Test]
+    public function events_of_the_users_own_discord_server_come_first(): void
+    {
+        $member = $this->user();
+        UserGuild::create(['user_id' => $member->id, 'guild_id' => '111', 'guild_name' => 'My Clan']);
+
+        foreach (range(1, 5) as $i) {
+            $this->event(['title' => "Open {$i}", 'start_date' => now()->addDays($i)]);
+        }
+        $this->event(['title' => 'Clan night', 'access_mode' => 'GUILD', 'required_guild_id' => '111', 'start_date' => now()->subDays(3)]);
+
+        $titles = collect($this->actingAs($member)
+            ->getJson('/onboarding/joinable-boards')
+            ->json('boards'))->pluck('title');
+
+        $this->assertSame('Clan night', $titles->first());
+        $this->assertCount(4, $titles);
+    }
+
     /** Four at most — the step is a nudge, not a directory. */
     #[Test]
     public function it_offers_a_handful_rather_than_everything(): void

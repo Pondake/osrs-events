@@ -90,6 +90,10 @@ class OnboardingController extends Controller
                 ->orWhere(fn ($guild) => $guild
                     ->where('access_mode', 'GUILD')
                     ->whereIn('required_guild_id', $guildIds)))
+            // Their own Discord server's events first. Somebody who signed in
+            // with Discord came for those, and a plain newest-first list let
+            // four open events push them out of the four slots entirely.
+            ->orderByRaw("case when access_mode = 'GUILD' then 0 else 1 end")
             ->orderByDesc('start_date')
             ->limit(4)
             // `size` lives on the board since the split, and selecting it here
