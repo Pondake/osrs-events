@@ -153,35 +153,12 @@
                          it that z-10 sits in the root stacking context and climbs
                          over a teleported modal. -->
                     <div class="flex-1 w-full min-w-0 isolate">
-                        <!-- `overlap` hangs it on the board's top border, from
-                             OUTSIDE the scroller — the only way to have both:
-                             the board needs `overflow-x-auto`, and once one axis
-                             stops being `visible` the other does too, so an
-                             overhang inside gets sliced. Padding on the scroller
-                             does not buy the room back; clipping happens at the
-                             padding box. The pill keeps its own height and the
-                             BOARD is pulled up under it, so the board's top
-                             padding grows to clear the dip (20px against 16px).
-                             Do not invert it into a zero-height row: a flex row
-                             stretches its children to the row's height. -->
-                        <edit-mode-notice
-                            v-if="editMode"
-                            overlap
+                        <tile-surface
+                            :editing="editMode"
                             :label="$t('board.editing_tiles_notice')"
+                            :min-width="minWidthClass"
                             @done="editMode = false"
-                        />
-
-                        <div class="overflow-x-auto">
-                        <!-- board-parchment/osrs-border ported as Tailwind utilities rather
-                             than the old app's custom CSS classes (main.css) — same look,
-                             but this codebase's convention is Tailwind-first custom CSS only
-                             when Tailwind can't express it, and this can. -->
-                        <!-- While editing, the board itself says so. The mode
-                             lived only in a button at the far end of the header,
-                             so the thing whose behaviour had changed — every
-                             tile — looked identical either way. The ring lives
-                             on the surface, which the bingo card uses too. -->
-                        <tile-surface :editing="editMode" overlap :class="minWidthClass">
+                        >
 
                             <!-- The overlay is positioned on THIS box, not on the
                                  parchment around it: the border's p-3 used to sit
@@ -400,7 +377,6 @@
                             </div>
                             </div>
                         </tile-surface>
-                        </div>
                     </div>
 
                     <div class="w-full lg:w-64 shrink-0 flex flex-col gap-4">
@@ -1074,7 +1050,6 @@ import RequirementRail from '@/Components/RequirementRail.vue';
 import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
-import EditModeNotice from '@/Components/EditModeNotice.vue';
 import TileSurface from '@/Components/TileSurface.vue';
 import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, claimAreaIsShown, formatBoardSize, formatDate, eventStatus, finishSubtitle as finishSubtitleFor, ordinal, settledPlace } from '@/Support/board';
 import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';

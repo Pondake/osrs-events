@@ -163,22 +163,16 @@
                              The editing notice stays: that one is about a
                              mode you are currently in, and belongs where the
                              mode is. -->
-                        <!-- The board's notice, the same component. This was
-                             a line of small text with no control in it, so the
-                             mode was announced here and switched off at the
-                             other end of the header. No `overlap`: a bingo grid
-                             has no border for the pill to dip into. -->
-                        <edit-mode-notice
-                            v-if="editing"
+                        <!-- The board's surface, notice and edit ring: the
+                             same component, no props that let the two drift.
+                             The card used to carry a box, a ring and a line of
+                             small text of its own, so the same mode looked
+                             different depending on which event you opened. -->
+                        <tile-surface
+                            :editing="editing"
                             :label="$t('bingo.editing_squares_notice')"
                             @done="editing = false"
-                        />
-
-                        <!-- The board's surface and the board's edit ring,
-                             the same component. The card used to carry a box
-                             and a ring of its own, so the same mode looked
-                             different depending on which event you opened. -->
-                        <tile-surface :editing="editing">
+                        >
                         <div class="relative">
                             <!-- The line itself, drawn over the grid.
                                  Tinting the squares alone told you which
@@ -532,7 +526,6 @@ import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { eventStatus, formatDate, ordinal } from '@/Support/board';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
-import EditModeNotice from '@/Components/EditModeNotice.vue';
 import TileSurface from '@/Components/TileSurface.vue';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';

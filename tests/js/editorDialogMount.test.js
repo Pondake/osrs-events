@@ -68,10 +68,11 @@ describe.each(PAGES)('$tag', ({ file, tag, target }) => {
      * same mode looked and ended differently depending on which event you
      * happened to be looking at.
      */
-    it('announces the mode with the shared notice', () => {
-        expect(source).toMatch(/<edit-mode-notice/);
+    it('announces the mode through the surface, not markup of its own', () => {
+        expect(source).toMatch(/<tile-surface[\s\S]{0,200}:label=/);
         // The pill's own markup belongs to the component, nowhere else.
         expect(source).not.toMatch(/rounded-full bg-default ring-1 ring-primary/);
+        expect(source).not.toMatch(/overflow-x-auto/);
     });
 
     /** And the grid sits on the shared surface, which is where the box and
