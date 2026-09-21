@@ -7,6 +7,7 @@ use App\Http\Middleware\RequireOsrsUsername;
 use App\Models\Setting;
 use App\Rules\OsrsUsername;
 use App\Services\OsrsIdentityService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -38,6 +39,32 @@ class OsrsUsernameController extends Controller
         ]);
     }
 
+    /**
+     * What the hiscores and this site already know about a name, asked
+     * while it is being typed rather than after it is saved.
+     *
+     * Every form that takes an RSN calls this on blur. Nothing is stored and
+     * nothing is refused — a name Wise Old Man has never heard of is normal
+     * for a new player, and a name another account carries is a thing to be
+     * told about, not stopped by. The answer is advice; store() is still
+     * where the decision is made.
+     */
+    public function check(Request $request, OsrsIdentityService $identity): JsonResponse
+    {
+        $data = $request->validate([
+            'osrs_username' => ['required', 'string', new OsrsUsername],
+        ]);
+
+        $name = trim($data['osrs_username']);
+        $found = $identity->look($name);
+
+        return response()->json([
+            'found' => $found['found'],
+            'displayName' => $found['displayName'],
+            'taken' => $identity->takenByAnother($request->user(), $name),
+        ]);
+    }
+
     public function store(Request $request, OsrsIdentityService $identity): RedirectResponse
     {
         $data = $request->validate([
@@ -53,8 +80,17 @@ class OsrsUsernameController extends Controller
         // looked up there before, so a real newcomer 404s and refusing the
         // name would lock out exactly the people this is for.
         $found = $identity->apply($request->user(), $data['osrs_username']);
+        $taken = $identity->takenByAnother($request->user(), $request->user()->osrs_username);
 
         $redirect = ($data['stay'] ?? false) ? back() : redirect()->intended('/events');
+
+        // Two things can be worth saying and only one toast is worth
+        // showing. The duplicate wins: it is the one with a consequence
+        // waiting (a race will refuse the second entrant), and it already
+        // implies the name is real.
+        if ($taken) {
+            return $redirect->with('board-save-error', trans('auth.osrs_taken'));
+        }
 
         return $found === false
             ? $redirect->with('board-save-error', trans('auth.osrs_not_found'))

@@ -225,6 +225,11 @@ Route::get('/events/{event}/join/{token}', [BoardController::class, 'joinByLink'
 Route::middleware('auth')->group(function () {
     Route::get('/welcome/osrs-username', [OsrsUsernameController::class, 'create'])->name('osrs.create');
     Route::post('/welcome/osrs-username', [OsrsUsernameController::class, 'store'])->name('osrs.store');
+    // What every RSN field asks on blur. Read-only and cheap, but it makes
+    // this app a proxy for somebody else's API, so it is capped per account.
+    Route::post('/welcome/osrs-username/check', [OsrsUsernameController::class, 'check'])
+        ->middleware('throttle:30,1')
+        ->name('osrs.check');
 });
 
 Route::middleware(['auth', 'require-osrs-username'])->group(function () {

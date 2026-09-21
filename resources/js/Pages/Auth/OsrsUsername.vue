@@ -17,13 +17,7 @@
                             :error="form.errors.osrs_username"
                             required
                         >
-                            <u-input
-                                v-model="form.osrs_username"
-                                maxlength="12"
-                                icon="i-lucide-user-round"
-                                class="w-full"
-                                autofocus
-                            />
+                            <osrs-username-field v-model="form.osrs_username" />
                         </u-form-field>
 
 
@@ -54,6 +48,7 @@
 
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+import OsrsUsernameField from '@/Components/OsrsUsernameField.vue';
 
 const props = defineProps({
     suggestion: { type: String, default: '' },

@@ -54,8 +54,17 @@
                             :error="osrsForm.errors.osrs_username"
                             required
                         >
-                            <u-input v-model="osrsForm.osrs_username" maxlength="12" icon="i-lucide-user-round" class="w-full" />
+                            <osrs-username-field v-model="osrsForm.osrs_username" />
                         </u-form-field>
+
+                        <!-- The step stays in the list once it is answered
+                             (see buildStepDefs), so coming back to it has to
+                             say so rather than look like the question was
+                             never asked. -->
+                        <p v-if="osrsUsername" class="text-xs text-success flex items-center gap-1.5">
+                            <u-icon name="i-lucide-check" class="size-3.5 shrink-0" />
+                            {{ $t('onboarding.osrs_saved', { name: osrsUsername }) }}
+                        </p>
 
                         <p class="text-xs text-muted">{{ $t('auth.osrs_change_later') }}</p>
                     </template>
@@ -94,7 +103,15 @@
                             </u-form-field>
                         </div>
 
-                        <p class="text-xs text-muted italic">{{ $t(missingBoth ? 'onboarding.connect_optional' : 'onboarding.connect_optional_one') }}</p>
+                        <!-- Same as the name step: answering both cards
+                             empties this one, and an empty step reads as a
+                             mistake. -->
+                        <p v-if="hasDiscord && hasEmail" class="text-sm text-success flex items-center gap-2">
+                            <u-icon name="i-lucide-check" class="size-4 shrink-0" />
+                            {{ $t('onboarding.connect_all_set') }}
+                        </p>
+
+                        <p v-else class="text-xs text-muted italic">{{ $t(missingBoth ? 'onboarding.connect_optional' : 'onboarding.connect_optional_one') }}</p>
                     </template>
 
                     <template v-else-if="step === 'board'">
@@ -320,6 +337,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import OsrsUsernameField from '@/Components/OsrsUsernameField.vue';
 import { useAuth } from '@/Composables/useAuth';
 import BoardPreview from '@/Components/BoardPreview.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, formatBoardSize } from '@/Support/board';
@@ -369,7 +387,21 @@ const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
 
 /**
  * Steps are assembled per account rather than fixed, because the same three
- * screens don't make sense for everyone:
+ * screens don't make sense for everyone — and assembled ONCE, when the tour
+ * opens, rather than re-derived as the user answers.
+ *
+ * Live, the list rewrote itself underneath the person using it: filling in
+ * the name satisfied the condition that put the name step there, so the step
+ * vanished mid-tour and every later index shifted up by one. That is why
+ * next() used to bump the index by hand in three places, each guarded
+ * against the case where the list had already shifted. Reported as tabs
+ * disappearing after being filled in correctly, which is exactly what it
+ * was.
+ *
+ * A step that did not apply when the tour opened still never appears. A step
+ * that did, stays — answered, and visibly so.
+ *
+ * The per-account reasoning:
  *  - 'connect' only when something's actually missing. Without a Discord
  *    link a user can never join a GUILD board or see a guild team at all
  *    (UserGuild rows come only from Discord's sync), which is invisible
@@ -379,7 +411,7 @@ const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
  *    that they weren't allowed, which is a dead end in the middle of a
  *    first-run flow. They now get the thing they CAN do instead.
  */
-const stepDefs = computed(() => {
+function buildStepDefs() {
     const defs = [{ key: 'welcome', title: trans('onboarding.step_welcome'), icon: 'i-lucide-hand' }];
 
     // Before the optional ones: this is the only field in the whole flow
@@ -410,7 +442,9 @@ const stepDefs = computed(() => {
     }
 
     return defs;
-});
+}
+
+const stepDefs = ref(buildStepDefs());
 
 const steps = computed(() => stepDefs.value.map(({ title, icon }) => ({ title, icon })));
 
@@ -565,27 +599,19 @@ function next() {
         osrsForm.post('/welcome/osrs-username', {
             preserveScroll: true,
             preserveState: true,
-            // Saving the name removes this step from the list, which already
-            // moves the next one into its index; advancing again skipped it.
-            onSuccess: () => {
-                if (step.value === 'osrs') stepIndex.value++;
-            },
+            onSuccess: () => stepIndex.value++,
             onError: (errors) => console.error(errors),
         });
 
         return;
     }
 
-    // Optional: an empty field just moves on. Same trap as above — when the
-    // account already has Discord, saving the address is what removes this
-    // step, so the next one is already at this index by the time it succeeds.
+    // Optional: an empty field just moves on.
     if (step.value === 'connect' && !hasEmail.value && emailForm.email.trim()) {
         emailForm.post('/onboarding/email', {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => {
-                if (step.value === 'connect') stepIndex.value++;
-            },
+            onSuccess: () => stepIndex.value++,
             onError: (errors) => console.error(errors),
         });
 

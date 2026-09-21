@@ -38,6 +38,71 @@ class OsrsIdentityServiceTest extends TestCase
         Http::fake([self::PLAYER_URL => Http::response(['code' => 'PLAYER_NOT_FOUND'], 404)]);
     }
 
+    /**
+     * A name another account carries is a fact to report, never a refusal —
+     * see takenByAnother(). Underscores, hyphens and spaces are one
+     * character to the game, so they are one name here too.
+     */
+    #[Test]
+    public function a_name_another_account_carries_is_reported_as_taken(): void
+    {
+        User::factory()->create(['osrs_username' => 'Pondake']);
+        $newcomer = User::factory()->create(['osrs_username' => null]);
+
+        $this->assertTrue($this->identity()->takenByAnother($newcomer, 'pondake'));
+        $this->assertTrue($this->identity()->takenByAnother($newcomer, 'PONDAKE'));
+        $this->assertFalse($this->identity()->takenByAnother($newcomer, 'Zezima'));
+    }
+
+    #[Test]
+    public function separators_are_the_same_character_when_comparing_names(): void
+    {
+        User::factory()->create(['osrs_username' => 'Iron Man']);
+        $newcomer = User::factory()->create(['osrs_username' => null]);
+
+        $this->assertTrue($this->identity()->takenByAnother($newcomer, 'iron_man'));
+        $this->assertTrue($this->identity()->takenByAnother($newcomer, 'Iron-Man'));
+    }
+
+    /** Your own name is not taken from you by yourself. */
+    #[Test]
+    public function an_account_does_not_hold_its_own_name_against_itself(): void
+    {
+        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+
+        $this->assertFalse($this->identity()->takenByAnother($user, 'Pondake'));
+    }
+
+    #[Test]
+    public function the_check_endpoint_answers_the_hiscores_and_the_duplicate_question(): void
+    {
+        $this->fakeFound('Pondake');
+        User::factory()->create(['osrs_username' => 'Pondake']);
+        $newcomer = User::factory()->create(['osrs_username' => null]);
+
+        $this->actingAs($newcomer)
+            ->postJson('/welcome/osrs-username/check', ['osrs_username' => 'pondake'])
+            ->assertOk()
+            ->assertJson(['found' => true, 'displayName' => 'Pondake', 'taken' => true]);
+
+        // Nothing is stored by asking.
+        $this->assertNull($newcomer->fresh()->osrs_username);
+    }
+
+    #[Test]
+    public function saving_a_name_somebody_else_carries_warns_but_keeps_it(): void
+    {
+        $this->fakeFound('Pondake');
+        User::factory()->create(['osrs_username' => 'Pondake']);
+        $newcomer = User::factory()->create(['osrs_username' => null]);
+
+        $this->actingAs($newcomer)
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->assertSessionHas('board-save-error', trans('auth.osrs_taken'));
+
+        $this->assertSame('Pondake', $newcomer->fresh()->osrs_username);
+    }
+
     #[Test]
     public function a_found_name_is_stored_verified_and_in_wise_old_mans_casing(): void
     {

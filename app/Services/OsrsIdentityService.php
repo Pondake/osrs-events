@@ -26,6 +26,45 @@ class OsrsIdentityService
     public function __construct(private readonly WiseOldManService $wom) {}
 
     /**
+     * Ask Wise Old Man about a name without storing anything.
+     *
+     * @return array{found: bool|null, displayName: ?string}
+     */
+    public function look(string $username): array
+    {
+        return $this->wom->findPlayer(trim($username));
+    }
+
+    /**
+     * Whether another account already carries this name.
+     *
+     * Not a unique index and not a refusal — that decision is written down
+     * in the migration that made standings unique per event: a global unique
+     * would let whoever types a name first keep somebody else out of their
+     * own RSN. This only makes the situation visible, so the second person
+     * to arrive is told rather than left wondering why a race says they are
+     * already entered.
+     *
+     * Compared the way the game does: spaces, underscores and hyphens are
+     * the same character (RuneliteName::sameRsn), normalised in SQL so this
+     * stays one query.
+     */
+    public function takenByAnother(User $user, string $username): bool
+    {
+        $normalised = mb_strtolower(trim(preg_replace('/[\s_\-]+/u', ' ', $username)));
+
+        if ($normalised === '') {
+            return false;
+        }
+
+        return User::query()
+            ->whereKeyNot($user->id)
+            ->whereNotNull('osrs_username')
+            ->whereRaw("lower(replace(replace(osrs_username, '_', ' '), '-', ' ')) = ?", [$normalised])
+            ->exists();
+    }
+
+    /**
      * Store a username and check it, returning what Wise Old Man said.
      *
      * @return bool|null true found, false not found, null couldn't tell

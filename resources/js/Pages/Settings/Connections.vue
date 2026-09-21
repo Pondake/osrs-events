@@ -29,12 +29,11 @@
                 <p class="text-sm text-muted max-w-md">{{ $t('profile.osrs_account_help') }}</p>
 
                 <div class="flex items-center gap-2 flex-wrap shrink-0">
-                    <u-input
+                    <osrs-username-field
                         v-model="osrsInput"
-                        :placeholder="$t('profile.osrs_username')"
                         size="sm"
-                        maxlength="12"
-                        icon="i-lucide-user-round"
+                        :placeholder="$t('profile.osrs_username')"
+                        class="w-48"
                     />
                     <u-button
                         v-if="! osrsVerified"
@@ -124,6 +123,7 @@
 import { computed, ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
+import OsrsUsernameField from '@/Components/OsrsUsernameField.vue';
 import { useAuth } from '@/Composables/useAuth';
 
 const props = defineProps({

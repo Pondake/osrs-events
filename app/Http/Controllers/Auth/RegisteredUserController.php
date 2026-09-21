@@ -96,7 +96,12 @@ class RegisteredUserController extends Controller
 
         // Never a reason to fail the registration — Wise Old Man only knows
         // accounts somebody has looked up there before, so a real newcomer
-        // legitimately 404s.
+        // legitimately 404s. Nor is a name somebody else already carries,
+        // for the reason in OsrsIdentityService::takenByAnother().
+        if ($identity->takenByAnother($user, $user->osrs_username)) {
+            return $redirect->with('board-save-error', trans('auth.osrs_taken'));
+        }
+
         return $found === false
             ? $redirect->with('board-save-error', trans('auth.osrs_not_found'))
             : $redirect;

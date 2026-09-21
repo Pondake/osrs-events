@@ -30,6 +30,7 @@ class RequireOsrsUsername
     private const ALLOWED = [
         'osrs.create',
         'osrs.store',
+        'osrs.check',
         'logout',
         // The first-run wizard asks for the name itself, so its own endpoints
         // have to survive the gate or the tour cannot finish or record that

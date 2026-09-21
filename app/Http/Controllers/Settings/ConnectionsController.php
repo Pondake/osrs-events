@@ -83,6 +83,12 @@ class ConnectionsController extends Controller
         $found = $identity->apply($request->user(), $data['osrs_username']);
 
         // Saved regardless; an unconfirmed name is a warning, not a rejection.
+        // Same order as OsrsUsernameController::store — a name another
+        // account already carries is the more consequential of the two.
+        if ($identity->takenByAnother($request->user(), $request->user()->osrs_username)) {
+            return back()->with('board-save-error', trans('auth.osrs_taken'));
+        }
+
         return $found === false
             ? back()->with('board-save-error', trans('auth.osrs_not_found'))
             : back()->with('board-save', trans('profile.osrs_username_saved'));
