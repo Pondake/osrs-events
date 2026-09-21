@@ -269,6 +269,13 @@ and what each can complete right now:
 `watch` is every `match` in one list: the plugin reports a drop or kill only
 when its normalised name is in it.
 
+**A drop race's boss is in `watch` too**, without being a target. It claims
+nothing — a race has no square to close — but a reported kill of it raises the
+player's standing; see "Drop races count live" below. This is why `watch` is
+deliberately a flat list of names and not a structure: the shipped plugin
+(0.0.1) reports a kill of any name in it, so the server can put a new kind of
+name in there without the plugin changing at all.
+
 `proven` says whether a client has ever reported this account logged in as
 `rsn` — see `POST /identity`. False is not an error; it means every claim this
 account makes goes to a host, screenshots included.
@@ -356,6 +363,31 @@ row and surfaced on the claim it created (`bingo_completions` /
 `completed_tiles` now carry a `plugin_completion_id`). Deliberately nothing
 sensitive goes in it: no chat log, no other players' names, and `region_id`
 only — never exact coordinates.
+
+### Drop races count live
+
+A `DROP_RACE` ranks boss killcounts over the event window, measured by Wise Old
+Man. Their number lags by hours, which is fine for a month-long race and
+useless on the evening it is decided. So a reported kill of the race's boss is
+counted too (`RaceKillService`), and the standing keeps **the higher of the
+two** numbers.
+
+- **Wise Old Man stays the source.** A player without the plugin is measured
+  exactly as before. The live count can only ever be at or below the truth — a
+  kill made with the plugin off is simply not in it — so taking the higher of
+  the two is what makes the two sources safe to mix. Their API catching up wins
+  on its own.
+- **Which boss.** `App\Support\BossKillNames` maps a Wise Old Man metric to the
+  name the game prints in its killcount chat message, because that is the name
+  the plugin reports a kill under. A metric missing from that map has no live
+  count and is measured by hiscores alone, which is the honest default for a
+  boss whose message nobody has verified.
+- **Counted by distinct `context.kill_count`**, the same rule as a counted
+  square — a resent report adds nothing.
+- **A doubted report counts for nothing.** A claim has a host who can approve
+  it; a leaderboard has nobody, so there is no queue to send it to.
+- **Nothing is claimed.** `claims` stays empty for a race, so the plugin's
+  answer does not change shape.
 
 ### Plausibility — doubt means review, never refusal
 

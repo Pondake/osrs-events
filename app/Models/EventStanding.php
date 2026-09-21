@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A participant's standing in a metric event — the stored result of a
@@ -23,6 +24,7 @@ class EventStanding extends Model
         'start_value',
         'end_value',
         'gained',
+        'live_gained',
         'synced_at',
         'sync_error',
     ];
@@ -35,6 +37,7 @@ class EventStanding extends Model
         'start_value' => 'integer',
         'end_value' => 'integer',
         'gained' => 'integer',
+        'live_gained' => 'integer',
     ];
 
     public function event(): BelongsTo
@@ -45,5 +48,10 @@ class EventStanding extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function kills(): HasMany
+    {
+        return $this->hasMany(EventStandingKill::class);
     }
 }

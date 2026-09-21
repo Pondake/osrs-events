@@ -1391,6 +1391,7 @@
     "events.no_rsn_action": "Add it now",
     "events.no_rsn_body": "Skill races are scored from the OSRS hiscores, which are looked up by account name. Until you add yours, you will not appear in the standings.",
     "events.no_rsn_title": "Add your OSRS username",
+    "events.live_from_plugin": "Counted live by the RuneLite plugin, ahead of the hiscores.",
     "events.no_standings": "No standings yet",
     "events.no_standings_desc": "Nobody has entered yet. Standings appear here once someone enters and the first sync runs.",
     "events.no_team_yet": "You are not on a team in this event yet, so there is no board to play on. Ask a host to add you to one.",
