@@ -241,6 +241,12 @@ and Services under `app/Services/` for anything with real business logic (e.g.
   (spatie throws; every caller here wants a plain no).
 - `$user->can($key)` works too — `HasRoles` registers permissions with
   Laravel's Gate — but it has neither of the two behaviours above.
+- **A new account gets `canCreateBoards` on the account itself**, through
+  `User::grantStarterAccess()`, which both sign-up paths call. It is not on the
+  PLAYER role on purpose: a role grant would also reach every account that
+  already exists. `NewAccountStarterAccessTest` and the "just signed up"
+  scenario in `tests/e2e/seats.spec.js` guard it — the permission matrix only
+  proves what an account *without* the right is refused.
 - Creating a role or permission by name: `Role::findOrCreate($name, 'web')`.
   A bare `firstOrCreate(['name' => …])` skips `guard_name`, and a row without
   one is invisible to every check.

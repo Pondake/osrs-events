@@ -69,6 +69,25 @@ class User extends Authenticatable
     }
 
     /**
+     * What every account gets on the day it is created: the PLAYER role and
+     * the right to make events of its own.
+     *
+     * The permission goes on the account, not on the PLAYER role, on purpose:
+     * a role grant would also reach every account that already exists, and
+     * whether those should be able to host is a separate decision. Both ways
+     * of signing up call this, so they cannot drift apart.
+     */
+    public function grantStarterAccess(): void
+    {
+        $this->assignRole(Role::firstOrCreate(
+            ['name' => 'PLAYER'],
+            ['description' => 'Standaard spelerrol'],
+        ));
+
+        $this->givePermissionTo(Permission::findOrCreate('canCreateBoards', 'web'));
+    }
+
+    /**
      * Has a RuneLite client ever reported this account playing the name it
      * claims? See the osrs_proven_at migration for what that proves and what
      * it does not — it is not the same question as osrs_verified_at.

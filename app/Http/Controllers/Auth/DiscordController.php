@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureSiteUnlocked;
-use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserGuild;
@@ -303,11 +302,7 @@ class DiscordController extends Controller
             );
 
             if ($isNewUser) {
-                $playerRole = Role::firstOrCreate(
-                    ['name' => 'PLAYER'],
-                    ['description' => 'Standaard spelerrol'],
-                );
-                $user->assignRole($playerRole);
+                $user->grantStarterAccess();
 
                 // Only on first creation — a returning user may have already
                 // set their own custom nickname (Profile.vue), which a login
