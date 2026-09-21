@@ -233,13 +233,40 @@
 
                     <board-preview v-if="step === 'welcome' || step === 'board'" :size="form.size" :mode="form.mode" />
 
-                    <div v-else-if="step === 'runelite'" class="rounded-xl border border-default bg-elevated/50 p-4 space-y-3">
-                        <ul class="space-y-2 text-sm">
-                            <li v-for="row in pluginSummary" :key="row.label" class="flex items-start gap-2">
-                                <u-icon :name="row.ok ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'" class="size-4 mt-0.5 shrink-0" :class="row.ok ? 'text-success' : 'text-muted'" />
-                                <span :class="row.ok ? '' : 'text-muted'">{{ row.label }}</span>
-                            </li>
-                        </ul>
+                    <div v-else-if="step === 'runelite'" class="space-y-3">
+                        <!-- Where to look, then where to paste: the hub listing until
+                             a code has been made here, the plugin's own settings
+                             after. An existing code shows the hub, because that
+                             account may not have installed the plugin yet. -->
+                        <figure v-if="pluginCode" class="space-y-1.5">
+                            <img
+                                src="/images/guides/plugin-settings.png"
+                                :alt="$t('onboarding.runelite_settings_alt')"
+                                width="246"
+                                height="433"
+                                class="max-w-full h-auto rounded-lg border border-default"
+                            >
+                            <figcaption class="text-xs text-muted">{{ $t('onboarding.runelite_settings_caption') }}</figcaption>
+                        </figure>
+                        <figure v-else class="space-y-1.5">
+                            <img
+                                src="/images/guides/plugin-hub-search.png"
+                                :alt="$t('onboarding.runelite_hub_alt')"
+                                width="276"
+                                height="252"
+                                class="max-w-full h-auto rounded-lg border border-default"
+                            >
+                            <figcaption class="text-xs text-muted">{{ $t('onboarding.runelite_hub_caption') }}</figcaption>
+                        </figure>
+
+                        <div class="rounded-xl border border-default bg-elevated/50 p-4">
+                            <ul class="space-y-2 text-sm">
+                                <li v-for="row in pluginSummary" :key="row.label" class="flex items-start gap-2">
+                                    <u-icon :name="row.ok ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'" class="size-4 mt-0.5 shrink-0" :class="row.ok ? 'text-success' : 'text-muted'" />
+                                    <span :class="row.ok ? '' : 'text-muted'">{{ row.label }}</span>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
 
                     <!-- connect / join: what the account unlocks, rather than
