@@ -378,7 +378,9 @@ const needsProof = computed(() => !!page.props?.auth?.user?.needsOsrsProof);
 // `stay` is what stops the controller redirecting to /events on success,
 // which would navigate the page out from under this modal and end the tour
 // on its second step.
-const osrsForm = useForm({ osrs_username: '', stay: true });
+// Seeded with the stored name, so the step opens showing what the account
+// already plays as rather than an empty box next to a disabled Next.
+const osrsForm = useForm({ osrs_username: osrsUsername.value ?? '', stay: true });
 
 const emailForm = useForm({ email: '' });
 
@@ -414,11 +416,13 @@ const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
 function buildStepDefs() {
     const defs = [{ key: 'welcome', title: trans('onboarding.step_welcome'), icon: 'i-lucide-hand' }];
 
-    // Before the optional ones: this is the only field in the whole flow
-    // that anything actually depends on — a race scores nothing without it.
-    if (!osrsUsername.value) {
-        defs.push({ key: 'osrs', title: trans('onboarding.step_osrs'), icon: 'i-lucide-user-round' });
-    }
+    // Always, even for an account that already has one. It is the only
+    // field in the whole flow that anything depends on — a race scores
+    // nothing without it — so the tour showing it, filled in, is worth more
+    // than one step saved. The conditional ones below stay conditional:
+    // "connect your Discord" has nothing to say to somebody already
+    // connected, where a name always has its own value to show.
+    defs.push({ key: 'osrs', title: trans('onboarding.step_osrs'), icon: 'i-lucide-user-round' });
 
     if (!hasDiscord.value || !hasEmail.value) {
         defs.push({ key: 'connect', title: trans('onboarding.step_connect'), icon: 'i-lucide-link' });
@@ -596,6 +600,14 @@ function next() {
     // block. Advances only on success; a rejected name keeps the step open
     // with its error rather than moving on and losing it.
     if (step.value === 'osrs') {
+        // Nothing typed over what is already stored: no save, no Wise Old
+        // Man lookup, just the next step.
+        if (osrsForm.osrs_username.trim() === (osrsUsername.value ?? '')) {
+            stepIndex.value++;
+
+            return;
+        }
+
         osrsForm.post('/welcome/osrs-username', {
             preserveScroll: true,
             preserveState: true,
@@ -650,7 +662,12 @@ function finish(destination = null) {
 }
 
 function saveTypedName(then) {
-    if (osrsUsername.value || !osrsForm.osrs_username.trim()) return then();
+    const typed = osrsForm.osrs_username.trim();
+
+    // Unchanged from what is stored is not an answer to save. Changed is —
+    // the step now opens prefilled, so "edited it, then pressed Skip" is a
+    // real path and the edit is the whole point of it.
+    if (typed === '' || typed === (osrsUsername.value ?? '')) return then();
 
     osrsForm.post('/welcome/osrs-username', {
         preserveScroll: true,
