@@ -160,12 +160,30 @@
                              pushed the board a line out of alignment with the
                              cards beside it for the sake of a sentence read
                              once.
-                             The editing hint stays: that one is about a mode
-                             you are currently in, and belongs where the mode
-                             is. -->
-                        <p v-if="editing" class="text-xs mb-2 text-primary font-medium">
-                            {{ $t('bingo.edit_hint') }}
-                        </p>
+                             The editing notice stays: that one is about a
+                             mode you are currently in, and belongs where the
+                             mode is. -->
+                        <!-- The same pill the board shows, carrying the same
+                             way out of the mode. This was a line of small
+                             text with no control in it, so the mode was
+                             announced here and switched off at the other end
+                             of the header — the exact split the board had
+                             already fixed. -->
+                        <div v-if="editing" class="relative z-10 flex justify-start sm:justify-center mb-2">
+                            <div class="inline-flex max-w-full items-center gap-2 rounded-full bg-default ring-1 ring-primary/50 shadow-sm py-1 pl-3 pr-1">
+                                <u-icon name="i-lucide-grid-2x2-plus" class="size-3.5 shrink-0 text-primary" />
+                                <span class="text-xs font-semibold truncate">{{ $t('bingo.editing_squares_notice') }}</span>
+                                <u-button
+                                    size="xs"
+                                    color="neutral"
+                                    variant="solid"
+                                    class="rounded-full shrink-0"
+                                    icon="i-lucide-check"
+                                    :label="$t('bingo.done_editing')"
+                                    @click="editing = false"
+                                />
+                            </div>
+                        </div>
 
                         <!-- While editing, the card itself says so. The mode
                              lived only in a button at the other end of the
@@ -470,12 +488,6 @@
         <!-- ClientOnly + async, like every other modal here: u-modal reaches
              the '#imports' virtual specifier that breaks the SSR build. -->
         <client-only>
-            <bingo-square-modal
-                v-if="editingSquare"
-                v-model:open="squareModalOpen"
-                :event-id="liveEvent.id"
-                :square="editingSquare"
-            />
             <bingo-claim-modal
                 v-if="claimingSquare"
                 v-model:open="claimModalOpen"
@@ -489,6 +501,20 @@
                 :can-claim="canPlay && !isPaused && status !== 'upcoming'"
             />
             <template v-if="canEdit">
+                <!-- Mounted closed rather than behind `v-if="editingSquare"`.
+                     It is a lazily loaded chunk: behind that v-if the fetch
+                     only STARTED on the click that was supposed to open it,
+                     so the dialog turned up a round trip later — long enough
+                     to read as a click that did nothing, with no error and no
+                     failed request to show for it. The dialogs below were
+                     always mounted closed, which is why they were the ones
+                     that "always worked". Same change as the board's
+                     TileEditModal. -->
+                <bingo-square-modal
+                    v-model:open="squareModalOpen"
+                    :event-id="liveEvent.id"
+                    :square="editingSquare"
+                />
                 <board-settings-modal
                     v-model:open="showSettingsModal"
                     :board="liveEvent"

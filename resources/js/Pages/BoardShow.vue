@@ -1034,16 +1034,24 @@
                      that has already been approved — see BingoReviewModal's
                      equivalent on the bingo page for the same reasoning. -->
                 <tile-review-modal v-model:open="tileReviewModalOpen" :event-id="liveBoard.id" :claims="tileReviewClaims" />
+                <!-- Mounted closed, with the other host dialogs, rather than
+                     behind `v-if="editingTile"`. It is a lazily loaded chunk:
+                     behind that v-if the fetch only STARTED on the click that
+                     was supposed to open it, so the dialog appeared a round
+                     trip later — and a slow answer reads as a click that did
+                     nothing at all, with no error and no failed request to
+                     show for it. The dialogs above were always mounted
+                     closed, which is why they were the ones that "always
+                     worked". Same reason BingoSquareModal is mounted this way
+                     on the bingo page. -->
+                <tile-edit-modal
+                    v-model:open="tileEditOpen"
+                    :event-id="liveBoard.id"
+                    :position="editingTile?.position ?? 0"
+                    :tile-count="tiles.length"
+                    :tile="editingTile?.id ? editingTile : null"
+                />
             </template>
-            <tile-edit-modal
-                v-if="editingTile"
-                :open="editingTile !== null"
-                :event-id="liveBoard.id"
-                :position="editingTile.position"
-                :tile-count="tiles.length"
-                :tile="editingTile.id ? editingTile : null"
-                @update:open="(v) => !v && (editingTile = null)"
-            />
             <team-entry-modal v-model:open="showTeamEntry" :event-id="liveBoard.id" :teams="teamOptions" />
             <!-- The tapped tile, on a width where the sidebar card that
                  normally answers this is far below the board. Same dialog as
@@ -1282,6 +1290,11 @@ const { streaming, stale } = useEventStream({
 
 const showSettingsModal = ref(false);
 const editingTile = ref(null);
+// Which tile the editor is about, and whether it is showing, are two
+// refs rather than one: the dialog is mounted closed (see its comment in
+// the template), so "no tile chosen yet" cannot be the same state as
+// "not mounted". Matches Bingo's editingSquare/squareModalOpen pair.
+const tileEditOpen = ref(false);
 const showClaimModal = ref(false);
 const showReviewModal = ref(false);
 // A host reviewing this one tile's claim rather than the whole pending
@@ -1393,7 +1406,7 @@ const tileMenuItems = computed(() => {
                 // on before a right-click will offer the one thing a host
                 // right-clicks a tile for is the kind of step that makes a
                 // menu not worth opening.
-                onSelect: () => (editingTile.value = tile),
+                onSelect: () => openTileEditor(tile),
             },
         ]);
     }
@@ -1483,7 +1496,7 @@ const aDialogIsOpen = computed(() => showReviewModal.value
     || tileReviewModalOpen.value
     || showSettingsModal.value
     || showTileList.value
-    || editingTile.value !== null);
+    || tileEditOpen.value);
 
 /**
  * The celebration, fired by the server's answer rather than by a guess made
@@ -2355,6 +2368,12 @@ function tileClasses(tile) {
     return classes;
 }
 
+/** The one way into the tile editor: the board, and the tile's own menu. */
+function openTileEditor(tile) {
+    editingTile.value = tile;
+    tileEditOpen.value = true;
+}
+
 // Ported from useBoardPage's handleTileClick: in edit mode a click opens the
 // tile editor (including on an unconfigured tile — that's how you configure
 // one); otherwise it selects the tile for the sidebar's "Selected tile"
@@ -2363,7 +2382,7 @@ function tileClasses(tile) {
 function handleTileClick(tile) {
     if (editMode.value) {
         if (!props.canEdit) return;
-        editingTile.value = tile;
+        openTileEditor(tile);
         return;
     }
     clickedTile.value = tile;

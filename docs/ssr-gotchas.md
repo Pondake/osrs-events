@@ -157,3 +157,15 @@ list itself is unchanged.
    not reference the renamed route rendered perfectly. A partial SSR
    outage looks like nothing at all in a browser, and the give-away is a
    page's byte count and title count, not its appearance.
+17. **A `defineAsyncComponent` dialog behind a `v-if` that flips on the click
+   that opens it fetches its chunk ON that click.** The dialog then arrives
+   one round trip after the click, and there is nothing to see in the
+   meantime — no error, no Vue warning, and (while it is still pending) not
+   even an entry in `performance.getEntriesByType('resource')`. Reported as
+   "clicking a tile does nothing" on a board and on a bingo card alike; the
+   editors were the only two dialogs on those pages mounted that way, which
+   is exactly why every other dialog "always worked". Combined with #15 the
+   wait is up to the full 45s stream, which is well past the point where a
+   reader concludes the click was ignored. Mount a lazily loaded dialog
+   closed, alongside the other dialogs, and let a separate ref say whether it
+   is showing. Guarded by `tests/js/editorDialogMount.test.js`.
