@@ -393,7 +393,7 @@ class RunelitePluginService
                 'marked_by' => $user->id,
                 'completed_via' => 'RUNELITE',
                 'plugin_completion_id' => $pluginCompletion->id,
-                'status' => $event->bingoCard->initialClaimStatus('RUNELITE', $user),
+                'status' => $event->bingoCard->initialClaimStatus('RUNELITE', $user, filled($pluginCompletion->doubts)),
             ]));
         } catch (UniqueConstraintViolationException) {
             return null;
@@ -420,7 +420,7 @@ class RunelitePluginService
                 'completed_via' => 'RUNELITE',
                 'plugin_completion_id' => $pluginCompletion->id,
                 'marked_by' => $user->id,
-                'status' => $event->board->initialClaimStatus('RUNELITE', $user),
+                'status' => $event->board->initialClaimStatus('RUNELITE', $user, filled($pluginCompletion->doubts)),
             ]));
         } catch (UniqueConstraintViolationException) {
             return null;
