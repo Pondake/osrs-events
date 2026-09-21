@@ -54,7 +54,7 @@ lang/php_*.json
 /docs/FEATURE_BACKLOG.md
 
 # Browser suite: throwaway database, storage, saved sign-ins, reports
-/tests/e2e/.run
-/tests/e2e/.auth
-/tests/e2e/.results
-/playwright-report
+/tests/e2e/.run*
+/tests/e2e/.auth*
+/tests/e2e/.results*
+/playwright-report*

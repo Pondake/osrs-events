@@ -66,3 +66,19 @@ export function clearThrottles() {
     rmSync(path.join(STORAGE_DIR, 'framework/cache/data'), { recursive: true, force: true });
     mkdirSync(path.join(STORAGE_DIR, 'framework/cache/data'), { recursive: true });
 }
+
+/**
+ * Takes an event back to nobody having played it: no participants, claims,
+ * standings, finishes or boards. For a spec that plays an event, so a retry
+ * starts from the same place the first run did.
+ */
+export function resetEvent(title) {
+    const id = eventId(title);
+    const card = `SELECT id FROM bingo_squares WHERE bingo_card_id IN (SELECT id FROM bingo_cards WHERE event_id = ?)`;
+
+    run(`DELETE FROM bingo_completions WHERE bingo_square_id IN (${card})`, [id]);
+    run('DELETE FROM event_standings WHERE event_id = ?', [id]);
+    run('DELETE FROM event_finishes WHERE event_id = ?', [id]);
+    run('DELETE FROM event_participants WHERE event_id = ?', [id]);
+    run('UPDATE events SET standings_stale_since = NULL, closed_at = NULL WHERE id = ?', [id]);
+}

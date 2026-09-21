@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\BingoCard;
 use App\Models\Board;
 use App\Models\BoardAuthor;
 use App\Models\Event;
@@ -9,6 +10,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Tile;
 use App\Models\User;
+use App\Services\BingoService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -55,6 +57,9 @@ class E2eSeeder extends Seeder
         Artisan::call('dev:fixtures', ['--host' => 'e2e_owner']);
 
         $this->ladder();
+        $this->bingo('E2E Bingo', requiresApproval: true);
+        $this->bingo('E2E Bingo instant', requiresApproval: false);
+        $this->dropRace();
         $this->coHost('e2e_cohost', ['Teams of four', 'Invite only night', 'E2E Ladder']);
     }
 
@@ -156,6 +161,65 @@ class E2eSeeder extends Seeder
                 'title_override' => 'Tile '.($position + 1),
             ]);
         }
+    }
+
+    /**
+     * A running, open 3x3 card that wins on a line — small enough that a whole
+     * line is three claims. With review, every claim waits for the owner; without,
+     * every claim counts the moment it is made.
+     */
+    private function bingo(string $title, bool $requiresApproval): void
+    {
+        $owner = User::where('discord_username', 'e2e_owner')->firstOrFail();
+
+        $event = Event::create([
+            'title' => $title,
+            'type' => 'BINGO',
+            'description' => 'The ordinary case.',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+            'start_date' => Carbon::now()->subDay(),
+            'end_date' => Carbon::now()->addDays(30),
+        ]);
+
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
+
+        $card = BingoCard::create([
+            'event_id' => $event->id,
+            'size' => 3,
+            'win_condition' => 'LINE',
+            'requires_approval' => $requiresApproval,
+        ]);
+
+        app(BingoService::class)->ensureSquares($card);
+
+        foreach ($card->squares()->orderBy('position')->get() as $square) {
+            $square->update(['title_override' => 'Square '.($square->position + 1)]);
+        }
+    }
+
+    /**
+     * A running, open race on a boss. Its numbers come from the Wise Old Man
+     * stand-in in tests/e2e/serve.js, which the specs set per name.
+     */
+    private function dropRace(): void
+    {
+        $owner = User::where('discord_username', 'e2e_owner')->firstOrFail();
+
+        $event = Event::create([
+            'title' => 'E2E Drop Race',
+            'type' => 'DROP_RACE',
+            'metric' => 'vorkath',
+            'description' => 'The ordinary case.',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => true,
+            'start_date' => Carbon::now()->subDay(),
+            'end_date' => Carbon::now()->addDays(30),
+        ]);
+
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $owner->id, 'is_owner' => true]);
     }
 
     /** @param  list<string>  $titles */
