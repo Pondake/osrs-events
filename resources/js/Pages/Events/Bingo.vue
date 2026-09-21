@@ -224,12 +224,12 @@
                                 />
                             </svg>
 
-                        <div class="grid gap-2" :class="gridClass">
+                        <div class="grid gap-1" :class="gridClass">
                             <button
                                 v-for="square in squares"
                                 :key="square.id"
                                 type="button"
-                                class="@container relative aspect-square overflow-hidden min-w-0 rounded-lg ring p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-150"
+                                class="@container relative aspect-square overflow-hidden min-w-0 rounded-md p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-150"
                                 :class="[squareClass(square), hasRequirement(square) ? 'pb-3.5 sm:pb-5' : '']"
                                 :disabled="(!canPlay && !editing) || (square.isWildcard && !editing)"
                                 :title="squareTitle(square)"
@@ -899,14 +899,14 @@ function squareClass(square) {
     // everything else so the hint is visible on a square whose own state
     // would otherwise paint over it.
     if (suggestedLine.value.has(square.position)) {
-        return 'ring-primary bg-primary/10 text-highlighted';
+        return 'ring-1 ring-primary bg-primary/10 text-highlighted';
     }
 
     // A free square is already everyone's, so it reads as done from the
     // start — and distinctly from a square you completed, or the fact that
     // it costs nothing to have is invisible.
     if (square.isWildcard) {
-        return 'ring-warning/50 bg-warning/10 text-highlighted';
+        return 'ring-1 ring-warning/50 bg-warning/10 text-highlighted';
     }
 
     const state = statusOf(square);
@@ -915,14 +915,20 @@ function squareClass(square) {
     // approved one, or a player cannot tell whether a host has looked yet.
     if (state === 'APPROVED') {
         return inLine.value.has(square.position)
-            ? 'ring-success bg-success/20 text-highlighted'
-            : 'ring-success/40 bg-success/10';
+            ? 'ring-1 ring-success bg-success/20 text-highlighted'
+            : 'ring-1 ring-success/40 bg-success/10';
     }
 
-    if (state === 'PENDING') return 'ring-warning/50 bg-warning/10';
-    if (state === 'REJECTED') return 'ring-error/40 bg-error/5';
+    if (state === 'PENDING') return 'ring-1 ring-warning/50 bg-warning/10';
+    if (state === 'REJECTED') return 'ring-1 ring-error/40 bg-error/5';
 
-    return 'ring-default bg-default hover:ring-primary';
+    // An untouched square is an untouched board tile: the same translucent
+    // stone ground, no ring of its own, brightening on hover. It used to be
+    // `bg-default` with a ring, which read as a filled card next to the
+    // board's recessed tiles — the same grid, twice, looking like two
+    // different things. The tinted states below keep their ring, because
+    // there the ring IS the state.
+    return 'board-tile bg-stone-200/80 dark:bg-stone-800/80 backdrop-blur-[2px]';
 }
 
 // Whether the card uses either counting mode at all. The legend is only
