@@ -39,7 +39,13 @@
                         </li>
                     </ol>
 
-                    <guide-screenshot class="mt-4" :alt="$t('landing.drop_race.screenshot_editor_alt')" />
+                    <guide-screenshot
+                        class="mt-4"
+                        src="/images/guides/event-templates.webp"
+                        :width="1344"
+                        :height="2672"
+                        :alt="$t('landing.drop_race.screenshot_editor_alt')"
+                    />
                 </div>
 
                 <div>
@@ -53,7 +59,13 @@
                         </li>
                     </ol>
 
-                    <guide-screenshot class="mt-4" :alt="$t('landing.drop_race.screenshot_board_alt')" />
+                    <guide-screenshot
+                        class="mt-4"
+                        src="/images/guides/drop-race-board.webp"
+                        :width="1653"
+                        :height="810"
+                        :alt="$t('landing.drop_race.screenshot_board_alt')"
+                    />
                 </div>
             </div>
         </section>
