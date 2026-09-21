@@ -69,13 +69,15 @@
                         <p class="text-xs text-muted">{{ $t('auth.osrs_change_later') }}</p>
                     </template>
 
-                    <!-- Only reached when something's actually missing (see
-                         steps computed) — never shown to an account that
-                         already has both a Discord link and an email. -->
                     <template v-else-if="step === 'connect'">
                         <h3 class="text-lg font-semibold text-highlighted">{{ $t('onboarding.connect_heading') }}</h3>
 
-                        <div v-if="!hasDiscord" class="rounded-lg border border-default p-4 space-y-2">
+                        <p v-if="hasDiscord" class="text-sm text-success flex items-center gap-2">
+                            <u-icon name="i-lucide-check" class="size-4 shrink-0" />
+                            {{ $t('onboarding.connect_discord_done', { name: discordUsername }) }}
+                        </p>
+
+                        <div v-else class="rounded-lg border border-default p-4 space-y-2">
                             <div class="flex items-center gap-2">
                                 <u-icon name="i-simple-icons-discord" class="size-4 text-primary" />
                                 <p class="font-medium text-sm">{{ $t('onboarding.connect_discord_title') }}</p>
@@ -84,7 +86,12 @@
                             <u-button :href="route('settings.discord.connect')" color="primary" variant="outline" size="sm" icon="i-simple-icons-discord" :label="$t('profile.connect_discord')" />
                         </div>
 
-                        <div v-if="!hasEmail" class="rounded-lg border border-default p-4 space-y-2">
+                        <p v-if="hasEmail" class="text-sm text-success flex items-center gap-2">
+                            <u-icon name="i-lucide-check" class="size-4 shrink-0" />
+                            {{ $t('onboarding.connect_email_done') }}
+                        </p>
+
+                        <div v-else class="rounded-lg border border-default p-4 space-y-2">
                             <div class="flex items-center gap-2">
                                 <u-icon name="i-lucide-mail" class="size-4 text-primary" />
                                 <p class="font-medium text-sm">{{ $t('onboarding.connect_email_title') }}</p>
@@ -103,15 +110,7 @@
                             </u-form-field>
                         </div>
 
-                        <!-- Same as the name step: answering both cards
-                             empties this one, and an empty step reads as a
-                             mistake. -->
-                        <p v-if="hasDiscord && hasEmail" class="text-sm text-success flex items-center gap-2">
-                            <u-icon name="i-lucide-check" class="size-4 shrink-0" />
-                            {{ $t('onboarding.connect_all_set') }}
-                        </p>
-
-                        <p v-else class="text-xs text-muted italic">{{ $t(missingBoth ? 'onboarding.connect_optional' : 'onboarding.connect_optional_one') }}</p>
+                        <p v-if="!hasDiscord || !hasEmail" class="text-xs text-muted italic">{{ $t(missingBoth ? 'onboarding.connect_optional' : 'onboarding.connect_optional_one') }}</p>
                     </template>
 
                     <template v-else-if="step === 'board'">
@@ -359,6 +358,7 @@ const page = usePage();
 const displayName = computed(() => user.value?.nickname ?? user.value?.discordUsername ?? '');
 const roles = computed(() => user.value?.roles ?? []);
 const hasDiscord = computed(() => !!user.value?.discordUsername);
+const discordUsername = computed(() => user.value?.discordUsername ?? '');
 const hasEmail = computed(() => !!page.props?.auth?.user?.hasEmail);
 
 // This step renders a card per MISSING method, so it is reached with either
@@ -424,9 +424,11 @@ function buildStepDefs() {
     // connected, where a name always has its own value to show.
     defs.push({ key: 'osrs', title: trans('onboarding.step_osrs'), icon: 'i-lucide-user-round' });
 
-    if (!hasDiscord.value || !hasEmail.value) {
-        defs.push({ key: 'connect', title: trans('onboarding.step_connect'), icon: 'i-lucide-link' });
-    }
+    // Always, same reasoning as the name: these are the two ways back into
+    // the account, and a tour that silently drops the step leaves somebody
+    // wondering what it skipped. A method already in place shows as done
+    // rather than as a card asking for it again.
+    defs.push({ key: 'connect', title: trans('onboarding.step_connect'), icon: 'i-lucide-link' });
 
     // 'join' goes last, after the plugin step. Picking an event from it
     // navigates away and ends the tour, so anything placed after it was
