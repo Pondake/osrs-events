@@ -179,10 +179,11 @@
                         <!-- While editing, the board itself says so. The mode
                              lived only in a button at the far end of the header,
                              so the thing whose behaviour had changed — every
-                             tile — looked identical either way. A breathing
-                             ring rather than a colour change, so the tiles'
-                             own snake/ladder/current states stay readable
-                             underneath it. -->
+                             tile — looked identical either way. A ring rather
+                             than a colour change, so the tiles' own
+                             snake/ladder/current states stay readable
+                             underneath it. See `.is-editing` in app.css — the
+                             bingo grid wears the same one. -->
                         <div
                             class="relative rounded-xl p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900"
                             :class="[minWidthClass, editMode ? 'is-editing sm:pt-5' : '']"

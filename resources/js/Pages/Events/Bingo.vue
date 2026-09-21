@@ -178,9 +178,12 @@
                              lived only in a button at the other end of the
                              header, so the thing that had changed behaviour
                              — every square — looked identical either way.
-                             A ring and a soft glow rather than a colour
-                             change, so the squares' own states stay
-                             readable underneath. -->
+                             A ring rather than a colour change, so the
+                             squares' own states stay readable underneath.
+                             `.is-editing` in app.css, the board's own rule —
+                             this used to be a ring and a glow written out
+                             here, which read as a different mode for the same
+                             thing. -->
                         <div class="relative">
                             <!-- The line itself, drawn over the grid.
                                  Tinting the squares alone told you which
