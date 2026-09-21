@@ -6,6 +6,7 @@ use App\Models\BingoCard;
 use App\Models\Board;
 use App\Models\BoardAuthor;
 use App\Models\Event;
+use App\Models\Page;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Tile;
@@ -50,6 +51,18 @@ class E2eSeeder extends Seeder
         User::where('discord_username', 'e2e_admin')->first()->assignRole('ADMIN');
 
         $this->call(PageSeeder::class);
+
+        // The page the content specs edit and unpublish. Its own row, so the
+        // legal pages the other specs read are never touched.
+        Page::create([
+            'slug' => 'e2e-notes',
+            'title' => 'E2E Notes',
+            'subtitle' => 'A page to edit.',
+            'seo_title' => 'E2E Notes',
+            'seo_description' => 'A page to edit.',
+            'is_published' => true,
+            'blocks' => [['type' => 'prose', 'props' => ['text' => 'The original paragraph.']]],
+        ]);
 
         // The edge-case events the walkthrough skill asks for, owned by the
         // owner seat. Reused rather than repeated: it is the same list, and
