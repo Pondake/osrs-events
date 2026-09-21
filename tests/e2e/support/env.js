@@ -78,6 +78,11 @@ export const phpEnv = {
     TELESCOPE_ENABLED: 'false',
     NIGHTWATCH_ENABLED: 'false',
     BCRYPT_ROUNDS: '4',
+    // Empty, not absent: .env may carry a development pair, and a real
+    // (even empty) variable wins over it. No keys is the state a fresh clone
+    // and a fresh deploy are in, and the notifications page must say so.
+    VAPID_PUBLIC_KEY: '',
+    VAPID_PRIVATE_KEY: '',
     WOM_BASE_URL: `http://127.0.0.1:${WOM_PORT}/v2`,
     WOM_THROTTLE: 'false',
     // Nothing else may reach the internet from a run. HTTPS goes to a port

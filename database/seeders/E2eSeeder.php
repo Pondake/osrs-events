@@ -93,6 +93,8 @@ class E2eSeeder extends Seeder
             // who changes its address.
             'promotee' => [],
             'changer' => [],
+            // Saves its notification preferences.
+            'notifier' => [],
         ];
     }
 
