@@ -179,15 +179,9 @@
                         <!-- While editing, the board itself says so. The mode
                              lived only in a button at the far end of the header,
                              so the thing whose behaviour had changed — every
-                             tile — looked identical either way. A ring rather
-                             than a colour change, so the tiles' own
-                             snake/ladder/current states stay readable
-                             underneath it. See `.is-editing` in app.css — the
-                             bingo grid wears the same one. -->
-                        <div
-                            class="relative rounded-xl p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900"
-                            :class="[minWidthClass, editMode ? 'is-editing sm:pt-5' : '']"
-                        >
+                             tile — looked identical either way. The ring lives
+                             on the surface, which the bingo card uses too. -->
+                        <tile-surface :editing="editMode" overlap :class="minWidthClass">
 
                             <!-- The overlay is positioned on THIS box, not on the
                                  parchment around it: the border's p-3 used to sit
@@ -405,7 +399,7 @@
                                 />
                             </div>
                             </div>
-                        </div>
+                        </tile-surface>
                         </div>
                     </div>
 
@@ -1081,6 +1075,7 @@ import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
 import EditModeNotice from '@/Components/EditModeNotice.vue';
+import TileSurface from '@/Components/TileSurface.vue';
 import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, claimAreaIsShown, formatBoardSize, formatDate, eventStatus, finishSubtitle as finishSubtitleFor, ordinal, settledPlace } from '@/Support/board';
 import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';
 import { useEventStream } from '@/Composables/useEventStream';

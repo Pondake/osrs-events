@@ -174,16 +174,11 @@
                             @done="editing = false"
                         />
 
-                        <!-- While editing, the card itself says so. The mode
-                             lived only in a button at the other end of the
-                             header, so the thing that had changed behaviour
-                             — every square — looked identical either way.
-                             A ring rather than a colour change, so the
-                             squares' own states stay readable underneath.
-                             `.is-editing` in app.css, the board's own rule —
-                             this used to be a ring and a glow written out
-                             here, which read as a different mode for the same
-                             thing. -->
+                        <!-- The board's surface and the board's edit ring,
+                             the same component. The card used to carry a box
+                             and a ring of its own, so the same mode looked
+                             different depending on which event you opened. -->
+                        <tile-surface :editing="editing">
                         <div class="relative">
                             <!-- The line itself, drawn over the grid.
                                  Tinting the squares alone told you which
@@ -229,10 +224,7 @@
                                 />
                             </svg>
 
-                        <div
-                            class="grid gap-2 rounded-xl transition-all duration-200"
-                            :class="[gridClass, editing ? 'is-editing p-2 -m-2' : '']"
-                        >
+                        <div class="grid gap-2" :class="gridClass">
                             <button
                                 v-for="square in squares"
                                 :key="square.id"
@@ -357,6 +349,7 @@
                             </button>
                         </div>
                         </div>
+                        </tile-surface>
                     </div>
 
                     <div class="space-y-6">
@@ -540,6 +533,7 @@ import { trans } from 'laravel-vue-i18n';
 import { eventStatus, formatDate, ordinal } from '@/Support/board';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
 import EditModeNotice from '@/Components/EditModeNotice.vue';
+import TileSurface from '@/Components/TileSurface.vue';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';

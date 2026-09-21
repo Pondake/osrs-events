@@ -74,11 +74,12 @@ describe.each(PAGES)('$tag', ({ file, tag, target }) => {
         expect(source).not.toMatch(/rounded-full bg-default ring-1 ring-primary/);
     });
 
-    /** And the grid itself pulses with the one rule in app.css, not a glow
-     *  written out per page. */
-    it('marks the grid with the shared editing ring', () => {
-        expect(source).toMatch(/'is-editing/);
-        expect(source).not.toMatch(/shadow-\[0_0_24px/);
+    /** And the grid sits on the shared surface, which is where the box and
+     *  the edit ring live. Neither belongs in a page. */
+    it('puts the grid on the shared surface', () => {
+        expect(source).toMatch(/<tile-surface/);
+        expect(source).not.toMatch(/is-editing/);
+        expect(source).not.toMatch(/border-stone-400/);
     });
 
     /**
