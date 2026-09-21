@@ -13,9 +13,10 @@ class PluginCompletion extends Model
 
     public const KINDS = ['item', 'npc_kill'];
 
-    protected $fillable = ['user_id', 'client_event_id', 'kind', 'name', 'quantity', 'rsn', 'occurred_at', 'context', 'claims', 'progress'];
+    protected $fillable = ['user_id', 'client_event_id', 'kind', 'name', 'quantity', 'rsn', 'occurred_at', 'context', 'claims', 'progress', 'doubts'];
 
     protected $casts = [
+        'doubts' => 'array',
         'quantity' => 'integer',
         'occurred_at' => 'datetime',
         'context' => 'array',
@@ -38,11 +39,12 @@ class PluginCompletion extends Model
     {
         $context = $this->context;
 
-        if (blank($context)) {
+        if (blank($context) && blank($this->doubts)) {
             return null;
         }
 
         return [
+            'doubts' => $this->doubts ?? [],
             'source' => $context['source'] ?? null,
             'npcName' => $context['npc_name'] ?? null,
             'npcLevel' => $context['npc_level'] ?? null,

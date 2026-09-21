@@ -341,7 +341,8 @@ A claim is created the way the manual routes create one, with
 `completed_via = RUNELITE`, no proof URL, and the status from
 `initialClaimStatus('RUNELITE')`: approved only when the host does not review
 claims or trusts RuneLite completions. Finishes and notifications run as
-usual. `completed_at` is the server clock; `occurred_at` is only logged.
+usual. `completed_at` is the server clock; `occurred_at` is logged, checked for
+plausibility (below) and used to ignore reports from before the event started.
 `quantity` is measured against the target's `min_quantity`, and a target
 with a `required_count` above 1 is claimed only on the last of the reports it
 asks for — see below.
@@ -355,6 +356,33 @@ row and surfaced on the claim it created (`bingo_completions` /
 `completed_tiles` now carry a `plugin_completion_id`). Deliberately nothing
 sensitive goes in it: no chat log, no other players' names, and `region_id`
 only — never exact coordinates.
+
+### Plausibility — doubt means review, never refusal
+
+Every report is checked against what the same account reported before
+(`PluginPlausibilityService`). A report that fails is still accepted with a
+`201`, stored with its reason codes (`plugin_completions.doubts`), and any claim
+it makes starts `PENDING` instead of `APPROVED`, with the reasons shown to the
+host in the review dialog. A false positive costs a player one review; a
+refusal would cost them the drop. Nothing here proves a report is true — it is
+all client-supplied — it only makes a made-up one stand out.
+
+| Code | When |
+|---|---|
+| `occurred_in_future` | `occurred_at` is more than 2 minutes ahead of the server clock |
+| `occurred_too_old` | `occurred_at` is more than 6 hours in the past. The client holds unsent reports only in memory, so an honest one is late by the length of a server outage, not longer |
+| `kill_count_dropped` | `context.kill_count` is lower than an earlier report for the same boss, or higher than a later one (judged by `occurred_at`, so a backlog delivered out of order is fine) |
+| `kill_count_jumped` | it rose by more than one kill per 5 seconds since the previous report for that boss, plus one |
+
+- Bosses are told apart by `context.npc_name`, or `npc_id` when there is no
+  name. The first report for a boss has nothing to contradict and is never
+  doubted on kill count.
+- The doubt only takes back the RuneLite trust shortcut
+  (`initialClaimStatus($via, $user, $doubtful)`): a board that does not review
+  at all has no queue to send the claim to, and a board that does not trust
+  RuneLite already queues everything.
+- Nothing about the request shape changed. The response is the same, and a
+  doubted claim simply says `PENDING` in `claims[].status`.
 
 ### How a square is counted
 

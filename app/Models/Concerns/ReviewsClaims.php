@@ -28,7 +28,12 @@ trait ReviewsClaims
 {
     public const COMPLETED_VIA = ['MANUAL', 'RUNELITE'];
 
-    public function initialClaimStatus(string $via, ?User $user = null): string
+    /**
+     * `$doubtful` is the plausibility check's verdict on a RuneLite report
+     * (PluginPlausibilityService). It takes back the trust shortcut and nothing
+     * else: a board that does not review has no queue to send a claim to.
+     */
+    public function initialClaimStatus(string $via, ?User $user = null, bool $doubtful = false): string
     {
         if ($user !== null && ! $user->hasProvenOsrsName() && Setting::get('runelite_plugin_mode') === 'live') {
             return 'PENDING';
@@ -38,6 +43,10 @@ trait ReviewsClaims
             return 'APPROVED';
         }
 
-        return $via === 'RUNELITE' && $this->trust_runelite_completions ? 'APPROVED' : 'PENDING';
+        if ($via === 'RUNELITE' && $this->trust_runelite_completions) {
+            return $doubtful ? 'PENDING' : 'APPROVED';
+        }
+
+        return 'PENDING';
     }
 }

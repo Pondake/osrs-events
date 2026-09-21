@@ -732,6 +732,186 @@ class RunelitePluginApiTest extends TestCase
             ->assertJsonValidationErrors(['context.items.0']);
     }
 
+    // -------------------------------------------------------- plausibility
+
+    /** A card that reviews but trusts RuneLite, one distinct drop per square, so each report can claim. */
+    private function trustingCard(): BingoCard
+    {
+        return $this->card(
+            [0 => $this->task('Tanzanite fang'), 1 => $this->task('Magic fang'), 2 => $this->task('Serpentine visage')],
+            ['requires_approval' => true, 'trust_runelite_completions' => true],
+        );
+    }
+
+    /** One Zulrah drop at a kill count and a moment, so a test reads as the sequence it is. */
+    private function kill(string $drop, int $killCount, $occurredAt = null, array $context = []): \Illuminate\Testing\TestResponse
+    {
+        return $this->api()->postJson('/api/plugin/v1/completions', $this->completion($drop, [
+            'kind' => 'npc_kill',
+            'occurred_at' => ($occurredAt ?? now())->toIso8601String(),
+            'context' => ['npc_name' => 'Zulrah', 'kill_count' => $killCount, ...$context],
+        ]));
+    }
+
+    #[Test]
+    public function a_report_that_hangs_together_is_approved_on_a_trusting_card(): void
+    {
+        $this->trustingCard();
+
+        $this->kill('Tanzanite fang', 217, now()->subMinutes(2))->assertCreated()->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->kill('Magic fang', 218, now()->subMinute())->assertCreated()->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->kill('Serpentine visage', 218)->assertCreated()->assertJsonPath('claims.0.status', 'APPROVED');
+
+        $this->assertSame(0, PluginCompletion::whereNotNull('doubts')->count());
+    }
+
+    #[Test]
+    public function a_kill_count_that_goes_down_is_pending_with_a_reason(): void
+    {
+        $this->trustingCard();
+
+        $this->kill('Tanzanite fang', 217, now()->subMinutes(2))->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->kill('Magic fang', 200, now()->subMinute())
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'PENDING');
+
+        $this->assertSame(['kill_count_dropped'], PluginCompletion::whereNotNull('doubts')->sole()->doubts);
+    }
+
+    #[Test]
+    public function a_kill_count_that_jumps_is_pending_with_a_reason(): void
+    {
+        $this->trustingCard();
+
+        $this->kill('Tanzanite fang', 217, now()->subMinute())->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->kill('Magic fang', 5000)->assertCreated()->assertJsonPath('claims.0.status', 'PENDING');
+
+        $this->assertSame(['kill_count_jumped'], PluginCompletion::whereNotNull('doubts')->sole()->doubts);
+    }
+
+    #[Test]
+    public function the_time_between_reports_is_how_far_a_kill_count_may_rise(): void
+    {
+        $this->trustingCard();
+
+        $this->kill('Tanzanite fang', 217, now()->subHour())->assertJsonPath('claims.0.status', 'APPROVED');
+        // An hour is 720 kills at five seconds each: 183 more is possible,
+        // the same step a minute later is not.
+        $this->kill('Magic fang', 400)->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->kill('Serpentine visage', 900, now()->addSeconds(30))->assertJsonPath('claims.0.status', 'PENDING');
+    }
+
+    #[Test]
+    public function the_first_report_for_a_boss_has_nothing_to_contradict(): void
+    {
+        $this->trustingCard();
+
+        $this->kill('Tanzanite fang', 9000)->assertCreated()->assertJsonPath('claims.0.status', 'APPROVED');
+    }
+
+    #[Test]
+    public function a_kill_count_is_judged_per_boss_and_per_player(): void
+    {
+        $this->trustingCard();
+
+        $this->kill('Tanzanite fang', 900, now()->subMinute())->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->kill('Magic fang', 12, now(), ['npc_name' => 'Vorkath'])->assertJsonPath('claims.0.status', 'APPROVED');
+
+        $other = User::factory()->create(['osrs_username' => 'Someone']);
+        EventParticipant::create(['event_id' => BingoCard::first()->event_id, 'user_id' => $other->id]);
+        $this->withHeader('Authorization', 'Bearer '.PluginToken::issueFor($other))
+            ->postJson('/api/plugin/v1/completions', [
+                ...$this->completion('Serpentine visage', ['rsn' => 'Someone']),
+                'context' => ['npc_name' => 'Zulrah', 'kill_count' => 3],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'APPROVED');
+    }
+
+    #[Test]
+    public function reports_arriving_out_of_order_are_judged_by_when_they_happened(): void
+    {
+        $this->trustingCard();
+
+        $this->kill('Tanzanite fang', 219, now())->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->kill('Magic fang', 218, now()->subSeconds(20))->assertJsonPath('claims.0.status', 'APPROVED');
+        $this->kill('Serpentine visage', 221, now()->subSeconds(10))->assertJsonPath('claims.0.status', 'PENDING');
+
+        $this->assertSame(['kill_count_dropped'], PluginCompletion::whereNotNull('doubts')->sole()->doubts);
+    }
+
+    #[Test]
+    public function a_time_in_the_future_is_pending_but_a_small_clock_difference_is_not(): void
+    {
+        $this->trustingCard();
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Tanzanite fang', ['occurred_at' => now()->addSeconds(60)->toIso8601String()]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'APPROVED');
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Magic fang', ['occurred_at' => now()->addHour()->toIso8601String()]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'PENDING');
+
+        $this->assertSame(['occurred_in_future'], PluginCompletion::whereNotNull('doubts')->sole()->doubts);
+    }
+
+    #[Test]
+    public function a_report_too_long_after_it_happened_is_pending(): void
+    {
+        $this->trustingCard();
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Tanzanite fang', ['occurred_at' => now()->subHours(5)->toIso8601String()]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'APPROVED');
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Magic fang', ['occurred_at' => now()->subHours(7)->toIso8601String()]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'PENDING');
+
+        $this->assertSame(['occurred_too_old'], PluginCompletion::whereNotNull('doubts')->sole()->doubts);
+    }
+
+    #[Test]
+    public function a_doubt_never_refuses_a_report_and_leaves_a_board_without_review_alone(): void
+    {
+        $this->card([0 => $this->task('Tanzanite fang')], ['requires_approval' => false]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Tanzanite fang', ['occurred_at' => now()->addDay()->toIso8601String()]))
+            ->assertCreated()
+            ->assertJsonPath('claims.0.status', 'APPROVED');
+
+        $this->assertSame(['occurred_in_future'], PluginCompletion::sole()->doubts);
+    }
+
+    #[Test]
+    public function a_doubt_on_a_snakes_and_ladders_tile_is_pending_too(): void
+    {
+        $event = $this->event('SNAKES_LADDERS');
+        $board = $event->board()->create(['size' => 'SIZE_5X5', 'requires_approval' => true, 'trust_runelite_completions' => true]);
+        Tile::create(['board_id' => $board->id, 'position' => 0, 'type' => 'NORMAL', 'task_id' => $this->task('Tanzanite fang')->id]);
+        PlayerBoard::create(['board_id' => $board->id, 'user_id' => $this->player->id, 'current_position' => 0]);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Tanzanite fang', ['occurred_at' => now()->addDay()->toIso8601String()]))
+            ->assertCreated();
+
+        $this->assertSame('PENDING', CompletedTile::sole()->status);
+    }
+
+    #[Test]
+    public function the_reasons_reach_the_host_reviewing_the_claim(): void
+    {
+        $this->trustingCard();
+
+        $this->kill('Tanzanite fang', 217, now()->subMinute());
+        $this->kill('Magic fang', 5000);
+
+        $claim = BingoCompletion::where('status', 'PENDING')->sole();
+
+        $this->assertSame(['kill_count_jumped'], $claim->pluginCompletion->reviewContext()['doubts']);
+        $this->assertSame([], BingoCompletion::where('status', 'APPROVED')->sole()->pluginCompletion->reviewContext()['doubts']);
+    }
+
     #[Test]
     public function a_game_name_matches_its_wiki_title(): void
     {
