@@ -43,6 +43,7 @@ class SitemapController extends Controller
         // being one on 2026-09-07. Lower priority than the guides, which are
         // what the search traffic is actually for.
         '/about' => ['priority' => '0.5', 'changefreq' => 'monthly'],
+        '/supporters' => ['priority' => '0.3', 'changefreq' => 'monthly'],
     ];
 
     public function __invoke(): Response

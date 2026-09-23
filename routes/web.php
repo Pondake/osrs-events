@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\EventBlueprintController as AdminEventBlueprintCo
 use App\Http\Controllers\Admin\InviteController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\TaskController as AdminTaskController;
+use App\Http\Controllers\Admin\SupporterController as AdminSupporterController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\DiscordController;
@@ -139,6 +140,7 @@ Route::get('/osrs-drop-race', [LandingController::class, 'dropRace'])->name('lan
 // leftover `about` row cannot shadow it; PARTIAL_SLUGS stops that row being
 // served at all.
 Route::get('/about', [LandingController::class, 'about'])->name('about');
+Route::get('/supporters', [LandingController::class, 'supporters'])->name('supporters');
 
 // The beta tester's page. Public on purpose although it describes a closed
 // beta: the link is handed out in Discord to people who have not typed the
@@ -500,6 +502,11 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::post('/blueprints', [AdminEventBlueprintController::class, 'store'])->name('blueprints.store');
         Route::patch('/blueprints/{blueprint}', [AdminEventBlueprintController::class, 'update'])->name('blueprints.update');
         Route::delete('/blueprints/{blueprint}', [AdminEventBlueprintController::class, 'destroy'])->name('blueprints.destroy');
+
+        Route::get('/supporters', [AdminSupporterController::class, 'index'])->name('supporters');
+        Route::post('/supporters', [AdminSupporterController::class, 'store'])->name('supporters.store');
+        Route::patch('/supporters/{supporter}', [AdminSupporterController::class, 'update'])->name('supporters.update');
+        Route::delete('/supporters/{supporter}', [AdminSupporterController::class, 'destroy'])->name('supporters.destroy');
 
         Route::get('/site', [SiteSettingsController::class, 'show'])->name('site');
         Route::put('/site', [SiteSettingsController::class, 'update'])->name('site.update');

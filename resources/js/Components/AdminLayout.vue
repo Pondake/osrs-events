@@ -203,6 +203,8 @@ const navItems = computed(() => {
             // Admin-only: a boss icon is site-wide presentation, not
             // content an editor makes for their own event.
             { label: trans('settings.nav_admin_boss_icons'), icon: 'i-lucide-image', to: '/admin/boss-icons', active: props.current === 'boss-icons', show: isAdmin.value },
+            // Admin-only: it publishes people's names.
+            { label: trans('settings.nav_admin_supporters'), icon: 'i-lucide-heart-handshake', to: '/admin/supporters', active: props.current === 'supporters', show: isAdmin.value },
         ],
         [
             { label: trans('settings.nav_admin_content'), icon: 'i-lucide-layout-template', to: '/admin/content', active: props.current === 'content', show: isAdmin.value },

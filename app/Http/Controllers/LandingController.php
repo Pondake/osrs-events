@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Page;
+use App\Models\Supporter;
 use Illuminate\Support\Facades\View;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -86,6 +87,30 @@ class LandingController extends Controller
                     'title' => trans("about.feature_{$key}_title"),
                     'description' => trans("about.feature_{$key}_desc"),
                 ])
+                ->values()
+                ->all(),
+        ]);
+    }
+
+    /**
+     * The thank-you page. Only consented, visible rows, grouped by role in
+     * Supporter::ROLES order; somebody with two roles is listed under both.
+     */
+    public function supporters(): Response
+    {
+        $supporters = Supporter::query()->published()->ordered()->get();
+
+        return Inertia::render('Supporters', [
+            'groups' => collect(Supporter::ROLES)
+                ->map(fn (string $role) => [
+                    'role' => $role,
+                    'supporters' => $supporters
+                        ->filter(fn (Supporter $s) => in_array($role, $s->roles ?? [], true))
+                        ->map(fn (Supporter $s) => ['id' => $s->id, 'name' => $s->name, 'link' => $s->link])
+                        ->values()
+                        ->all(),
+                ])
+                ->filter(fn (array $group) => $group['supporters'] !== [])
                 ->values()
                 ->all(),
         ]);

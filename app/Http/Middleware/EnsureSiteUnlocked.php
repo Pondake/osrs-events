@@ -108,6 +108,7 @@ class EnsureSiteUnlocked
         // Off the CMS since 2026-09-07, so it no longer arrives through
         // `pages.show` and needs naming here in its own right.
         'about',
+        'supporters',
         // The one page written FOR the person standing at the door. Behind
         // it, it would only ever be read by people already through.
         'beta',

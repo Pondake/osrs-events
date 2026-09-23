@@ -126,6 +126,9 @@ class AuditLog extends Model
         'blueprint.created',
         'blueprint.updated',
         'blueprint.deleted',
+        'supporter.created',
+        'supporter.updated',
+        'supporter.deleted',
         // Not a setting anyone changed: these two are an admin acting on
         // somebody else's account from the diagnostics page, which is the
         // one place there that reaches another person.

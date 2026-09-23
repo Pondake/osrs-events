@@ -51,6 +51,7 @@ const currentYear = new Date().getUTCFullYear();
 const footerLinks = computed(() => [
     ...GUIDE_LINKS.map((link) => ({ to: link.to, label: trans(link.labelKey) })),
     { to: '/about', label: trans('nav.about') },
+    { to: '/supporters', label: trans('nav.supporters') },
     { to: kofiUrl.value, label: trans('nav.support'), external: true },
     { to: '/privacy', label: trans('nav.privacy') },
     { to: '/terms', label: trans('nav.terms') },
