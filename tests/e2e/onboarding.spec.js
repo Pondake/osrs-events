@@ -1,5 +1,5 @@
 import { test, expect, hydrated } from './fixtures.js';
-import { query, resetNewcomer, user } from './support/db.js';
+import { clearThrottles, query, resetNewcomer, user } from './support/db.js';
 
 /**
  * The first-run intro, walked the way a new account walks it.
@@ -35,7 +35,10 @@ async function reachAccountStep(page, name = 'Pondake') {
 }
 
 test.describe('an account that signed up through Discord', () => {
-    test.beforeEach(() => resetNewcomer());
+    test.beforeEach(() => {
+        resetNewcomer();
+        clearThrottles();
+    });
 
     test('the account step asks for the email in a field, not on another page', async ({ as }) => {
         const page = await as('newcomer');
