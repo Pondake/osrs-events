@@ -85,6 +85,11 @@
                     <claim-source-badge v-if="claim.completedVia === 'RUNELITE'" :via="claim.completedVia" class="ms-auto" />
                 </div>
 
+                <p v-if="claim.rsn" class="text-sm text-muted flex items-center gap-1.5">
+                    <u-icon name="i-lucide-user-round" class="size-4 shrink-0" />
+                    {{ $t('bingo.claimed_as', { name: claim.rsn }) }}
+                </p>
+
                 <div v-if="claim.reviewNote" class="rounded-lg ring ring-default px-3 py-2">
                     <p class="text-xs font-medium text-muted uppercase tracking-wide mb-1">{{ $t('board.host_said') }}</p>
                     <p class="text-sm">{{ claim.reviewNote }}</p>
@@ -137,6 +142,8 @@
             <div v-else class="space-y-4 py-2">
                 <osrs-proof-notice />
                 <p class="text-sm text-muted">{{ $t('board.claim_intro') }}</p>
+
+                <claim-character-field v-model="form.rsn" :allow-alts="allowAlts" :error="form.errors.rsn" />
 
                 <u-form-field :label="$t('board.proof_url')" :description="$t('board.proof_url_desc')" :error="form.errors.proof_url" required>
                     <u-input v-model="form.proof_url" class="w-full" placeholder="https://" />
@@ -195,6 +202,7 @@
 </template>
 
 <script setup>
+import ClaimCharacterField from '@/Components/ClaimCharacterField.vue';
 import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
 import RuneliteContextCard from '@/Components/RuneliteContextCard.vue';
 import TargetHolderList from '@/Components/TargetHolderList.vue';
@@ -235,6 +243,8 @@ const props = defineProps({
     // standing on is readable and not claimable, and saying which is the
     // difference between a dialog that is quiet and one that looks broken.
     cannotActReason: { type: String, default: null },
+    // Whether the event counts alts — see ClaimCharacterField.
+    allowAlts: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:open']);
@@ -248,7 +258,7 @@ const jumpTarget = computed(() => (
 
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
-const form = useForm({ proof_url: '', note: '' });
+const form = useForm({ proof_url: '', note: '', rsn: '' });
 
 const hasTypedInput = computed(() => form.proof_url.trim() !== '' || form.note.trim() !== '');
 const withdrawing = ref(false);

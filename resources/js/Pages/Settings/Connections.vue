@@ -25,38 +25,38 @@
                 </div>
             </template>
 
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <p class="text-sm text-muted max-w-md">{{ $t('profile.osrs_account_help') }}</p>
+            <p class="text-sm text-muted max-w-xl">{{ $t('profile.osrs_account_help') }}</p>
+            <p class="text-sm text-muted max-w-xl mt-1">{{ $t('profile.osrs_alts_help') }}</p>
 
-                <div class="flex items-center gap-2 flex-wrap shrink-0">
-                    <osrs-username-field
-                        v-model="osrsInput"
-                        :error="osrsForm.errors.osrs_username"
-                        size="sm"
-                        :placeholder="$t('profile.osrs_username')"
-                        class="w-48"
-                    />
-                    <u-button
-                        v-if="! osrsVerified"
-                        size="sm"
-                        color="neutral"
-                        variant="outline"
-                        :label="$t('auth.osrs_recheck')"
-                        :loading="rechecking"
-                        @click="recheckOsrs"
-                    />
-                    <u-button
-                        size="sm"
-                        color="primary"
-                        icon="i-lucide-check"
-                        :label="$t('common.save')"
-                        :loading="osrsForm.processing"
-                        @click="saveOsrsUsername"
-                    />
-                </div>
+            <osrs-characters-field
+                v-model="rows"
+                :max="maxCharacters"
+                :errors="osrsForm.errors"
+                :proven="provenNames"
+                size="sm"
+                class="mt-4 max-w-lg"
+            />
+
+            <div class="flex items-center gap-2 flex-wrap mt-4">
+                <u-button
+                    size="sm"
+                    color="primary"
+                    icon="i-lucide-check"
+                    :label="$t('common.save')"
+                    :loading="osrsForm.processing"
+                    :disabled="!characterNames(rows).length"
+                    @click="saveCharacters"
+                />
+                <u-button
+                    v-if="! osrsVerified"
+                    size="sm"
+                    color="neutral"
+                    variant="outline"
+                    :label="$t('auth.osrs_recheck')"
+                    :loading="rechecking"
+                    @click="recheckOsrs"
+                />
             </div>
-
-            <p v-if="osrsForm.errors.osrs_username" class="text-sm text-error mt-2">{{ osrsForm.errors.osrs_username }}</p>
 
             <!-- A separate question from the badge above, and the one with a
                  consequence attached. Wise Old Man knowing the name says the
@@ -124,7 +124,8 @@
 import { computed, ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
-import OsrsUsernameField from '@/Components/OsrsUsernameField.vue';
+import OsrsCharactersField from '@/Components/OsrsCharactersField.vue';
+import { characterNames, characterRows } from '@/Support/osrsCharacters';
 import { useAuth } from '@/Composables/useAuth';
 
 const props = defineProps({
@@ -137,6 +138,9 @@ const props = defineProps({
     osrsProven: { type: Boolean, default: false },
     provenAt: { type: String, default: null },
     pluginMode: { type: String, default: 'off' },
+    // Every character, main first: [{ id, username, main, verified, proven }].
+    characters: { type: Array, default: () => [] },
+    maxCharacters: { type: Number, default: 5 },
 });
 
 const { user } = useAuth();
@@ -145,17 +149,20 @@ const provenDate = computed(() => (props.provenAt
     ? new Date(props.provenAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
     : ''));
 
-const osrsInput = ref(props.osrsUsername ?? '');
-const osrsForm = useForm({ osrs_username: '' });
+const storedNames = computed(() => props.characters.map((character) => character.username));
+const provenNames = computed(() => props.characters.filter((character) => character.proven).map((character) => character.username));
+
+const rows = ref(characterRows(storedNames.value));
+const osrsForm = useForm({ characters: [] });
 
 // Resynced after a save because the server may normalise what was typed —
-// Wise Old Man returns the account's canonical casing, so "pondake" is stored
-// as "Pondake". Seeded once, the field would keep showing the typed version
+// Wise Old Man returns an account's canonical casing, so "pondake" is stored
+// as "Pondake". Seeded once, the list would keep showing the typed version
 // and quietly disagree with what is actually saved.
-watch(() => props.osrsUsername, (name) => (osrsInput.value = name ?? ''));
+watch(storedNames, (names) => (rows.value = characterRows(names)));
 
-function saveOsrsUsername() {
-    osrsForm.osrs_username = osrsInput.value.trim();
+function saveCharacters() {
+    osrsForm.characters = characterNames(rows.value);
     osrsForm.put('/settings/connections/osrs', { preserveScroll: true });
 }
 

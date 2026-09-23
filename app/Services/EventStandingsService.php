@@ -6,6 +6,7 @@ use App\Exceptions\WiseOldManRateLimited;
 use App\Models\Event;
 use App\Models\EventStanding;
 use App\Models\User;
+use App\Support\RuneliteName;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -92,8 +93,8 @@ class EventStandingsService
         return [
             'id' => $row->id,
             'name' => $row->username,
-            // An alt, or a character since removed from the account.
-            'alt' => $row->osrsAccount?->position !== 0,
+            // A character removed from the account since is neither.
+            'alt' => $row->osrsAccount !== null && ! $row->osrsAccount->isMain(),
             'gained' => $row->gained,
             // How much of that number the plugin reported live. Shown so
             // a leaderboard can say a count is ahead of the hiscores
@@ -239,7 +240,7 @@ class EventStandingsService
 
             // A row left behind under this very name (an alt removed and
             // added back) takes it up again with its numbers.
-            $orphan = $rows->first(fn (EventStanding $row) => $row->osrs_account_id === null && $row->username === $character->username);
+            $orphan = $rows->first(fn (EventStanding $row) => $row->osrs_account_id === null && RuneliteName::sameRsn($row->username, $character->username));
 
             if ($orphan !== null) {
                 $orphan->forceFill(['osrs_account_id' => $character->id])->save();

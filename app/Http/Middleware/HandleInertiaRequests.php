@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Models\PluginToken;
 use App\Models\Setting;
 use App\Services\BossIconService;
+use App\Services\OsrsIdentityService;
 use App\Support\DisplayPreference;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -139,6 +140,7 @@ class HandleInertiaRequests extends Middleware
                 // opposite of a secret.
                 'discordInviteUrl' => Setting::get('discord_invite_url'),
                 'runelitePluginMode' => Setting::get('runelite_plugin_mode'),
+                'maxOsrsCharacters' => OsrsIdentityService::maxCharacters(),
                 // Only the ones an admin overrode, keyed by metric. The
                 // committed pet sprites are already known client-side
                 // (Support/bossIcons.js, generated alongside the files), so
@@ -177,6 +179,9 @@ class HandleInertiaRequests extends Middleware
                     // not on any one page that could pass it as a prop.
                     'needsOnboarding' => $user->onboarding_completed_at === null,
                     'osrsUsername' => $user->osrs_username,
+                    // Every character, main first — the claim dialogs ask
+                    // which one did it, and the tour prefills its list.
+                    'osrsCharacters' => $user->osrsAccounts()->pluck('username')->all(),
                     // Drives the recurring "we can't find this account"
                     // notice, which lives in the layout for the same reason
                     // the onboarding modal does — it has to follow the user

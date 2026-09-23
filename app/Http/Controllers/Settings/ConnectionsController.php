@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Models\User;
 use App\Rules\OsrsCharacterList;
 use App\Rules\OsrsUsername;
 use App\Rules\RsnNotProvenByAnother;
@@ -129,7 +130,7 @@ class ConnectionsController extends Controller
     }
 
     /** What the character repeater renders, main first. */
-    public static function characters(\App\Models\User $user): array
+    public static function characters(User $user): array
     {
         return $user->osrsAccounts()->get()->map(fn ($account) => [
             'id' => $account->id,

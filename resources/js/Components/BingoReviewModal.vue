@@ -111,6 +111,7 @@
                             <span v-if="claim.submittedByOsrs" class="inline-flex items-center gap-1">
                                 <u-icon name="i-lucide-user-round" class="size-3" />
                                 {{ claim.submittedByOsrs }}
+                                <span v-if="claim.submittedByAlt">({{ $t('events.standing_alt') }})</span>
                             </span>
                             <span v-else class="italic">{{ $t('bingo.no_osrs_name') }}</span>
                             <span v-if="claim.submittedAt"> · {{ submittedAt }}</span>

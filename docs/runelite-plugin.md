@@ -258,6 +258,9 @@ and what each can complete right now:
   "mode": "testing",
   "rsn": "Iron Pondake",
   "proven": false,
+  "characters": [{ "rsn": "Iron Pondake", "main": true, "proven": false },
+                 { "rsn": "Pondake", "main": false, "proven": true }],
+  "max_characters": 5,
   "events": [{ "id": "…", "title": "…", "type": "BINGO", "url": "…",
     "targets": [{ "kind": "bingo_square", "id": "…", "position": 4,
       "label": "Whip", "name": "Abyssal whip", "match": "abyssal whip",
@@ -276,6 +279,10 @@ deliberately a flat list of names and not a structure: the shipped plugin
 (0.0.1) reports a kill of any name in it, so the server can put a new kind of
 name in there without the plugin changing at all.
 
+`characters` is every OSRS character on the account, main first — see
+"Alts" below. `rsn` and `proven` describe the main only, and stay for plugins
+that predate alts.
+
 `proven` says whether a client has ever reported this account logged in as
 `rsn` — see `POST /identity`. False is not an error; it means every claim this
 account makes goes to a host, screenshots included.
@@ -283,19 +290,26 @@ account makes goes to a host, screenshots included.
 ### `POST /identity`
 
 ```json
-{ "rsn": "Iron Pondake" }
+{ "rsn": "Iron Pondake", "add_alt": true }
 ```
 
 The character the client is signed in as. Send it once per connection, after
-the local player is known.
+the local player is known. `add_alt` is the plugin's "add new characters as
+alts" box; absent means true.
 
 ```json
-{ "rsn": "Iron Pondake", "matched": true, "proven": true }
+{ "rsn": "Iron Pondake", "matched": true, "added": false, "reason": null,
+  "proven": true, "characters": [{ "rsn": "Iron Pondake", "main": true, "proven": true }] }
 ```
 
-`matched` is whether the reported character is the name on the account. A
-match stamps `osrs_proven_at`; a mismatch changes nothing at all, because
-somebody logging into their second character has not stopped owning the first.
+`matched` is whether the reported character is on the account after this
+call. One of the account's characters is proved (its own `osrs_proven_at`).
+An unknown one is added as a proved alt (`added: true`) unless `reason` says
+why not: `disabled` (the plugin sent `add_alt: false`), `limit` (the account
+holds `max_characters` already) or `taken` (another account proved that name).
+A mismatch never clears an older proof: somebody logging into their second
+character has not stopped owning the first. `rsn` and `proven` in the answer
+are the main's.
 Renaming the account on the site clears the proof — re-saving the same name
 (the recheck button, the canonical-casing rewrite) does not.
 
@@ -309,6 +323,22 @@ client for, not identity.
 **What it is not.** `osrs_verified_at` is a different column answering a
 different question — Wise Old Man has heard of the name. Any real name passes
 that, including somebody else's.
+
+### Alts
+
+An account holds up to `max_characters` OSRS characters (an admin setting,
+default 5, main included). The main is the first; the rest are alts. An alt
+plays exactly like the main: a report from any of the account's characters
+counts, for bingo and snakes & ladders squares and for drop-race kills. Two
+limits:
+
+- A host can switch alts off per event. The server then ignores a report from
+  an alt for that event — it still answers 201, with nothing claimed there.
+- A race ranks an account on its best character, never the sum. Each
+  character has its own standing; kills count toward the reporter's.
+
+A claim records which character made it (`rsn`), visible to the host and the
+player, not to other players.
 
 ### `POST /completions`
 
@@ -336,7 +366,7 @@ that, including somebody else's.
   retry answers what the first attempt answered.
 - `200` with `duplicate: true` and the original `claims` when
   `(account, client_event_id)` was seen before. Retrying is always safe.
-- `422` when `rsn` is not the account's OSRS username (space, `_` and `-`
+- `422` when `rsn` is none of the account's OSRS characters (space, `_` and `-`
   compare equal, case ignored), the payload is invalid, or `context` (or an
   item in it) carries a key outside the ones listed above — added 2026-09-17
   so a client-side typo in a new field is a loud 422, not a silently dropped

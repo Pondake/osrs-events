@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Board;
 use App\Models\CompletedTile;
+use App\Support\RuneliteName;
 use Illuminate\Support\Collection;
 
 /**
@@ -73,7 +74,10 @@ class BoardReviewService
                 'competitorAvatar' => $c->playerBoard?->team?->icon_url ?? $c->playerBoard?->team?->guild_icon_url ?? $c->playerBoard?->user?->avatar_url,
                 'submittedBy' => $c->markedBy?->nickname ?: $c->markedBy?->discord_username,
                 'submittedByAvatar' => $c->markedBy?->avatar_url,
-                'submittedByOsrs' => $c->markedBy?->osrs_username,
+                // The character the claim was made with, which is what the
+                // screenshot shows — an alt is not the account's main.
+                'submittedByOsrs' => $c->rsn ?? $c->markedBy?->osrs_username,
+                'submittedByAlt' => filled($c->rsn) && ! RuneliteName::sameRsn($c->rsn, $c->markedBy?->osrs_username),
                 'completedVia' => $c->completed_via,
                 'proofUrl' => $c->proof_url,
                 'note' => $c->note,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PluginCompletion;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\OsrsIdentityService;
 use App\Services\PluginPlausibilityService;
 use App\Services\RaceKillService;
@@ -159,7 +160,7 @@ class RunelitePluginController extends Controller
     }
 
     /** @return list<array{rsn: string, main: bool, proven: bool}> */
-    private static function characters(\App\Models\User $user): array
+    private static function characters(User $user): array
     {
         return $user->osrsAccounts()->get()->map(fn ($account) => [
             'rsn' => $account->username,

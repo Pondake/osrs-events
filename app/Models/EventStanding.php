@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WiseOldManService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A participant's standing in a metric event — the stored result of a
  * hiscores lookup, in Wise Old Man's start/end/gained shape.
  *
- * @see \App\Services\WiseOldManService for where the numbers come from.
+ * @see WiseOldManService for where the numbers come from.
  */
 class EventStanding extends Model
 {

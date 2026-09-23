@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\RuneliteName;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -60,12 +61,17 @@ return new class extends Migration
             $table->foreignUuid('osrs_account_id')->nullable()->constrained()->nullOnDelete();
         });
 
-        DB::table('event_standings')->orderBy('id')->chunk(500, function ($rows) {
+        // Compared the way the game does, so a standing stored before Wise Old
+        // Man's canonical casing came back still finds its character. One
+        // left unmatched is a rename the sync had not caught up with: it
+        // keeps its numbers and a new row follows the new name.
+        DB::table('event_standings')->whereNotNull('user_id')->orderBy('id')->chunk(500, function ($rows) {
             foreach ($rows as $row) {
-                $account = DB::table('osrs_accounts')->where('user_id', $row->user_id)->where('username', $row->username)->value('id');
+                $account = DB::table('osrs_accounts')->where('user_id', $row->user_id)->get(['id', 'username'])
+                    ->first(fn ($account) => RuneliteName::sameRsn($account->username, $row->username));
 
                 if ($account !== null) {
-                    DB::table('event_standings')->where('id', $row->id)->update(['osrs_account_id' => $account]);
+                    DB::table('event_standings')->where('id', $row->id)->update(['osrs_account_id' => $account->id]);
                 }
             }
         });
@@ -89,11 +95,16 @@ return new class extends Migration
             Schema::table($claims, fn (Blueprint $table) => $table->dropColumn('rsn'));
         }
 
-        // Back to one row per account per event: the rows of any alt go.
+        // Back to one row per account per event: an alt's rows go, and of what
+        // is left the main's row wins over one left behind by a rename.
         DB::table('event_standings')
-            ->whereNotIn('osrs_account_id', DB::table('osrs_accounts')->where('position', 0)->select('id'))
-            ->orWhereNull('osrs_account_id')
+            ->whereIn('osrs_account_id', DB::table('osrs_accounts')->where('position', '>', 0)->select('id'))
             ->delete();
+
+        DB::table('event_standings')->whereNotNull('user_id')->get()
+            ->groupBy(fn ($row) => $row->event_id.'|'.$row->user_id)
+            ->each(fn ($rows) => $rows->sortByDesc(fn ($row) => $row->osrs_account_id !== null)->slice(1)
+                ->each(fn ($row) => DB::table('event_standings')->where('id', $row->id)->delete()));
 
         Schema::table('event_standings', function (Blueprint $table) {
             $table->dropUnique(['event_id', 'osrs_account_id']);

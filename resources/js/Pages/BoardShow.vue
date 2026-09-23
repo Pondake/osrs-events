@@ -1007,6 +1007,7 @@
                 :tile-title="tileTitle(detailTile) ?? trans('board.tile', { n: detailTile.position + 1 })"
                 :claim="playerBoard?.claims?.[detailTile.id] ?? null"
                 :can-act="canPlay"
+                :allow-alts="liveBoard.allow_alts ?? true"
                 :progress="progressOn(detailTile)"
                 :detail="detailFor(detailTile)"
                 :detail-loading="detailLoading"
@@ -1021,6 +1022,7 @@
                 :tile-title="currentTileTitle"
                 :claim="currentClaim"
                 :can-act="canPlay"
+                :allow-alts="liveBoard.allow_alts ?? true"
                 :progress="progressOn(currentTile)"
             />
         </client-only>

@@ -55,6 +55,9 @@ export function eventId(title) {
 /** Puts an account back into the state of a first visit: no name, no email (unless kept), intro pending. */
 export function resetNewcomer({ keepEmail = false, where = "discord_username = 'e2e_newcomer'" } = {}) {
     run(`UPDATE users SET osrs_username = NULL, osrs_verified_at = NULL, onboarding_completed_at = NULL${keepEmail ? '' : ', email = NULL'} WHERE ${where}`);
+    // The characters live in their own table too (User::booted() keeps the
+    // main in step, but raw SQL goes past it).
+    run(`DELETE FROM osrs_accounts WHERE user_id IN (SELECT id FROM users WHERE ${where})`);
 }
 
 /**
@@ -182,11 +185,18 @@ export function strandAccount() {
     const eventRow = query("SELECT id FROM events WHERE title = 'E2E Drop Race'")[0];
     const account = user('e2e_stranded');
 
+    const character = randomUUID();
+
     run("UPDATE users SET osrs_username = 'E2E Stranded' WHERE id = ?", [account.id]);
+    run('DELETE FROM osrs_accounts WHERE user_id = ?', [account.id]);
+    run(
+        "INSERT INTO osrs_accounts (id, user_id, username, position, created_at, updated_at) VALUES (?, ?, 'E2E Stranded', 0, datetime('now'), datetime('now'))",
+        [character, account.id],
+    );
     run('DELETE FROM event_standings WHERE user_id = ?', [account.id]);
     run(
-        "INSERT INTO event_standings (id, event_id, user_id, username, gained, sync_error, synced_at, created_at, updated_at) VALUES (?, ?, ?, 'E2E Stranded', 0, 'not_tracked', datetime('now'), datetime('now'), datetime('now'))",
-        [randomUUID(), eventRow.id, account.id],
+        "INSERT INTO event_standings (id, event_id, user_id, osrs_account_id, username, gained, sync_error, synced_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'E2E Stranded', 0, 'not_tracked', datetime('now'), datetime('now'), datetime('now'))",
+        [randomUUID(), eventRow.id, account.id, character],
     );
 }
 

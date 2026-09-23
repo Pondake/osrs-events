@@ -17,12 +17,12 @@ use App\Models\UserGuild;
 use App\Notifications\EventStatusChanged;
 use App\Services\BingoService;
 use App\Services\BoardAccessService;
+use App\Services\BoardReviewService;
 use App\Services\DiscordAnnouncer;
 use App\Services\EventFinishService;
 use App\Services\EventNotificationService;
 use App\Services\EventParticipationService;
 use App\Services\EventStandingsService;
-use App\Services\BoardReviewService;
 use App\Services\PlayerBoardService;
 use App\Services\RaceAnnouncer;
 use App\Services\TargetDetailService;
@@ -432,6 +432,8 @@ class BoardController extends Controller
                     'id' => $c->id,
                     'status' => $c->status,
                     'completedVia' => $c->completed_via,
+                    // Which character did it — the player's own board.
+                    'rsn' => $c->rsn,
                     'proofUrl' => $c->proof_url,
                     'note' => $c->note,
                     'reviewNote' => $c->review_note,
@@ -547,7 +549,7 @@ class BoardController extends Controller
         // look one up, which is the thing being withheld.
         $identity = ['id', 'name', 'displayName', 'avatarUrl'];
 
-        return $rows->map(function (array $row) use ($identity) {
+        $scrub = function (array $row) use ($identity) {
             foreach ($identity as $key) {
                 if (array_key_exists($key, $row)) {
                     $row[$key] = null;
@@ -555,7 +557,13 @@ class BoardController extends Controller
             }
 
             return $row;
-        })->values();
+        };
+
+        // A race line carries the account's other characters, each with a
+        // name of its own.
+        return $rows->map(fn (array $row) => array_key_exists('characters', $row)
+            ? [...$scrub($row), 'characters' => array_map($scrub, $row['characters'])]
+            : $scrub($row))->values();
     }
 
     /**
@@ -671,6 +679,9 @@ class BoardController extends Controller
                 'id' => $claim->id,
                 'status' => $claim->status,
                 'completedVia' => $claim->completed_via,
+                // Which character did it, for whoever submitted it. A team's
+                // card is shared; the character is not the team's business.
+                'rsn' => $claim->marked_by === Auth::id() ? $claim->rsn : null,
                 'reviewNote' => $claim->review_note,
                 'proofUrl' => $claim->proof_url,
                 'note' => $claim->note,

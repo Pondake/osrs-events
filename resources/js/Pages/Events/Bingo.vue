@@ -478,6 +478,7 @@
                 :detail="detailFor(claimingSquare)"
                 :detail-loading="detailLoading"
                 :can-claim="canPlay && !isPaused && status !== 'upcoming'"
+                :allow-alts="liveEvent.allow_alts ?? true"
             />
             <template v-if="canEdit">
                 <!-- Mounted closed rather than behind `v-if="editingSquare"`.

@@ -48,14 +48,14 @@
                         <h3 class="text-lg font-semibold text-highlighted">{{ $t('onboarding.osrs_heading') }}</h3>
                         <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.osrs_body') }}</p>
 
-                        <u-form-field
-                            :label="$t('auth.field_osrs_username')"
-                            :description="$t('auth.field_osrs_username_desc')"
-                            :error="osrsForm.errors.osrs_username"
-                            required
-                        >
-                            <osrs-username-field v-model="osrsForm.osrs_username" :error="osrsForm.errors.osrs_username" />
-                        </u-form-field>
+                        <div class="space-y-1.5">
+                            <p class="text-sm font-medium text-highlighted">
+                                {{ $t('auth.field_osrs_username') }} <span class="text-error">*</span>
+                            </p>
+                            <p class="text-xs text-muted">{{ $t('onboarding.osrs_alts_body') }}</p>
+                        </div>
+
+                        <osrs-characters-field v-model="osrsRows" :max="maxCharacters" :errors="osrsForm.errors" />
 
                         <!-- The step stays in the list once it is answered
                              (see buildStepDefs), so coming back to it has to
@@ -343,7 +343,8 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import OsrsUsernameField from '@/Components/OsrsUsernameField.vue';
+import OsrsCharactersField from '@/Components/OsrsCharactersField.vue';
+import { characterNames, characterRows } from '@/Support/osrsCharacters';
 import { useAuth } from '@/Composables/useAuth';
 import BoardPreview from '@/Components/BoardPreview.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, formatBoardSize } from '@/Support/board';
@@ -387,7 +388,14 @@ const needsProof = computed(() => !!page.props?.auth?.user?.needsOsrsProof);
 // on its second step.
 // Seeded with the stored name, so the step opens showing what the account
 // already plays as rather than an empty box next to a disabled Next.
-const osrsForm = useForm({ osrs_username: osrsUsername.value ?? '', stay: true });
+const storedCharacters = computed(() => page.props?.auth?.user?.osrsCharacters ?? (osrsUsername.value ? [osrsUsername.value] : []));
+const maxCharacters = computed(() => page.props?.site?.maxOsrsCharacters ?? 5);
+const osrsRows = ref(characterRows(storedCharacters.value));
+const osrsForm = useForm({ characters: [], stay: true });
+
+// Whether the list says anything the account does not already hold, order
+// included — the top name is the main.
+const osrsChanged = computed(() => JSON.stringify(characterNames(osrsRows.value)) !== JSON.stringify(storedCharacters.value));
 
 const emailForm = useForm({ email: '' });
 
@@ -601,7 +609,7 @@ const nextLabel = computed(() =>
 // The one step that cannot be walked past empty. Skipping the whole tour is
 // still allowed — that hands the user to the standalone gate, which is the
 // right place to be nagged, rather than letting them through with nothing.
-const nextDisabled = computed(() => step.value === 'osrs' && !osrsForm.osrs_username.trim());
+const nextDisabled = computed(() => step.value === 'osrs' && !osrsRows.value[0]?.username.trim());
 
 function next() {
     // Saved as the step is left, so the rest of the tour runs with the name
@@ -611,12 +619,13 @@ function next() {
     if (step.value === 'osrs') {
         // Nothing typed over what is already stored: no save, no Wise Old
         // Man lookup, just the next step.
-        if (osrsForm.osrs_username.trim() === (osrsUsername.value ?? '')) {
+        if (!osrsChanged.value) {
             stepIndex.value++;
 
             return;
         }
 
+        osrsForm.characters = characterNames(osrsRows.value);
         osrsForm.post('/welcome/osrs-username', {
             preserveScroll: true,
             preserveState: true,
@@ -671,13 +680,13 @@ function finish(destination = null) {
 }
 
 function saveTypedName(then) {
-    const typed = osrsForm.osrs_username.trim();
-
     // Unchanged from what is stored is not an answer to save. Changed is —
     // the step now opens prefilled, so "edited it, then pressed Skip" is a
-    // real path and the edit is the whole point of it.
-    if (typed === '' || typed === (osrsUsername.value ?? '')) return then();
+    // real path and the edit is the whole point of it. A blank main is no
+    // answer at all.
+    if (!osrsRows.value[0]?.username.trim() || !osrsChanged.value) return then();
 
+    osrsForm.characters = characterNames(osrsRows.value);
     osrsForm.post('/welcome/osrs-username', {
         preserveScroll: true,
         preserveState: true,

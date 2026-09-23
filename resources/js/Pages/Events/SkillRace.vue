@@ -206,87 +206,128 @@
                                 <li
                                     v-for="entry in rows"
                                     :key="entry.id"
-                                    class="flex items-center gap-3 px-4 py-3"
-                                    :class="entry.name === osrsUsername ? 'bg-primary/5' : ''"
+                                    :class="isMine(entry) ? 'bg-primary/5' : ''"
                                 >
-                                    <!-- No rank for anyone we have no
-                                         measurement for — they are listed as
-                                         entrants, not placed. -->
-                                    <span
-                                        class="w-7 text-sm font-semibold tabular-nums shrink-0"
-                                        :class="entry.rank !== null && entry.rank <= 3 && entry.gained > 0 ? 'text-primary' : 'text-muted'"
-                                    >{{ entry.rank ?? '—' }}</span>
+                                    <div class="flex items-center gap-3 px-4 py-3">
+                                        <!-- No rank for anyone we have no
+                                             measurement for — they are listed as
+                                             entrants, not placed. -->
+                                        <span
+                                            class="w-7 text-sm font-semibold tabular-nums shrink-0"
+                                            :class="entry.rank !== null && entry.rank <= 3 && entry.gained > 0 ? 'text-primary' : 'text-muted'"
+                                        >{{ entry.rank ?? '—' }}</span>
 
-                                    <!-- An icon rather than initials when there is
-                                         nobody to initial: UAvatar derives them from
-                                         `alt`, so the anonymous label came back as a
-                                         monogram of itself ("Ap"). -->
-                                    <u-avatar
-                                        :src="entry.avatarUrl ?? undefined"
-                                        :alt="entry.name ?? undefined"
-                                        :icon="entry.name === null ? 'i-lucide-user' : undefined"
-                                        size="sm"
-                                        class="shrink-0"
-                                    />
+                                        <!-- An icon rather than initials when there is
+                                             nobody to initial: UAvatar derives them from
+                                             `alt`, so the anonymous label came back as a
+                                             monogram of itself ("Ap"). -->
+                                        <u-avatar
+                                            :src="entry.avatarUrl ?? undefined"
+                                            :alt="entry.name ?? undefined"
+                                            :icon="entry.name === null ? 'i-lucide-user' : undefined"
+                                            size="sm"
+                                            class="shrink-0"
+                                        />
 
-                                    <div class="flex-1 min-w-0">
-                                        <!-- Faceless on purpose when the roster is
-                                             not public — see Bingo.vue for the rule. -->
-                                        <p class="truncate font-medium" :class="entry.name === null ? 'text-muted italic font-normal' : ''">
-                                            {{ entry.name ?? $t('events.anonymous_player') }}
-                                        </p>
-                                        <p v-if="entry.displayName" class="truncate text-xs text-muted">{{ entry.displayName }}</p>
+                                        <div class="flex-1 min-w-0">
+                                            <!-- Faceless on purpose when the roster is
+                                                 not public — see Bingo.vue for the rule. -->
+                                            <p class="flex items-center gap-1.5 min-w-0 font-medium" :class="entry.name === null ? 'text-muted italic font-normal' : ''">
+                                                <span class="truncate">{{ entry.name ?? $t('events.anonymous_player') }}</span>
+                                                <!-- The account's best character
+                                                     carries its line, and that is
+                                                     not always the main. -->
+                                                <u-badge v-if="entry.alt && entry.name" color="neutral" variant="subtle" size="sm" :label="$t('events.standing_alt')" class="shrink-0" />
+                                            </p>
+                                            <p v-if="entry.displayName" class="truncate text-xs text-muted">{{ entry.displayName }}</p>
+                                        </div>
+
+                                        <!-- Three states, not two: a real gain, a genuine
+                                             zero, and "we have never managed to look this
+                                             name up" — which is not a score at all.
+                                             A native title rather than u-tooltip: this
+                                             page renders server-side and Nuxt UI's
+                                             interactive components are the SSR hazard the
+                                             backlog lists. -->
+                                        <span
+                                            v-if="entry.error"
+                                            class="text-sm text-muted inline-flex items-center gap-1 shrink-0"
+                                            :title="$t(`events.error_${entry.error}_hint`)"
+                                        >
+                                            <u-icon name="i-lucide-circle-help" class="size-4" />
+                                            {{ $t(`events.error_${entry.error}`) }}
+                                        </span>
+                                        <!-- The number says what it is. "+412K"
+                                             alone is a quantity of nothing in
+                                             particular; the skill's own icon
+                                             beside it keeps the race's subject in
+                                             view on every row, and the unit is
+                                             there for a boss race that has no
+                                             icon to lean on. -->
+                                        <span v-else-if="entry.syncedAt || entry.live > 0" class="text-sm font-medium text-highlighted tabular-nums inline-flex items-center gap-1.5 shrink-0">
+                                            <!-- Kills the RuneLite plugin counted
+                                                 are ahead of the hiscores by
+                                                 design — they arrive in a second
+                                                 and Wise Old Man takes hours — so
+                                                 a number carrying them says so
+                                                 instead of looking like it
+                                                 disagrees with the source below. -->
+                                            <u-icon
+                                                v-if="entry.live > 0 && entry.live >= entry.gained"
+                                                name="i-lucide-zap"
+                                                class="size-3.5 text-primary"
+                                                :title="$t('events.live_from_plugin')"
+                                            />
+                                            +{{ formatMetricValue(entry.gained) }}
+                                            <img v-if="metricIcon" :src="metricIcon" alt="" class="size-4 object-contain">
+                                            <span v-else class="text-xs text-muted">{{ $t(isBossRace ? 'events.unit_kills' : 'events.unit_xp') }}</span>
+                                        </span>
+                                        <!-- An unstarted race has nothing to
+                                             measure yet, which is a different
+                                             thing from a sync that hasn't
+                                             happened — and showing both as
+                                             "waiting" makes a working event look
+                                             stuck. -->
+                                        <span v-else class="text-sm text-muted">
+                                            {{ status === 'upcoming' ? $t('events.not_started') : $t('events.pending_sync') }}
+                                        </span>
+
+                                        <!-- The account's other characters,
+                                             folded away: they never add to the
+                                             line, they are only there to see. -->
+                                        <u-button
+                                            v-if="entry.characters?.length"
+                                            size="xs"
+                                            color="neutral"
+                                            variant="ghost"
+                                            :trailing-icon="expanded[entry.id] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                                            :label="$t('events.standing_more_characters', { count: entry.characters.length })"
+                                            :aria-expanded="expanded[entry.id] ? 'true' : 'false'"
+                                            class="shrink-0"
+                                            @click="expanded[entry.id] = !expanded[entry.id]"
+                                        />
                                     </div>
 
-                                    <!-- Three states, not two: a real gain, a genuine
-                                         zero, and "we have never managed to look this
-                                         name up" — which is not a score at all.
-                                         A native title rather than u-tooltip: this
-                                         page renders server-side and Nuxt UI's
-                                         interactive components are the SSR hazard the
-                                         backlog lists. -->
-                                    <span
-                                        v-if="entry.error"
-                                        class="text-sm text-muted inline-flex items-center gap-1 shrink-0"
-                                        :title="$t(`events.error_${entry.error}_hint`)"
-                                    >
-                                        <u-icon name="i-lucide-circle-help" class="size-4" />
-                                        {{ $t(`events.error_${entry.error}`) }}
-                                    </span>
-                                    <!-- The number says what it is. "+412K"
-                                         alone is a quantity of nothing in
-                                         particular; the skill's own icon
-                                         beside it keeps the race's subject in
-                                         view on every row, and the unit is
-                                         there for a boss race that has no
-                                         icon to lean on. -->
-                                    <span v-else-if="entry.syncedAt || entry.live > 0" class="text-sm font-medium text-highlighted tabular-nums inline-flex items-center gap-1.5 shrink-0">
-                                        <!-- Kills the RuneLite plugin counted
-                                             are ahead of the hiscores by
-                                             design — they arrive in a second
-                                             and Wise Old Man takes hours — so
-                                             a number carrying them says so
-                                             instead of looking like it
-                                             disagrees with the source below. -->
-                                        <u-icon
-                                            v-if="entry.live > 0 && entry.live >= entry.gained"
-                                            name="i-lucide-zap"
-                                            class="size-3.5 text-primary"
-                                            :title="$t('events.live_from_plugin')"
-                                        />
-                                        +{{ formatMetricValue(entry.gained) }}
-                                        <img v-if="metricIcon" :src="metricIcon" alt="" class="size-4 object-contain">
-                                        <span v-else class="text-xs text-muted">{{ $t(isBossRace ? 'events.unit_kills' : 'events.unit_xp') }}</span>
-                                    </span>
-                                    <!-- An unstarted race has nothing to
-                                         measure yet, which is a different
-                                         thing from a sync that hasn't
-                                         happened — and showing both as
-                                         "waiting" makes a working event look
-                                         stuck. -->
-                                    <span v-else class="text-sm text-muted">
-                                        {{ status === 'upcoming' ? $t('events.not_started') : $t('events.pending_sync') }}
-                                    </span>
+                                    <ul v-if="entry.characters?.length && expanded[entry.id]" class="pb-2">
+                                        <li
+                                            v-for="character in entry.characters"
+                                            :key="character.id ?? character.name"
+                                            class="flex items-center gap-3 pl-14 sm:pl-[4.25rem] pr-4 py-1.5 text-sm"
+                                        >
+                                            <span class="flex-1 min-w-0 truncate text-muted">
+                                                {{ character.name ?? $t('events.anonymous_player') }}
+                                            </span>
+                                            <span v-if="character.error" class="text-xs text-muted shrink-0" :title="$t(`events.error_${character.error}_hint`)">
+                                                {{ $t(`events.error_${character.error}`) }}
+                                            </span>
+                                            <span v-else-if="character.syncedAt || character.live > 0" class="tabular-nums text-muted shrink-0">
+                                                +{{ formatMetricValue(character.gained) }}
+                                            </span>
+                                            <span v-else class="text-xs text-muted shrink-0">
+                                                {{ status === 'upcoming' ? $t('events.not_started') : $t('events.pending_sync') }}
+                                            </span>
+                                        </li>
+                                    </ul>
                                 </li>
                             </ul>
 
@@ -360,7 +401,7 @@
 
 <script setup>
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import EventNotices from '@/Components/EventNotices.vue';
@@ -445,6 +486,15 @@ watch(() => props.event, (value) => (liveEvent.value = { ...value }));
 // Seeded from the server render so the table is complete before any
 // JavaScript runs; the stream takes over from here.
 const rows = ref([...props.standings]);
+
+// Which lines have their other characters unfolded, by line id.
+const expanded = ref({});
+
+const myCharacters = computed(() => (usePage().props?.auth?.user?.osrsCharacters ?? []).map((name) => name.toLowerCase()));
+
+function isMine(entry) {
+    return [entry, ...(entry.characters ?? [])].some((line) => line.name && myCharacters.value.includes(line.name.toLowerCase()));
+}
 
 /**
  * When the numbers on screen were last read from Wise Old Man.

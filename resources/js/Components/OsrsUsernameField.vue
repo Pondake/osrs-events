@@ -6,6 +6,7 @@
             icon="i-lucide-user-round"
             :size="size"
             :placeholder="placeholder"
+            :aria-label="label"
             class="w-full"
             @update:model-value="onInput"
             @blur="check"
@@ -43,6 +44,8 @@ const props = defineProps({
     // The validation error the surrounding form field is already showing.
     error: { type: String, default: null },
     placeholder: { type: String, default: undefined },
+    // For a field with no visible <label> of its own, as in a list of them.
+    label: { type: String, default: undefined },
 });
 
 const emit = defineEmits(['update:modelValue']);

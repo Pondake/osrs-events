@@ -7,6 +7,7 @@ use App\Models\BingoCompletion;
 use App\Models\BingoSquare;
 use App\Models\Event;
 use App\Models\User;
+use App\Support\RuneliteName;
 use Illuminate\Support\Collection;
 
 /**
@@ -309,7 +310,10 @@ class BingoService
                 // rather than rendering a gap.
                 'submittedBy' => $c->markedBy?->nickname ?: $c->markedBy?->discord_username,
                 'submittedByAvatar' => $c->markedBy?->avatar_url,
-                'submittedByOsrs' => $c->markedBy?->osrs_username,
+                // The character the claim was made with, which is what the
+                // screenshot shows — an alt is not the account's main.
+                'submittedByOsrs' => $c->rsn ?? $c->markedBy?->osrs_username,
+                'submittedByAlt' => filled($c->rsn) && ! RuneliteName::sameRsn($c->rsn, $c->markedBy?->osrs_username),
                 'completedVia' => $c->completed_via,
                 'proofUrl' => $c->proof_url,
                 'note' => $c->note,
@@ -339,7 +343,7 @@ class BingoService
      * that neither would on its own, and a host looking at the first of them
      * should still be told what it is part of.
      *
-     * @return Collection<string, int>  claim id => 1-based place
+     * @return Collection<string, int> claim id => 1-based place
      */
     private function winningClaims(BingoCard $card): Collection
     {
