@@ -43,24 +43,14 @@
                 <p class="mt-1.5 text-sm text-muted leading-relaxed max-w-md mx-auto">{{ $t('supporters.empty_body') }}</p>
             </section>
 
-            <footer class="rounded-lg ring ring-default bg-elevated/50 px-5 py-4 text-sm text-muted leading-relaxed space-y-1">
+            <div v-if="groups.length || discordInviteUrl" class="rounded-lg ring ring-default bg-elevated/50 px-5 py-4 text-sm text-muted leading-relaxed space-y-1">
                 <p v-if="groups.length">{{ $t('supporters.consent_note') }}</p>
                 <p v-if="discordInviteUrl">
                     <a href="/discord" class="inline-flex items-center underline underline-offset-2 hover:text-primary transition-colors max-sm:min-h-11">{{ $t('supporters.consent_discord') }}</a>
                 </p>
-                <p>
-                    {{ $t('supporters.kofi_prompt') }}
-                    <a
-                        :href="kofiUrl"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="inline-flex items-center gap-1 underline underline-offset-2 hover:text-primary transition-colors max-sm:min-h-11"
-                    >
-                        <u-icon name="i-lucide-coffee" class="size-3.5 shrink-0" />
-                        {{ $t('supporters.kofi_link') }}
-                    </a>
-                </p>
-            </footer>
+            </div>
+
+            <support-panel />
         </div>
     </u-main>
 </template>
@@ -69,6 +59,7 @@
 import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import SeoHead from '@/Components/SeoHead.vue';
+import SupportPanel from '@/Components/SupportPanel.vue';
 import { useCurrentPage } from '@/Support/pageState';
 
 defineProps({
@@ -84,7 +75,6 @@ const ROLE_ICONS = {
 
 const page = useCurrentPage();
 const discordInviteUrl = computed(() => page.value.props?.site?.discordInviteUrl ?? null);
-const kofiUrl = computed(() => page.value.props?.site?.kofiUrl ?? 'https://ko-fi.com');
 
 // Only http(s) becomes a link; anything else, a javascript: scheme included, stays text.
 const isUrl = (value) => typeof value === 'string' && /^https?:\/\/\S+$/i.test(value);

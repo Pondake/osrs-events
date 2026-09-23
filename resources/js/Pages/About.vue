@@ -83,32 +83,7 @@
                  single half-width panel beside nothing reads as a panel that
                  failed to load. -->
             <div class="grid gap-4" :class="discordInviteUrl ? 'sm:grid-cols-2' : 'grid-cols-1'">
-                <section class="rounded-lg ring ring-default bg-elevated/50 overflow-hidden">
-                    <h2 :class="titleBar">
-                        <u-icon name="i-lucide-heart" class="size-4 text-primary shrink-0" />
-                        <span :class="titleBarLabel">{{ $t('about.free_title') }}</span>
-                    </h2>
-
-                    <div class="p-5">
-                        <p class="text-sm text-muted leading-relaxed">{{ $t('about.free_body') }}</p>
-
-                        <!-- A literal rather than the Ko-fi site setting, which
-                             is the call the seeded page made for a reason that
-                             outlived it: this is the project's own donation
-                             link, not a per-environment one. -->
-                        <u-button
-                            href="https://ko-fi.com/pondake"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            size="sm"
-                            color="warning"
-                            variant="outline"
-                            icon="i-lucide-coffee"
-                            class="mt-4"
-                            :label="$t('about.donate_cta')"
-                        />
-                    </div>
-                </section>
+                <support-panel />
 
                 <!-- Rendered only when an admin has actually set an invite.
                      This panel used to publish a personal email address, and
@@ -176,6 +151,7 @@
 import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import SeoHead from '@/Components/SeoHead.vue';
+import SupportPanel from '@/Components/SupportPanel.vue';
 import { useCurrentPage } from '@/Support/pageState';
 
 /**
