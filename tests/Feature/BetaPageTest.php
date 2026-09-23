@@ -48,7 +48,7 @@ class BetaPageTest extends TestCase
                 ->has('playerSteps', 4)
                 ->has('expectations', 3)
                 ->has('reportPoints', 5)
-                ->has('knownIssues', 4)
+                ->has('knownIssues', 2)
                 ->has('groundRules', 2));
     }
 

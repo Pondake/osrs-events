@@ -126,7 +126,7 @@ class LandingController extends Controller
             'playerSteps' => $playerSteps,
             'expectations' => collect(range(1, 3))->map(fn ($i) => trans("beta.what_point{$i}"))->all(),
             'reportPoints' => collect(range(1, 5))->map(fn ($i) => trans("beta.report_point{$i}"))->all(),
-            'knownIssues' => collect(range(1, 4))->map(fn ($i) => trans("beta.known_point{$i}"))->all(),
+            'knownIssues' => collect(range(1, 2))->map(fn ($i) => trans("beta.known_point{$i}"))->all(),
             'groundRules' => collect(range(1, 2))->map(fn ($i) => trans("beta.rules_point{$i}"))->all(),
         ]);
     }
