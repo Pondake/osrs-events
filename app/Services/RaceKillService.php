@@ -49,6 +49,11 @@ class RaceKillService
         $name = RuneliteName::normalize($completion->name);
 
         foreach ($this->activeStandings($user) as $standing) {
+            // Each character has its own row; the kill is the reporter's.
+            if (! RuneliteName::sameRsn($standing->username, $completion->rsn)) {
+                continue;
+            }
+
             $boss = BossKillNames::for($standing->event->metric);
 
             if ($boss === null || RuneliteName::normalize($boss) !== $name || ! $this->inWindow($standing->event, $completion)) {
@@ -79,12 +84,11 @@ class RaceKillService
             ->whereHas('event', fn ($q) => $q->where('type', 'DROP_RACE')->whereNull('paused_at'))
             ->with('event')
             ->get()
-            // A standing keeps the name its numbers came from, which after a
-            // rename is not the one on the account any more. Counting a kill
-            // against it would mix two people's numbers.
+            // A row whose character has left the account (removed, renamed)
+            // keeps the numbers it had and counts nothing new.
             ->reject(fn (EventStanding $standing) => $standing->event->isEnded()
                 || $standing->event->isUpcoming()
-                || ! RuneliteName::sameRsn($standing->username, (string) $user->osrs_username))
+                || $standing->osrs_account_id === null)
             ->values();
     }
 

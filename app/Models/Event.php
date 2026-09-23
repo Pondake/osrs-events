@@ -60,13 +60,20 @@ class Event extends Model
         // setting: changing it announces nothing by itself.
         'discord_webhook_url',
         'discord_announcements',
+        // Whether a player's alts count, or only their main. Fixed once the
+        // event has started — see altsLocked().
+        'allow_alts',
         // `paused_at` and `pause_reason` are deliberately absent: pausing is
         // its own action with its own permission check and its own audit
         // entry, not a field somebody can slip into an ordinary settings save.
     ];
 
+    // The column default, known before the first save as well.
+    protected $attributes = ['allow_alts' => true];
+
     protected $casts = [
         'is_listed' => 'boolean',
+        'allow_alts' => 'boolean',
         // Cast explicitly — a missed datetime cast on PlayerBoard.last_roll_date
         // was a real 500 (see CLAUDE.md).
         'start_date' => 'datetime',
@@ -197,6 +204,16 @@ class Event extends Model
     public function isUpcoming(): bool
     {
         return $this->start_date !== null && $this->start_date->copy()->startOfDay()->isFuture();
+    }
+
+    /**
+     * Whether alts may no longer be switched on or off. Changing it mid-event
+     * would add or drop characters from a race or a card already being
+     * played, which no player agreed to.
+     */
+    public function altsLocked(): bool
+    {
+        return $this->start_date !== null && ! $this->isUpcoming();
     }
 
     /**

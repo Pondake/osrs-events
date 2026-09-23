@@ -35,7 +35,7 @@ class EventStandingsService
     {
         $rows = EventStanding::query()
             ->where('event_id', $event->id)
-            ->with('user:id,discord_username,nickname,avatar_url')
+            ->with(['user:id,discord_username,nickname,avatar_url', 'osrsAccount:id,position'])
             // Anyone we have no measurement for sorts to the bottom and is
             // left unranked below. Their gained is 0, so without this they
             // tie with everyone who genuinely gained nothing and take a rank
@@ -53,8 +53,14 @@ class EventStandingsService
         $seen = 0;
         $previous = null;
 
-        return $rows->map(function (EventStanding $row) use (&$rank, &$seen, &$previous) {
-            $measured = ($row->sync_error === null && $row->synced_at !== null) || $row->live_gained > 0;
+        // One line per osrs-events account, carried by its best character:
+        // the rows are already best-first, so a group's first row is its
+        // best. The others fold in under it. Never the sum — two characters
+        // are not twice the player. A row whose account was closed has no
+        // user and stands alone.
+        return $rows->groupBy(fn (EventStanding $row) => $row->user_id ?? $row->id)->values()->map(function (Collection $group) use (&$rank, &$seen, &$previous) {
+            $row = $group->first();
+            $measured = self::measured($row);
 
             if ($measured) {
                 $seen++;
@@ -66,24 +72,40 @@ class EventStandingsService
             }
 
             return [
-                'id' => $row->id,
+                ...self::character($row),
                 'rank' => $measured ? $rank : null,
-                'name' => $row->username,
                 'displayName' => $row->user?->nickname ?: $row->user?->discord_username,
                 'avatarUrl' => $row->user?->avatar_url,
-                'gained' => $row->gained,
-                // How much of that number the plugin reported live. Shown so
-                // a leaderboard can say a count is ahead of the hiscores
-                // rather than looking like it disagrees with them.
-                'live' => $row->live_gained,
-                'start' => $row->start_value,
-                'end' => $row->end_value,
-                // Null synced_at is "never looked up", which the page shows as
-                // pending rather than as a real zero.
-                'syncedAt' => $row->synced_at?->toIso8601String(),
-                'error' => $row->sync_error,
+                'characters' => $group->slice(1)->map(fn (EventStanding $other) => self::character($other))->values()->all(),
             ];
         });
+    }
+
+    private static function measured(EventStanding $row): bool
+    {
+        return ($row->sync_error === null && $row->synced_at !== null) || $row->live_gained > 0;
+    }
+
+    /** One character's line, as the leaderboard shows it. */
+    private static function character(EventStanding $row): array
+    {
+        return [
+            'id' => $row->id,
+            'name' => $row->username,
+            // An alt, or a character since removed from the account.
+            'alt' => $row->osrsAccount?->position !== 0,
+            'gained' => $row->gained,
+            // How much of that number the plugin reported live. Shown so
+            // a leaderboard can say a count is ahead of the hiscores
+            // rather than looking like it disagrees with them.
+            'live' => $row->live_gained,
+            'start' => $row->start_value,
+            'end' => $row->end_value,
+            // Null synced_at is "never looked up", which the page shows as
+            // pending rather than as a real zero.
+            'syncedAt' => $row->synced_at?->toIso8601String(),
+            'error' => $row->sync_error,
+        ];
     }
 
     /**
@@ -119,49 +141,119 @@ class EventStandingsService
      */
     public function enter(Event $event, User $user): ?EventStanding
     {
-        if (blank($user->osrs_username)) {
+        $characters = $user->charactersFor($event);
+
+        if ($characters->isEmpty()) {
             return null;
         }
 
-        // Someone else already entered under this name. The database enforces
-        // it too (see the unique index), but hitting a constraint gives the
-        // user a 500 where this gives them a message.
-        $claimed = EventStanding::where('event_id', $event->id)
-            ->where('username', $user->osrs_username)
-            ->where('user_id', '!=', $user->id)
-            ->exists();
-
-        if ($claimed) {
+        // Someone else already entered under the main's name. The database
+        // enforces it too (see the unique index), but hitting a constraint
+        // gives the user a 500 where this gives them a message. An alt with
+        // the same clash simply does not get a row: it is not what they
+        // asked to enter with.
+        if ($this->nameTaken($event, $user, $characters->first()->username)) {
             throw ValidationException::withMessages(['osrs_username' => trans('events.rsn_already_entered')]);
         }
 
-        $standing = EventStanding::firstOrNew([
-            'event_id' => $event->id,
-            'user_id' => $user->id,
-        ]);
+        $this->syncUser($event, $user);
 
-        // A rename since last time means the stored baseline belongs to a
-        // different account's history. Cleared so the next sync re-baselines
-        // rather than reporting the difference between two people.
-        if ($standing->exists && $standing->username === $user->osrs_username) {
-            return $standing;
+        return EventStanding::where(['event_id' => $event->id, 'osrs_account_id' => $characters->first()->id])->first();
+    }
+
+    private function nameTaken(Event $event, User $user, string $username): bool
+    {
+        return EventStanding::where('event_id', $event->id)
+            ->where('username', $username)
+            ->where(fn ($q) => $q->where('user_id', '!=', $user->id)->orWhereNull('user_id'))
+            ->exists();
+    }
+
+    /**
+     * Give each of the user's characters in this event a row, and bring the
+     * rows in line with the account.
+     *
+     * A character whose name changed re-baselines: the stored start value is
+     * a different account's history. A character no longer allowed (removed,
+     * or alts switched off before the start) loses its row while the event
+     * has not started, and keeps it — unlinked, counting nothing new from the
+     * plugin — once it has. Standings are a record.
+     */
+    public function syncUser(Event $event, User $user): void
+    {
+        $characters = $user->charactersFor($event)->keyBy('id');
+        $rows = EventStanding::where(['event_id' => $event->id, 'user_id' => $user->id])->get();
+
+        foreach ($rows as $row) {
+            $character = $row->osrs_account_id ? $characters->get($row->osrs_account_id) : null;
+
+            if ($character === null) {
+                if ($row->osrs_account_id === null) {
+                    continue;
+                }
+
+                $event->isUpcoming()
+                    ? $row->delete()
+                    : $row->forceFill(['osrs_account_id' => null])->save();
+
+                continue;
+            }
+
+            if ($row->username === $character->username) {
+                continue;
+            }
+
+            // enter() refuses a name someone else already races under, but
+            // nothing stops a rename in settings afterwards to a name that is
+            // taken here. Writing it anyway violates the unique index — and
+            // inside the scheduled sync that exception killed the whole
+            // command, freezing every other race with it. So the row keeps
+            // the name its numbers came from and says why it is stuck.
+            if ($this->nameTaken($event, $user, $character->username)) {
+                $row->forceFill(['sync_error' => 'duplicate_username'])->save();
+
+                continue;
+            }
+
+            // The kills the plugin counted belong to the name that reported
+            // them, so a re-baseline drops them with the rest of the numbers.
+            $row->kills()->delete();
+
+            $row->fill([
+                'username' => $character->username,
+                'start_value' => null,
+                'end_value' => null,
+                'gained' => 0,
+                'live_gained' => 0,
+                'sync_error' => null,
+                'synced_at' => null,
+            ])->save();
         }
 
-        // The kills the plugin counted belong to the name that reported them,
-        // so a re-baseline drops them with the rest of the numbers.
-        $standing->exists && $standing->kills()->delete();
+        $linked = $rows->pluck('osrs_account_id')->filter();
 
-        $standing->fill([
-            'username' => $user->osrs_username,
-            'start_value' => null,
-            'end_value' => null,
-            'gained' => 0,
-            'live_gained' => 0,
-            'sync_error' => null,
-            'synced_at' => null,
-        ])->save();
+        foreach ($characters as $character) {
+            if ($linked->contains($character->id) || $this->nameTaken($event, $user, $character->username)) {
+                continue;
+            }
 
-        return $standing;
+            // A row left behind under this very name (an alt removed and
+            // added back) takes it up again with its numbers.
+            $orphan = $rows->first(fn (EventStanding $row) => $row->osrs_account_id === null && $row->username === $character->username);
+
+            if ($orphan !== null) {
+                $orphan->forceFill(['osrs_account_id' => $character->id])->save();
+
+                continue;
+            }
+
+            EventStanding::create([
+                'event_id' => $event->id,
+                'user_id' => $user->id,
+                'osrs_account_id' => $character->id,
+                'username' => $character->username,
+            ]);
+        }
     }
 
     public function leave(Event $event, User $user): void
@@ -180,59 +272,16 @@ class EventStandingsService
     }
 
     /**
-     * Re-point any row whose user has changed their RSN since entering.
-     *
-     * Runs before a sync rather than on save in settings: the standing knows
-     * which name its numbers came from, and this is the one place that has to
-     * care. Same re-baselining rule as enter() — a new name means the old
-     * start value is somebody else's.
+     * Bring every entrant's rows in line with their characters — see
+     * syncUser(). Runs before a sync rather than on save in settings: the
+     * standing knows which name its numbers came from, and this is the one
+     * place that has to care.
      */
     public function syncUsernames(Event $event): void
     {
-        $rows = EventStanding::where('event_id', $event->id)->with('user:id,osrs_username')->get();
+        $userIds = EventStanding::where('event_id', $event->id)->whereNotNull('user_id')->distinct()->pluck('user_id');
 
-        foreach ($rows as $row) {
-            if ($row->user === null || blank($row->user->osrs_username)) {
-                continue;
-            }
-
-            if ($row->username === $row->user->osrs_username) {
-                continue;
-            }
-
-            // enter() refuses a name someone else already races under, but
-            // nothing stops a user changing their RSN in settings afterwards
-            // to a name that is taken here. Writing it anyway violates the
-            // unique index — and because this runs inside the scheduled sync,
-            // that exception killed the whole command, freezing standings for
-            // every remaining participant in every remaining event.
-            //
-            // So the standing keeps the name its numbers came from and says
-            // why it is stuck, which is a thing the page can show. The clash
-            // is between two accounts and only a person can settle it.
-            $taken = EventStanding::where('event_id', $event->id)
-                ->where('username', $row->user->osrs_username)
-                ->whereKeyNot($row->getKey())
-                ->exists();
-
-            if ($taken) {
-                $row->forceFill(['sync_error' => 'duplicate_username'])->save();
-
-                continue;
-            }
-
-            $row->kills()->delete();
-
-            $row->fill([
-                'username' => $row->user->osrs_username,
-                'start_value' => null,
-                'end_value' => null,
-                'gained' => 0,
-                'live_gained' => 0,
-                'sync_error' => null,
-                'synced_at' => null,
-            ])->save();
-        }
+        User::whereIn('id', $userIds)->get()->each(fn (User $user) => $this->syncUser($event, $user));
     }
 
     /**
@@ -385,10 +434,13 @@ class EventStandingsService
         // Guarded on the names still matching: the standing keeps the name its
         // numbers came from, which after a blocked rename is no longer the
         // one on the account.
-        if ($standing->user !== null
-            && $standing->user->osrs_username === $standing->username
-            && $standing->user->osrs_verified_at === null) {
-            $standing->user->forceFill(['osrs_verified_at' => Carbon::now()])->save();
+        $character = $standing->osrsAccount;
+
+        if ($character !== null && $character->username === $standing->username && $character->osrs_verified_at === null) {
+            // The main through the account, so the mirror follows.
+            $character->isMain() && $standing->user !== null
+                ? $standing->user->forceFill(['osrs_verified_at' => Carbon::now()])->save()
+                : $character->forceFill(['osrs_verified_at' => Carbon::now()])->save();
         }
     }
 }

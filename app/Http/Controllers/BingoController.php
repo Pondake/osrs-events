@@ -14,6 +14,7 @@ use App\Services\EventFinishService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Playing and editing a bingo card.
@@ -122,14 +123,25 @@ class BingoController extends Controller
         $data = $request->validate([
             'proof_url' => [$card->requires_approval ? 'required' : 'nullable', 'url', 'max:2048'],
             'note' => ['nullable', 'string', 'max:255'],
+            // Which of the claimant's characters did it. Blank is the main.
+            'rsn' => ['nullable', 'string', 'max:12'],
         ]);
+
+        $character = $request->user()->characterFor($event, $data['rsn'] ?? null);
+
+        // Blank with no character at all is an account the gate let through
+        // on a read; only a name that is not one of its characters is wrong.
+        if ($character === null && filled($data['rsn'] ?? null)) {
+            throw ValidationException::withMessages(['rsn' => trans('validation.osrs_character_not_allowed')]);
+        }
 
         $completion = BingoCompletion::create([
             ...$competitor,
             'bingo_square_id' => $square->id,
             'marked_by' => $request->user()->id,
             'completed_via' => 'MANUAL',
-            'status' => $card->initialClaimStatus('MANUAL', $request->user()),
+            'status' => $card->initialClaimStatus('MANUAL', $request->user(), rsn: $character?->username),
+            'rsn' => $character?->username,
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);

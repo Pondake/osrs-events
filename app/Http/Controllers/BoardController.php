@@ -47,7 +47,7 @@ class BoardController extends Controller
     /** How many of each kind the hub shows before "view all". */
     private const HUB_SLICE = 3;
 
-    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'finish_rule', 'discord_webhook_url', 'discord_announcements'];
+    private const EVENT_FIELDS = ['title', 'type', 'metric', 'description', 'mode', 'access_mode', 'required_guild_id', 'is_listed', 'start_date', 'end_date', 'finish_rule', 'discord_webhook_url', 'discord_announcements', 'allow_alts'];
 
     private const BOARD_FIELDS = ['size', 'dice_roll_limit', 'requires_approval', 'trust_runelite_completions'];
 
@@ -188,7 +188,9 @@ class BoardController extends Controller
         // Fetched once and matched in memory rather than per event, so the
         // page costs the same whether you are in three events or thirty.
         $playerBoards = $user->playerBoards()->with('completedTiles')->get()->keyBy('board_id');
-        $standingRows = EventStanding::where('user_id', $user->id)->get()->keyBy('event_id');
+        // An account with alts has a row per character; the best one speaks
+        // for it, as on the leaderboard.
+        $standingRows = EventStanding::where('user_id', $user->id)->orderBy('gained')->get()->keyBy('event_id');
 
         $bingoService = app(BingoService::class);
 
@@ -261,7 +263,8 @@ class BoardController extends Controller
                 $field = $standings->forEvent($event);
 
                 $entry['standing'] = [
-                    'rank' => $field->firstWhere('id', $standing->id)['rank'] ?? null,
+                    'rank' => $field->first(fn (array $line) => $line['id'] === $standing->id
+                        || collect($line['characters'])->contains('id', $standing->id))['rank'] ?? null,
                     'gained' => $standing->gained,
                     'syncedAt' => $standing->synced_at?->toIso8601String(),
                     'error' => $standing->sync_error,
@@ -881,6 +884,7 @@ class BoardController extends Controller
             // CONTINUE, and a create form that never showed the field for a
             // metric race should not have to send one.
             'finish_rule' => ['nullable', Rule::in(Event::FINISH_RULES)],
+            'allow_alts' => ['sometimes', 'boolean'],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['nullable', 'boolean'],
             'access_mode' => ['nullable', 'in:OPEN,GUILD,INVITE'],
@@ -1066,6 +1070,11 @@ class BoardController extends Controller
             // does NOT reopen an event that a finish already closed — see
             // EventFinishService.
             'finish_rule' => ['sometimes', 'nullable', Rule::in(Event::FINISH_RULES)],
+            // Fixed from the start date on: switching it mid-event would add
+            // characters to a race, or take some away, that nobody agreed to.
+            'allow_alts' => ['sometimes', 'boolean', fn ($attribute, $value, $fail) => $event->altsLocked() && (bool) $value !== $event->allow_alts
+                ? $fail(trans('validation.allow_alts_locked'))
+                : null],
             'dice_roll_limit' => ['nullable', 'integer', 'min:1'],
             'is_listed' => ['sometimes', 'boolean'],
             'access_mode' => ['sometimes', 'in:OPEN,GUILD,INVITE'],

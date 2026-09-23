@@ -37,6 +37,8 @@ class Setting extends Model
         'registration_open' => true,
         'default_board_size' => 'SIZE_7X7',
         'default_dice_roll_limit' => 1,
+        // OSRS characters per account, main included.
+        'max_osrs_characters' => 5,
         // How long the create-event form pre-fills a new event to run for.
         // A default, not a rule: the dates stay editable on the form, this
         // only decides what they start at. Clans settle into a rhythm — a

@@ -20,6 +20,7 @@ class EventStanding extends Model
     protected $fillable = [
         'event_id',
         'user_id',
+        'osrs_account_id',
         'username',
         'start_value',
         'end_value',
@@ -48,6 +49,12 @@ class EventStanding extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** The character these numbers belong to; null once it left the account. */
+    public function osrsAccount(): BelongsTo
+    {
+        return $this->belongsTo(OsrsAccount::class);
     }
 
     public function kills(): HasMany

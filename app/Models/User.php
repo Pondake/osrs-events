@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\NotificationCategory;
+use App\Support\RuneliteName;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['discord_id', 'discord_username', 'nickname', 'osrs_username', 'osrs_verified_at', 'osrs_proven_at', 'osrs_proven_via', 'avatar_url', 'email', 'password', 'onboarding_completed_at', 'notification_preferences', 'display_preferences', 'push_opted_out_at'])]
@@ -95,6 +97,83 @@ class User extends Authenticatable
     public function hasProvenOsrsName(): bool
     {
         return $this->osrs_proven_at !== null;
+    }
+
+    /**
+     * The main lives in two places — these columns and osrs_accounts row 0 —
+     * and this is the one place that keeps them equal. Everything that sets
+     * the main writes the columns; the row follows.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (User $user) {
+            $fields = ['osrs_username', 'osrs_verified_at', 'osrs_proven_at', 'osrs_proven_via'];
+
+            if (! $user->wasRecentlyCreated && ! $user->wasChanged($fields)) {
+                return;
+            }
+
+            $main = OsrsAccount::where('user_id', $user->id)->where('position', 0)->first();
+
+            if (blank($user->osrs_username)) {
+                $main?->delete();
+
+                return;
+            }
+
+            ($main ?? new OsrsAccount(['user_id' => $user->id, 'position' => 0]))
+                ->fill([
+                    'username' => $user->osrs_username,
+                    'osrs_verified_at' => $user->osrs_verified_at,
+                    'osrs_proven_at' => $user->osrs_proven_at,
+                    'osrs_proven_via' => $user->osrs_proven_via,
+                ])
+                ->save();
+        });
+    }
+
+    /** Every character, main first. See OsrsAccount. */
+    public function osrsAccounts(): HasMany
+    {
+        return $this->hasMany(OsrsAccount::class)->orderBy('position');
+    }
+
+    /**
+     * The characters that may play in this event: all of them, or only the
+     * main when the host has switched alts off.
+     *
+     * @return Collection<int, OsrsAccount>
+     */
+    public function charactersFor(Event $event): Collection
+    {
+        $characters = $this->osrsAccounts()->get();
+
+        return $event->allow_alts ? $characters : $characters->take(1);
+    }
+
+    /**
+     * The allowed character in this event whose name matches, compared the
+     * way the game does — or the main when no name is given.
+     */
+    public function characterFor(Event $event, ?string $rsn = null): ?OsrsAccount
+    {
+        $characters = $this->charactersFor($event);
+
+        return blank($rsn)
+            ? $characters->first()
+            : $characters->first(fn (OsrsAccount $account) => RuneliteName::sameRsn($account->username, $rsn));
+    }
+
+    /** Proof for one character; the main when no name is given. */
+    public function hasProvenCharacter(?string $rsn): bool
+    {
+        if (blank($rsn)) {
+            return $this->hasProvenOsrsName();
+        }
+
+        return $this->osrsAccounts()->get()
+            ->first(fn (OsrsAccount $account) => RuneliteName::sameRsn($account->username, $rsn))
+            ?->osrs_proven_at !== null;
     }
 
     public function playerBoards(): HasMany

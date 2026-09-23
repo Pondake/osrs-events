@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Settings\ConnectionsController;
 use App\Http\Middleware\RequireOsrsUsername;
 use App\Models\Setting;
 use App\Rules\OsrsUsername;
@@ -71,6 +72,12 @@ class OsrsUsernameController extends Controller
 
     public function store(Request $request, OsrsIdentityService $identity): RedirectResponse
     {
+        // The first-run tour asks for alts as well, and posts the whole list.
+        // It stays in its modal, so a redirect back is what it wants anyway.
+        if ($request->has('characters')) {
+            return ConnectionsController::saveCharacters($request, $identity);
+        }
+
         $data = $request->validate([
             'osrs_username' => ['required', 'string', new OsrsUsername, new RsnNotProvenByAnother($request->user())],
             // The first-run wizard posts this from inside its own modal, and

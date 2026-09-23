@@ -201,6 +201,11 @@ class RunelitePluginService
         $progress = [];
 
         foreach ($this->openTargets($user) as ['event' => $event, 'targets' => $targets]) {
+            // Reported from an alt in an event whose host counts only mains.
+            if ($user->characterFor($event, $pluginCompletion->rsn) === null) {
+                continue;
+            }
+
             foreach ($targets->where('match', $match) as $target) {
                 // One report of at least N, not N reports adding up: a clan
                 // that agreed only the 25-stack Soaked page counts did not
@@ -393,7 +398,8 @@ class RunelitePluginService
                 'marked_by' => $user->id,
                 'completed_via' => 'RUNELITE',
                 'plugin_completion_id' => $pluginCompletion->id,
-                'status' => $event->bingoCard->initialClaimStatus('RUNELITE', $user, filled($pluginCompletion->doubts)),
+                'rsn' => $user->characterFor($event, $pluginCompletion->rsn)?->username,
+                'status' => $event->bingoCard->initialClaimStatus('RUNELITE', $user, filled($pluginCompletion->doubts), $pluginCompletion->rsn),
             ]));
         } catch (UniqueConstraintViolationException) {
             return null;
@@ -420,7 +426,8 @@ class RunelitePluginService
                 'completed_via' => 'RUNELITE',
                 'plugin_completion_id' => $pluginCompletion->id,
                 'marked_by' => $user->id,
-                'status' => $event->board->initialClaimStatus('RUNELITE', $user, filled($pluginCompletion->doubts)),
+                'rsn' => $user->characterFor($event, $pluginCompletion->rsn)?->username,
+                'status' => $event->board->initialClaimStatus('RUNELITE', $user, filled($pluginCompletion->doubts), $pluginCompletion->rsn),
             ]));
         } catch (UniqueConstraintViolationException) {
             return null;

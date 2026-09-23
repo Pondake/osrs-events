@@ -69,15 +69,18 @@ class OsrsNameProofTest extends TestCase
     }
 
     #[Test]
-    public function a_different_character_proves_nothing(): void
+    public function a_different_character_proves_nothing_when_the_plugin_adds_no_alts(): void
     {
         $this->api()
-            ->postJson('/api/plugin/v1/identity', ['rsn' => 'Someone Else'])
+            ->postJson('/api/plugin/v1/identity', ['rsn' => 'Someone Else', 'add_alt' => false])
             ->assertOk()
             ->assertJsonPath('matched', false)
+            ->assertJsonPath('added', false)
+            ->assertJsonPath('reason', 'disabled')
             ->assertJsonPath('proven', false);
 
         $this->assertNull($this->player->fresh()->osrs_proven_at);
+        $this->assertSame(1, $this->player->osrsAccounts()->count());
     }
 
     /**
@@ -91,9 +94,10 @@ class OsrsNameProofTest extends TestCase
         $this->api()->postJson('/api/plugin/v1/identity', ['rsn' => 'Iron Pondake'])->assertOk();
         $proven = $this->player->fresh()->osrs_proven_at;
 
-        $this->api()->postJson('/api/plugin/v1/identity', ['rsn' => 'Alt Account'])->assertJsonPath('matched', false);
+        $this->api()->postJson('/api/plugin/v1/identity', ['rsn' => 'Alt Account'])->assertJsonPath('added', true);
 
         $this->assertEquals($proven, $this->player->fresh()->osrs_proven_at);
+        $this->assertSame('Iron Pondake', $this->player->fresh()->osrs_username);
     }
 
     #[Test]

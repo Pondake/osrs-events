@@ -29,6 +29,11 @@ class RunelitePluginController extends Controller
             // So the plugin can say the name is not proven yet, and what
             // that costs: claims keep going through a host.
             'proven' => $request->user()->hasProvenOsrsName(),
+            // Every character the plugin may report from, main first. `rsn`
+            // and `proven` above stay the main's, for plugins that predate
+            // alts.
+            'characters' => self::characters($request->user()),
+            'max_characters' => OsrsIdentityService::maxCharacters(),
             'events' => $events->map(fn (array $row) => [
                 'id' => $row['event']->id,
                 'title' => $row['event']->title,
@@ -63,15 +68,20 @@ class RunelitePluginController extends Controller
     {
         $data = $request->validate([
             'rsn' => ['required', 'string', 'max:32'],
+            // The plugin's "add new characters as alts" box. Absent is on,
+            // so a plugin that predates the box adds them.
+            'add_alt' => ['sometimes', 'boolean'],
         ]);
 
         $user = $request->user();
-        $matched = $identity->proveFromPlugin($user, $data['rsn']);
+        $result = $identity->proveFromPlugin($user, $data['rsn'], $data['add_alt'] ?? true);
+        $user = $user->fresh();
 
         return response()->json([
             'rsn' => $user->osrs_username,
-            'matched' => $matched,
-            'proven' => $user->fresh()->hasProvenOsrsName(),
+            ...$result,
+            'proven' => $user->hasProvenOsrsName(),
+            'characters' => self::characters($user),
         ]);
     }
 
@@ -112,7 +122,9 @@ class RunelitePluginController extends Controller
             return $this->answer($existing, true);
         }
 
-        if (! RuneliteName::sameRsn($data['rsn'], $user->osrs_username)) {
+        $known = $user->osrsAccounts()->get()->contains(fn ($account) => RuneliteName::sameRsn($data['rsn'], $account->username));
+
+        if (! $known) {
             return response()->json([
                 'message' => blank($user->osrs_username)
                     ? trans('plugin.api_rsn_missing')
@@ -144,6 +156,16 @@ class RunelitePluginController extends Controller
         }
 
         return $this->answer($logged, false);
+    }
+
+    /** @return list<array{rsn: string, main: bool, proven: bool}> */
+    private static function characters(\App\Models\User $user): array
+    {
+        return $user->osrsAccounts()->get()->map(fn ($account) => [
+            'rsn' => $account->username,
+            'main' => $account->isMain(),
+            'proven' => $account->osrs_proven_at !== null,
+        ])->all();
     }
 
     /** A 422 on an unknown key, rather than the strict-validation gotcha of dropping it silently. */

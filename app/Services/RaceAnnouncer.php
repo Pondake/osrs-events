@@ -67,6 +67,7 @@ class RaceAnnouncer
         $leader = EventStanding::query()
             ->where('event_id', $event->id)
             ->where('user_id', $is)
+            ->orderByDesc('gained')
             ->first();
 
         if ($leader === null) {
@@ -112,8 +113,11 @@ class RaceAnnouncer
             ->whereNotNull('synced_at')
             ->orderByDesc('gained')
             ->orderBy('username')
-            ->limit(self::PODIUM)
-            ->get();
+            ->get()
+            // One place per account, taken by its best character.
+            ->unique('user_id')
+            ->take(self::PODIUM)
+            ->values();
     }
 
     /** @param  Collection<int, EventStanding>  $podium */

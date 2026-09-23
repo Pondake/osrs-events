@@ -147,7 +147,9 @@ class RaceRankNotifier
         $previous = null;
 
         foreach ($rows as $row) {
-            if ($row->sync_error !== null || $row->synced_at === null) {
+            // Rows are best-first, so an account's first row is its best
+            // character and any later one is an alt already counted.
+            if ($row->sync_error !== null || $row->synced_at === null || isset($ranks[$row->user_id])) {
                 continue;
             }
 

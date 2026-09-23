@@ -28,6 +28,12 @@
             </div>
         </u-form-field>
 
+        <!-- Whether every character on an account plays, or only its main.
+             Locked from the start date: see Event::altsLocked(). -->
+        <u-form-field :description="$t(form.alts_locked ? 'events.allow_alts_locked' : 'events.allow_alts_desc')">
+            <u-switch v-model="form.allow_alts" :disabled="form.alts_locked" :label="$t('events.allow_alts')" />
+        </u-form-field>
+
         <u-separator />
 
         <!-- Only for types that race on a metric. Snakes & Ladders has none,

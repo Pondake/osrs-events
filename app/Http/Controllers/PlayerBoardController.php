@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** Ported from the old PlayersService — see PlayerBoardService for the SOLO/TEAM split. */
 class PlayerBoardController extends Controller
@@ -273,7 +274,17 @@ class PlayerBoardController extends Controller
             // judge — the whole point of the feature, unmet by its own form.
             'proof_url' => [$board->requires_approval ? 'required' : 'nullable', 'url', 'max:2048'],
             'note' => ['nullable', 'string', 'max:255'],
+            // Which of the claimant's characters did it. Blank is the main.
+            'rsn' => ['nullable', 'string', 'max:12'],
         ]);
+
+        $character = $request->user()->characterFor($event, $data['rsn'] ?? null);
+
+        // Blank with no character at all is an account the gate let through
+        // on a read; only a name that is not one of its characters is wrong.
+        if ($character === null && filled($data['rsn'] ?? null)) {
+            throw ValidationException::withMessages(['rsn' => trans('validation.osrs_character_not_allowed')]);
+        }
 
         CompletedTile::create([
             'id' => (string) str()->uuid(),
@@ -291,7 +302,8 @@ class PlayerBoardController extends Controller
             'completed_at' => now(),
             'completed_via' => 'MANUAL',
             'marked_by' => Auth::id(),
-            'status' => $board->initialClaimStatus('MANUAL', $request->user()),
+            'status' => $board->initialClaimStatus('MANUAL', $request->user(), rsn: $character?->username),
+            'rsn' => $character?->username,
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);

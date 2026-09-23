@@ -178,6 +178,10 @@
                             <u-checkbox v-model="unlimitedRolls" :label="$t('admin.dice_roll_unlimited')" />
                         </div>
                     </setting-field>
+
+                    <setting-field name="max_osrs_characters" section="boards" :error="form.errors.max_osrs_characters">
+                        <u-input v-model.number="form.max_osrs_characters" type="number" min="1" max="20" class="w-24" />
+                    </setting-field>
                 </div>
             </u-card>
 
@@ -293,6 +297,7 @@ const form = useForm({
     registration_open: props.settings.registration_open,
     default_board_size: props.settings.default_board_size,
     default_dice_roll_limit: props.settings.default_dice_roll_limit,
+    max_osrs_characters: props.settings.max_osrs_characters ?? 5,
     default_event_duration: props.settings.default_event_duration ?? '2w',
     kofi_url: props.settings.kofi_url ?? '',
     discord_invite_url: props.settings.discord_invite_url ?? '',

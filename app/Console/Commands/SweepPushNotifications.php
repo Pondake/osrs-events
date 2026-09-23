@@ -442,6 +442,11 @@ class SweepPushNotifications extends Command
         $previous = null;
 
         foreach ($rows as $row) {
+            // An account's best character only; the rows are best-first.
+            if (isset($places[$row->user_id])) {
+                continue;
+            }
+
             $seen++;
 
             if ($row->gained !== $previous) {

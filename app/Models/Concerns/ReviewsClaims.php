@@ -33,9 +33,11 @@ trait ReviewsClaims
      * (PluginPlausibilityService). It takes back the trust shortcut and nothing
      * else: a board that does not review has no queue to send a claim to.
      */
-    public function initialClaimStatus(string $via, ?User $user = null, bool $doubtful = false): string
+    public function initialClaimStatus(string $via, ?User $user = null, bool $doubtful = false, ?string $rsn = null): string
     {
-        if ($user !== null && ! $user->hasProvenOsrsName() && Setting::get('runelite_plugin_mode') === 'live') {
+        // The proof asked for is the character's the claim was made with:
+        // a proved main does not vouch for an alt typed in beside it.
+        if ($user !== null && ! $user->hasProvenCharacter($rsn) && Setting::get('runelite_plugin_mode') === 'live') {
             return 'PENDING';
         }
 

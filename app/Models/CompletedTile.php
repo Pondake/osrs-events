@@ -22,7 +22,7 @@ class CompletedTile extends Model
 
     protected $fillable = [
         'player_board_id', 'tile_id', 'completed_at', 'completed_via', 'plugin_completion_id',
-        'status', 'proof_url', 'note', 'marked_by', 'reviewed_by', 'reviewed_at', 'review_note',
+        'status', 'proof_url', 'note', 'rsn', 'marked_by', 'reviewed_by', 'reviewed_at', 'review_note',
     ];
 
     protected $casts = [

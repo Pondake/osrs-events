@@ -28,7 +28,8 @@ final class EventCard
     public static function for(Event $event): array
     {
         return [
-            ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date', 'paused_at', 'pause_reason', 'closed_at', 'finish_rule', 'standings_stale_since']),
+            ...$event->only(['id', 'title', 'type', 'metric', 'description', 'mode', 'access_mode', 'is_listed', 'start_date', 'end_date', 'paused_at', 'pause_reason', 'closed_at', 'finish_rule', 'standings_stale_since', 'allow_alts']),
+            'alts_locked' => $event->altsLocked(),
             // `closed_at` and `finish_rule` ride along for the same reason
             // `paused_at` does: eventStatus() in board.js reads them to
             // decide whether the page shows a dice at all, and a card that

@@ -388,6 +388,8 @@ function blankForm() {
         // What happens when the first competitor gets home. CONTINUE is the
         // forgiving default — see the finish_rule migration.
         finish_rule: 'CONTINUE',
+        allow_alts: true,
+        alts_locked: false,
         ...defaultDates(),
         dice_roll_limit: settings.defaultDiceRollLimit ?? null,
         is_listed: true,

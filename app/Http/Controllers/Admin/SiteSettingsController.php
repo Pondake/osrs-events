@@ -58,6 +58,7 @@ class SiteSettingsController extends Controller
             // nullable = "unlimited", matching the boards table's own
             // dice_roll_limit convention rather than inventing a sentinel.
             'default_dice_roll_limit' => ['nullable', 'integer', 'min:1', 'max:99'],
+            'max_osrs_characters' => ['sometimes', 'integer', 'min:1', 'max:20'],
             // A duration, not a day count: `10d`, `2w`, `1m`, or a bare
             // number read as days. Capped inside the rule at a year in each
             // unit — this pre-fills a date field, and a default that lands an

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Rules\OsrsCharacterList;
 use App\Rules\OsrsUsername;
 use App\Rules\RsnNotProvenByAnother;
 use App\Services\OsrsIdentityService;
@@ -58,6 +59,8 @@ class ConnectionsController extends Controller
             // every claim goes past a host. See ReviewsClaims.
             'osrsProven' => $user->hasProvenOsrsName(),
             'provenAt' => $user->osrs_proven_at?->toIso8601String(),
+            'characters' => self::characters($user),
+            'maxCharacters' => OsrsIdentityService::maxCharacters(),
             'pluginMode' => Setting::get('runelite_plugin_mode'),
         ]);
     }
@@ -73,6 +76,10 @@ class ConnectionsController extends Controller
      */
     public function updateOsrsUsername(Request $request, OsrsIdentityService $identity): RedirectResponse
     {
+        if ($request->has('characters')) {
+            return self::saveCharacters($request, $identity);
+        }
+
         $data = $request->validate([
             // Required rather than nullable: every account has one by the
             // time it gets here (RequireOsrsUsername sees to that), so
@@ -93,6 +100,44 @@ class ConnectionsController extends Controller
         return $found === false
             ? back()->with('board-save-error', trans('auth.osrs_not_found'))
             : back()->with('board-save', trans('profile.osrs_username_saved'));
+    }
+
+    /**
+     * The whole list of characters, main first — the repeater in settings
+     * and in the first-run tour both post this.
+     */
+    public static function saveCharacters(Request $request, OsrsIdentityService $identity): RedirectResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'characters' => ['required', 'array', 'min:1', new OsrsCharacterList($user)],
+            'characters.*' => ['required', 'string', new OsrsUsername, new RsnNotProvenByAnother($user)],
+        ], [], [
+            'characters.*' => trans('auth.field_osrs_username'),
+        ]);
+
+        $result = $identity->saveCharacters($user, $data['characters']);
+
+        if ($result['taken'] !== []) {
+            return back()->with('board-save-error', trans('auth.osrs_taken_names', ['names' => implode(', ', $result['taken'])]));
+        }
+
+        return $result['missing'] !== []
+            ? back()->with('board-save-error', trans('auth.osrs_not_found_names', ['names' => implode(', ', $result['missing'])]))
+            : back()->with('board-save', trans('profile.osrs_characters_saved'));
+    }
+
+    /** What the character repeater renders, main first. */
+    public static function characters(\App\Models\User $user): array
+    {
+        return $user->osrsAccounts()->get()->map(fn ($account) => [
+            'id' => $account->id,
+            'username' => $account->username,
+            'main' => $account->isMain(),
+            'verified' => $account->osrs_verified_at !== null,
+            'proven' => $account->osrs_proven_at !== null,
+        ])->all();
     }
 
     /**
