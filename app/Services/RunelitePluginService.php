@@ -6,6 +6,7 @@ use App\Models\BingoCompletion;
 use App\Models\BingoSquare;
 use App\Models\CompletedTile;
 use App\Models\Event;
+use App\Models\EventFinish;
 use App\Models\EventParticipant;
 use App\Models\EventStanding;
 use App\Models\PluginCompletion;
@@ -14,6 +15,7 @@ use App\Models\Tile;
 use App\Models\User;
 use App\Support\RuneliteName;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -37,6 +39,105 @@ class RunelitePluginService
     ) {}
 
     /**
+     * Where this account stands on a race's leaderboard: its line is its
+     * best character, as on the race page.
+     *
+     * @return array{rank: ?int, entrants: int, gained: int, live: int, leader: ?int}
+     */
+    private function raceStanding(Event $event, User $user): array
+    {
+        $ids = EventStanding::where(['event_id' => $event->id, 'user_id' => $user->id])->pluck('id');
+        $lines = $this->standings->forEvent($event);
+        $ranked = $lines->whereNotNull('rank');
+        $line = $lines->first(fn (array $line) => $ids->contains($line['id'])
+            || collect($line['characters'])->pluck('id')->intersect($ids)->isNotEmpty());
+
+        return [
+            'rank' => $line['rank'] ?? null,
+            'entrants' => $ranked->count(),
+            'gained' => $line['gained'] ?? 0,
+            'live' => $line['live'] ?? 0,
+            'leader' => $ranked->first()['gained'] ?? null,
+        ];
+    }
+
+    /**
+     * This account's (or its team's) finish on a bingo card or a board, in
+     * the order the podium shows it. Null when it has not finished.
+     *
+     * @return array{place: int, provisional: bool, team: ?string}|null
+     */
+    public function finish(Event $event, User $user): ?array
+    {
+        $finish = $this->finishes->finishFor($event, $user);
+
+        return $finish === null ? null : $this->finishShape($event, $finish);
+    }
+
+    private function finishShape(Event $event, EventFinish $finish): array
+    {
+        return [
+            'place' => $this->finishes->finishers($event)->search(fn (EventFinish $row) => $row->is($finish)) + 1,
+            'provisional' => $this->finishes->isProvisional($event, $finish->finished_at),
+            'team' => $finish->team?->name,
+        ];
+    }
+
+    /**
+     * The events this player is in that are not running: upcoming, paused,
+     * or ended in the last week. For the panel only — nothing here claims,
+     * so nothing here goes into `watch`.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function otherEvents(User $user): array
+    {
+        return Event::query()
+            ->playedBy($user)
+            ->with(['board', 'bingoCard'])
+            ->orderBy('title')
+            ->get()
+            ->filter(fn (Event $event) => $this->access->hasAccess($user, $event))
+            ->map(function (Event $event) use ($user) {
+                $status = match (true) {
+                    $event->isPaused() => 'paused',
+                    $event->isUpcoming() => 'upcoming',
+                    $event->isEnded() || $event->isClosed() => 'ended',
+                    default => null,
+                };
+
+                if ($status === null || ($status === 'ended' && $this->endedAt($event)?->lt(now()->subDays(7)))) {
+                    return null;
+                }
+
+                $race = in_array($event->type, ['SKILL_RACE', 'DROP_RACE'], true);
+                $standing = $race ? $this->raceStanding($event, $user) : null;
+
+                return [
+                    'id' => $event->id,
+                    'title' => $event->title,
+                    'type' => $event->type,
+                    'url' => url("/events/{$event->id}"),
+                    'status' => $status,
+                    'starts_at' => $event->start_date?->copy()->startOfDay()->toIso8601String(),
+                    'ends_at' => $event->end_date?->copy()->endOfDay()->toIso8601String(),
+                    'finish' => $race ? null : $this->finish($event, $user),
+                    'rank' => $standing['rank'] ?? null,
+                    'entrants' => $standing['entrants'] ?? null,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /** When an event stopped: closed by a finish, or its end date passed. */
+    private function endedAt(Event $event): ?Carbon
+    {
+        return $event->closed_at ?? $event->end_date?->copy()->endOfDay();
+    }
+
+    /**
      * The running races this player is in, as their leaderboard stands — for
      * the plugin's panel, beside the squares and tiles of openTargets().
      *
@@ -48,21 +149,14 @@ class RunelitePluginService
      */
     public function races(User $user): array
     {
-        $mine = EventStanding::where('user_id', $user->id)->get(['id', 'event_id'])->groupBy('event_id');
-
         return Event::query()
-            ->whereIn('id', $mine->keys())
+            ->whereIn('id', EventStanding::where('user_id', $user->id)->select('event_id'))
             ->whereIn('type', ['SKILL_RACE', 'DROP_RACE'])
             ->whereNull('paused_at')
             ->orderBy('title')
             ->get()
             ->reject(fn (Event $event) => $event->isEnded() || $event->isUpcoming() || ! $this->access->hasAccess($user, $event))
-            ->map(function (Event $event) use ($mine) {
-                $ids = $mine->get($event->id)->pluck('id');
-                $lines = $this->standings->forEvent($event);
-                $ranked = $lines->whereNotNull('rank');
-                $line = $lines->first(fn (array $line) => $ids->contains($line['id'])
-                    || collect($line['characters'])->pluck('id')->intersect($ids)->isNotEmpty());
+            ->map(function (Event $event) use ($user) {
                 $boss = $event->metricKind() === 'boss';
                 $label = trans(($boss ? 'bosses.' : 'skills.').$event->metric);
 
@@ -73,11 +167,7 @@ class RunelitePluginService
                     'url' => url("/events/{$event->id}"),
                     'metric' => str_contains($label, '.') ? $event->metric : $label,
                     'unit' => $boss ? 'kills' : 'xp',
-                    'rank' => $line['rank'] ?? null,
-                    'entrants' => $ranked->count(),
-                    'gained' => $line['gained'] ?? 0,
-                    'live' => $line['live'] ?? 0,
-                    'leader' => $ranked->first()['gained'] ?? null,
+                    ...$this->raceStanding($event, $user),
                     'ends_at' => $event->end_date?->copy()->endOfDay()->toIso8601String(),
                 ];
             })
@@ -243,19 +333,24 @@ class RunelitePluginService
      * one to two is news even though it claimed nothing. The plugin says
      * "2 / 5" in game instead of sitting silent until the fifth kill.
      *
-     * @return array{claims: list<array>, progress: list<array>}
+     * @return array{claims: list<array>, progress: list<array>, finishes: list<array>}
      */
     public function complete(User $user, string $name, PluginCompletion $pluginCompletion): array
     {
         $match = RuneliteName::normalize($name);
         $claims = [];
         $progress = [];
+        $finishes = [];
 
         foreach ($this->openTargets($user) as ['event' => $event, 'targets' => $targets]) {
             // Reported from an alt in an event whose host counts only mains.
             if ($user->characterFor($event, $pluginCompletion->rsn) === null) {
                 continue;
             }
+
+            // Only a finish this report caused is news; one that was already
+            // there is not.
+            $before = $this->finishes->finishFor($event, $user)?->id;
 
             foreach ($targets->where('match', $match) as $target) {
                 // One report of at least N, not N reports adding up: a clan
@@ -319,9 +414,15 @@ class RunelitePluginService
                     ];
                 }
             }
+
+            $after = $this->finishes->finishFor($event, $user);
+
+            if ($after !== null && $after->id !== $before) {
+                $finishes[] = ['event_id' => $event->id, 'event_title' => $event->title, ...$this->finishShape($event, $after)];
+            }
         }
 
-        return ['claims' => $claims, 'progress' => $progress];
+        return ['claims' => $claims, 'progress' => $progress, 'finishes' => $finishes];
     }
 
     public static function describe(array $target): array

@@ -40,12 +40,17 @@ class RunelitePluginController extends Controller
                 'title' => $row['event']->title,
                 'type' => $row['event']->type,
                 'url' => url("/events/{$row['event']->id}"),
+                // This account's (or team's) place, once it has finished.
+                'finish' => $plugin->finish($row['event'], $request->user()),
                 'targets' => $row['targets']->map(fn (array $target) => RunelitePluginService::describe($target))->all(),
             ])->all(),
             'reviews' => $plugin->recentVerdicts($request->user()),
             // Running races this player is in, for the panel. Absent on a
             // server that predates it; the plugin reads that as none.
             'races' => $plugin->races($request->user()),
+            // Upcoming, paused, or ended in the last week. A separate key so
+            // a plugin that counts `events` as running ones stays right.
+            'other_events' => $plugin->otherEvents($request->user()),
             // One flat list of names, as the shipped plugin reads it. A drop
             // race's boss is in here without being a target: it claims
             // nothing, it moves a leaderboard, and the plugin needs no change
@@ -144,7 +149,7 @@ class RunelitePluginController extends Controller
             $logged = DB::transaction(function () use ($user, $data, $plugin, $doubts, $races) {
                 $logged = PluginCompletion::create([...$data, 'doubts' => $doubts ?: null, 'user_id' => $user->id]);
                 $outcome = $plugin->complete($user, $data['name'], $logged);
-                $logged->update(['claims' => $outcome['claims'], 'progress' => $outcome['progress']]);
+                $logged->update(['claims' => $outcome['claims'], 'progress' => $outcome['progress'], 'finishes' => $outcome['finishes']]);
 
                 // A kill can be both: the square it claims and the race it
                 // moves are different questions about the same report.
@@ -197,6 +202,8 @@ class RunelitePluginController extends Controller
             // Counted targets this report moved without claiming, so the
             // plugin can say "2 / 5" instead of nothing at all.
             'progress' => $logged->progress ?? [],
+            // The events this report finished for the account or its team.
+            'finishes' => $logged->finishes ?? [],
         ], $duplicate ? 200 : 201);
     }
 }

@@ -285,6 +285,35 @@ been measured for it. `entrants` counts ranked lines only; `leader` is the
 gained of rank 1, null when nobody is ranked. `unit` is `kills` for a drop
 race and `xp` for a skill race. A missing key means a server that predates it.
 
+Every entry in `events` carries `finish` (added 2026-09-24): null until the
+account — or its team, on a team event — has finished the card or reached the
+last tile, then:
+
+```json
+"finish": { "place": 1, "provisional": false, "team": null }
+```
+
+`place` is its position on the podium. `provisional` is true while an earlier
+submission is still waiting for a host and could take the place; say "you're
+in" rather than a number then. `team` is the team's name, null on a solo event.
+
+`other_events` (added 2026-09-24) lists the events the player is in that are
+not running: `upcoming`, `paused`, or `ended` in the last 7 days. It is a key of
+its own so a plugin that counts `events` as running ones stays right. Nothing
+here is a target and nothing here goes into `watch` — a paused event claims
+nothing.
+
+```json
+"other_events": [{ "id": "…", "title": "Clan bingo", "type": "BINGO", "url": "…",
+  "status": "paused", "starts_at": "2026-09-01T00:00:00+00:00",
+  "ends_at": "2026-09-30T23:59:59+00:00",
+  "finish": null, "rank": null, "entrants": null }]
+```
+
+`finish` is set for bingo and snakes & ladders, as above. `rank` and
+`entrants` are set for races, as in `races`; for an ended race they are the
+final standing.
+
 `watch` is every `match` in one list: the plugin reports a drop or kill only
 when its normalised name is in it.
 
@@ -373,7 +402,10 @@ player, not to other players.
 ```
 
 - `201` with `{client_event_id, duplicate: false, claims: [...], progress:
-  [...]}`. `claims` can be empty: nothing open matched. That is still
+  [...], finishes: [...]}`. `finishes` (added 2026-09-24) lists only the
+  finishes this report caused, as
+  `{event_id, event_title, place, provisional, team}` — `[]` otherwise.
+  `claims` can be empty: nothing open matched. That is still
   recorded. `progress` is the counted targets this report moved **without**
   claiming: each entry is the target as `claims` describes it, plus `done`,
   the competitor's new total, against the target's own `required_count`. It

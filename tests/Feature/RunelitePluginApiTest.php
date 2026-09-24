@@ -19,6 +19,7 @@ use App\Services\BingoService;
 use App\Support\RuneliteName;
 use Database\Seeders\RunelitePluginTestSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -598,6 +599,64 @@ class RunelitePluginApiTest extends TestCase
     }
 
     #[Test]
+    public function the_report_that_wins_a_card_says_so_and_a_retry_says_the_same(): void
+    {
+        $whip = $this->task('Abyssal whip');
+        $card = $this->card([0 => $whip, 1 => $whip, 2 => $whip], ['requires_approval' => true, 'trust_runelite_completions' => true, 'size' => 3]);
+        $report = $this->completion('Abyssal whip');
+
+        $this->api()->postJson('/api/plugin/v1/completions', $report)
+            ->assertCreated()
+            ->assertJsonCount(1, 'finishes')
+            ->assertJsonPath('finishes.0.event_id', $card->event_id)
+            ->assertJsonPath('finishes.0.place', 1)
+            ->assertJsonPath('finishes.0.team', null);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $report)
+            ->assertOk()
+            ->assertJsonPath('finishes.0.place', 1);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip'))
+            ->assertJsonPath('finishes', []);
+    }
+
+    #[Test]
+    public function a_running_event_carries_the_accounts_finish(): void
+    {
+        $whip = $this->task('Abyssal whip');
+        $card = $this->card([0 => $whip, 1 => $whip, 2 => $whip], ['requires_approval' => true, 'trust_runelite_completions' => true, 'size' => 3]);
+
+        $this->api()->getJson('/api/plugin/v1/events')->assertJsonPath('events.0.finish', null);
+
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip'));
+
+        $this->api()->getJson('/api/plugin/v1/events')
+            ->assertJsonPath('events.0.id', $card->event_id)
+            ->assertJsonPath('events.0.finish.place', 1)
+            ->assertJsonPath('events.0.finish.provisional', false);
+    }
+
+    #[Test]
+    public function events_that_are_not_running_are_listed_apart_and_watch_nothing(): void
+    {
+        $this->card([0 => $this->task('Abyssal whip')]);
+        $paused = $this->card([0 => $this->task('Dragon bones')])->event;
+        $paused->forceFill(['title' => 'Paused bingo', 'paused_at' => now()])->save();
+        $this->event('BINGO', ['title' => 'Next week', 'start_date' => now()->addWeek(), 'end_date' => now()->addWeeks(2)]);
+        $this->event('SKILL_RACE', ['title' => 'Last week', 'metric' => 'mining', 'start_date' => now()->subWeeks(2), 'end_date' => now()->subDays(3)]);
+        $this->event('BINGO', ['title' => 'Long ago', 'start_date' => now()->subMonths(3), 'end_date' => now()->subMonths(2)]);
+
+        $response = $this->api()->getJson('/api/plugin/v1/events')->assertOk();
+
+        $this->assertSame(['Clan BINGO'], array_column($response->json('events'), 'title'));
+        $this->assertEqualsCanonicalizing(
+            ['Paused bingo' => 'paused', 'Next week' => 'upcoming', 'Last week' => 'ended'],
+            array_column($response->json('other_events'), 'status', 'title'),
+        );
+        $this->assertNotContains('dragon bones', $response->json('watch'));
+    }
+
+    #[Test]
     public function a_retry_with_the_same_client_event_id_claims_nothing_twice(): void
     {
         $this->card([0 => $this->task('Abyssal whip'), 1 => $this->task('Abyssal whip')]);
@@ -744,7 +803,7 @@ class RunelitePluginApiTest extends TestCase
     }
 
     /** One Zulrah drop at a kill count and a moment, so a test reads as the sequence it is. */
-    private function kill(string $drop, int $killCount, $occurredAt = null, array $context = []): \Illuminate\Testing\TestResponse
+    private function kill(string $drop, int $killCount, $occurredAt = null, array $context = []): TestResponse
     {
         return $this->api()->postJson('/api/plugin/v1/completions', $this->completion($drop, [
             'kind' => 'npc_kill',
