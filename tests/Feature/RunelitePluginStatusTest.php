@@ -33,6 +33,8 @@ class RunelitePluginStatusTest extends TestCase
     #[Test]
     public function the_stream_does_not_exist_while_the_plugin_is_off(): void
     {
+        $this->mode('off');
+
         $this->actingAs(User::factory()->create())
             ->get('/settings/runelite/stream')
             ->assertNotFound();

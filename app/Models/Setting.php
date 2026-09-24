@@ -105,7 +105,7 @@ class Setting extends Model
         'admin_lockdown_enabled' => false,
         // off: nothing about the plugin is reachable. testing and live both
         // offer the settings tab; testing labels it as a test.
-        'runelite_plugin_mode' => 'off',
+        'runelite_plugin_mode' => 'testing',
     ];
 
     public const PLUGIN_MODES = ['off', 'testing', 'live'];

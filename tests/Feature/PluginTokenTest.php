@@ -22,6 +22,7 @@ class PluginTokenTest extends TestCase
     #[Test]
     public function the_settings_tab_does_not_exist_while_the_plugin_is_off(): void
     {
+        $this->mode('off');
         $user = User::factory()->create();
 
         $this->actingAs($user)->get('/settings/runelite')->assertNotFound();
@@ -123,10 +124,10 @@ class PluginTokenTest extends TestCase
             'site_lock_enabled' => false,
             'site_lock_password' => '',
             'admin_lockdown_enabled' => false,
-            'runelite_plugin_mode' => 'testing',
+            'runelite_plugin_mode' => 'live',
         ])->assertRedirect()->assertSessionHasNoErrors();
 
-        $this->assertSame('testing', Setting::get('runelite_plugin_mode'));
+        $this->assertSame('live', Setting::get('runelite_plugin_mode'));
     }
 
     #[Test]
@@ -135,6 +136,6 @@ class PluginTokenTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->put('/admin/site', ['runelite_plugin_mode' => 'live']);
 
-        $this->assertSame('off', Setting::get('runelite_plugin_mode'));
+        $this->assertSame('testing', Setting::get('runelite_plugin_mode'));
     }
 }

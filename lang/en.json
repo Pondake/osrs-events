@@ -1805,7 +1805,7 @@
     "landing.snakes.fact_sizes": "Board sizes",
     "landing.snakes.faq_a1": "Yes. It is free to use, carries no ads and has no paid tier. Donations only cover hosting.",
     "landing.snakes.faq_a2": "No. Players log in with Discord in their browser. There is nothing to download and no game client modification involved.",
-    "landing.snakes.faq_a3": "Players mark their own tiles complete, the same way most clans already run drop-log events on trust plus screenshots. Automatic RuneLite tracking is on the roadmap but is not live yet.",
+    "landing.snakes.faq_a3": "Players claim a tile with a screenshot, and the host can require approval before it counts. With the OSRS Events RuneLite plugin connected, a drop it detects claims the matching tile on its own. Every tile can still be claimed by hand.",
     "landing.snakes.faq_a4": "There is no player limit. A board works for a handful of friends or a full clan roster.",
     "landing.snakes.faq_a5": "Yes. A board can be open to anyone, restricted to members of a specific Discord server, or invite-only using links and six-character codes that you generate and can revoke.",
     "landing.snakes.faq_a6": "You set the daily roll limit per board, or leave it unlimited for a faster event.",
