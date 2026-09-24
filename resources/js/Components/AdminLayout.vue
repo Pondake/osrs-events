@@ -211,6 +211,7 @@ const navItems = computed(() => {
             { label: trans('settings.nav_admin_site'), icon: 'i-lucide-sliders-horizontal', to: '/admin/site', active: props.current === 'site', show: isAdmin.value },
             { label: trans('settings.nav_admin_audit'), icon: 'i-lucide-scroll-text', to: '/admin/audit', active: props.current === 'audit', show: isAdmin.value },
             { label: trans('settings.nav_admin_diagnostics'), icon: 'i-lucide-stethoscope', to: '/admin/diagnostics', active: props.current === 'diagnostics', show: isAdmin.value },
+            { label: trans('settings.nav_admin_plugin_tests'), icon: 'i-lucide-flask-conical', to: '/admin/plugin-tests', active: props.current === 'plugin-tests', show: isAdmin.value },
         ],
     ];
 

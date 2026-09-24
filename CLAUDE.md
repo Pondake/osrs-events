@@ -354,6 +354,11 @@ php artisan push:sweep --dry-run   # what the time-based sweep would send
   the per-board "trust RuneLite" toggle is applied.
 - **The plugin is never the only route to a tile.** Anything it can
   complete must stay claimable by hand.
+- **The tester set is `App\Support\PluginTestSet`.** Seeder, admin page
+  (`/admin/plugin-tests`) and the tester's checklist all read it, through
+  `PluginTestReport`. A new scenario is a row there plus
+  `plugin_tests.scenario_<key>[_do]` and `plugin_tests.short_<key>`; a name
+  belongs to one scenario only.
 
 ### Diagnostics — one service, two surfaces
 - `App\Services\DiagnosticsService` owns every check. `/admin/diagnostics`

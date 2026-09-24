@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\PluginToken;
 use App\Models\Setting;
+use App\Services\PluginTestReport;
 use App\Services\RunelitePluginService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,9 +14,12 @@ use Inertia\Response;
 
 class RunelitePluginController extends Controller
 {
-    public function show(Request $request, RunelitePluginService $plugin): Response
+    public function show(Request $request, RunelitePluginService $plugin, PluginTestReport $tests): Response
     {
         $this->ensureAvailable();
+
+        $testing = Setting::get('runelite_plugin_mode') === 'testing';
+        $testEvent = $testing ? $tests->event() : null;
 
         $token = PluginToken::where('user_id', $request->user()->id)->first();
 
@@ -29,6 +33,11 @@ class RunelitePluginController extends Controller
             'newCode' => $request->session()->get('plugin-code'),
             'osrsUsername' => $request->user()->osrs_username,
             'status' => $plugin->status($request->user()),
+            // The tester's own checklist, only while the plugin is in testing.
+            'tests' => $testEvent === null ? null : [
+                'eventUrl' => "/events/{$testEvent->id}",
+                ...$tests->forUser($request->user(), $testEvent),
+            ],
         ]);
     }
 
@@ -48,6 +57,16 @@ class RunelitePluginController extends Controller
         PluginToken::where('user_id', $request->user()->id)->delete();
 
         return back()->with('board-save', trans('plugin.code_revoked'));
+    }
+
+    /** Start the test set over. Only while testing: live events are nobody's to reset. */
+    public function resetTests(Request $request, PluginTestReport $tests): RedirectResponse
+    {
+        abort_unless(Setting::get('runelite_plugin_mode') === 'testing', 404);
+
+        $tests->reset($request->user());
+
+        return back()->with('board-save', trans('plugin_tests.reset_done'));
     }
 
     private function ensureAvailable(): void

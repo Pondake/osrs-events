@@ -17,7 +17,7 @@ class PluginToken extends Model
 
     public const PREFIX = 'ose_';
 
-    protected $fillable = ['user_id', 'token_hash', 'hint', 'last_used_at'];
+    protected $fillable = ['user_id', 'token_hash', 'hint', 'last_used_at', 'last_plugin_version'];
 
     protected $hidden = ['token_hash'];
 

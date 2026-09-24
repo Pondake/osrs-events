@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\PluginTestController;
 use App\Http\Controllers\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Admin\BossIconController;
 use App\Http\Controllers\Admin\ContentController;
@@ -352,6 +353,7 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::get('/settings/runelite', [RunelitePluginController::class, 'show'])->name('settings.runelite');
     Route::post('/settings/runelite/code', [RunelitePluginController::class, 'store'])->middleware('throttle:10,1')->name('settings.runelite.code');
     Route::delete('/settings/runelite/code', [RunelitePluginController::class, 'destroy'])->name('settings.runelite.revoke');
+    Route::post('/settings/runelite/test-reset', [RunelitePluginController::class, 'resetTests'])->middleware('throttle:10,1')->name('settings.runelite.test-reset');
     // Per-account live status, not an EventChannel — see the controller.
     Route::get('/settings/runelite/stream', RunelitePluginStreamController::class)->name('settings.runelite.stream');
     Route::get('/settings/account', [AccountController::class, 'show'])->name('settings.account');
@@ -520,6 +522,8 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
 
         // Read-only by design — see AuditLogController.
         Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+
+        Route::get('/plugin-tests', [PluginTestController::class, 'index'])->name('plugin-tests');
 
         // The "why is nothing happening" page. The checks are reads; the four
         // original actions each address the admin pressing them (their own

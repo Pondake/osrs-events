@@ -100,6 +100,41 @@
             </div>
         </u-card>
 
+        <u-card v-if="tests">
+            <template #header>
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <span class="font-semibold">{{ $t('plugin_tests.checklist_title') }}</span>
+                    <u-button
+                        v-if="tests.joined"
+                        color="neutral"
+                        variant="ghost"
+                        size="sm"
+                        icon="i-lucide-rotate-ccw"
+                        :label="$t('plugin_tests.reset')"
+                        @click="confirmingReset = true"
+                    />
+                </div>
+            </template>
+
+            <p class="text-sm text-muted mb-3">{{ $t('plugin_tests.checklist_desc') }}</p>
+
+            <div v-if="!tests.joined" class="flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
+                <p class="text-sm">{{ $t('plugin_tests.join_first') }}</p>
+                <u-button :to="tests.eventUrl" color="primary" icon="i-lucide-log-in" :label="$t('plugin_tests.open_event')" />
+            </div>
+
+            <template v-else>
+                <div v-if="confirmingReset" class="mb-3 flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
+                    <p class="text-sm">{{ $t('plugin_tests.reset_warning') }}</p>
+                    <div class="flex items-center gap-2">
+                        <u-button color="neutral" variant="ghost" size="sm" :label="$t('common.cancel')" @click="confirmingReset = false" />
+                        <u-button color="primary" size="sm" :label="$t('plugin_tests.reset')" :loading="resetting" @click="resetTests" />
+                    </div>
+                </div>
+                <plugin-test-checklist :tester="tests" />
+            </template>
+        </u-card>
+
         <u-card>
             <template #header>
                 <span class="font-semibold">{{ $t('plugin.code_title') }}</span>
@@ -178,6 +213,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
+import PluginTestChecklist from '@/Components/PluginTestChecklist.vue';
 import { formatDate, relativeTime } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
 
@@ -185,6 +221,7 @@ const props = defineProps({
     mode: { type: String, required: true },
     token: { type: Object, default: null },
     newCode: { type: String, default: null },
+    tests: { type: Object, default: null },
     osrsUsername: { type: String, default: null },
     status: {
         type: Object,
@@ -195,6 +232,8 @@ const props = defineProps({
 const confirming = ref(null);
 const busy = ref(false);
 const copied = ref(false);
+const confirmingReset = ref(false);
+const resetting = ref(false);
 
 const status = ref(props.status);
 
@@ -206,7 +245,12 @@ watch(() => props.status, (value) => (status.value = value));
 useEventStream({
     url: () => (props.token ? '/settings/runelite/stream' : null),
     event: 'status',
-    onMessage: (payload) => (status.value = payload),
+    onMessage: (payload) => {
+        status.value = payload;
+        // The checklist is per viewer and heavier than the status, so it is
+        // reloaded only when the stream says a report came in.
+        if (props.tests?.joined) router.reload({ only: ['tests'] });
+    },
 });
 
 const connectionLabel = computed(() => {
@@ -257,6 +301,16 @@ function revokeCode() {
         onSuccess: () => (confirming.value = null),
         onError: (errors) => console.error(errors),
         onFinish: () => (busy.value = false),
+    });
+}
+
+function resetTests() {
+    resetting.value = true;
+    router.post('/settings/runelite/test-reset', {}, {
+        preserveScroll: true,
+        onSuccess: () => (confirmingReset.value = false),
+        onError: (errors) => console.error(errors),
+        onFinish: () => (resetting.value = false),
     });
 }
 

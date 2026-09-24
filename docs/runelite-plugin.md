@@ -240,7 +240,13 @@ part; the real design work is tile matching and the trust model.
 ## Server API — built 2026-09-17
 
 Three routes under `/api/plugin/v1`, all `Authorization: Bearer ose_…` (the
-code from /settings/runelite), 60 requests a minute per code. While
+code from /settings/runelite), 60 requests a minute per code.
+
+Every request also carries `X-Plugin-Version` (added 2026-09-24): the
+plugin's version, as in `runelite-plugin.properties`. The server keeps the
+latest per code (`plugin_tokens.last_plugin_version`) and the one that sent
+each report (`plugin_completions.plugin_version`). A missing or malformed
+header is stored as null, never refused. While
 `runelite_plugin_mode` is `off` all three answer **404**, token or not.
 
 ### `GET /events`
@@ -571,4 +577,19 @@ Non-numeric suffixes stay: `Clue scroll (medium)`, `Berserker ring (i)` and
 `(uncharged)` are different items. `kind` is not used for matching yet; a
 trigger column only gets added if the test set shows name alone is not enough.
 
-The fixed test set is `RunelitePluginTestSeeder` (an unlisted 8×8 bingo card).
+### The test set testers play
+
+`App\Support\PluginTestSet` is the fixed, free-to-play set every tester plays
+the same way: an unlisted, open bingo card (`PluginTestSetSeeder`) and, per
+scenario, the reports the plugin must send — kind, name, context source,
+context fields, quantity, how many, and whether the server must claim or
+count. `PluginTestReport` judges a tester's `plugin_completions` against it,
+for `/admin/plugin-tests` and for the tester's own checklist on
+/settings/runelite. A tester can start over while the plugin mode is
+`testing`; that clears only their own squares and counts on that card.
+
+A name sits in one scenario only: the plugin stops reporting a name once its
+square is claimed, so two scenarios sharing one would starve each other.
+
+The owner's larger card for edge cases is `RunelitePluginTestSeeder` (an
+unlisted bingo card, members content).

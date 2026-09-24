@@ -13,7 +13,7 @@ class PluginCompletion extends Model
 
     public const KINDS = ['item', 'npc_kill'];
 
-    protected $fillable = ['user_id', 'client_event_id', 'kind', 'name', 'quantity', 'rsn', 'occurred_at', 'context', 'claims', 'progress', 'finishes', 'doubts'];
+    protected $fillable = ['user_id', 'client_event_id', 'kind', 'name', 'quantity', 'rsn', 'plugin_version', 'occurred_at', 'context', 'claims', 'progress', 'finishes', 'doubts'];
 
     protected $casts = [
         'doubts' => 'array',

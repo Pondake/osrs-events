@@ -146,8 +146,13 @@ class RunelitePluginController extends Controller
         $doubts = $plausibility->doubts($user, $data);
 
         try {
-            $logged = DB::transaction(function () use ($user, $data, $plugin, $doubts, $races) {
-                $logged = PluginCompletion::create([...$data, 'doubts' => $doubts ?: null, 'user_id' => $user->id]);
+            $logged = DB::transaction(function () use ($request, $user, $data, $plugin, $doubts, $races) {
+                $logged = PluginCompletion::create([
+                    ...$data,
+                    'doubts' => $doubts ?: null,
+                    'user_id' => $user->id,
+                    'plugin_version' => $request->attributes->get('plugin_version'),
+                ]);
                 $outcome = $plugin->complete($user, $data['name'], $logged);
                 $logged->update(['claims' => $outcome['claims'], 'progress' => $outcome['progress'], 'finishes' => $outcome['finishes']]);
 
