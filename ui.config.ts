@@ -60,6 +60,14 @@ export const uiConfig = {
             content: 'z-[60]',
         },
     },
+    // A sentence wraps at a readable width instead of running across the
+    // page on one truncated line.
+    tooltip: {
+        slots: {
+            content: 'h-auto max-w-64 py-1.5',
+            text: 'whitespace-normal leading-snug',
+        },
+    },
     // Same stacking context, same fix: a slideover and a drawer are the same
     // kind of portalled panel.
     slideover: {

@@ -40,12 +40,15 @@
                 </div>
 
                 <div class="flex items-center gap-1 shrink-0" :class="rowHeight">
+                    <!-- Fixed columns, with empty slots where a row has no
+                         shield or arrow, so every input is the same width. -->
                     <u-badge
                         v-if="index === 0"
                         color="primary"
                         variant="subtle"
                         size="sm"
                         :label="$t('profile.osrs_main')"
+                        class="min-w-11 justify-center"
                     />
                     <u-badge
                         v-else
@@ -53,6 +56,7 @@
                         variant="subtle"
                         size="sm"
                         :label="$t('profile.osrs_alt')"
+                        class="min-w-11 justify-center"
                     />
                     <!-- Client-only: a tooltip is an interactive Nuxt UI
                          component, and this list renders on an SSR page. -->
@@ -66,6 +70,7 @@
                             <u-icon name="i-lucide-shield-check" class="size-4 text-success" />
                         </template>
                     </client-only>
+                    <span v-else class="size-4" aria-hidden="true" />
                     <u-button
                         v-if="index > 0"
                         size="xs"
@@ -76,6 +81,7 @@
                         :title="index === 1 ? $t('profile.osrs_character_make_main') : $t('profile.osrs_character_up')"
                         @click="move(index, index - 1)"
                     />
+                    <span v-else class="size-6" aria-hidden="true" />
                     <u-button
                         v-if="modelValue.length > 1"
                         size="xs"
@@ -86,6 +92,7 @@
                         :title="$t('profile.osrs_character_remove')"
                         @click="remove(index)"
                     />
+                    <span v-else class="size-6" aria-hidden="true" />
                 </div>
             </li>
         </ol>
