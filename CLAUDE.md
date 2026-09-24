@@ -356,7 +356,8 @@ php artisan push:sweep --dry-run   # what the time-based sweep would send
   complete must stay claimable by hand.
 - **The tester set is `App\Support\PluginTestSet`.** Seeder, admin page
   (`/admin/plugin-tests`) and the tester's checklist all read it, through
-  `PluginTestReport`. A new scenario is a row there plus
+  `PluginTestReport`. The admin page covers every plugin account and event,
+  not just the test card, and only while the mode is `testing`. A new scenario is a row there plus
   `plugin_tests.scenario_<key>[_do]` and `plugin_tests.short_<key>`; a name
   belongs to one scenario only.
 

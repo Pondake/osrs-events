@@ -1,17 +1,16 @@
 <template>
     <div class="space-y-2">
         <details
-            v-for="scenario in tester.scenarios"
+            v-for="scenario in scenarios"
             :key="scenario.key"
             class="group rounded-lg ring ring-default"
-            :open="openKeys.includes(scenario.key)"
+            :open="!detailed && scenario.status === 'partial'"
         >
             <summary class="flex items-start gap-3 px-3 py-2.5 list-none hover:bg-elevated/50 rounded-lg focus-visible:outline-2 focus-visible:outline-primary min-h-11">
                 <u-icon :name="statusIcon(scenario.status)" class="size-5 mt-0.5 shrink-0" :class="statusClass(scenario.status)" />
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="font-medium">{{ $t(`plugin_tests.scenario_${scenario.key}`) }}</span>
-                        <u-badge v-if="scenario.optional" color="neutral" variant="subtle" size="sm" :label="$t('plugin_tests.optional')" />
                         <u-badge :color="statusColor(scenario.status)" variant="subtle" size="sm" :label="$t(`plugin_tests.status_${scenario.status}`)" />
                     </div>
                     <p class="text-sm text-muted mt-0.5">{{ $t(`plugin_tests.scenario_${scenario.key}_do`) }}</p>
@@ -42,50 +41,20 @@
                 </div>
             </div>
         </details>
-
-        <details v-if="detailed || tester.other.length" class="group rounded-lg ring ring-default">
-            <summary class="flex items-center gap-3 px-3 py-2.5 list-none hover:bg-elevated/50 rounded-lg focus-visible:outline-2 focus-visible:outline-primary min-h-11">
-                <u-icon name="i-lucide-inbox" class="size-5 shrink-0 text-muted" />
-                <span class="flex-1 font-medium">{{ $t('plugin_tests.other_reports', { count: tester.other.length }) }}</span>
-                <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
-            </summary>
-            <div class="px-3 pb-3 text-sm">
-                <p class="text-muted mb-2">{{ $t('plugin_tests.other_reports_desc') }}</p>
-                <p v-if="!tester.other.length" class="text-muted">{{ $t('plugin_tests.none') }}</p>
-                <ul v-else class="space-y-1.5">
-                    <li v-for="report in tester.other" :key="report.id">
-                        <plugin-test-report :report="report" :detailed="detailed" />
-                    </li>
-                </ul>
-            </div>
-        </details>
     </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import PluginTestReport from '@/Components/PluginTestReport.vue';
 import { formatTimestamp } from '@/Support/audit';
+import { pluginTestStatusClass as statusClass, pluginTestStatusIcon as statusIcon } from '@/Support/pluginTests';
 
-const props = defineProps({
-    tester: { type: Object, required: true },
-    // The admin view: every context field, and the "other" list even when empty.
+defineProps({
+    scenarios: { type: Array, required: true },
+    // The admin view: every context field on every report.
     detailed: { type: Boolean, default: false },
 });
-
-// Unfinished required scenarios open by default, so a tester sees what is left.
-const openKeys = computed(() => (props.detailed
-    ? []
-    : props.tester.scenarios.filter((s) => !s.optional && s.status !== 'ok').map((s) => s.key)));
-
-function statusIcon(status) {
-    return { ok: 'i-lucide-circle-check', partial: 'i-lucide-circle-alert' }[status] ?? 'i-lucide-circle-dashed';
-}
-
-function statusClass(status) {
-    return { ok: 'text-success', partial: 'text-warning' }[status] ?? 'text-muted';
-}
 
 function statusColor(status) {
     return { ok: 'success', partial: 'warning' }[status] ?? 'neutral';

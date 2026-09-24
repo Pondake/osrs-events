@@ -583,10 +583,16 @@ trigger column only gets added if the test set shows name alone is not enough.
 the same way: an unlisted, open bingo card (`PluginTestSetSeeder`) and, per
 scenario, the reports the plugin must send — kind, name, context source,
 context fields, quantity, how many, and whether the server must claim or
-count. `PluginTestReport` judges a tester's `plugin_completions` against it,
-for `/admin/plugin-tests` and for the tester's own checklist on
-/settings/runelite. A tester can start over while the plugin mode is
-`testing`; that clears only their own squares and counts on that card.
+count.
+
+While the mode is `testing`, `/admin/plugin-tests` shows **every account that
+has a plugin code or a report**, on any event, with its full report log, and
+judges each against the test set. A scenario passes on any event: testers are
+free to make and play their own. The tester sees the same checklist and log on
+/settings/runelite (`PluginTestReport` serves both). Outside `testing` the
+admin page shows nothing. A tester can start over while testing; that sets
+their checklist's start and clears only their own squares and counts on the
+test card — the log is kept.
 
 A name sits in one scenario only: the plugin stops reporting a name once its
 square is claimed, so two scenarios sharing one would starve each other.

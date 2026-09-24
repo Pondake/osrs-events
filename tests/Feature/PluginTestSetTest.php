@@ -10,7 +10,9 @@ use App\Models\PluginToken;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\TargetProgress;
+use App\Models\Task;
 use App\Models\User;
+use App\Services\BingoService;
 use App\Services\PluginTestReport;
 use App\Support\PluginTestSet;
 use Database\Seeders\PluginTestSetSeeder;
@@ -58,7 +60,7 @@ class PluginTestSetTest extends TestCase
 
     private function scenario(string $key): array
     {
-        return collect(app(PluginTestReport::class)->forUser($this->tester->fresh())['scenarios'])->firstWhere('key', $key);
+        return collect(app(PluginTestReport::class)->forUser($this->tester->fresh())['scenarioDetails'])->firstWhere('key', $key);
     }
 
     #[Test]
@@ -123,13 +125,40 @@ class PluginTestSetTest extends TestCase
     }
 
     #[Test]
-    public function a_report_no_scenario_expects_is_still_shown(): void
+    public function every_report_is_in_the_log_whether_a_scenario_expects_it_or_not(): void
     {
-        // Watched on the owner's other card would do too; any name the test
-        // set does not expect lands in "other".
+        $this->report('npc_kill', 'Goblin');
         $this->report('item', 'Raw beef');
 
-        $this->assertSame(['Raw beef'], collect(app(PluginTestReport::class)->forUser($this->tester)['other'])->pluck('name')->all());
+        $this->assertSame(['Raw beef', 'Goblin'], collect(app(PluginTestReport::class)->forUser($this->tester)['log'])->pluck('name')->all());
+    }
+
+    #[Test]
+    public function a_scenario_passes_on_a_testers_own_event_too(): void
+    {
+        $outsider = User::factory()->create(['osrs_username' => 'Main Sample']);
+        $this->code = PluginToken::issueFor($outsider);
+        $this->tester = $outsider;
+
+        $event = Event::create(['title' => 'Own card', 'type' => 'BINGO', 'mode' => 'SOLO', 'access_mode' => 'OPEN', 'is_listed' => false]);
+        EventParticipant::create(['event_id' => $event->id, 'user_id' => $outsider->id]);
+        $card = $event->bingoCard()->create(['size' => 3]);
+        app(BingoService::class)->ensureSquares($card);
+        $card->squares()->where('position', 0)->update(['task_id' => Task::where('title', 'Goblin')->value('id')]);
+
+        $this->withHeaders(['Authorization' => "Bearer {$this->code}", 'X-Plugin-Version' => '0.0.4'])
+            ->postJson('/api/plugin/v1/completions', [
+                'client_event_id' => (string) str()->uuid(),
+                'kind' => 'npc_kill',
+                'name' => 'Goblin',
+                'quantity' => 1,
+                'rsn' => 'Main Sample',
+                'occurred_at' => now()->toIso8601String(),
+                'context' => ['source' => 'npc_kill', 'npc_id' => 3029, 'npc_level' => 2, 'region_id' => 12850],
+            ])
+            ->assertCreated();
+
+        $this->assertSame('ok', $this->scenario('goblin')['status']);
     }
 
     #[Test]
@@ -166,7 +195,7 @@ class PluginTestSetTest extends TestCase
     public function the_checklist_is_on_the_settings_page_only_while_testing(): void
     {
         $this->actingAs($this->tester)->get('/settings/runelite')
-            ->assertInertia(fn ($page) => $page->where('tests.joined', true)->has('tests.scenarios', count(PluginTestSet::scenarios())));
+            ->assertInertia(fn ($page) => $page->where('tests.testSet.joined', true)->has('tests.scenarioDetails', count(PluginTestSet::scenarios())));
 
         Setting::set('runelite_plugin_mode', 'live');
 
@@ -175,14 +204,30 @@ class PluginTestSetTest extends TestCase
     }
 
     #[Test]
-    public function only_an_admin_sees_every_tester(): void
+    public function the_admin_sees_every_account_with_the_plugin_not_only_the_test_set(): void
     {
         $this->actingAs($this->tester)->get('/admin/plugin-tests')->assertForbidden();
 
+        $outsider = User::factory()->create(['osrs_username' => 'Main Sample']);
+        PluginToken::issueFor($outsider);
+        $admin = User::factory()->create(['osrs_username' => 'Admin Sample']);
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+
+        $this->actingAs($admin)->get("/admin/plugin-tests?tester={$outsider->id}")
+            ->assertInertia(fn ($page) => $page->component('Admin/PluginTests')
+                ->has('testers', 2)
+                ->where('selected.user.id', $outsider->id)
+                ->where('selected.testSet.joined', false));
+    }
+
+    #[Test]
+    public function the_admin_sees_nothing_once_the_plugin_is_live(): void
+    {
+        Setting::set('runelite_plugin_mode', 'live');
         $admin = User::factory()->create(['osrs_username' => 'Admin Sample']);
         $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
         $this->actingAs($admin)->get('/admin/plugin-tests')
-            ->assertInertia(fn ($page) => $page->component('Admin/PluginTests')->has('testers', 1));
+            ->assertInertia(fn ($page) => $page->has('testers', 0)->where('selected', null));
     }
 }

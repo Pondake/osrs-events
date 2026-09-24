@@ -18,9 +18,6 @@ class RunelitePluginController extends Controller
     {
         $this->ensureAvailable();
 
-        $testing = Setting::get('runelite_plugin_mode') === 'testing';
-        $testEvent = $testing ? $tests->event() : null;
-
         $token = PluginToken::where('user_id', $request->user()->id)->first();
 
         return Inertia::render('Settings/RunelitePlugin', [
@@ -33,11 +30,9 @@ class RunelitePluginController extends Controller
             'newCode' => $request->session()->get('plugin-code'),
             'osrsUsername' => $request->user()->osrs_username,
             'status' => $plugin->status($request->user()),
-            // The tester's own checklist, only while the plugin is in testing.
-            'tests' => $testEvent === null ? null : [
-                'eventUrl' => "/events/{$testEvent->id}",
-                ...$tests->forUser($request->user(), $testEvent),
-            ],
+            // The tester's checklist and every report they sent, only while
+            // the plugin is in testing.
+            'tests' => Setting::get('runelite_plugin_mode') === 'testing' ? $tests->forUser($request->user()) : null,
         ]);
     }
 

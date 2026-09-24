@@ -7,9 +7,10 @@ namespace App\Support;
  * has to send for each step. The seeder builds the card from TARGETS, the
  * admin page and the tester's checklist judge reports against SCENARIOS.
  *
- * Everything is free-to-play and safe for a hardcore account, except the
- * optional scenarios, which depend on a drop. Drops come from the OSRS Wiki
- * (Chicken, Cow, Goblin, Collection log pages, 2026-09-24).
+ * Everything is free-to-play and safe for a hardcore account; the last three
+ * depend on a drop. Drops come from the OSRS Wiki (Chicken, Cow, Goblin,
+ * Collection log pages, 2026-09-24). A scenario is judged by the reports
+ * alone, so it passes on a tester's own event as well as on the test card.
  *
  * A name belongs to one scenario only: the plugin reports a name while its
  * square is open, so a square one scenario claims would go quiet for the next.
@@ -71,29 +72,29 @@ final class PluginTestSet
     public static function scenarios(): array
     {
         return [
-            'connect' => ['optional' => false, 'expect' => []],
-            'chicken' => ['optional' => false, 'expect' => [
+            'connect' => ['expect' => []],
+            'chicken' => ['expect' => [
                 ['kind' => 'npc_kill', 'names' => ['Chicken'], 'source' => 'npc_kill', 'fields' => ['npc_id', 'npc_name', 'npc_level', 'region_id', 'items'], 'outcome' => 'claim'],
                 ['kind' => 'item', 'names' => ['Raw chicken'], 'source' => 'npc_kill', 'fields' => ['npc_name', 'items'], 'outcome' => 'claim'],
             ]],
-            'feathers' => ['optional' => false, 'expect' => [
+            'feathers' => ['expect' => [
                 ['kind' => 'item', 'names' => ['Feather'], 'source' => 'npc_kill', 'fields' => ['npc_name'], 'min_quantity' => 15, 'outcome' => 'claim'],
             ]],
-            'cows' => ['optional' => false, 'expect' => [
+            'cows' => ['expect' => [
                 ['kind' => 'npc_kill', 'names' => ['Cow'], 'source' => 'npc_kill', 'fields' => ['npc_id', 'npc_level', 'region_id', 'items'], 'count' => 3, 'outcome' => 'claim'],
                 ['kind' => 'item', 'names' => ['Cowhide'], 'source' => 'npc_kill', 'fields' => ['npc_name', 'items'], 'outcome' => 'claim'],
             ]],
-            'goblin' => ['optional' => false, 'expect' => [
+            'goblin' => ['expect' => [
                 ['kind' => 'npc_kill', 'names' => ['Goblin'], 'source' => 'npc_kill', 'fields' => ['npc_id', 'npc_level', 'region_id'], 'outcome' => 'claim'],
             ]],
-            'clue' => ['optional' => true, 'expect' => [
-                ['kind' => 'item', 'names' => ['Clue scroll (beginner)'], 'source' => 'npc_kill', 'fields' => ['npc_name'], 'outcome' => 'progress'],
+            'clue' => ['expect' => [
+                ['kind' => 'item', 'names' => ['Clue scroll (beginner)'], 'source' => 'npc_kill', 'fields' => ['npc_name'], 'outcome' => 'counted'],
                 ['kind' => 'npc_kill', 'names' => ['Clue Scroll (Beginner)'], 'source' => 'loot', 'fields' => ['items'], 'outcome' => 'claim'],
             ]],
-            'kill_count' => ['optional' => true, 'expect' => [
+            'kill_count' => ['expect' => [
                 ['kind' => 'npc_kill', 'names' => ['Obor', 'Bryophyta'], 'source' => null, 'fields' => ['kill_count']],
             ]],
-            'collection_log' => ['optional' => true, 'expect' => [
+            'collection_log' => ['expect' => [
                 ['kind' => 'item', 'names' => self::COLLECTION_LOG, 'source' => 'collection_log', 'fields' => []],
             ]],
         ];

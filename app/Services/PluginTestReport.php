@@ -18,53 +18,111 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Expected reports against received ones, per tester and per scenario of
- * PluginTestSet. One service for the admin page and the tester's own
- * checklist, so the two can never disagree.
+ * Everything the plugin sent, per account, and the same reports judged
+ * against the scenarios of PluginTestSet. One service for the admin page and
+ * the tester's own page, so the two can never disagree.
  *
- * Judged from plugin_completions alone: a report is what the plugin sent,
- * whatever it claimed. Every report since the tester's start is shown, the
- * ones no scenario expects included.
+ * A tester is anybody with a plugin code or a report, whatever event they
+ * played: the test card is a shared starting point, not a boundary. A report
+ * counts for a scenario wherever it claimed.
  */
 class PluginTestReport
 {
+    public const LOG_LIMIT = 200;
+
     public function event(): ?Event
     {
         return Event::where('title', PluginTestSet::EVENT_TITLE)->with('bingoCard')->first();
     }
 
-    /** @return list<array> every tester, most recently active first */
-    public function all(): array
+    /** @return list<array> one line per account that ever used the plugin, most recently active first */
+    public function testers(): array
     {
-        $event = $this->event();
-
-        if ($event === null) {
-            return [];
-        }
-
-        $ids = EventParticipant::where('event_id', $event->id)->pluck('user_id')
-            ->merge(PluginTester::pluck('user_id'))
-            ->unique();
+        $ids = PluginToken::pluck('user_id')->merge(PluginCompletion::distinct()->pluck('user_id'))->unique();
 
         return User::whereIn('id', $ids)->get()
-            ->map(fn (User $user) => $this->forUser($user, $event))
-            ->sortByDesc(fn (array $row) => $row['lastReportAt'] ?? '')
+            ->map(fn (User $user) => $this->summary($user))
+            ->sortByDesc(fn (array $row) => max($row['lastReportAt'] ?? '', $row['lastUsedAt'] ?? ''))
             ->values()
             ->all();
     }
 
-    public function forUser(User $user, ?Event $event = null): array
+    public function summary(User $user): array
     {
-        $event ??= $this->event();
-        $since = $event === null ? null : $this->since($user, $event);
         $token = PluginToken::where('user_id', $user->id)->first();
+        $reports = PluginCompletion::where('user_id', $user->id)->orderBy('created_at')->get();
 
-        $reports = $since === null ? collect() : PluginCompletion::where('user_id', $user->id)
-            ->where('created_at', '>=', $since)
-            ->orderBy('created_at')
-            ->get();
+        return [
+            'user' => ['id' => $user->id, 'name' => $user->displayName(), 'rsn' => $user->osrs_username],
+            'characters' => $user->osrsAccounts()->get()->map(fn ($account) => [
+                'rsn' => $account->username,
+                'proven' => $account->osrs_proven_at !== null,
+            ])->all(),
+            'pluginVersion' => $token?->last_plugin_version,
+            'lastUsedAt' => $token?->last_used_at?->toIso8601String(),
+            'reportCount' => $reports->count(),
+            'claimCount' => $reports->sum(fn (PluginCompletion $report) => count($report->claims ?? [])),
+            'doubtedCount' => $reports->filter(fn (PluginCompletion $report) => filled($report->doubts))->count(),
+            'lastReportAt' => $reports->last()?->created_at?->toIso8601String(),
+            'scenarios' => collect($this->scenarios($user, $token, $reports))
+                ->map(fn (array $scenario) => ['key' => $scenario['key'], 'status' => $scenario['status']])
+                ->all(),
+        ];
+    }
 
-        $matched = collect();
+    /** The summary plus every scenario in full and the report log. */
+    public function forUser(User $user): array
+    {
+        $token = PluginToken::where('user_id', $user->id)->first();
+        $reports = PluginCompletion::where('user_id', $user->id)->orderBy('created_at')->get();
+        $event = $this->event();
+
+        return [
+            ...$this->summary($user),
+            'since' => $this->since($user)?->toIso8601String(),
+            'testSet' => $event === null ? null : [
+                'url' => "/events/{$event->id}",
+                'joined' => EventParticipant::where('event_id', $event->id)->where('user_id', $user->id)->exists(),
+            ],
+            'scenarioDetails' => $this->scenarios($user, $token, $reports),
+            'log' => $reports->reverse()->take(self::LOG_LIMIT)->map(fn (PluginCompletion $report) => self::report($report))->values()->all(),
+        ];
+    }
+
+    /**
+     * Start over: the checklist counts from now, and this tester's claims,
+     * counts and finish on the test card go so every square there is open to
+     * the plugin again. Nothing of anybody else's is touched, and the report
+     * log itself is kept.
+     */
+    public function reset(User $user): void
+    {
+        $event = $this->event();
+
+        DB::transaction(function () use ($user, $event) {
+            if ($event !== null) {
+                $squares = $event->bingoCard?->squares()->pluck('id') ?? collect();
+
+                BingoCompletion::whereIn('bingo_square_id', $squares)->where('user_id', $user->id)->delete();
+                TargetProgress::where('kind', 'bingo_square')->whereIn('target_id', $squares)
+                    ->where('competitor_key', TargetProgressService::bingoKey(['team_id' => null, 'user_id' => $user->id]))
+                    ->delete();
+                EventFinish::where('event_id', $event->id)->where('user_id', $user->id)->delete();
+            }
+
+            PluginTester::updateOrCreate(['user_id' => $user->id], ['started_at' => now()]);
+        });
+    }
+
+    private function since(User $user): ?CarbonInterface
+    {
+        return PluginTester::where('user_id', $user->id)->first()?->started_at;
+    }
+
+    private function scenarios(User $user, ?PluginToken $token, Collection $reports): array
+    {
+        $since = $this->since($user);
+        $reports = $since === null ? $reports : $reports->filter(fn (PluginCompletion $report) => $report->created_at->gte($since));
         $scenarios = [];
 
         foreach (PluginTestSet::scenarios() as $key => $scenario) {
@@ -74,74 +132,17 @@ class PluginTestReport
                 continue;
             }
 
-            $expectations = collect($scenario['expect'])->map(function (array $expect) use ($reports, $event, &$matched) {
-                $matching = $reports->filter(fn (PluginCompletion $report) => self::matches($expect, $report));
-                $matched = $matched->merge($matching->pluck('id'));
-
-                return $this->judge($expect, $matching, $event);
-            });
+            $expectations = collect($scenario['expect'])
+                ->map(fn (array $expect) => $this->judge($expect, $reports->filter(fn (PluginCompletion $report) => self::matches($expect, $report))));
 
             $scenarios[] = [
                 'key' => $key,
-                'optional' => $scenario['optional'],
                 'status' => self::overall($expectations->pluck('status')),
                 'expectations' => $expectations->all(),
             ];
         }
 
-        return [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->displayName(),
-                'rsn' => $user->osrs_username,
-            ],
-            'joined' => $since !== null,
-            'since' => $since?->toIso8601String(),
-            'pluginVersion' => $token?->last_plugin_version,
-            'lastReportAt' => $reports->last()?->created_at?->toIso8601String(),
-            'scenarios' => $scenarios,
-            'other' => $reports->reject(fn (PluginCompletion $report) => $matched->contains($report->id))
-                ->reverse()->take(50)->map(fn (PluginCompletion $report) => self::report($report))->values()->all(),
-        ];
-    }
-
-    /**
-     * Start over: this tester's claims, counts and finish on the test card go,
-     * so every square is open to the plugin again, and the checklist counts
-     * from now. Nothing of anybody else's is touched.
-     */
-    public function reset(User $user): void
-    {
-        $event = $this->event();
-
-        if ($event === null) {
-            return;
-        }
-
-        DB::transaction(function () use ($user, $event) {
-            $squares = $event->bingoCard?->squares()->pluck('id') ?? collect();
-
-            BingoCompletion::whereIn('bingo_square_id', $squares)->where('user_id', $user->id)->delete();
-            TargetProgress::where('kind', 'bingo_square')->whereIn('target_id', $squares)
-                ->where('competitor_key', TargetProgressService::bingoKey(['team_id' => null, 'user_id' => $user->id]))
-                ->delete();
-            EventFinish::where('event_id', $event->id)->where('user_id', $user->id)->delete();
-
-            PluginTester::updateOrCreate(['user_id' => $user->id], ['started_at' => now()]);
-        });
-    }
-
-    private function since(User $user, Event $event): ?CarbonInterface
-    {
-        $joined = EventParticipant::where('event_id', $event->id)->where('user_id', $user->id)->first()?->created_at;
-
-        if ($joined === null) {
-            return null;
-        }
-
-        $restarted = PluginTester::where('user_id', $user->id)->first()?->started_at;
-
-        return $restarted !== null && $restarted->gt($joined) ? $restarted : $joined;
+        return $scenarios;
     }
 
     private function connect(User $user, ?PluginToken $token, ?CarbonInterface $since): array
@@ -156,15 +157,17 @@ class PluginTestReport
             $used && $token->last_plugin_version === null ? 'no_version' : null,
         ]));
 
+        $status = $token === null ? 'missing' : ($problems === [] ? 'ok' : 'partial');
+
         return [
             'key' => 'connect',
-            'optional' => false,
-            'status' => $token === null ? 'missing' : ($problems === [] ? 'ok' : 'partial'),
+            'status' => $status,
             'expectations' => [[
                 'kind' => null,
                 'names' => [],
                 'source' => null,
-                'status' => $token === null ? 'missing' : ($problems === [] ? 'ok' : 'partial'),
+                'fields' => [],
+                'status' => $status,
                 'problems' => $problems,
                 'lastUsedAt' => $token?->last_used_at?->toIso8601String(),
                 'reports' => [],
@@ -187,7 +190,7 @@ class PluginTestReport
         return collect($expect['names'])->contains(fn (string $expected) => RuneliteName::normalize($expected) === $name);
     }
 
-    private function judge(array $expect, Collection $matching, ?Event $event): array
+    private function judge(array $expect, Collection $matching): array
     {
         $count = $expect['count'] ?? 1;
         $qualifying = $matching->filter(fn (PluginCompletion $report) => $report->quantity >= ($expect['min_quantity'] ?? 1));
@@ -209,12 +212,16 @@ class PluginTestReport
             }
 
             $outcome = $expect['outcome'] ?? null;
-            $answered = $qualifying->contains(fn (PluginCompletion $report) => collect($outcome === 'claim' ? $report->claims : $report->progress)
-                ->contains(fn (array $entry) => $event === null || ($entry['event_id'] ?? null) === $event->id));
+            // Any event: a tester's own card counts as much as the test set.
+            $answered = $qualifying->contains(fn (PluginCompletion $report) => match ($outcome) {
+                'claim' => filled($report->claims),
+                'progress' => filled($report->progress),
+                default => filled($report->claims) || filled($report->progress),
+            });
 
             // Not before enough have arrived: the server is right to wait.
             if ($outcome !== null && $qualifying->count() >= $count && ! $answered) {
-                $problems[] = ['code' => $outcome === 'claim' ? 'no_claim' : 'no_progress'];
+                $problems[] = ['code' => "no_{$outcome}"];
             }
 
             if ($qualifying->contains(fn (PluginCompletion $report) => filled($report->doubts))) {

@@ -104,35 +104,50 @@
             <template #header>
                 <div class="flex items-center justify-between gap-2 flex-wrap">
                     <span class="font-semibold">{{ $t('plugin_tests.checklist_title') }}</span>
-                    <u-button
-                        v-if="tests.joined"
-                        color="neutral"
-                        variant="ghost"
-                        size="sm"
-                        icon="i-lucide-rotate-ccw"
-                        :label="$t('plugin_tests.reset')"
-                        @click="confirmingReset = true"
-                    />
+                    <div class="flex items-center gap-2">
+                        <u-button
+                            v-if="tests.testSet"
+                            :to="tests.testSet.url"
+                            color="neutral"
+                            variant="ghost"
+                            size="sm"
+                            icon="i-lucide-grid-3x3"
+                            :label="$t('plugin_tests.open_event')"
+                        />
+                        <u-button
+                            color="neutral"
+                            variant="ghost"
+                            size="sm"
+                            icon="i-lucide-rotate-ccw"
+                            :label="$t('plugin_tests.reset')"
+                            @click="confirmingReset = true"
+                        />
+                    </div>
                 </div>
             </template>
 
             <p class="text-sm text-muted mb-3">{{ $t('plugin_tests.checklist_desc') }}</p>
 
-            <div v-if="!tests.joined" class="flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
-                <p class="text-sm">{{ $t('plugin_tests.join_first') }}</p>
-                <u-button :to="tests.eventUrl" color="primary" icon="i-lucide-log-in" :label="$t('plugin_tests.open_event')" />
+            <div v-if="confirmingReset" class="mb-3 flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
+                <p class="text-sm">{{ $t('plugin_tests.reset_warning') }}</p>
+                <div class="flex items-center gap-2">
+                    <u-button color="neutral" variant="ghost" size="sm" :label="$t('common.cancel')" @click="confirmingReset = false" />
+                    <u-button color="primary" size="sm" :label="$t('plugin_tests.reset')" :loading="resetting" @click="resetTests" />
+                </div>
             </div>
 
-            <template v-else>
-                <div v-if="confirmingReset" class="mb-3 flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
-                    <p class="text-sm">{{ $t('plugin_tests.reset_warning') }}</p>
-                    <div class="flex items-center gap-2">
-                        <u-button color="neutral" variant="ghost" size="sm" :label="$t('common.cancel')" @click="confirmingReset = false" />
-                        <u-button color="primary" size="sm" :label="$t('plugin_tests.reset')" :loading="resetting" @click="resetTests" />
-                    </div>
+            <plugin-test-checklist :scenarios="tests.scenarioDetails" />
+
+            <details class="group mt-4 rounded-lg ring ring-default">
+                <summary class="flex items-center gap-3 px-3 py-2.5 list-none hover:bg-elevated/50 rounded-lg focus-visible:outline-2 focus-visible:outline-primary min-h-11">
+                    <u-icon name="i-lucide-list" class="size-5 shrink-0 text-muted" />
+                    <span class="flex-1 font-medium">{{ $t('plugin_tests.log_title', { count: tests.reportCount }) }}</span>
+                    <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
+                </summary>
+                <div class="px-3 pb-3">
+                    <plugin-report-log :reports="tests.log" />
                 </div>
-                <plugin-test-checklist :tester="tests" />
-            </template>
+            </details>
         </u-card>
 
         <u-card>
@@ -169,6 +184,13 @@
                 </div>
             </div>
 
+            <!-- Until the first connection only: after that the steps are done. -->
+            <ol v-if="!token || status.connection.state === 'never'" class="mt-4 list-decimal ps-5 space-y-1.5 text-sm text-muted">
+                <li>{{ $t('plugin.step_install') }}</li>
+                <li>{{ $t('plugin.step_paste') }}</li>
+                <li>{{ $t('plugin.step_enable') }}</li>
+            </ol>
+
             <div v-if="confirming" class="mt-4 flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
                 <p class="text-sm">{{ $t(confirming === 'replace' ? 'plugin.replace_warning' : 'plugin.revoke_warning') }}</p>
                 <div class="flex items-center gap-2">
@@ -184,27 +206,13 @@
             </div>
         </u-card>
 
-        <u-card>
-            <template #header>
-                <span class="font-semibold">{{ $t('plugin.steps_title') }}</span>
-            </template>
-
-            <ol class="list-decimal ps-5 space-y-1.5 text-sm">
-                <li>{{ $t('plugin.step_install') }}</li>
-                <li>{{ $t('plugin.step_paste') }}</li>
-                <li>{{ $t('plugin.step_enable') }}</li>
-            </ol>
-
-            <p v-if="osrsUsername" class="mt-4 text-sm text-muted">{{ $t('plugin.osrs_name', { name: osrsUsername }) }}</p>
-            <u-alert
-                v-else
-                class="mt-4"
-                color="warning"
-                variant="subtle"
-                icon="i-lucide-user-round"
-                :description="$t('plugin.osrs_name_missing')"
-            />
-        </u-card>
+        <u-alert
+            v-if="!osrsUsername"
+            color="warning"
+            variant="subtle"
+            icon="i-lucide-user-round"
+            :description="$t('plugin.osrs_name_missing')"
+        />
     </settings-layout>
 </template>
 
@@ -213,6 +221,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
+import PluginReportLog from '@/Components/PluginReportLog.vue';
 import PluginTestChecklist from '@/Components/PluginTestChecklist.vue';
 import { formatDate, relativeTime } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
@@ -249,7 +258,7 @@ useEventStream({
         status.value = payload;
         // The checklist is per viewer and heavier than the status, so it is
         // reloaded only when the stream says a report came in.
-        if (props.tests?.joined) router.reload({ only: ['tests'] });
+        if (props.tests) router.reload({ only: ['tests'] });
     },
 });
 
