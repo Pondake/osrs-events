@@ -43,6 +43,9 @@ class RunelitePluginController extends Controller
                 'targets' => $row['targets']->map(fn (array $target) => RunelitePluginService::describe($target))->all(),
             ])->all(),
             'reviews' => $plugin->recentVerdicts($request->user()),
+            // Running races this player is in, for the panel. Absent on a
+            // server that predates it; the plugin reads that as none.
+            'races' => $plugin->races($request->user()),
             // One flat list of names, as the shipped plugin reads it. A drop
             // race's boss is in here without being a target: it claims
             // nothing, it moves a leaderboard, and the plugin needs no change

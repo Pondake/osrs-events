@@ -215,6 +215,37 @@ class AltAccountsTest extends TestCase
     }
 
     #[Test]
+    public function the_plugin_lists_running_races_as_the_leaderboard_stands(): void
+    {
+        Setting::set('runelite_plugin_mode', 'testing');
+        $user = $this->player();
+        $this->save($user, ['Main Sample', 'Iron Sample']);
+        $event = $this->race(['end_date' => Carbon::parse('2026-10-01')->addYears(5)]);
+        $standings = app(EventStandingsService::class);
+        $standings->enter($event, $user->fresh());
+        $standings->enter($event, User::factory()->create(['osrs_username' => 'Rival Sample']));
+        EventStanding::where('username', 'Iron Sample')->update(['gained' => 42, 'live_gained' => 5, 'synced_at' => now()]);
+        EventStanding::where('username', 'Main Sample')->update(['gained' => 10, 'synced_at' => now()]);
+        EventStanding::where('username', 'Rival Sample')->update(['gained' => 80, 'synced_at' => now()]);
+        $this->race(['title' => 'Not entered']);
+        $this->race(['title' => 'Upcoming', 'start_date' => Carbon::now()->addWeek(), 'end_date' => Carbon::now()->addWeeks(2)]);
+
+        $this->withHeader('Authorization', 'Bearer '.PluginToken::issueFor($user))
+            ->getJson('/api/plugin/v1/events')
+            ->assertOk()
+            ->assertJsonCount(1, 'races')
+            ->assertJsonPath('races.0.id', $event->id)
+            ->assertJsonPath('races.0.type', 'DROP_RACE')
+            ->assertJsonPath('races.0.metric', 'Zulrah')
+            ->assertJsonPath('races.0.unit', 'kills')
+            ->assertJsonPath('races.0.rank', 2)
+            ->assertJsonPath('races.0.entrants', 2)
+            ->assertJsonPath('races.0.gained', 42)
+            ->assertJsonPath('races.0.live', 5)
+            ->assertJsonPath('races.0.leader', 80);
+    }
+
+    #[Test]
     public function with_alts_off_only_the_main_enters(): void
     {
         $user = $this->player();

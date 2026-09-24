@@ -7,6 +7,7 @@ use App\Models\BingoSquare;
 use App\Models\CompletedTile;
 use App\Models\Event;
 use App\Models\EventParticipant;
+use App\Models\EventStanding;
 use App\Models\PluginCompletion;
 use App\Models\PluginToken;
 use App\Models\Tile;
@@ -32,7 +33,57 @@ class RunelitePluginService
         private BingoNotifier $notifier,
         private EventFinishService $finishes,
         private TargetProgressService $progress,
+        private EventStandingsService $standings,
     ) {}
+
+    /**
+     * The running races this player is in, as their leaderboard stands — for
+     * the plugin's panel, beside the squares and tiles of openTargets().
+     *
+     * The same rows the race page ranks (EventStandingsService::forEvent), so
+     * the panel and the page cannot disagree: one line per account, carried
+     * by its best character.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function races(User $user): array
+    {
+        $mine = EventStanding::where('user_id', $user->id)->get(['id', 'event_id'])->groupBy('event_id');
+
+        return Event::query()
+            ->whereIn('id', $mine->keys())
+            ->whereIn('type', ['SKILL_RACE', 'DROP_RACE'])
+            ->whereNull('paused_at')
+            ->orderBy('title')
+            ->get()
+            ->reject(fn (Event $event) => $event->isEnded() || $event->isUpcoming() || ! $this->access->hasAccess($user, $event))
+            ->map(function (Event $event) use ($mine) {
+                $ids = $mine->get($event->id)->pluck('id');
+                $lines = $this->standings->forEvent($event);
+                $ranked = $lines->whereNotNull('rank');
+                $line = $lines->first(fn (array $line) => $ids->contains($line['id'])
+                    || collect($line['characters'])->pluck('id')->intersect($ids)->isNotEmpty());
+                $boss = $event->metricKind() === 'boss';
+                $label = trans(($boss ? 'bosses.' : 'skills.').$event->metric);
+
+                return [
+                    'id' => $event->id,
+                    'title' => $event->title,
+                    'type' => $event->type,
+                    'url' => url("/events/{$event->id}"),
+                    'metric' => str_contains($label, '.') ? $event->metric : $label,
+                    'unit' => $boss ? 'kills' : 'xp',
+                    'rank' => $line['rank'] ?? null,
+                    'entrants' => $ranked->count(),
+                    'gained' => $line['gained'] ?? 0,
+                    'live' => $line['live'] ?? 0,
+                    'leader' => $ranked->first()['gained'] ?? null,
+                    'ends_at' => $event->end_date?->copy()->endOfDay()->toIso8601String(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
 
     /** @return Collection<int, array{event: Event, targets: Collection<int, array>}> */
     public function openTargets(User $user): Collection

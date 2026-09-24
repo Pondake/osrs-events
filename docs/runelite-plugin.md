@@ -269,6 +269,22 @@ and what each can complete right now:
 }
 ```
 
+`races` (added 2026-09-24) is every running race the player has entered —
+not paused, not ended, not upcoming — as its leaderboard stands:
+
+```json
+"races": [{ "id": "…", "title": "Boss of the Month", "type": "DROP_RACE",
+  "url": "…", "metric": "Zulrah", "unit": "kills",
+  "rank": 3, "entrants": 12, "gained": 42, "live": 5, "leader": 80,
+  "ends_at": "2026-10-01T23:59:59+00:00" }]
+```
+
+`rank`, `gained` and `live` are the account's line: its best character, the
+same one the race page shows (see "Alts"). `rank` is null while nothing has
+been measured for it. `entrants` counts ranked lines only; `leader` is the
+gained of rank 1, null when nobody is ranked. `unit` is `kills` for a drop
+race and `xp` for a skill race. A missing key means a server that predates it.
+
 `watch` is every `match` in one list: the plugin reports a drop or kill only
 when its normalised name is in it.
 
