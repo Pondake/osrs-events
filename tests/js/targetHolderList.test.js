@@ -41,9 +41,9 @@ const anonymous = (count) => Array.from({ length: count }, () => ({ name: null, 
 
 describe('TargetHolderList', () => {
     it('names the people who have it when their names are public', () => {
-        const wrapper = list({ holders: [{ name: 'Pondake', avatarUrl: null, isYou: false }] });
+        const wrapper = list({ holders: [{ name: 'Main Sample', avatarUrl: null, isYou: false }] });
 
-        expect(wrapper.text()).toContain('Pondake');
+        expect(wrapper.text()).toContain('Main Sample');
     });
 
     it('collapses a list where every name was withheld into a count', () => {
@@ -74,7 +74,7 @@ describe('TargetHolderList', () => {
     it('has no "on the way" section on a target that is claimed by the first report', () => {
         const wrapper = list({
             holders: [],
-            inProgress: [{ name: 'Pondake', avatarUrl: null, isYou: false, done: 2 }],
+            inProgress: [{ name: 'Main Sample', avatarUrl: null, isYou: false, done: 2 }],
             requiredCount: 1,
         });
 
@@ -83,7 +83,7 @@ describe('TargetHolderList', () => {
 
     it('shows how far everyone else has got on a counted target', () => {
         const wrapper = list({
-            inProgress: [{ name: 'Pondake', avatarUrl: null, isYou: false, done: 3 }],
+            inProgress: [{ name: 'Main Sample', avatarUrl: null, isYou: false, done: 3 }],
             requiredCount: 5,
         });
 

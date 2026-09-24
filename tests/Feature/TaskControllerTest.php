@@ -105,7 +105,7 @@ class TaskControllerTest extends TestCase
     #[Test]
     public function without_the_permission_neither_route_is_reachable(): void
     {
-        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player = User::factory()->create(['osrs_username' => 'Main Sample']);
         $task = Task::create(['id' => (string) str()->uuid(), 'title' => 'Kill Zulrah']);
 
         $this->actingAs($player)->delete("/admin/tasks/{$task->id}")->assertForbidden();

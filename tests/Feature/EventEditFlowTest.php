@@ -30,7 +30,7 @@ class EventEditFlowTest extends TestCase
 
     private function author(): User
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $role = Role::findOrCreate('EDITOR', 'web');
         $role->givePermissionTo(Permission::findOrCreate('canCreateBoards', 'web'));

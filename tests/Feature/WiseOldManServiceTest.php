@@ -31,14 +31,14 @@ class WiseOldManServiceTest extends TestCase
     {
         Http::fake([self::PLAYER_URL => Http::response([
             'id' => 592201,
-            'username' => 'pondake',
-            'displayName' => 'Pondake',
+            'username' => 'main sample',
+            'displayName' => 'Main Sample',
             'status' => 'active',
         ])]);
 
         $this->assertSame(
-            ['found' => true, 'displayName' => 'Pondake'],
-            $this->service()->findPlayer('pondake'),
+            ['found' => true, 'displayName' => 'Main Sample'],
+            $this->service()->findPlayer('main sample'),
         );
     }
 
@@ -68,7 +68,7 @@ class WiseOldManServiceTest extends TestCase
 
         $this->assertSame(
             ['found' => null, 'displayName' => null],
-            $this->service()->findPlayer('Pondake'),
+            $this->service()->findPlayer('Main Sample'),
         );
     }
 
@@ -79,7 +79,7 @@ class WiseOldManServiceTest extends TestCase
 
         $this->assertSame(
             ['found' => null, 'displayName' => null],
-            $this->service()->findPlayer('Pondake'),
+            $this->service()->findPlayer('Main Sample'),
         );
     }
 
@@ -89,7 +89,7 @@ class WiseOldManServiceTest extends TestCase
     {
         Http::fake([self::PLAYER_URL => Http::response(['message' => 'Too many requests'], 429)]);
 
-        $this->assertNull($this->service()->findPlayer('Pondake')['found']);
+        $this->assertNull($this->service()->findPlayer('Main Sample')['found']);
     }
 
     #[Test]
@@ -107,7 +107,7 @@ class WiseOldManServiceTest extends TestCase
 
         $this->assertSame(
             ['gained' => 2360640, 'start' => 32899804, 'end' => 35260444],
-            $this->service()->gained('Pondake', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
+            $this->service()->gained('Main Sample', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
         );
     }
 
@@ -126,7 +126,7 @@ class WiseOldManServiceTest extends TestCase
             ]]]],
         ])]);
 
-        $delta = $this->service()->gained('Pondake', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20'));
+        $delta = $this->service()->gained('Main Sample', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20'));
 
         $this->assertSame(0, $delta['gained']);
     }
@@ -153,7 +153,7 @@ class WiseOldManServiceTest extends TestCase
         ])]);
 
         $this->assertNull(
-            $this->service()->gained('Pondake', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
+            $this->service()->gained('Main Sample', 'mining', 'skill', Carbon::parse('2026-08-01'), Carbon::parse('2026-08-20')),
         );
     }
 
@@ -163,7 +163,7 @@ class WiseOldManServiceTest extends TestCase
         Http::fake(['api.wiseoldman.net/*' => Http::response(['data' => ['skills' => []]])]);
         config(['services.wom.user_agent' => 'osrs-events (contact: someone@example.com)']);
 
-        $this->service()->gained('Pondake', 'mining', 'skill', Carbon::parse('2026-08-01 12:00:00'), Carbon::parse('2026-08-20 12:00:00'));
+        $this->service()->gained('Main Sample', 'mining', 'skill', Carbon::parse('2026-08-01 12:00:00'), Carbon::parse('2026-08-20 12:00:00'));
 
         Http::assertSent(function ($request) {
             return $request->hasHeader('User-Agent', 'osrs-events (contact: someone@example.com)')

@@ -26,7 +26,7 @@ async function next(page) {
 }
 
 /** Welcome, then the name — the required step in front of the one under test. */
-async function reachAccountStep(page, name = 'Pondake') {
+async function reachAccountStep(page, name = 'Main Sample') {
     await openIntro(page);
     await next(page);
     await dialog(page).getByLabel('OSRS username').fill(name);

@@ -52,7 +52,7 @@ class EventParticipationTest extends TestCase
         return $event->fresh();
     }
 
-    private function player(string $name = 'Pondake'): User
+    private function player(string $name = 'Main Sample'): User
     {
         return User::factory()->create(['osrs_username' => $name]);
     }
@@ -102,7 +102,7 @@ class EventParticipationTest extends TestCase
 
         $this->actingAs($this->player())->post("/events/{$event->id}/join")->assertRedirect();
 
-        $this->assertSame('Pondake', EventStanding::firstOrFail()->username);
+        $this->assertSame('Main Sample', EventStanding::firstOrFail()->username);
     }
 
     /**

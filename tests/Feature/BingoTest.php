@@ -70,7 +70,7 @@ class BingoTest extends TestCase
 
     private function player(): User
     {
-        return User::factory()->create(['osrs_username' => 'Pondake']);
+        return User::factory()->create(['osrs_username' => 'Main Sample']);
     }
 
     // -------------------------------------------------------------- lines

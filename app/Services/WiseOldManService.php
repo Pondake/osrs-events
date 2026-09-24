@@ -83,7 +83,7 @@ class WiseOldManService
      * account doesn't exist"; being wrong in that direction tells someone
      * their own RSN is a typo when it isn't.
      *
-     * `displayName` comes back canonically cased ("Pondake", not the
+     * `displayName` comes back canonically cased ("Main Sample", not the
      * lowercase key), which is worth storing over whatever the user typed.
      *
      * Short timeout on purpose: this runs inline on signup, and a slow

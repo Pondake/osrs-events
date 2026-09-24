@@ -58,7 +58,7 @@ class DropRaceTest extends TestCase
         $this->fakeKills(42);
         $event = $this->race();
         $standings = app(EventStandingsService::class);
-        $standing = $standings->enter($event, User::factory()->create(['osrs_username' => 'Pondake']));
+        $standing = $standings->enter($event, User::factory()->create(['osrs_username' => 'Main Sample']));
 
         $standings->refresh($event, $standing);
 
@@ -105,7 +105,7 @@ class DropRaceTest extends TestCase
         Http::fake();
         $event = $this->race();
 
-        $this->actingAs(User::factory()->create(['osrs_username' => 'Pondake']))
+        $this->actingAs(User::factory()->create(['osrs_username' => 'Main Sample']))
             ->get("/events/{$event->id}")
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -121,8 +121,8 @@ class DropRaceTest extends TestCase
         $event = $this->race();
         $standing = EventStanding::create([
             'event_id' => $event->id,
-            'user_id' => User::factory()->create(['osrs_username' => 'Pondake'])->id,
-            'username' => 'Pondake',
+            'user_id' => User::factory()->create(['osrs_username' => 'Main Sample'])->id,
+            'username' => 'Main Sample',
         ]);
 
         $this->artisan('events:sync-standings')->assertSuccessful();
@@ -153,7 +153,7 @@ class DropRaceTest extends TestCase
         ]);
 
         $standings = app(EventStandingsService::class);
-        $standing = $standings->enter($event, User::factory()->create(['osrs_username' => 'Pondake']));
+        $standing = $standings->enter($event, User::factory()->create(['osrs_username' => 'Main Sample']));
         $standings->refresh($event, $standing);
 
         $this->assertSame('not_tracked', $standing->fresh()->sync_error);
@@ -165,7 +165,7 @@ class DropRaceTest extends TestCase
         $this->fakeKills(3);
 
         $delta = app(WiseOldManService::class)->gained(
-            'Pondake',
+            'Main Sample',
             'zulrah',
             'boss',
             Carbon::parse('2026-08-01'),

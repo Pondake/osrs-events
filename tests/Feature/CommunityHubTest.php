@@ -21,7 +21,7 @@ class CommunityHubTest extends TestCase
     #[Test]
     public function it_shows_a_slice_of_the_users_own_teams(): void
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $team = Team::create(['name' => 'Iron Fist']);
         TeamMember::create(['team_id' => $team->id, 'user_id' => $user->id, 'role' => 'OWNER']);
@@ -40,7 +40,7 @@ class CommunityHubTest extends TestCase
     #[Test]
     public function a_team_the_user_is_not_in_is_not_shown(): void
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
         $other = User::factory()->create(['osrs_username' => 'Someone']);
 
         $team = Team::create(['name' => 'Not Yours']);

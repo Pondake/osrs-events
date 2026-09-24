@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import { characterNames, characterRows } from '@/Support/osrsCharacters';
 
-const user = ref({ osrsCharacters: ['Pondake', 'Iron Pondake'] });
+const user = ref({ osrsCharacters: ['Main Sample', 'Iron Sample'] });
 
 vi.mock('@/Composables/useAuth', () => ({ useAuth: () => ({ user }) }));
 
@@ -31,25 +31,25 @@ const emitted = (wrapper) => characterNames(wrapper.emitted('update:modelValue')
 
 describe('OsrsCharactersField', () => {
     it('calls the top name the main and the rest alts', () => {
-        const badges = field(['Pondake', 'Iron Pondake']).findAll('.badge').map((badge) => badge.text());
+        const badges = field(['Main Sample', 'Iron Sample']).findAll('.badge').map((badge) => badge.text());
 
         expect(badges).toEqual(['t:profile.osrs_main', 't:profile.osrs_alt']);
     });
 
     it('moves an alt up, which makes it the main from the second row', async () => {
-        const wrapper = field(['Pondake', 'Iron Pondake']);
+        const wrapper = field(['Main Sample', 'Iron Sample']);
 
         await wrapper.find('button[aria-label="t:profile.osrs_character_up"]').trigger('click');
 
-        expect(emitted(wrapper)).toEqual(['Iron Pondake', 'Pondake']);
+        expect(emitted(wrapper)).toEqual(['Iron Sample', 'Main Sample']);
     });
 
     it('removes a row', async () => {
-        const wrapper = field(['Pondake', 'Iron Pondake']);
+        const wrapper = field(['Main Sample', 'Iron Sample']);
 
         await wrapper.findAll('button[aria-label="t:profile.osrs_character_remove"]')[0].trigger('click');
 
-        expect(emitted(wrapper)).toEqual(['Iron Pondake']);
+        expect(emitted(wrapper)).toEqual(['Iron Sample']);
     });
 
     it('stops offering another row at the limit', () => {
@@ -58,7 +58,7 @@ describe('OsrsCharactersField', () => {
     });
 
     it('drops blank rows from what is sent', () => {
-        expect(characterNames([...characterRows(['Pondake']), ...characterRows([' '])])).toEqual(['Pondake']);
+        expect(characterNames([...characterRows(['Main Sample']), ...characterRows([' '])])).toEqual(['Main Sample']);
     });
 });
 
@@ -77,8 +77,8 @@ describe('ClaimCharacterField', () => {
     it('asks which character when alts count', () => {
         const wrapper = claim(true);
 
-        expect(wrapper.findAll('option').map((option) => option.text())).toEqual(['Pondake', 'Iron Pondake']);
-        expect(wrapper.find('select').attributes('data-value')).toBe('Pondake');
+        expect(wrapper.findAll('option').map((option) => option.text())).toEqual(['Main Sample', 'Iron Sample']);
+        expect(wrapper.find('select').attributes('data-value')).toBe('Main Sample');
     });
 
     it('does not ask when the event counts mains only', () => {

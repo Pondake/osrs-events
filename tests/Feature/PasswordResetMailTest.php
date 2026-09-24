@@ -26,7 +26,7 @@ class PasswordResetMailTest extends TestCase
     private function user(): User
     {
         return User::factory()->create([
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'email' => 'player@example.com',
             'password' => Hash::make('Original-pass-1'),
         ]);

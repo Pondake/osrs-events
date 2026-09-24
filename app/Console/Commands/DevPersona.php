@@ -73,7 +73,7 @@ class DevPersona extends Command
         $user->syncRoles([]);
         $user->syncPermissions([]);
         $user->forceFill([
-            'osrs_username' => $user->osrs_username ?: 'Pondake',
+            'osrs_username' => $user->osrs_username ?: 'Main Sample',
             'onboarding_completed_at' => now(),
         ])->save();
 

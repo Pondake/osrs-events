@@ -24,7 +24,7 @@ class OnboardingPluginStepTest extends TestCase
     private function newcomer(array $attributes = []): User
     {
         return User::factory()->create([
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'onboarding_completed_at' => null,
             ...$attributes,
         ]);

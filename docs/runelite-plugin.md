@@ -256,10 +256,10 @@ and what each can complete right now:
 ```json
 {
   "mode": "testing",
-  "rsn": "Iron Pondake",
+  "rsn": "Iron Sample",
   "proven": false,
-  "characters": [{ "rsn": "Iron Pondake", "main": true, "proven": false },
-                 { "rsn": "Pondake", "main": false, "proven": true }],
+  "characters": [{ "rsn": "Iron Sample", "main": true, "proven": false },
+                 { "rsn": "Main Sample", "main": false, "proven": true }],
   "max_characters": 5,
   "events": [{ "id": "…", "title": "…", "type": "BINGO", "url": "…",
     "targets": [{ "kind": "bingo_square", "id": "…", "position": 4,
@@ -290,7 +290,7 @@ account makes goes to a host, screenshots included.
 ### `POST /identity`
 
 ```json
-{ "rsn": "Iron Pondake", "add_alt": true }
+{ "rsn": "Iron Sample", "add_alt": true }
 ```
 
 The character the client is signed in as. Send it once per connection, after
@@ -298,8 +298,8 @@ the local player is known. `add_alt` is the plugin's "add new characters as
 alts" box; absent means true.
 
 ```json
-{ "rsn": "Iron Pondake", "matched": true, "added": false, "reason": null,
-  "proven": true, "characters": [{ "rsn": "Iron Pondake", "main": true, "proven": true }] }
+{ "rsn": "Iron Sample", "matched": true, "added": false, "reason": null,
+  "proven": true, "characters": [{ "rsn": "Iron Sample", "main": true, "proven": true }] }
 ```
 
 `matched` is whether the reported character is on the account after this
@@ -344,7 +344,7 @@ player, not to other players.
 
 ```json
 { "client_event_id": "uuid", "kind": "item|npc_kill", "name": "Prayer potion(4)",
-  "quantity": 1, "rsn": "Iron Pondake", "occurred_at": "2026-09-17T12:00:00Z",
+  "quantity": 1, "rsn": "Iron Sample", "occurred_at": "2026-09-17T12:00:00Z",
   "context": {
     "source": "npc_kill|loot|collection_log|kill_count",
     "npc_id": 415,

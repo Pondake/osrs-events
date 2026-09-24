@@ -88,7 +88,7 @@ class StandingsSyncTest extends TestCase
         Http::fake(['*wiseoldman.net*' => Http::response($this->gains(4200))]);
 
         $event = $this->race();
-        $this->entrant($event, 'Pondake');
+        $this->entrant($event, 'Main Sample');
 
         $this->actingAs($this->host($event))
             ->post("/events/{$event->id}/standings/sync")
@@ -128,7 +128,7 @@ class StandingsSyncTest extends TestCase
         Http::fake(['*wiseoldman.net*' => Http::response($this->gains(1))]);
 
         $event = $this->race();
-        $this->entrant($event, 'Pondake');
+        $this->entrant($event, 'Main Sample');
 
         $this->actingAs(User::factory()->create())
             ->post("/events/{$event->id}/standings/sync")
@@ -145,7 +145,7 @@ class StandingsSyncTest extends TestCase
 
         $event = $this->race();
         $event->forceFill(['paused_at' => Carbon::now()])->save();
-        $this->entrant($event, 'Pondake');
+        $this->entrant($event, 'Main Sample');
 
         $this->actingAs($this->host($event))
             ->post("/events/{$event->id}/standings/sync")
@@ -167,7 +167,7 @@ class StandingsSyncTest extends TestCase
     {
         $event = $this->race();
         $host = $this->host($event);
-        $this->readEntrant($event, 'Pondake');
+        $this->readEntrant($event, 'Main Sample');
 
         $this->assertNull($event->standings_stale_since);
 
@@ -185,7 +185,7 @@ class StandingsSyncTest extends TestCase
     {
         $event = $this->race();
         $host = $this->host($event);
-        $this->readEntrant($event, 'Pondake');
+        $this->readEntrant($event, 'Main Sample');
 
         $this->actingAs($host)->patch("/events/{$event->id}", ['title' => $event->title, 'metric' => 'fishing']);
 
@@ -227,7 +227,7 @@ class StandingsSyncTest extends TestCase
     {
         $event = $this->race();
         $host = $this->host($event);
-        $this->entrant($event, 'Pondake');
+        $this->entrant($event, 'Main Sample');
 
         $this->actingAs($host)->patch("/events/{$event->id}", ['title' => $event->title, 'metric' => 'fishing']);
 
@@ -248,7 +248,7 @@ class StandingsSyncTest extends TestCase
     {
         $event = $this->race(['type' => 'DROP_RACE', 'metric' => 'abyssal_sire']);
         $host = $this->host($event);
-        $entrant = $this->readEntrant($event, 'Pondake');
+        $entrant = $this->readEntrant($event, 'Main Sample');
 
         $this->actingAs($host)->patch("/events/{$event->id}", ['title' => $event->title, 'metric' => 'zulrah']);
         $this->assertNotNull($event->fresh()->standings_stale_since);
@@ -265,7 +265,7 @@ class StandingsSyncTest extends TestCase
     {
         $event = $this->race();
         $host = $this->host($event);
-        $leaver = $this->readEntrant($event, 'Pondake');
+        $leaver = $this->readEntrant($event, 'Main Sample');
         $this->readEntrant($event, 'Zezima');
 
         $this->actingAs($host)->patch("/events/{$event->id}", ['title' => $event->title, 'metric' => 'fishing']);
@@ -316,7 +316,7 @@ class StandingsSyncTest extends TestCase
 
         $event = $this->race();
         $event->forceFill(['standings_stale_since' => Carbon::now()])->save();
-        $this->entrant($event, 'Pondake');
+        $this->entrant($event, 'Main Sample');
 
         $this->actingAs($this->host($event))->post("/events/{$event->id}/standings/sync");
 
@@ -346,7 +346,7 @@ class StandingsSyncTest extends TestCase
     public function the_page_and_the_stream_both_carry_the_warning(): void
     {
         $event = $this->race();
-        $this->entrant($event, 'Pondake');
+        $this->entrant($event, 'Main Sample');
         $channel = app(EventChannelResolver::class)->for($event);
         $before = $channel->fingerprint($event);
 

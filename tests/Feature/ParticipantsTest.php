@@ -59,18 +59,18 @@ class ParticipantsTest extends TestCase
         $event = $this->event();
         BoardAuthor::create(['event_id' => $event->id, 'user_id' => $host->id, 'is_owner' => true]);
 
-        $entrant = $this->player('Pondake');
+        $entrant = $this->player('Main Sample');
         EventStanding::create([
             'event_id' => $event->id,
             'user_id' => $entrant->id,
-            'username' => 'Pondake',
+            'username' => 'Main Sample',
             'start_value' => 0,
         ]);
 
         $props = $this->props($host, $event);
 
         $this->assertTrue($props['named']);
-        $this->assertContains('Pondake', collect($props['participants'])->pluck('osrsUsername')->all());
+        $this->assertContains('Main Sample', collect($props['participants'])->pluck('osrsUsername')->all());
     }
 
     /** Being in it is enough — you can see who you are up against. */
@@ -80,11 +80,11 @@ class ParticipantsTest extends TestCase
         $event = $this->event();
         BoardAuthor::create(['event_id' => $event->id, 'user_id' => $this->player('Host')->id, 'is_owner' => true]);
 
-        $entrant = $this->player('Pondake');
+        $entrant = $this->player('Main Sample');
         EventStanding::create([
             'event_id' => $event->id,
             'user_id' => $entrant->id,
-            'username' => 'Pondake',
+            'username' => 'Main Sample',
             'start_value' => 0,
         ]);
 
@@ -110,11 +110,11 @@ class ParticipantsTest extends TestCase
         $event = $this->event(['access_mode' => 'INVITE']);
         BoardAuthor::create(['event_id' => $event->id, 'user_id' => $this->player('Host')->id, 'is_owner' => true]);
 
-        $entrant = $this->player('Pondake');
+        $entrant = $this->player('Main Sample');
         EventStanding::create([
             'event_id' => $event->id,
             'user_id' => $entrant->id,
-            'username' => 'Pondake',
+            'username' => 'Main Sample',
             'start_value' => 0,
         ]);
 

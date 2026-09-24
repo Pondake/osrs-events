@@ -144,14 +144,14 @@ class LeaderboardTest extends TestCase
     public function it_still_says_who_the_player_is(): void
     {
         [$owner, $event] = $this->board();
-        $owner->update(['discord_username' => 'pondake', 'nickname' => 'Pond']);
+        $owner->update(['discord_username' => 'samplemain', 'nickname' => 'Pond']);
 
         PlayerBoard::create(['user_id' => $owner->id, 'board_id' => $event->board->id, 'current_position' => 4]);
 
         $user = $this->leaderboard($event)['entries'][0]['user'];
 
         $this->assertSame('Pond', $user['nickname']);
-        $this->assertSame('pondake', $user['discord_username']);
+        $this->assertSame('samplemain', $user['discord_username']);
     }
 
     // ------------------------------------------------------------------- access

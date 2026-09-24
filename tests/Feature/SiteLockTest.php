@@ -407,7 +407,7 @@ class SiteLockTest extends TestCase
     {
         $this->lock();
 
-        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player = User::factory()->create(['osrs_username' => 'Main Sample']);
         $player->assignRole(Role::findOrCreate('PLAYER', 'web'));
 
         $this->actingAs($player)->get('/events')->assertOk();
@@ -419,7 +419,7 @@ class SiteLockTest extends TestCase
     {
         $this->lock();
 
-        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player = User::factory()->create(['osrs_username' => 'Main Sample']);
         $player->assignRole(Role::findOrCreate('PLAYER', 'web'));
 
         $props = $this->actingAs($player)->get('/')->viewData('page')['props'];
@@ -449,7 +449,7 @@ class SiteLockTest extends TestCase
     {
         $this->lockdown();
 
-        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player = User::factory()->create(['osrs_username' => 'Main Sample']);
         $player->assignRole(Role::findOrCreate('PLAYER', 'web'));
 
         $this->actingAs($player)->get('/events')->assertRedirect('/locked');

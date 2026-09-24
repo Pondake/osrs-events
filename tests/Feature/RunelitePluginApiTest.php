@@ -36,7 +36,7 @@ class RunelitePluginApiTest extends TestCase
         parent::setUp();
 
         Setting::set('runelite_plugin_mode', 'testing');
-        $this->player = User::factory()->create(['osrs_username' => 'Iron Pondake']);
+        $this->player = User::factory()->create(['osrs_username' => 'Iron Sample']);
         $this->code = PluginToken::issueFor($this->player);
     }
 
@@ -87,7 +87,7 @@ class RunelitePluginApiTest extends TestCase
             'kind' => 'item',
             'name' => $name,
             'quantity' => 1,
-            'rsn' => 'Iron Pondake',
+            'rsn' => 'Iron Sample',
             'occurred_at' => now()->toIso8601String(),
             ...$overrides,
         ];
@@ -102,7 +102,7 @@ class RunelitePluginApiTest extends TestCase
 
         $this->api()->getJson('/api/plugin/v1/events')->assertNotFound();
         $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Big bones'))->assertNotFound();
-        $this->api()->postJson('/api/plugin/v1/identity', ['rsn' => 'Iron Pondake'])->assertNotFound();
+        $this->api()->postJson('/api/plugin/v1/identity', ['rsn' => 'Iron Sample'])->assertNotFound();
     }
 
     #[Test]
@@ -116,7 +116,7 @@ class RunelitePluginApiTest extends TestCase
     #[Test]
     public function a_valid_code_is_stamped_as_used(): void
     {
-        $this->api()->getJson('/api/plugin/v1/events')->assertOk()->assertJsonPath('rsn', 'Iron Pondake');
+        $this->api()->getJson('/api/plugin/v1/events')->assertOk()->assertJsonPath('rsn', 'Iron Sample');
 
         $this->assertNotNull(PluginToken::findByPlain($this->code)->last_used_at);
     }
@@ -635,7 +635,7 @@ class RunelitePluginApiTest extends TestCase
 
         $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip', ['rsn' => 'Zezima']))
             ->assertUnprocessable()
-            ->assertJsonPath('message', trans('plugin.api_rsn_mismatch', ['rsn' => 'Zezima', 'expected' => 'Iron Pondake']));
+            ->assertJsonPath('message', trans('plugin.api_rsn_mismatch', ['rsn' => 'Zezima', 'expected' => 'Iron Sample']));
 
         $this->assertSame(0, BingoCompletion::count());
         $this->assertSame(0, PluginCompletion::count());
@@ -646,7 +646,7 @@ class RunelitePluginApiTest extends TestCase
     {
         $this->card([0 => $this->task('Abyssal whip')]);
 
-        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip', ['rsn' => 'iron_pondake']))
+        $this->api()->postJson('/api/plugin/v1/completions', $this->completion('Abyssal whip', ['rsn' => 'iron_sample']))
             ->assertCreated()
             ->assertJsonCount(1, 'claims');
     }

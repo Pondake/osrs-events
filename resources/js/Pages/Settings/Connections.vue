@@ -156,8 +156,8 @@ const rows = ref(characterRows(storedNames.value));
 const osrsForm = useForm({ characters: [] });
 
 // Resynced after a save because the server may normalise what was typed —
-// Wise Old Man returns an account's canonical casing, so "pondake" is stored
-// as "Pondake". Seeded once, the list would keep showing the typed version
+// Wise Old Man returns an account's canonical casing, so "main sample" is stored
+// as "Main Sample". Seeded once, the list would keep showing the typed version
 // and quietly disagree with what is actually saved.
 watch(storedNames, (names) => (rows.value = characterRows(names)));
 

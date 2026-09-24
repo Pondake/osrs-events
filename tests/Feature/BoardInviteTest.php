@@ -41,7 +41,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function creating_an_invite_returns_the_whole_list_not_a_redirect(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $event = $this->ownedEvent($owner);
 
         $response = $this->actingAs($owner)->postJson("/events/{$event->id}/invites");
@@ -66,7 +66,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function an_open_event_can_still_be_given_a_link(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $event = $this->ownedEvent($owner);
         $event->update(['access_mode' => 'OPEN', 'is_listed' => true]);
 
@@ -80,7 +80,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function creating_two_and_revoking_one_leaves_exactly_one(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $event = $this->ownedEvent($owner);
 
         $this->actingAs($owner)->postJson("/events/{$event->id}/invites")->assertOk();
@@ -100,7 +100,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function a_fourth_open_invite_is_refused_with_a_message(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $event = $this->ownedEvent($owner);
 
         for ($i = 0; $i < 3; $i++) {
@@ -123,7 +123,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function a_used_up_link_does_not_count_against_the_limit(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $event = $this->ownedEvent($owner);
 
         for ($i = 0; $i < 3; $i++) {
@@ -143,7 +143,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function an_expired_link_does_not_count_against_the_limit(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $event = $this->ownedEvent($owner);
 
         for ($i = 0; $i < 3; $i++) {
@@ -167,7 +167,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function a_co_host_can_hand_out_and_revoke_links(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $event = $this->ownedEvent($owner);
 
         $coHost = User::factory()->create(['osrs_username' => 'Zezima']);
@@ -185,7 +185,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function someone_who_does_not_own_the_event_cannot_touch_its_invites(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $event = $this->ownedEvent($owner);
 
         $this->actingAs($owner)->postJson("/events/{$event->id}/invites")->assertOk();
@@ -204,7 +204,7 @@ class BoardInviteTest extends TestCase
     #[Test]
     public function an_invite_from_another_event_is_not_found(): void
     {
-        $owner = User::factory()->create(['osrs_username' => 'Pondake']);
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample']);
         $mine = $this->ownedEvent($owner);
         $theirs = $this->ownedEvent($owner);
 

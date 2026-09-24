@@ -54,7 +54,7 @@ class EventStreamTest extends TestCase
         ]);
     }
 
-    private function player(string $name = 'Pondake'): User
+    private function player(string $name = 'Main Sample'): User
     {
         return User::factory()->create(['osrs_username' => $name]);
     }
@@ -182,14 +182,14 @@ class EventStreamTest extends TestCase
         $event = $this->event('SNAKES_LADDERS', ['access_mode' => 'INVITE', 'is_listed' => true]);
         $board = Board::create(['event_id' => $event->id, 'size' => 'SIZE_5X5']);
 
-        $player = $this->player('Pondake');
-        $player->update(['nickname' => 'Pondake']);
+        $player = $this->player('Main Sample');
+        $player->update(['nickname' => 'Main Sample']);
         BoardAccess::create(['event_id' => $event->id, 'user_id' => $player->id, 'access_mode' => 'INVITE']);
         PlayerBoard::create(['user_id' => $player->id, 'board_id' => $board->id, 'current_position' => 24]);
         EventFinish::create([
             'event_id' => $event->id,
             'user_id' => $player->id,
-            'display_name' => 'Pondake',
+            'display_name' => 'Main Sample',
             'finished_at' => now(),
         ]);
 
@@ -204,12 +204,12 @@ class EventStreamTest extends TestCase
         $payload = $this->resolver()->for($event->fresh())->payload($event->fresh());
 
         $this->assertSame($player->id, $payload['players'][0]['user_id']);
-        $this->assertSame('Pondake', $payload['players'][0]['user']->nickname);
+        $this->assertSame('Main Sample', $payload['players'][0]['user']->nickname);
         // The podium too. Anonymising it here was a real regression in the
         // other direction: a player watched their own name on the podium
         // turn into "Anonymous player" three seconds after the page loaded,
         // on an event they had been invited to.
-        $this->assertSame('Pondake', $payload['finishes'][0]['label']);
+        $this->assertSame('Main Sample', $payload['finishes'][0]['label']);
         $this->assertSame($player->id, $payload['finishes'][0]['userId']);
     }
 
@@ -423,7 +423,7 @@ class EventStreamTest extends TestCase
         $standing = EventStanding::create([
             'event_id' => $event->id,
             'user_id' => $this->player()->id,
-            'username' => 'Pondake',
+            'username' => 'Main Sample',
             'gained' => 100,
             'synced_at' => Carbon::now(),
         ]);
@@ -449,7 +449,7 @@ class EventStreamTest extends TestCase
         $standing = EventStanding::create([
             'event_id' => $event->id,
             'user_id' => $this->player()->id,
-            'username' => 'Pondake',
+            'username' => 'Main Sample',
             'gained' => 100,
             'synced_at' => Carbon::now(),
         ]);

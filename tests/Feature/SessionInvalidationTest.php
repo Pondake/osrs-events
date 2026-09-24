@@ -33,7 +33,7 @@ class SessionInvalidationTest extends TestCase
     private function user(): User
     {
         return User::factory()->create([
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'email' => 'me@example.com',
             'password' => Hash::make(self::OLD),
         ]);
@@ -126,7 +126,7 @@ class SessionInvalidationTest extends TestCase
     public function an_account_with_no_password_is_untouched_by_any_of_this(): void
     {
         $user = User::factory()->create([
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'discord_id' => '123',
             'email' => null,
             'password' => null,

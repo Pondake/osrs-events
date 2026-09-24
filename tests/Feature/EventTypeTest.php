@@ -27,7 +27,7 @@ class EventTypeTest extends TestCase
 
     private function admin(): User
     {
-        return tap(User::factory()->create(['osrs_username' => 'Pondake']))
+        return tap(User::factory()->create(['osrs_username' => 'Main Sample']))
             ->assignRole(Role::findOrCreate('ADMIN', 'web'));
     }
 

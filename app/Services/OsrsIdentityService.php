@@ -106,8 +106,8 @@ class OsrsIdentityService
      * Replace the account's characters with this list, main first.
      *
      * A name already on the account keeps its row, and with it its proof —
-     * matched the way the game compares names, so re-saving "iron_pondake"
-     * does not reset "Iron Pondake". Anything else is a new character: it is
+     * matched the way the game compares names, so re-saving "iron_sample"
+     * does not reset "Iron Sample". Anything else is a new character: it is
      * looked up on Wise Old Man and starts unproven. A row left out is
      * removed; standings and claims keep the name it played under.
      *
@@ -208,7 +208,7 @@ class OsrsIdentityService
 
         // Prefer their canonical casing over whatever was typed. The hiscores
         // are case-insensitive but a leaderboard is read by people, and
-        // "Pondake" beats "pondake" or "PONDAKE".
+        // "Main Sample" beats "main sample" or "MAIN SAMPLE".
         if ($result['found'] === true && filled($result['displayName'])) {
             $username = $result['displayName'];
         }

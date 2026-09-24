@@ -25,7 +25,7 @@ class AccountSettingsTest extends TestCase
     private function withPassword(string $password = 'Correct-horse-1'): User
     {
         return User::factory()->create([
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'email' => 'old@example.com',
             'password' => Hash::make($password),
         ]);
@@ -35,7 +35,7 @@ class AccountSettingsTest extends TestCase
     private function discordOnly(): User
     {
         return User::factory()->create([
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'discord_id' => '123',
             'email' => null,
             'password' => null,

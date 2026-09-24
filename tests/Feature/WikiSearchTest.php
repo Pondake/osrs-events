@@ -210,7 +210,7 @@ class WikiSearchTest extends TestCase
     {
         $this->fakeWiki([$this->page(44127, 'Zulrah', 'https://oldschool.runescape.wiki/images/zulrah.png')]);
 
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $this->actingAs($user)
             ->getJson('/wiki/search?search=zulrah')

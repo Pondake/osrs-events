@@ -325,7 +325,7 @@ class BossIconTest extends TestCase
     public function approving_is_shut_to_an_ordinary_player(): void
     {
         BossIcon::create(['metric' => 'obor', 'suggested_url' => 'https://example.com/obor.png']);
-        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $this->actingAs($player)->post('/admin/boss-icons/obor/approve')->assertForbidden();
         $this->assertNull(BossIcon::where('metric', 'obor')->first()->icon_url);
@@ -334,7 +334,7 @@ class BossIconTest extends TestCase
     #[Test]
     public function it_is_shut_to_an_ordinary_player(): void
     {
-        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $this->actingAs($player)->get('/admin/boss-icons')->assertForbidden();
         $this->actingAs($player)->put('/admin/boss-icons', [

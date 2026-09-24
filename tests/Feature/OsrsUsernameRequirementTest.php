@@ -20,7 +20,7 @@ class OsrsUsernameRequirementTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function fakeFound(string $displayName = 'Pondake'): void
+    private function fakeFound(string $displayName = 'Main Sample'): void
     {
         Http::fake(['api.wiseoldman.net/*' => Http::response(['displayName' => $displayName])]);
     }
@@ -35,7 +35,7 @@ class OsrsUsernameRequirementTest extends TestCase
     {
         return [
             'nickname' => 'Tester',
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'email' => 'tester@example.com',
             'password' => 'TestPass123',
             'password_confirmation' => 'TestPass123',
@@ -59,13 +59,13 @@ class OsrsUsernameRequirementTest extends TestCase
     #[Test]
     public function registration_stores_the_verified_name(): void
     {
-        $this->fakeFound('Pondake');
+        $this->fakeFound('Main Sample');
 
-        $this->post('/register', $this->registration(['osrs_username' => 'pondake']))
+        $this->post('/register', $this->registration(['osrs_username' => 'main sample']))
             ->assertRedirect();
 
         $user = User::firstOrFail();
-        $this->assertSame('Pondake', $user->osrs_username);
+        $this->assertSame('Main Sample', $user->osrs_username);
         $this->assertNotNull($user->osrs_verified_at);
     }
 
@@ -199,7 +199,7 @@ class OsrsUsernameRequirementTest extends TestCase
     #[Test]
     public function an_account_with_a_name_passes_straight_through(): void
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $this->actingAs($user)->get('/my-events')->assertOk();
     }
@@ -207,14 +207,14 @@ class OsrsUsernameRequirementTest extends TestCase
     #[Test]
     public function submitting_the_gate_saves_the_name_and_lets_the_user_in(): void
     {
-        $this->fakeFound('Pondake');
+        $this->fakeFound('Main Sample');
         $user = User::factory()->create(['osrs_username' => null]);
 
         $this->actingAs($user)
-            ->post('/welcome/osrs-username', ['osrs_username' => 'pondake'])
+            ->post('/welcome/osrs-username', ['osrs_username' => 'main sample'])
             ->assertRedirect();
 
-        $this->assertSame('Pondake', $user->fresh()->osrs_username);
+        $this->assertSame('Main Sample', $user->fresh()->osrs_username);
         $this->actingAs($user->fresh())->get('/my-events')->assertOk();
     }
 
@@ -238,7 +238,7 @@ class OsrsUsernameRequirementTest extends TestCase
     public static function names(): array
     {
         return [
-            'plain' => ['Pondake', true],
+            'plain' => ['Main Sample', true],
             'with a space' => ['Lynx Titan', true],
             'with an underscore' => ['Some_Name', true],
             'with a hyphen' => ['Some-Name', true],
@@ -247,15 +247,15 @@ class OsrsUsernameRequirementTest extends TestCase
             // Surrounding whitespace is trimmed, not rejected — someone
             // pasting a name out of the game or Discord should not be told
             // off for it. Separators inside the name are a different matter.
-            'surrounding spaces' => [' Pondake ', true],
+            'surrounding spaces' => [' Main Sample ', true],
             'thirteen characters' => ['Abcdefghijklm', false],
             'empty' => ['', false],
             'only whitespace' => ['   ', false],
             'a dot' => ['some.name', false],
             'a double space' => ['Some  Name', false],
-            'a leading underscore' => ['_Pondake', false],
-            'a trailing underscore' => ['Pondake_', false],
-            'punctuation' => ['Pondake!', false],
+            'a leading underscore' => ['_Main Sample', false],
+            'a trailing underscore' => ['Main Sample_', false],
+            'punctuation' => ['Main Sample!', false],
         ];
     }
 
@@ -295,7 +295,7 @@ class OsrsUsernameRequirementTest extends TestCase
         $this->actingAs($user)->get('/teams')->assertRedirect('/welcome/osrs-username');
 
         $this->actingAs($user)
-            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Main Sample'])
             ->assertRedirect('/teams');
     }
 
@@ -323,7 +323,7 @@ class OsrsUsernameRequirementTest extends TestCase
             ->assertRedirect('/welcome/osrs-username');
 
         $this->actingAs($user)
-            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Main Sample'])
             ->assertRedirect("/events/{$event->id}");
     }
 }

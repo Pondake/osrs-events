@@ -28,7 +28,7 @@ class OnboardingTest extends TestCase
 
     private function user(): User
     {
-        return User::factory()->create(['osrs_username' => 'Pondake']);
+        return User::factory()->create(['osrs_username' => 'Main Sample']);
     }
 
     private function event(array $attributes = [], bool $withBoard = true): Event
@@ -89,7 +89,7 @@ class OnboardingTest extends TestCase
     #[Test]
     public function an_account_without_an_email_can_set_one_from_the_intro(): void
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake', 'email' => null]);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample', 'email' => null]);
 
         $this->actingAs($user)
             ->post('/onboarding/email', ['email' => 'me@example.com'])
@@ -101,7 +101,7 @@ class OnboardingTest extends TestCase
     #[Test]
     public function an_existing_email_is_never_overwritten(): void
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake', 'email' => 'old@example.com']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample', 'email' => 'old@example.com']);
 
         $this->actingAs($user)
             ->post('/onboarding/email', ['email' => 'new@example.com'])
@@ -114,7 +114,7 @@ class OnboardingTest extends TestCase
     public function an_address_that_belongs_to_someone_else_is_refused(): void
     {
         User::factory()->create(['osrs_username' => 'Other', 'email' => 'taken@example.com']);
-        $user = User::factory()->create(['osrs_username' => 'Pondake', 'email' => null]);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample', 'email' => null]);
 
         $this->actingAs($user)
             ->post('/onboarding/email', ['email' => 'taken@example.com'])

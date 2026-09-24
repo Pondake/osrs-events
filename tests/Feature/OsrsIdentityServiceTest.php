@@ -28,7 +28,7 @@ class OsrsIdentityServiceTest extends TestCase
         return app(OsrsIdentityService::class);
     }
 
-    private function fakeFound(string $displayName = 'Pondake'): void
+    private function fakeFound(string $displayName = 'Main Sample'): void
     {
         Http::fake([self::PLAYER_URL => Http::response(['displayName' => $displayName])]);
     }
@@ -46,11 +46,11 @@ class OsrsIdentityServiceTest extends TestCase
     #[Test]
     public function a_name_another_account_carries_is_reported_as_taken(): void
     {
-        User::factory()->create(['osrs_username' => 'Pondake']);
+        User::factory()->create(['osrs_username' => 'Main Sample']);
         $newcomer = User::factory()->create(['osrs_username' => null]);
 
-        $this->assertTrue($this->identity()->takenByAnother($newcomer, 'pondake'));
-        $this->assertTrue($this->identity()->takenByAnother($newcomer, 'PONDAKE'));
+        $this->assertTrue($this->identity()->takenByAnother($newcomer, 'main sample'));
+        $this->assertTrue($this->identity()->takenByAnother($newcomer, 'MAIN SAMPLE'));
         $this->assertFalse($this->identity()->takenByAnother($newcomer, 'Zezima'));
     }
 
@@ -68,9 +68,9 @@ class OsrsIdentityServiceTest extends TestCase
     #[Test]
     public function an_account_does_not_hold_its_own_name_against_itself(): void
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
 
-        $this->assertFalse($this->identity()->takenByAnother($user, 'Pondake'));
+        $this->assertFalse($this->identity()->takenByAnother($user, 'Main Sample'));
     }
 
     /**
@@ -81,12 +81,12 @@ class OsrsIdentityServiceTest extends TestCase
     #[Test]
     public function a_name_another_account_has_proved_cannot_be_claimed(): void
     {
-        $this->fakeFound('Pondake');
-        User::factory()->create(['osrs_username' => 'Pondake', 'osrs_proven_at' => now()]);
+        $this->fakeFound('Main Sample');
+        User::factory()->create(['osrs_username' => 'Main Sample', 'osrs_proven_at' => now()]);
         $newcomer = User::factory()->create(['osrs_username' => null]);
 
         $this->actingAs($newcomer)
-            ->post('/welcome/osrs-username', ['osrs_username' => 'pondake'])
+            ->post('/welcome/osrs-username', ['osrs_username' => 'main sample'])
             ->assertSessionHasErrors('osrs_username');
 
         $this->assertNull($newcomer->fresh()->osrs_username);
@@ -96,39 +96,39 @@ class OsrsIdentityServiceTest extends TestCase
     #[Test]
     public function an_unproven_duplicate_is_not_refused(): void
     {
-        $this->fakeFound('Pondake');
-        User::factory()->create(['osrs_username' => 'Pondake', 'osrs_proven_at' => null]);
+        $this->fakeFound('Main Sample');
+        User::factory()->create(['osrs_username' => 'Main Sample', 'osrs_proven_at' => null]);
         $newcomer = User::factory()->create(['osrs_username' => null]);
 
         $this->actingAs($newcomer)
-            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Main Sample'])
             ->assertSessionHasNoErrors();
 
-        $this->assertSame('Pondake', $newcomer->fresh()->osrs_username);
+        $this->assertSame('Main Sample', $newcomer->fresh()->osrs_username);
     }
 
     /** Re-saving your own proved name is not somebody else claiming it. */
     #[Test]
     public function the_account_that_proved_a_name_can_still_save_it(): void
     {
-        $this->fakeFound('Pondake');
-        $owner = User::factory()->create(['osrs_username' => 'Pondake', 'osrs_proven_at' => now()]);
+        $this->fakeFound('Main Sample');
+        $owner = User::factory()->create(['osrs_username' => 'Main Sample', 'osrs_proven_at' => now()]);
 
         $this->actingAs($owner)
-            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Main Sample'])
             ->assertSessionHasNoErrors();
     }
 
     #[Test]
     public function settings_refuses_a_proved_name_too(): void
     {
-        $this->fakeFound('Pondake');
-        User::factory()->create(['osrs_username' => 'Pondake', 'osrs_proven_at' => now()]);
+        $this->fakeFound('Main Sample');
+        User::factory()->create(['osrs_username' => 'Main Sample', 'osrs_proven_at' => now()]);
         $other = User::factory()->create(['osrs_username' => 'Zezima']);
 
         $this->actingAs($other)
             ->from('/settings/connections')
-            ->put('/settings/connections/osrs', ['osrs_username' => 'Pondake'])
+            ->put('/settings/connections/osrs', ['osrs_username' => 'Main Sample'])
             ->assertSessionHasErrors('osrs_username');
 
         $this->assertSame('Zezima', $other->fresh()->osrs_username);
@@ -137,14 +137,14 @@ class OsrsIdentityServiceTest extends TestCase
     #[Test]
     public function the_check_endpoint_answers_the_hiscores_and_the_duplicate_question(): void
     {
-        $this->fakeFound('Pondake');
-        User::factory()->create(['osrs_username' => 'Pondake']);
+        $this->fakeFound('Main Sample');
+        User::factory()->create(['osrs_username' => 'Main Sample']);
         $newcomer = User::factory()->create(['osrs_username' => null]);
 
         $this->actingAs($newcomer)
-            ->postJson('/welcome/osrs-username/check', ['osrs_username' => 'pondake'])
+            ->postJson('/welcome/osrs-username/check', ['osrs_username' => 'main sample'])
             ->assertOk()
-            ->assertJson(['found' => true, 'displayName' => 'Pondake', 'taken' => true, 'proven' => false]);
+            ->assertJson(['found' => true, 'displayName' => 'Main Sample', 'taken' => true, 'proven' => false]);
 
         // Nothing is stored by asking.
         $this->assertNull($newcomer->fresh()->osrs_username);
@@ -153,27 +153,27 @@ class OsrsIdentityServiceTest extends TestCase
     #[Test]
     public function saving_a_name_somebody_else_carries_warns_but_keeps_it(): void
     {
-        $this->fakeFound('Pondake');
-        User::factory()->create(['osrs_username' => 'Pondake']);
+        $this->fakeFound('Main Sample');
+        User::factory()->create(['osrs_username' => 'Main Sample']);
         $newcomer = User::factory()->create(['osrs_username' => null]);
 
         $this->actingAs($newcomer)
-            ->post('/welcome/osrs-username', ['osrs_username' => 'Pondake'])
+            ->post('/welcome/osrs-username', ['osrs_username' => 'Main Sample'])
             ->assertSessionHas('board-save-error', trans('auth.osrs_taken'));
 
-        $this->assertSame('Pondake', $newcomer->fresh()->osrs_username);
+        $this->assertSame('Main Sample', $newcomer->fresh()->osrs_username);
     }
 
     #[Test]
     public function a_found_name_is_stored_verified_and_in_wise_old_mans_casing(): void
     {
-        $this->fakeFound('Pondake');
+        $this->fakeFound('Main Sample');
         $user = User::factory()->create(['osrs_username' => null, 'osrs_verified_at' => null]);
 
-        $found = $this->identity()->apply($user, 'pondake');
+        $found = $this->identity()->apply($user, 'main sample');
 
         $this->assertTrue($found);
-        $this->assertSame('Pondake', $user->fresh()->osrs_username);
+        $this->assertSame('Main Sample', $user->fresh()->osrs_username);
         $this->assertNotNull($user->fresh()->osrs_verified_at);
     }
 
@@ -201,8 +201,8 @@ class OsrsIdentityServiceTest extends TestCase
         Http::fake([self::PLAYER_URL => Http::response('', 503)]);
         $user = User::factory()->create(['osrs_username' => null, 'osrs_verified_at' => null]);
 
-        $this->assertNull($this->identity()->apply($user, 'Pondake'));
-        $this->assertSame('Pondake', $user->fresh()->osrs_username);
+        $this->assertNull($this->identity()->apply($user, 'Main Sample'));
+        $this->assertSame('Main Sample', $user->fresh()->osrs_username);
         $this->assertNull($user->fresh()->osrs_verified_at);
     }
 
@@ -213,12 +213,12 @@ class OsrsIdentityServiceTest extends TestCase
         // A sequence, not two fake() calls: Laravel keeps the FIRST matching
         // stub, so re-faking the same URL does not replace the earlier one.
         Http::fake([self::PLAYER_URL => Http::sequence()
-            ->push(['displayName' => 'Pondake'], 200)
+            ->push(['displayName' => 'Main Sample'], 200)
             ->push(['code' => 'PLAYER_NOT_FOUND'], 404)]);
 
         $user = User::factory()->create(['osrs_username' => null, 'osrs_verified_at' => null]);
 
-        $this->identity()->apply($user, 'Pondake');
+        $this->identity()->apply($user, 'Main Sample');
         $this->assertNotNull($user->fresh()->osrs_verified_at);
 
         $this->identity()->apply($user, 'Someone Else');
@@ -241,8 +241,8 @@ class OsrsIdentityServiceTest extends TestCase
     #[Test]
     public function rechecking_uses_the_name_already_on_the_account(): void
     {
-        $this->fakeFound('Pondake');
-        $user = User::factory()->create(['osrs_username' => 'Pondake', 'osrs_verified_at' => null]);
+        $this->fakeFound('Main Sample');
+        $user = User::factory()->create(['osrs_username' => 'Main Sample', 'osrs_verified_at' => null]);
 
         $this->assertTrue($this->identity()->recheck($user));
         $this->assertNotNull($user->fresh()->osrs_verified_at);

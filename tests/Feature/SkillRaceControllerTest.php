@@ -39,7 +39,7 @@ class SkillRaceControllerTest extends TestCase
         ]);
     }
 
-    private function player(string $name = 'Pondake'): User
+    private function player(string $name = 'Main Sample'): User
     {
         return User::factory()->create(['osrs_username' => $name]);
     }
@@ -52,7 +52,7 @@ class SkillRaceControllerTest extends TestCase
 
         $this->actingAs($user)->post("/events/{$event->id}/enter")->assertRedirect();
 
-        $this->assertSame('Pondake', EventStanding::firstOrFail()->username);
+        $this->assertSame('Main Sample', EventStanding::firstOrFail()->username);
     }
 
     /**
@@ -144,9 +144,9 @@ class SkillRaceControllerTest extends TestCase
     public function a_second_account_cannot_enter_under_a_name_already_racing(): void
     {
         $event = $this->race();
-        $this->actingAs($this->player('Pondake'))->post("/events/{$event->id}/enter");
+        $this->actingAs($this->player('Main Sample'))->post("/events/{$event->id}/enter");
 
-        $this->actingAs($this->player('Pondake'))
+        $this->actingAs($this->player('Main Sample'))
             ->post("/events/{$event->id}/enter")
             ->assertSessionHas('board-save-error');
 

@@ -29,7 +29,7 @@ class TeamAvatarFallbackTest extends TestCase
 
     private function user(?string $icon = 'abc123'): User
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake', 'discord_id' => '42']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample', 'discord_id' => '42']);
 
         UserGuild::create([
             'user_id' => $user->id,

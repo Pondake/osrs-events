@@ -212,11 +212,11 @@ class DiscordRegistrationLockTest extends TestCase
         $this->lock();
 
         $existing = User::factory()->create([
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'discord_id' => '111222333',
         ]);
 
-        $this->discordAnswers('111222333', 'pondake');
+        $this->discordAnswers('111222333', 'samplemain');
 
         $this->get('/auth/discord/callback?code=whatever')->assertRedirect();
 

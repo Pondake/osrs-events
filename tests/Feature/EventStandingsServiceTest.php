@@ -60,12 +60,12 @@ class EventStandingsServiceTest extends TestCase
     public function entering_creates_a_standing_under_the_users_osrs_name(): void
     {
         $event = $this->race();
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $standing = $this->standings()->enter($event, $user);
 
         $this->assertNotNull($standing);
-        $this->assertSame('Pondake', $standing->username);
+        $this->assertSame('Main Sample', $standing->username);
         $this->assertNull($standing->synced_at, 'a fresh entry has never been looked up');
     }
 
@@ -84,7 +84,7 @@ class EventStandingsServiceTest extends TestCase
     public function entering_twice_is_idempotent(): void
     {
         $event = $this->race();
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $first = $this->standings()->enter($event, $user);
         $second = $this->standings()->enter($event, $user);
@@ -98,17 +98,17 @@ class EventStandingsServiceTest extends TestCase
     public function two_accounts_cannot_enter_one_race_under_the_same_name(): void
     {
         $event = $this->race();
-        $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Pondake']));
+        $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Main Sample']));
 
         $this->expectException(ValidationException::class);
-        $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Pondake']));
+        $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Main Sample']));
     }
 
     /** Uniqueness is per race, not global — a name may enter many events. */
     #[Test]
     public function the_same_name_may_enter_two_different_races(): void
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $this->standings()->enter($this->race(), $user);
         $this->standings()->enter($this->race(['title' => 'Another race']), $user);
@@ -120,7 +120,7 @@ class EventStandingsServiceTest extends TestCase
     public function leaving_removes_only_that_users_standing(): void
     {
         $event = $this->race();
-        $mine = User::factory()->create(['osrs_username' => 'Pondake']);
+        $mine = User::factory()->create(['osrs_username' => 'Main Sample']);
         $theirs = User::factory()->create(['osrs_username' => 'Zezima']);
         $this->standings()->enter($event, $mine);
         $this->standings()->enter($event, $theirs);
@@ -138,7 +138,7 @@ class EventStandingsServiceTest extends TestCase
     {
         $this->fakeGains(2360640);
         $event = $this->race();
-        $standing = $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Pondake']));
+        $standing = $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Main Sample']));
 
         $this->standings()->refresh($event, $standing);
 
@@ -154,7 +154,7 @@ class EventStandingsServiceTest extends TestCase
     {
         $this->fakeGains(100);
         $event = $this->race();
-        $user = User::factory()->create(['osrs_username' => 'Pondake', 'osrs_verified_at' => null]);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample', 'osrs_verified_at' => null]);
 
         $this->standings()->refresh($event, $this->standings()->enter($event, $user));
 
@@ -179,7 +179,7 @@ class EventStandingsServiceTest extends TestCase
     {
         Http::fake();
         $event = $this->race(['metric' => null]);
-        $standing = $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Pondake']));
+        $standing = $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Main Sample']));
 
         $this->standings()->refresh($event, $standing);
 
@@ -195,7 +195,7 @@ class EventStandingsServiceTest extends TestCase
             'start_date' => Carbon::now()->addWeek(),
             'end_date' => Carbon::now()->addWeeks(3),
         ]);
-        $standing = $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Pondake']));
+        $standing = $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Main Sample']));
 
         $this->standings()->refresh($event, $standing);
 
@@ -233,11 +233,11 @@ class EventStandingsServiceTest extends TestCase
     {
         Http::fake();
         $event = $this->race();
-        $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Pondake']));
+        $this->standings()->enter($event, User::factory()->create(['osrs_username' => 'Main Sample']));
 
         $renamer = User::factory()->create(['osrs_username' => 'Someone Else']);
         $standing = $this->standings()->enter($event, $renamer);
-        $renamer->forceFill(['osrs_username' => 'Pondake'])->save();
+        $renamer->forceFill(['osrs_username' => 'Main Sample'])->save();
 
         $this->standings()->syncUsernames($event);
 
@@ -292,7 +292,7 @@ class EventStandingsServiceTest extends TestCase
     public function the_fingerprint_changes_only_when_the_visible_standings_do(): void
     {
         $event = $this->race();
-        $row = $this->seedRow($event, 'Pondake', gained: 100);
+        $row = $this->seedRow($event, 'Main Sample', gained: 100);
 
         $before = $this->standings()->fingerprint($event);
 
@@ -322,7 +322,7 @@ class EventStandingsServiceTest extends TestCase
         Http::fake(['api.wiseoldman.net/v2/players/*/gained*' => Http::response('', 429)]);
 
         $event = $this->race();
-        $row = $this->seedRow($event, 'Pondake', gained: 0, synced: false);
+        $row = $this->seedRow($event, 'Main Sample', gained: 0, synced: false);
 
         $this->standings()->refresh($event, $row);
 
@@ -342,7 +342,7 @@ class EventStandingsServiceTest extends TestCase
         Http::fake(['api.wiseoldman.net/v2/players/*/gained*' => Http::response('', 429)]);
 
         $event = $this->race();
-        $row = $this->seedRow($event, 'Pondake', gained: 0, synced: false);
+        $row = $this->seedRow($event, 'Main Sample', gained: 0, synced: false);
 
         $this->standings()->refresh($event, $row);
 

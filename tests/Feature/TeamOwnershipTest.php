@@ -305,7 +305,7 @@ class TeamOwnershipTest extends TestCase
     #[Test]
     public function membership_outranks_the_server_it_belongs_to(): void
     {
-        $user = User::factory()->create(['osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['osrs_username' => 'Main Sample']);
         UserGuild::create(['user_id' => $user->id, 'guild_id' => '111', 'guild_name' => 'My Clan']);
 
         $team = Team::create(['name' => 'Both', 'guild_id' => '111', 'guild_name' => 'My Clan']);

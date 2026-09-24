@@ -61,7 +61,7 @@ class SyncEventStandingsCommandTest extends TestCase
     {
         $this->fakeGains(1234);
         $event = $this->race();
-        $standing = $this->enter($event, 'Pondake');
+        $standing = $this->enter($event, 'Main Sample');
 
         $this->artisan('events:sync-standings', ['--event' => $event->id])->assertSuccessful();
 
@@ -76,7 +76,7 @@ class SyncEventStandingsCommandTest extends TestCase
         $this->enter($this->race([
             'start_date' => Carbon::now()->addWeek(),
             'end_date' => Carbon::now()->addWeeks(3),
-        ]), 'Pondake');
+        ]), 'Main Sample');
         $this->enter($this->race([
             'title' => 'Long finished',
             'start_date' => Carbon::now()->subMonths(3),
@@ -146,7 +146,7 @@ class SyncEventStandingsCommandTest extends TestCase
     {
         $this->fakeGains(500);
         $event = $this->race();
-        $standing = $this->enter($event, 'Pondake');
+        $standing = $this->enter($event, 'Main Sample');
 
         $this->artisan('events:sync-standings', ['--event' => $event->id])->assertSuccessful();
         $this->artisan('events:sync-standings', ['--event' => $event->id])->assertSuccessful();
@@ -164,7 +164,7 @@ class SyncEventStandingsCommandTest extends TestCase
     {
         $this->fakeGains(10);
         $event = $this->race();
-        $this->enter($event, 'Pondake');
+        $this->enter($event, 'Main Sample');
 
         $this->artisan('events:sync-standings', ['--event' => $event->id])->assertSuccessful();
 

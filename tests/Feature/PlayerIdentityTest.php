@@ -35,7 +35,7 @@ class PlayerIdentityTest extends TestCase
     private function boardWithAPlayer(): array
     {
         $player = User::factory()->create([
-            'osrs_username' => 'Pondake',
+            'osrs_username' => 'Main Sample',
             'email' => self::EMAIL,
             'discord_id' => '1234567890',
         ]);

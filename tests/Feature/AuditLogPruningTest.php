@@ -24,7 +24,7 @@ class AuditLogPruningTest extends TestCase
     {
         $log = AuditLog::create([
             'action' => 'invite.created',
-            'actor_label' => 'Pondake',
+            'actor_label' => 'Main Sample',
         ]);
 
         // forceFill + save, because created_at is not fillable and the point

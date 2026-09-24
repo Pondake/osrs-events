@@ -28,7 +28,7 @@ class BingoClaimWithdrawalTest extends TestCase
     /** @return array{0: User, 1: Event, 2: BingoCard} */
     private function card(bool $requiresApproval = true): array
     {
-        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $event = Event::create([
             'title' => 'Card night',

@@ -143,7 +143,7 @@ class AdminEventsFilterTest extends TestCase
     #[Test]
     public function a_non_admin_cannot_reach_the_list_at_all(): void
     {
-        $player = User::factory()->create(['osrs_username' => 'Pondake']);
+        $player = User::factory()->create(['osrs_username' => 'Main Sample']);
 
         $this->actingAs($player)->get('/admin/events')->assertForbidden();
     }

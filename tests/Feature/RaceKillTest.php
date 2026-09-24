@@ -30,7 +30,7 @@ class RaceKillTest extends TestCase
         parent::setUp();
 
         Setting::set('runelite_plugin_mode', 'testing');
-        $this->player = User::factory()->create(['osrs_username' => 'Iron Pondake']);
+        $this->player = User::factory()->create(['osrs_username' => 'Iron Sample']);
         $this->code = PluginToken::issueFor($this->player);
     }
 
@@ -172,7 +172,7 @@ class RaceKillTest extends TestCase
 
         $rows = EventStanding::where('event_id', $event->id)->get()->keyBy('username');
         $this->assertSame(1, $rows['Someone']->live_gained);
-        $this->assertSame(0, $rows['Iron Pondake']->live_gained);
+        $this->assertSame(0, $rows['Iron Sample']->live_gained);
     }
 
     #[Test]
@@ -228,7 +228,7 @@ class RaceKillTest extends TestCase
         $this->kill('Zulrah', 204);
         $this->assertSame(1, $this->standing($event)->live_gained);
 
-        $this->player->forceFill(['osrs_username' => 'Iron Pondake II'])->save();
+        $this->player->forceFill(['osrs_username' => 'Iron Sample II'])->save();
         app(EventStandingsService::class)->syncUsernames($event);
 
         $standing = $this->standing($event);

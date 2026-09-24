@@ -51,7 +51,7 @@ class StagingFeedbackTest extends TestCase
         ]);
     }
 
-    private function player(string $name = 'Pondake'): User
+    private function player(string $name = 'Main Sample'): User
     {
         return User::factory()->create(['osrs_username' => $name]);
     }
@@ -461,9 +461,9 @@ class StagingFeedbackTest extends TestCase
     #[Test]
     public function the_admin_command_promotes_an_existing_account(): void
     {
-        $user = User::factory()->create(['discord_username' => 'Pondake', 'osrs_username' => 'Pondake']);
+        $user = User::factory()->create(['discord_username' => 'Main Sample', 'osrs_username' => 'Main Sample']);
 
-        $this->artisan('user:make-admin', ['identifier' => 'Pondake'])->assertSuccessful();
+        $this->artisan('user:make-admin', ['identifier' => 'Main Sample'])->assertSuccessful();
 
         $this->assertTrue($user->fresh()->isAdmin());
     }

@@ -180,7 +180,7 @@ class RuneliteTrustTest extends TestCase
         [$manualSquare, $runeliteSquare] = $card->squares()->orderBy('position')->take(2)->get()->all();
 
         $manualClaimant = User::factory()->create(['discord_username' => 'manualplayer', 'osrs_username' => 'Manualname']);
-        $runeliteClaimant = User::factory()->create(['discord_username' => 'mbeetje', 'osrs_username' => 'Pondake']);
+        $runeliteClaimant = User::factory()->create(['discord_username' => 'mbeetje', 'osrs_username' => 'Main Sample']);
 
         BingoCompletion::create([
             'bingo_square_id' => $manualSquare->id,
@@ -201,7 +201,7 @@ class RuneliteTrustTest extends TestCase
 
         $this->assertSame('Manualname', $queue['MANUAL']['submittedByOsrs']);
         $this->assertSame('manualplayer', $queue['MANUAL']['submittedBy']);
-        $this->assertSame('Pondake', $queue['RUNELITE']['submittedByOsrs']);
+        $this->assertSame('Main Sample', $queue['RUNELITE']['submittedByOsrs']);
         $this->assertSame('mbeetje', $queue['RUNELITE']['submittedBy']);
     }
 
@@ -212,7 +212,7 @@ class RuneliteTrustTest extends TestCase
         $event = $this->event('SNAKES_LADDERS');
         $board = $event->board()->create(['size' => 'SIZE_5X5']);
         $tile = Tile::create(['board_id' => $board->id, 'position' => 2, 'type' => 'NORMAL']);
-        $claimant = User::factory()->create(['discord_username' => 'mbeetje', 'osrs_username' => 'Pondake']);
+        $claimant = User::factory()->create(['discord_username' => 'mbeetje', 'osrs_username' => 'Main Sample']);
         $playerBoard = PlayerBoard::create(['user_id' => $claimant->id, 'board_id' => $board->id, 'current_position' => 2]);
 
         CompletedTile::create([
@@ -228,6 +228,6 @@ class RuneliteTrustTest extends TestCase
             ->get("/events/{$event->id}")
             ->assertInertia(fn ($page) => $page
                 ->where('pending.0.submittedBy', 'mbeetje')
-                ->where('pending.0.submittedByOsrs', 'Pondake'));
+                ->where('pending.0.submittedByOsrs', 'Main Sample'));
     }
 }

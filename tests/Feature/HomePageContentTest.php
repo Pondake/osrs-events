@@ -85,7 +85,7 @@ class HomePageContentTest extends TestCase
     public function the_cms_inventory_does_not_offer_it_as_a_fully_editable_page(): void
     {
         $this->homeRow();
-        $admin = tap(User::factory()->create(['osrs_username' => 'Pondake']))
+        $admin = tap(User::factory()->create(['osrs_username' => 'Main Sample']))
             ->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
         $this->actingAs($admin)
