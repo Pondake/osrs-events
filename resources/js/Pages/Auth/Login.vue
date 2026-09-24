@@ -18,7 +18,7 @@
                         </u-form-field>
 
                         <u-form-field :label="$t('auth.field_password')" :error="form.errors.password" required>
-                            <u-input v-model="form.password" type="password" autocomplete="current-password" class="w-full" />
+                            <password-input v-model="form.password" autocomplete="current-password" class="w-full" />
                         </u-form-field>
 
                         <div class="text-right">
@@ -48,6 +48,7 @@
 
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+import PasswordInput from '@/Components/PasswordInput.vue';
 
 defineProps({
     status: { type: String, default: null },

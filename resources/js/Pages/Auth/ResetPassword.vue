@@ -16,11 +16,11 @@
                         </u-form-field>
 
                         <u-form-field :label="$t('profile.new_password')" :description="$t('auth.password_requirements')" :error="form.errors.password" required>
-                            <u-input v-model="form.password" type="password" autocomplete="new-password" class="w-full" />
+                            <password-input v-model="form.password" autocomplete="new-password" class="w-full" />
                         </u-form-field>
 
                         <u-form-field :label="$t('profile.confirm_new_password')" required>
-                            <u-input v-model="form.password_confirmation" type="password" autocomplete="new-password" class="w-full" />
+                            <password-input v-model="form.password_confirmation" autocomplete="new-password" class="w-full" />
                         </u-form-field>
 
                         <u-button type="submit" color="primary" block :loading="form.processing" :label="$t('auth.cta_reset_password')" />
@@ -33,6 +33,7 @@
 
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
+import PasswordInput from '@/Components/PasswordInput.vue';
 
 const props = defineProps({
     token: { type: String, required: true },

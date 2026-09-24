@@ -95,9 +95,8 @@
                     <!-- Never pre-filled. The stored value is a hash and the
                          server does not send it back, so blank means "keep
                          the current one" rather than "clear it". -->
-                    <u-input
+                    <password-input
                         v-model="form.site_lock_password"
-                        type="password"
                         autocomplete="new-password"
                         class="w-full"
                         :placeholder="settings.site_lock_has_password ? '••••••••' : ''"
@@ -288,6 +287,7 @@ import SettingField from '@/Components/SettingField.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT } from '@/Support/board';
 import { announcementTypeOptions, styleFor } from '@/Support/announcement';
 import { describeDuration } from '@/Support/duration';
+import PasswordInput from '@/Components/PasswordInput.vue';
 
 const props = defineProps({
     settings: { type: Object, required: true },

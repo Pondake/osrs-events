@@ -36,9 +36,8 @@
                      isn't rendered at all in this state. -->
                 <form v-if="!fullLockdown" class="mt-8 space-y-3 text-left" @submit.prevent="submit">
                     <u-form-field :error="form.errors.password">
-                        <u-input
+                        <password-input
                             v-model="form.password"
-                            type="password"
                             autocomplete="current-password"
                             :placeholder="$t('lock.password_placeholder')"
                             size="lg"
@@ -105,6 +104,7 @@
 </template>
 
 <script setup>
+import PasswordInput from '@/Components/PasswordInput.vue';
 import { computed } from 'vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';

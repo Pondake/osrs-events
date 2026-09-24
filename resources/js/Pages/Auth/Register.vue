@@ -55,11 +55,11 @@
                         </u-form-field>
 
                         <u-form-field :label="$t('auth.field_password')" :description="$t('auth.password_requirements')" :error="form.errors.password" required>
-                            <u-input v-model="form.password" type="password" autocomplete="new-password" class="w-full" />
+                            <password-input v-model="form.password" autocomplete="new-password" class="w-full" />
                         </u-form-field>
 
                         <u-form-field :label="$t('auth.field_password_confirmation')" required>
-                            <u-input v-model="form.password_confirmation" type="password" autocomplete="new-password" class="w-full" />
+                            <password-input v-model="form.password_confirmation" autocomplete="new-password" class="w-full" />
                         </u-form-field>
 
                         <u-button type="submit" color="primary" block :loading="form.processing" :label="$t('auth.cta_register')" />
@@ -84,6 +84,7 @@
 </template>
 
 <script setup>
+import PasswordInput from '@/Components/PasswordInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
 defineProps({

@@ -26,7 +26,7 @@
                     :error="emailForm.errors.current_password"
                     required
                 >
-                    <u-input v-model="emailForm.current_password" type="password" autocomplete="current-password" class="w-full" />
+                    <password-input v-model="emailForm.current_password" autocomplete="current-password" class="w-full" />
                 </u-form-field>
 
                 <u-button type="submit" color="primary" size="sm" :loading="emailForm.processing" :label="$t('profile.save_email')" />
@@ -54,13 +54,13 @@
 
                 <form class="space-y-3 max-w-sm" @submit.prevent="submitPassword">
                     <u-form-field v-if="hasPassword" :label="$t('profile.current_password')" :error="passwordForm.errors.current_password" required>
-                        <u-input v-model="passwordForm.current_password" type="password" autocomplete="current-password" class="w-full" />
+                        <password-input v-model="passwordForm.current_password" autocomplete="current-password" class="w-full" />
                     </u-form-field>
                     <u-form-field :label="$t('profile.new_password')" :description="$t('auth.password_requirements')" :error="passwordForm.errors.password" required>
-                        <u-input v-model="passwordForm.password" type="password" autocomplete="new-password" class="w-full" />
+                        <password-input v-model="passwordForm.password" autocomplete="new-password" class="w-full" />
                     </u-form-field>
                     <u-form-field :label="$t('profile.confirm_new_password')" required>
-                        <u-input v-model="passwordForm.password_confirmation" type="password" autocomplete="new-password" class="w-full" />
+                        <password-input v-model="passwordForm.password_confirmation" autocomplete="new-password" class="w-full" />
                     </u-form-field>
                     <u-button
                         type="submit"
@@ -269,7 +269,7 @@
                             :error="form.errors.current_password"
                             required
                         >
-                            <u-input v-model="form.current_password" type="password" autocomplete="current-password" class="w-full" />
+                            <password-input v-model="form.current_password" autocomplete="current-password" class="w-full" />
                         </u-form-field>
 
                         <u-form-field
@@ -308,6 +308,7 @@ import { trans } from 'laravel-vue-i18n';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import ConfirmPopover from '@/Components/ConfirmPopover.vue';
+import PasswordInput from '@/Components/PasswordInput.vue';
 
 const props = defineProps({
     email: { type: String, default: null },
