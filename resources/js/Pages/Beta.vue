@@ -196,6 +196,7 @@ const prose = GUIDE_PROSE;
 const { resolved, canonical, imageUrl, robots, Head } = useSeoData({
     title: trans('beta.meta_title'),
     description: trans('beta.meta_desc'),
+    image: '/images/og/beta.png',
     noindex: true,
 });
 

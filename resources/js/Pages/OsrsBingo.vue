@@ -119,6 +119,7 @@ const { locked } = useSiteLock();
 const seo = {
     title: trans('landing.bingo.meta_title'),
     description: trans('landing.bingo.meta_desc'),
+    image: '/images/og/bingo.png',
 };
 
 const howItWorksTitle = trans('landing.bingo.how_title');

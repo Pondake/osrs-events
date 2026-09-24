@@ -4,6 +4,9 @@ import { usePage, Head } from '@inertiajs/vue3';
 const SITE_URL = 'https://osrs-events.com';
 const SITE_NAME = 'OSRS Events';
 const DEFAULT_OG_IMAGE = '/og-image.png';
+// Bump after re-running scripts/og-images.mjs. Discord and X cache a preview
+// by URL for days, so a new image under the same URL stays invisible.
+const OG_IMAGE_VERSION = 2;
 
 /**
  * Inertia equivalent of frontend/app/composables/useSeo.ts. Same contract —
@@ -40,7 +43,7 @@ export function useSeoData(options) {
     const resolved = computed(() => ({
         ...rawOptions.value,
         // Skipped where the title already names the site. The home page's is
-        // "OSRS Events — Free Snakes & Ladders and Skill Races for Clans",
+        // "OSRS Events — Free Bingo, Snakes & Ladders and Races for Clans",
         // which the suffix turned into "… for Clans - OSRS Events" — the
         // brand twice in one line, in the browser tab and in every Discord
         // embed. Not the hydration bug the note above describes (this one is
@@ -69,7 +72,11 @@ export function useSeoData(options) {
     const origin = computed(() => (page.props.ziggy?.url ?? SITE_URL).replace(/\/$/, ''));
     const path = computed(() => page.url.split('?')[0]);
     const canonical = computed(() => new URL(path.value, origin.value).toString());
-    const imageUrl = computed(() => new URL(resolved.value.image ?? DEFAULT_OG_IMAGE, origin.value).toString());
+    const imageUrl = computed(() => {
+        const url = new URL(resolved.value.image ?? DEFAULT_OG_IMAGE, origin.value);
+        url.searchParams.set('v', OG_IMAGE_VERSION);
+        return url.toString();
+    });
 
     /**
      * Anything that is not production says noindex, whatever the page asked.
