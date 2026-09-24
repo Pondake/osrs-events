@@ -16,7 +16,7 @@
  * source app.blade.php uses) and Playwright's Chromium
  * (`pnpm exec playwright install chromium`). The run fails instead of writing
  * an image when a font did not load, when any text is below 4.5:1 against
- * the pixels behind it, or when text runs into the artwork on the right.
+ * the pixels behind it, or when text runs into the artwork or the bottom strip.
  */
 import { chromium } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -53,6 +53,10 @@ const C = {
 
 const TYPES = ['Snakes & Ladders', 'Bingo', 'Skill races', 'Drop races'];
 
+// The strip along the bottom: the two promises first, then what the app plugs into.
+const PROMISES = ['Free', 'No ads'];
+const FEATURES = ['Discord', 'RuneLite plugin', 'Wise Old Man'];
+
 const VARIANTS = [
     {
         out: 'public/og-image.png',
@@ -71,18 +75,21 @@ const VARIANTS = [
         out: 'public/images/og/bingo.png',
         subtitle: 'Bingo for OSRS clans',
         detail: 'A card of goals, claimed with a screenshot. Line or full house wins.',
+        features: ['Discord', 'RuneLite plugin'],
         art: bingoCard,
     },
     {
         out: 'public/images/og/skill-race.png',
         subtitle: 'Skill races for OSRS clans',
         detail: 'Pick a skill, race on XP gained. Tracked from the hiscores.',
+        features: ['Discord', 'Wise Old Man'],
         art: (assets) => raceBoard(assets.skillIcon),
     },
     {
         out: 'public/images/og/drop-race.png',
         subtitle: 'Drop races for OSRS clans',
         detail: 'Pick a boss, race on kills. Tracked from the hiscores.',
+        features: ['Discord', 'Wise Old Man'],
         art: (assets) => raceBoard(assets.bossIcon),
     },
 ];
@@ -198,6 +205,10 @@ function page(variant, assets) {
         : '';
     const detail = variant.detail ? `<p class="detail" data-text>${escape(variant.detail)}</p>` : '';
     const badge = variant.badge ? `<span class="badge"><span data-text>${escape(variant.badge)}</span></span>` : '';
+    const footer = [
+        ...PROMISES.map((t) => `<span class="promise" data-text>${escape(t)}</span>`),
+        ...(variant.features ?? FEATURES).map((t) => `<span data-text>${escape(t)}</span>`),
+    ].join('<span class="dot">•</span>');
 
     return `<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Instrument+Sans:wght@500;600&display=block">
@@ -216,21 +227,29 @@ body {
 .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: ${C.gold}; }
 .art { position: absolute; left: 0; top: 0; }
 .left {
-    position: absolute; left: 88px; top: 0; bottom: 10px; width: 680px;
+    position: absolute; left: 88px; top: 0; bottom: 110px; width: 690px;
     display: flex; flex-direction: column; justify-content: center;
 }
-.brand { display: flex; align-items: center; gap: 28px; }
-.logo { width: 112px; height: 112px; shape-rendering: crispEdges; }
+.brand { display: flex; align-items: center; gap: 20px; }
+.logo { width: 80px; height: 80px; flex: none; shape-rendering: crispEdges; }
+.subtitle-row { display: flex; align-items: center; gap: 20px; margin-top: 22px; }
 .badge {
     font-weight: 600; font-size: 32px; line-height: 1;
     padding: 12px 22px; border-radius: 999px;
     background: ${C.gold}; color: ${C.bg};
 }
 h1 {
-    font-family: 'Cinzel', serif; font-weight: 700; font-size: 96px; line-height: 1;
-    color: ${C.gold}; margin-top: 30px; letter-spacing: -0.5px;
+    font-family: 'Cinzel', serif; font-weight: 700; font-size: 84px; line-height: 1; white-space: nowrap;
+    color: ${C.gold}; letter-spacing: -0.5px;
 }
-.subtitle { font-weight: 600; font-size: 42px; line-height: 1.15; margin-top: 18px; }
+.subtitle { font-weight: 600; font-size: 42px; line-height: 1.15; }
+.features {
+    position: absolute; left: 88px; right: 88px; bottom: 44px;
+    display: flex; align-items: center; gap: 18px;
+    font-weight: 600; font-size: 32px; line-height: 1; color: ${C.parchment};
+}
+.features .promise { color: ${C.gold}; }
+.features .dot { color: ${C.gold}; opacity: .6; }
 .detail { font-weight: 500; font-size: 32px; line-height: 1.3; margin-top: 16px; max-width: 640px; }
 .chips { list-style: none; display: grid; grid-template-columns: max-content max-content; gap: 12px; margin-top: 26px; }
 .chips li {
@@ -253,11 +272,11 @@ h1 {
 body.measure [data-text] { visibility: hidden; }
 </style></head><body>
 <main class="left">
-    <div class="brand">${assets.logo}${badge}</div>
-    <h1 data-text>OSRS Events</h1>
-    <p class="subtitle" data-text>${escape(variant.subtitle)}</p>
+    <div class="brand">${assets.logo}<h1 data-text>OSRS Events</h1></div>
+    <div class="subtitle-row"><p class="subtitle" data-text>${escape(variant.subtitle)}</p>${badge}</div>
     ${detail}${chips}
 </main>
+<footer class="features">${footer}</footer>
 ${variant.art(assets)}
 <div class="bar"></div>
 </body></html>`;
@@ -265,7 +284,7 @@ ${variant.art(assets)}
 
 async function assertFonts(tab) {
     const missing = await tab.evaluate(async () => {
-        const wanted = ['700 96px Cinzel', '600 42px "Instrument Sans"', '500 30px "Instrument Sans"', '700 36px "RuneScape Bold 12"'];
+        const wanted = ['700 84px Cinzel', '600 42px "Instrument Sans"', '500 30px "Instrument Sans"', '700 36px "RuneScape Bold 12"'];
         const out = [];
         for (const font of wanted) {
             const faces = await document.fonts.load(font);
@@ -323,6 +342,7 @@ async function measure(tab, backgroundPng) {
             return {
                 text: el.textContent.trim(),
                 inArt: !!el.closest('.race'),
+                inFooter: !!el.closest('.features'),
                 right: Math.max(...rects.map((r) => r.right)),
                 fontSize: parseFloat(getComputedStyle(el).fontSize),
                 contrast: Math.min(ratio(fg, lo), ratio(fg, hi)),
@@ -356,13 +376,16 @@ try {
         const image = await tab.screenshot({ type: 'png' });
         await tab.evaluate(() => document.body.classList.add('measure'));
         const background = await tab.screenshot({ type: 'png' });
+        const footerTop = await tab.evaluate(() => document.querySelector('.features').getBoundingClientRect().top);
         const results = await measure(tab, `data:image/png;base64,${background.toString('base64')}`);
 
         const problems = [];
         for (const r of results) {
             if (r.contrast < MIN_CONTRAST) problems.push(`"${r.text}" contrast ${r.contrast.toFixed(2)}:1`);
             if (r.fontSize < 28) problems.push(`"${r.text}" is ${r.fontSize}px, under 28px`);
-            if (!r.inArt && r.right > ART_X - 24) problems.push(`"${r.text}" runs into the artwork (right edge ${Math.round(r.right)}px)`);
+            if (r.inFooter && r.right > WIDTH - 88) problems.push(`"${r.text}" runs off the right edge`);
+            if (!r.inArt && !r.inFooter && r.right > ART_X - 24) problems.push(`"${r.text}" runs into the artwork (right edge ${Math.round(r.right)}px)`);
+            if (!r.inFooter && r.bottom > footerTop - 20) problems.push(`"${r.text}" runs into the bottom strip`);
             if (r.bottom > HEIGHT - 30) problems.push(`"${r.text}" runs off the bottom`);
         }
 
