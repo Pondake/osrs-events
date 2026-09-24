@@ -20,15 +20,16 @@ use Illuminate\Support\Facades\Hash;
 class AdminUserSeeder extends Seeder
 {
     /**
-     * The project owner's OSRS account. Hardcoded rather than read from .env
-     * because it is a fact about who owns this project, not a per-deployment
-     * setting — the same name the Ko-fi link points at.
+     * The owner's OSRS name, from OWNER_OSRS_USERNAME in .env.
      *
-     * It matters that the seeded admin has one at all: every account needs an
-     * OSRS username now (RequireOsrsUsername), so an admin seeded without one
-     * would land on the gate page instead of the admin area.
+     * It matters that the seeded admin has one: every account needs an OSRS
+     * username (RequireOsrsUsername), so an admin seeded without one lands on
+     * the gate page instead of the admin area.
      */
-    public const OWNER_OSRS_USERNAME = 'Pondake';
+    public static function ownerOsrsUsername(): ?string
+    {
+        return env('OWNER_OSRS_USERNAME') ?: null;
+    }
 
     public function run(): void
     {
@@ -62,7 +63,7 @@ class AdminUserSeeder extends Seeder
             [
                 'discord_username' => $username,
                 'avatar_url' => null,
-                'osrs_username' => self::OWNER_OSRS_USERNAME,
+                'osrs_username' => self::ownerOsrsUsername(),
                 'email' => $email,
                 // Re-hashed on every seed, so rotating ADMIN_PASS in .env and
                 // re-running the seeder is the way to change it.

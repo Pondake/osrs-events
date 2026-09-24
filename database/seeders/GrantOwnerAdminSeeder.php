@@ -37,9 +37,9 @@ class GrantOwnerAdminSeeder extends Seeder
         // Same person as AdminUserSeeder's synthetic account, so the same
         // OSRS name. Only filled if it's still empty — a rename made in the
         // app is theirs, and a seeder must not undo it on every run.
-        if (blank($user->osrs_username)) {
-            $user->update(['osrs_username' => AdminUserSeeder::OWNER_OSRS_USERNAME]);
-            $this->command->info('Set OSRS username '.AdminUserSeeder::OWNER_OSRS_USERNAME.'.');
+        if (blank($user->osrs_username) && filled(AdminUserSeeder::ownerOsrsUsername())) {
+            $user->update(['osrs_username' => AdminUserSeeder::ownerOsrsUsername()]);
+            $this->command->info('Set OSRS username '.AdminUserSeeder::ownerOsrsUsername().'.');
         }
 
         $this->command->info("Granted ADMIN to {$user->discord_username} ({$user->id}).");
