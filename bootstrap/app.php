@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureCanAccessAdmin;
 use App\Http\Middleware\EnsureSiteUnlocked;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireOsrsUsername;
+use App\Http\Middleware\ThrottlePerRoute;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -47,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'can-access-admin' => EnsureCanAccessAdmin::class,
             'require-osrs-username' => RequireOsrsUsername::class,
+            'throttle' => ThrottlePerRoute::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

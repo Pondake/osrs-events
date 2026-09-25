@@ -161,18 +161,8 @@ test('asking for a password reset confirms it without saying whether the account
     await expect(page.getByText('If that email has an account, a reset link is on its way.')).toBeVisible();
 });
 
-/**
- * Open. Every `throttle:N,M` on a route, without a prefix or a name, counts
- * into ONE bucket per address (per account, when signed in) — so the limit of
- * the strictest route in a group applies to all of them. Three wrong
- * passwords use up the three requests a reset link is allowed, and the person
- * who most needs the link gets "Slow down a moment" instead.
- *
- * `test.fail` keeps the suite green while this stands, and turns red the
- * moment it is fixed, so the marker gets removed with the fix.
- */
-test.fail('three wrong passwords do not use up the requests a reset link is allowed', async ({ page, watcher }) => {
-    watcher.allow(429, /forgot-password/);
+// Each `throttle:N,M` counts per route (ThrottlePerRoute), not one bucket per visitor.
+test('three wrong passwords do not use up the requests a reset link is allowed', async ({ page }) => {
     clearThrottles();
 
     for (let attempt = 0; attempt < 3; attempt++) {
