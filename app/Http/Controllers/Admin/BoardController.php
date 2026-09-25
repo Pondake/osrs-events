@@ -14,6 +14,7 @@ use App\Services\BoardAccessService;
 use App\Services\EventFinishService;
 use App\Services\EventNotificationService;
 use App\Support\AnnouncementTrigger;
+use App\Support\EventCard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class BoardController extends Controller
         // back — see restore(). They are listed dimmed and last rather than
         // in place, so the list still reads as "the events" at a glance.
         $boards = Event::withTrashed()
-            ->with(['authors.user:id,discord_username,nickname,avatar_url', 'eventTeams.team', 'board'])
+            ->with(['authors.user:id,discord_username,nickname,avatar_url', 'eventTeams.team', 'board', 'bingoCard'])
             ->when($search !== '', fn ($q) => $q->where('title', 'like', '%'.$search.'%'))
             // Paused/active only make sense among events still standing —
             // 'deleted' is its own branch below, via onlyTrashed().
@@ -66,7 +67,12 @@ class BoardController extends Controller
             ->get();
 
         return Inertia::render('Admin/Boards', [
-            'boards' => $boards,
+            // The card goes along, or the modal fills its fields with defaults
+            // and a save of the title alone writes them to the card.
+            'boards' => $boards->map(fn (Event $event) => [
+                ...$event->toArray(),
+                'card' => EventCard::cardSettings($event->bingoCard),
+            ]),
             // Keyed by event id, because this page edits whichever row was
             // clicked. Built from the same catalogue the event page uses, so
             // the two forms cannot disagree about what an event can announce.

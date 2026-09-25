@@ -62,7 +62,7 @@
                     />
                     <template v-else>
                         <u-button :href="`/events/${board.id}`" icon="i-lucide-eye" size="xs" color="neutral" variant="ghost" :aria-label="$t('board.view_mode')" />
-                        <u-button icon="i-lucide-pencil" size="xs" color="neutral" variant="ghost" :aria-label="$t('common.edit')" @click="editingBoard = board" />
+                        <u-button icon="i-lucide-pencil" size="xs" color="neutral" variant="ghost" :aria-label="$t('common.edit')" @click="editingId = board.id" />
                         <u-button icon="i-lucide-trash-2" size="xs" color="error" variant="ghost" :aria-label="$t('common.delete')" @click="destroyBoard(board)" />
                     </template>
                 </div>
@@ -77,7 +77,7 @@
                 :webhook-url="editingBoard?.discord_webhook_url ?? null"
                 :announcements="editingBoard ? (announcements?.[editingBoard.id] ?? null) : null"
                 base-path="/admin/events"
-                @update:open="(v) => !v && (editingBoard = null)"
+                @update:open="(v) => !v && (editingId = null)"
             />
         </client-only>
     </admin-layout>
@@ -206,9 +206,9 @@ const wantedEventId = typeof window === 'undefined'
     ? null
     : new URLSearchParams(window.location.search).get('event');
 
-const editingBoard = ref(wantedEventId
-    ? props.boards.find((board) => board.id === wantedEventId) ?? null
-    : null);
+// By id, so a pause or save that reloads the list reaches the open dialog.
+const editingId = ref(wantedEventId && props.boards.some((board) => board.id === wantedEventId) ? wantedEventId : null);
+const editingBoard = computed(() => props.boards.find((board) => board.id === editingId.value) ?? null);
 
 function destroyBoard(board) {
     // The admin route, not the public one — an admin deleting somebody

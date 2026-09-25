@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\BingoCard;
 use App\Models\Event;
 
 /**
@@ -54,16 +55,22 @@ final class EventCard
             // rather than flattened alongside bingo_size because everything
             // in here belongs to the card and nothing else reads it — the
             // modal picks it apart in cardFields().
-            'card' => $event->bingoCard ? [
-                'size' => $event->bingoCard->size,
-                'winCondition' => $event->bingoCard->win_condition,
-                'lineBonus' => $event->bingoCard->line_bonus,
-                'requiresApproval' => $event->bingoCard->requires_approval,
-                'trustRuneliteCompletions' => $event->bingoCard->trust_runelite_completions,
-                'winLines' => $event->bingoCard->winLines(),
-            ] : null,
+            'card' => self::cardSettings($event->bingoCard),
             'authors' => $event->authors,
         ];
+    }
+
+    /** The bingo card's settings as the settings modal reads them. */
+    public static function cardSettings(?BingoCard $card): ?array
+    {
+        return $card ? [
+            'size' => $card->size,
+            'winCondition' => $card->win_condition,
+            'lineBonus' => $card->line_bonus,
+            'requiresApproval' => $card->requires_approval,
+            'trustRuneliteCompletions' => $card->trust_runelite_completions,
+            'winLines' => $card->winLines(),
+        ] : null;
     }
 
     /**

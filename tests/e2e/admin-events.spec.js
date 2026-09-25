@@ -86,10 +86,7 @@ test('pausing from the admin list shows on the event, and resuming undoes it', a
     await expect(row(admin)).not.toContainText('Paused');
 });
 
-// Found by this suite, not fixed yet: the dialog keeps the event it was opened
-// with, so straight after pausing it still says "Running" and offers to pause
-// again. Pinned by equality — fixing it fails this until the marker is removed.
-test.fail('the status tab follows a pause without being reopened', async ({ as }) => {
+test('the status tab follows a pause without being reopened', async ({ as }) => {
     const admin = await as('admin');
 
     await openList(admin);
@@ -100,11 +97,7 @@ test.fail('the status tab follows a pause without being reopened', async ({ as }
     await expect(admin.getByRole('dialog').getByRole('button', { name: 'Resume event' })).toBeVisible({ timeout: 3000 });
 });
 
-// Found by this suite, not fixed yet: the admin list is not sent the bingo card,
-// so the dialog fills the card's fields with its defaults (5x5, first line wins,
-// claims reviewed) and a save of anything — here only the title — writes them.
-// Pinned by equality — fixing it fails this until the marker is removed.
-test.fail('saving a new title from the admin list leaves the bingo card as it was', async ({ as }) => {
+test('saving a new title from the admin list leaves the bingo card as it was', async ({ as }) => {
     const admin = await as('admin');
 
     await openList(admin);
