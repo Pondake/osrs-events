@@ -18,13 +18,7 @@ const LIMIT = 70;
  * open. Not a place to hide things: the assertion is equality, so fixing one
  * fails the test until it is removed from here.
  */
-const KNOWN_BROKEN = {
-    admin: [
-        '404 /admin/content/osrs-snakes-and-ladders (linked from /admin/content)',
-        '404 /admin/content/osrs-clan-events (linked from /admin/content)',
-        '404 /admin/content/osrs-event-ideas (linked from /admin/content)',
-    ],
-};
+const KNOWN_BROKEN = {};
 
 test('anonymous visitors are never offered a dead end', async ({ page, watcher }) => {
     watcher.documentsChecked();
