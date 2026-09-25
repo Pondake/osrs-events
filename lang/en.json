@@ -2530,7 +2530,7 @@
     "validation.title_required": "Give the event a name.",
     "validation.title_too_long": "Title cannot exceed :max characters",
     "settings.nav_admin_plugin_tests": "Plugin tests",
-    "plugin_tests.admin_subtitle": "Everything the plugin sent while it is in testing: every account, every event, every report, each judged against the test set.",
+    "plugin_tests.admin_subtitle": "Everything the plugin sent while it is in testing: every account, every event, every report.",
     "plugin_tests.admin_no_event": "test set not seeded yet",
     "plugin_tests.admin_not_testing": "Only while the plugin is in testing. Switch it under Site, RuneLite plugin.",
     "plugin_tests.admin_tester_count": ":count account(s) with the plugin",
@@ -2538,7 +2538,7 @@
     "plugin_tests.admin_tester": "Tester",
     "plugin_tests.admin_version": "Plugin",
     "plugin_tests.checklist_title": "Plugin testing",
-    "plugin_tests.checklist_desc": "Every step below turns green from the reports the plugin sends, on the test set or on any event you play or make yourself. Test anything else you like too: all your reports are listed at the bottom.",
+    "plugin_tests.checklist_desc": "Make your own bingo or snakes & ladders, join events, play the way you normally would, and see exactly what the plugin sent. Anything that looks wrong or never shows up is worth a report.",
     "plugin_tests.open_event": "Test set",
     "plugin_tests.reset": "Start over",
     "plugin_tests.reset_warning": "This starts your checklist from now and clears your squares on the test set. Your reports stay listed.",
@@ -2611,5 +2611,11 @@
     "plugin_tests.log_search": "Filter by name, character, source or event",
     "plugin_tests.log_empty": "Nothing reported yet.",
     "plugin_tests.log_no_match": "No report matches.",
-    "plugin_tests.log_limit": "Showing the latest :count."
+    "plugin_tests.log_limit": "Showing the latest :count.",
+    "plugin_tests.report_count": ":count reports",
+    "plugin_tests.checks_title": "Suggested checks",
+    "plugin_tests.checks_desc": "A few quick free-to-play checks that every tester can do the same way. They tick off on any event, the shared test set is there if you want one ready-made.",
+    "plugin_tests.checks_done": ":done / :total",
+    "plugin_tests.admin_claims": "Claims",
+    "plugin_tests.admin_events": "Events"
 }

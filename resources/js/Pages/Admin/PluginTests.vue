@@ -29,8 +29,10 @@
                                 <th class="px-3 py-2 font-medium">{{ $t('plugin_tests.admin_tester') }}</th>
                                 <th class="px-3 py-2 font-medium whitespace-nowrap">{{ $t('plugin_tests.admin_version') }}</th>
                                 <th class="px-3 py-2 font-medium whitespace-nowrap text-right">{{ $t('plugin_tests.admin_reports') }}</th>
+                                <th class="px-3 py-2 font-medium whitespace-nowrap text-right">{{ $t('plugin_tests.admin_claims') }}</th>
+                                <th class="px-3 py-2 font-medium whitespace-nowrap text-right">{{ $t('plugin_tests.admin_events') }}</th>
                                 <th class="px-3 py-2 font-medium whitespace-nowrap">{{ $t('plugin_tests.admin_last_seen') }}</th>
-                                <th v-for="scenario in scenarioKeys" :key="scenario" class="px-1.5 py-2 font-medium text-center whitespace-nowrap" :title="$t(`plugin_tests.scenario_${scenario}`)">
+                                <th v-for="scenario in scenarioKeys" :key="scenario" class="px-1.5 py-2 font-normal text-xs text-muted text-center whitespace-nowrap" :title="$t(`plugin_tests.scenario_${scenario}`)">
                                     {{ $t(`plugin_tests.short_${scenario}`) }}
                                 </th>
                             </tr>
@@ -56,9 +58,11 @@
                                     {{ tester.reportCount }}
                                     <span v-if="tester.doubtedCount" class="text-warning">({{ $t('plugin_tests.admin_doubted', { count: tester.doubtedCount }) }})</span>
                                 </td>
+                                <td class="px-3 py-2 text-xs whitespace-nowrap text-right">{{ tester.claimCount }}</td>
+                                <td class="px-3 py-2 text-xs whitespace-nowrap text-right">{{ tester.eventCount }}</td>
                                 <td class="px-3 py-2 text-xs whitespace-nowrap">{{ lastSeen(tester) }}</td>
                                 <td v-for="scenario in tester.scenarios" :key="scenario.key" class="px-1.5 py-2 text-center">
-                                    <u-icon :name="statusIcon(scenario.status)" class="size-5" :class="statusClass(scenario.status)" :aria-label="$t(`plugin_tests.status_${scenario.status}`)" />
+                                    <u-icon :name="statusIcon(scenario.status)" class="block mx-auto size-4" :class="statusClass(scenario.status)" :aria-label="$t(`plugin_tests.status_${scenario.status}`)" />
                                 </td>
                             </tr>
                         </tbody>
@@ -83,13 +87,14 @@
 
                     <div class="space-y-6">
                         <section>
-                            <h3 class="font-semibold mb-2">{{ $t('plugin_tests.checklist_title') }}</h3>
-                            <plugin-test-checklist :scenarios="selected.scenarioDetails" detailed />
+                            <h3 class="font-semibold mb-2">{{ $t('plugin_tests.log_title', { count: selected.reportCount }) }}</h3>
+                            <plugin-report-log :key="selected.user.id" :reports="selected.log" detailed />
                         </section>
 
                         <section>
-                            <h3 class="font-semibold mb-2">{{ $t('plugin_tests.log_title', { count: selected.reportCount }) }}</h3>
-                            <plugin-report-log :key="selected.user.id" :reports="selected.log" detailed />
+                            <h3 class="font-semibold mb-1">{{ $t('plugin_tests.checks_title') }}</h3>
+                            <p class="text-sm text-muted mb-2">{{ $t('plugin_tests.checks_desc') }}</p>
+                            <plugin-test-checklist :scenarios="selected.scenarioDetails" detailed />
                         </section>
                     </div>
                 </u-card>

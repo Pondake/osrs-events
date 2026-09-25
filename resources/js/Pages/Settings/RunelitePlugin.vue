@@ -77,7 +77,8 @@
                         : $t('plugin.status_watching_none') }}
                 </p>
 
-                <div>
+                <!-- While testing, the full log below replaces this preview. -->
+                <div v-if="!tests">
                     <p class="font-medium mb-1.5">{{ $t('plugin.status_reports_title') }}</p>
                     <p v-if="status.reports.length === 0" class="text-muted">{{ $t('plugin.status_no_reports') }}</p>
                     <ul v-else class="space-y-2">
@@ -104,12 +105,30 @@
             <template #header>
                 <div class="flex items-center justify-between gap-2 flex-wrap">
                     <span class="font-semibold">{{ $t('plugin_tests.checklist_title') }}</span>
-                    <div class="flex items-center gap-2">
+                    <u-badge color="neutral" variant="subtle" :label="$t('plugin_tests.report_count', { count: tests.reportCount })" />
+                </div>
+            </template>
+
+            <p class="text-sm text-muted mb-3">{{ $t('plugin_tests.checklist_desc') }}</p>
+
+            <plugin-report-log :reports="tests.log" />
+
+            <details class="group mt-4 rounded-lg ring ring-default">
+                <summary class="flex items-center gap-3 px-3 py-2.5 list-none hover:bg-elevated/50 rounded-lg focus-visible:outline-2 focus-visible:outline-primary min-h-11">
+                    <u-icon name="i-lucide-list-checks" class="size-5 shrink-0 text-muted" />
+                    <span class="flex-1 font-medium">{{ $t('plugin_tests.checks_title') }}</span>
+                    <span class="text-xs text-muted">{{ $t('plugin_tests.checks_done', { done: checksDone, total: tests.scenarioDetails.length }) }}</span>
+                    <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
+                </summary>
+                <div class="px-3 pb-3 space-y-3">
+                    <p class="text-sm text-muted">{{ $t('plugin_tests.checks_desc') }}</p>
+
+                    <div class="flex items-center gap-2 flex-wrap">
                         <u-button
                             v-if="tests.testSet"
                             :to="tests.testSet.url"
                             color="neutral"
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             icon="i-lucide-grid-3x3"
                             :label="$t('plugin_tests.open_event')"
@@ -123,29 +142,16 @@
                             @click="confirmingReset = true"
                         />
                     </div>
-                </div>
-            </template>
 
-            <p class="text-sm text-muted mb-3">{{ $t('plugin_tests.checklist_desc') }}</p>
+                    <div v-if="confirmingReset" class="flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
+                        <p class="text-sm">{{ $t('plugin_tests.reset_warning') }}</p>
+                        <div class="flex items-center gap-2">
+                            <u-button color="neutral" variant="ghost" size="sm" :label="$t('common.cancel')" @click="confirmingReset = false" />
+                            <u-button color="primary" size="sm" :label="$t('plugin_tests.reset')" :loading="resetting" @click="resetTests" />
+                        </div>
+                    </div>
 
-            <div v-if="confirmingReset" class="mb-3 flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
-                <p class="text-sm">{{ $t('plugin_tests.reset_warning') }}</p>
-                <div class="flex items-center gap-2">
-                    <u-button color="neutral" variant="ghost" size="sm" :label="$t('common.cancel')" @click="confirmingReset = false" />
-                    <u-button color="primary" size="sm" :label="$t('plugin_tests.reset')" :loading="resetting" @click="resetTests" />
-                </div>
-            </div>
-
-            <plugin-test-checklist :scenarios="tests.scenarioDetails" />
-
-            <details class="group mt-4 rounded-lg ring ring-default">
-                <summary class="flex items-center gap-3 px-3 py-2.5 list-none hover:bg-elevated/50 rounded-lg focus-visible:outline-2 focus-visible:outline-primary min-h-11">
-                    <u-icon name="i-lucide-list" class="size-5 shrink-0 text-muted" />
-                    <span class="flex-1 font-medium">{{ $t('plugin_tests.log_title', { count: tests.reportCount }) }}</span>
-                    <u-icon name="i-lucide-chevron-down" class="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
-                </summary>
-                <div class="px-3 pb-3">
-                    <plugin-report-log :reports="tests.log" />
+                    <plugin-test-checklist :scenarios="tests.scenarioDetails" />
                 </div>
             </details>
         </u-card>
@@ -243,6 +249,7 @@ const busy = ref(false);
 const copied = ref(false);
 const confirmingReset = ref(false);
 const resetting = ref(false);
+const checksDone = computed(() => props.tests?.scenarioDetails.filter((scenario) => scenario.status === 'ok').length ?? 0);
 
 const status = ref(props.status);
 

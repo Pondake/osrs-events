@@ -63,6 +63,10 @@ class PluginTestReport
             'reportCount' => $reports->count(),
             'claimCount' => $reports->sum(fn (PluginCompletion $report) => count($report->claims ?? [])),
             'doubtedCount' => $reports->filter(fn (PluginCompletion $report) => filled($report->doubts))->count(),
+            // Events a report claimed or counted in: the test card is one,
+            // everything a tester made or joined themselves the rest.
+            'eventCount' => $reports->flatMap(fn (PluginCompletion $report) => [...($report->claims ?? []), ...($report->progress ?? [])])
+                ->pluck('event_id')->filter()->unique()->count(),
             'lastReportAt' => $reports->last()?->created_at?->toIso8601String(),
             'scenarios' => collect($this->scenarios($user, $token, $reports))
                 ->map(fn (array $scenario) => ['key' => $scenario['key'], 'status' => $scenario['status']])
