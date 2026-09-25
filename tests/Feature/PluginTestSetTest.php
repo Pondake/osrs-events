@@ -128,6 +128,7 @@ class PluginTestSetTest extends TestCase
     public function every_report_is_in_the_log_whether_a_scenario_expects_it_or_not(): void
     {
         $this->report('npc_kill', 'Goblin');
+        $this->travel(1)->seconds();
         $this->report('item', 'Raw beef');
 
         $this->assertSame(['Raw beef', 'Goblin'], collect(app(PluginTestReport::class)->forUser($this->tester)['log'])->pluck('name')->all());
