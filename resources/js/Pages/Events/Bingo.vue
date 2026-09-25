@@ -381,7 +381,7 @@
                                         </p>
                                     </div>
                                     <span class="text-sm font-medium text-highlighted tabular-nums shrink-0">
-                                        {{ $t('bingo.score', { points: row.points }) }}
+                                        {{ $tChoice('bingo.score', row.points, { points: row.points }) }}
                                     </span>
                                     <u-icon v-if="row.won" name="i-lucide-trophy" class="size-4 text-warning shrink-0" />
                                 </li>

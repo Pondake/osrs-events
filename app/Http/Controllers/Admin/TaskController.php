@@ -125,6 +125,6 @@ class TaskController extends Controller
 
         AuditLog::record('task.restored', $model);
 
-        return back();
+        return back()->with('board-save', trans('admin.task_restored'));
     }
 }

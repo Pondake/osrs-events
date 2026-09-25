@@ -63,7 +63,7 @@ test('a claim waits for the host, and only scores once it is approved', async ({
     await player.reload();
     await hydrated(player);
 
-    await expect(player.getByText('1 pts')).toBeVisible();
+    await expect(player.getByText('1 pt', { exact: true })).toBeVisible();
     await expect(player.getByText('1 of 9 squares')).toBeVisible();
     await expect(player.getByText('Nobody has marked a square yet.')).toHaveCount(0);
 });
@@ -143,7 +143,7 @@ test('without review a claim counts at once, and can be withdrawn', async ({ as 
     await player.getByRole('dialog').getByRole('button', { name: 'Mark as done' }).click();
 
     await expect(player.getByText('Square marked').first()).toBeVisible();
-    await expect(player.getByText('1 pts')).toBeVisible();
+    await expect(player.getByText('1 pt', { exact: true })).toBeVisible();
 
     await player.getByRole('button', { name: 'Open your claim for this square' }).click();
     await player.getByRole('dialog').getByRole('button', { name: 'Withdraw claim' }).click();

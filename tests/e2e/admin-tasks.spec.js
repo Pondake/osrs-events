@@ -102,11 +102,7 @@ test('a deleted task leaves the list and can be undone', async ({ as }) => {
     expect(query("SELECT deleted_at FROM tasks WHERE title = 'E2E Kill Callisto'")[0].deleted_at).toBeNull();
 });
 
-// Found by this suite, not fixed yet: TaskController::restore answers with a
-// bare redirect, so the row returns in silence and `admin.task_restored`
-// ("Task restored.") is never shown. Pinned by equality — fixing it fails this
-// until the marker is removed.
-test.fail('undoing a delete says the task is restored', async ({ as }) => {
+test('undoing a delete says the task is restored', async ({ as }) => {
     const admin = await as('admin');
 
     await openTasks(admin);

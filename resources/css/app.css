@@ -329,8 +329,9 @@ html:not(.dark) .text-primary {
    Warning goes to yellow-800 rather than the amber-700 used for brand text,
    because the brand IS amber: at the same darkness the two would be the same
    colour, and "paused" would read as a link. */
+/* green-800, not 700: 700 measured 4.49:1 on the Running chip's own pale tint. */
 html:not(.dark) .text-success {
-    color: var(--color-green-700);
+    color: var(--color-green-800);
 }
 
 html:not(.dark) .text-warning {

@@ -28,10 +28,7 @@ const PAGES = [
  * is equality, so fixing one fails the test until it is removed from here.
  */
 const KNOWN = {
-    light: [
-        // bg-success/10 + text-success: green-700 on its own pale tint, measured 4.49:1.
-        'events list|span. "Running"',
-    ],
+    light: [],
     dark: [],
 };
 

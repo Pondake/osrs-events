@@ -5,7 +5,8 @@
              with a live search under it invites a second pick that silently
              replaces the first. -->
         <div v-if="modelValue" class="flex items-center gap-3 rounded-md ring ring-default px-3 py-2">
-            <img :src="modelValue" alt="" class="size-6 object-contain shrink-0" />
+            <img v-if="isLink" :src="modelValue" alt="" class="size-6 object-contain shrink-0" />
+            <u-icon v-else name="i-lucide-image-off" class="size-6 shrink-0 text-dimmed" />
 
             <span class="flex-1 min-w-0 truncate text-sm text-muted">{{ modelValue }}</span>
 
@@ -54,7 +55,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 /**
  * Picks an icon straight off the OSRS Wiki, with no Task behind it.
@@ -72,6 +73,9 @@ const props = defineProps({
     // is nothing else here worth keeping once a result is picked.
     modelValue: { type: String, default: '' },
 });
+
+// Anything else would be fetched as a path on this site.
+const isLink = computed(() => /^(https?:\/\/|\/(?!\/))/i.test(props.modelValue ?? ''));
 
 const emit = defineEmits(['update:modelValue']);
 

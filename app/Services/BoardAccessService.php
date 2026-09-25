@@ -242,13 +242,13 @@ class BoardAccessService
             ->first();
 
         if (! $invite) {
-            throw ValidationException::withMessages(['access' => 'Invite not found.']);
+            throw ValidationException::withMessages(['access' => trans('events.invite_not_found')]);
         }
         if ($invite->expires_at && $invite->expires_at->isPast()) {
-            throw ValidationException::withMessages(['access' => 'This invite has expired.']);
+            throw ValidationException::withMessages(['access' => trans('events.invite_expired')]);
         }
         if ($invite->max_uses !== null && $invite->use_count >= $invite->max_uses) {
-            throw ValidationException::withMessages(['access' => 'This invite has reached its maximum uses.']);
+            throw ValidationException::withMessages(['access' => trans('events.invite_used_up')]);
         }
 
         return DB::transaction(function () use ($event, $invite, $user) {

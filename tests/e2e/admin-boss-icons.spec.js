@@ -54,9 +54,7 @@ test('an icon set here is the one the boss race shows, and resetting takes it aw
 });
 
 test('an address that is not a link is refused', async ({ as }) => {
-    // Typing a non-link also previews it as an image, which the browser resolves
-    // against this site and asks it for: a 404 for the path, not for the form.
-    const admin = await as('admin', { console: [/./], allow: [[404, /not%20a%20link/]] });
+    const admin = await as('admin', { console: [/./] });
 
     await open(admin);
     await admin.getByPlaceholder('Search').fill('Vorkath');
