@@ -110,11 +110,7 @@ test('a standing that cannot sync is listed by account, with what failed and whe
     await expect(dialog.getByRole('button', { name: 'Reset username' })).toBeVisible();
 });
 
-// Found by this suite, not fixed yet: both buttons ask for a confirmation in a
-// popover, and it opens underneath the dialog's overlay — visible, dimmed, and
-// out of reach — so neither action can be completed from the page. Pinned by
-// equality: fixing it fails these until the markers are removed.
-test.fail('an admin can send the player a reminder from the list', async ({ as }) => {
+test('an admin can send the player a reminder from the list', async ({ as }) => {
     strandAccount();
 
     const admin = await as('admin');
@@ -126,7 +122,7 @@ test.fail('an admin can send the player a reminder from the list', async ({ as }
     await expect(admin.getByText('Reminder sent to Stranded.').first()).toBeVisible({ timeout: 3000 });
 });
 
-test.fail('an admin can reset the player’s name from the list', async ({ as }) => {
+test('an admin can reset the player’s name from the list', async ({ as }) => {
     strandAccount();
 
     const admin = await as('admin');

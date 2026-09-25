@@ -60,6 +60,13 @@ export const uiConfig = {
             content: 'z-[60]',
         },
     },
+    // Above the z-[60] modal, or a popover opened from inside a dialog sits
+    // under its overlay and cannot be clicked.
+    popover: {
+        slots: {
+            content: 'z-[70]',
+        },
+    },
     // A sentence wraps at a readable width instead of running across the
     // page on one truncated line.
     tooltip: {
