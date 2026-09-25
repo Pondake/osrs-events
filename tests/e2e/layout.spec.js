@@ -46,12 +46,11 @@ for (const scheme of ['light', 'dark']) {
                     if (result.width !== width) problems.push(`${path}: browser is ${result.width}px wide, not ${width}px`);
                     if (result.dark !== (scheme === 'dark')) problems.push(`${path}: page is ${result.dark ? 'dark' : 'light'}, not ${scheme}`);
                     if (result.overflow !== 0) problems.push(`${path}: overflows by ${result.overflow}px (${result.wide.join(', ')})`);
-                    if (width === 375 && result.under44 > 0) touch.push(`${path}: ${result.under44}`);
+                    if (width === 375 && result.under44.length > 0) touch.push(`${path}: ${result.under44.join(', ')}`);
                 }
 
-                test.info().annotations.push({ type: 'under 44px at 375', description: touch.join('; ') || 'none' });
-
                 expect(problems).toEqual([]);
+                expect(touch, 'touch targets under 44px at 375').toEqual([]);
             });
         }
     }

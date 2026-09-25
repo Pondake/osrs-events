@@ -13,7 +13,7 @@
 
                 <div class="flex items-start justify-between gap-4 flex-wrap mb-8">
                     <div class="min-w-0">
-                        <a :href="`/events/${event.id}`" class="text-sm text-muted hover:text-primary transition-colors inline-flex items-center gap-1.5">
+                        <a :href="`/events/${event.id}`" class="text-sm text-muted hover:text-primary transition-colors inline-flex items-center gap-1.5 max-sm:min-h-11">
                             <u-icon name="i-lucide-arrow-left" class="size-4" />
                             {{ event.title }}
                         </a>

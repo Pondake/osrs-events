@@ -34,7 +34,7 @@
                         <p class="font-medium" :class="{ 'text-muted': overridden }">{{ $t(`animations.${key}`) }}</p>
                         <p class="text-sm text-muted">{{ $t(`animations.${key}_desc`) }}</p>
                     </div>
-                    <u-switch v-model="values[key]" class="shrink-0 mt-0.5" @update:model-value="save" />
+                    <u-switch v-model="values[key]" :aria-label="$t(`animations.${key}`)" class="shrink-0 mt-0.5" @update:model-value="save" />
                 </div>
 
                 <!-- Below the switches it overrules, and only where the
@@ -48,7 +48,7 @@
                             <p class="font-medium">{{ $t(`animations.${overrideKey}`) }}</p>
                             <p class="text-sm text-muted">{{ $t(`animations.${overrideKey}_desc`) }}</p>
                         </div>
-                        <u-switch v-model="values[overrideKey]" class="shrink-0 mt-0.5" @update:model-value="save" />
+                        <u-switch v-model="values[overrideKey]" :aria-label="$t(`animations.${overrideKey}`)" class="shrink-0 mt-0.5" @update:model-value="save" />
                     </div>
                 </template>
             </div>
@@ -71,7 +71,7 @@
                         <p class="font-medium">{{ $t(`animations.${key}`) }}</p>
                         <p class="text-sm text-muted">{{ $t(`animations.${key}_desc`) }}</p>
                     </div>
-                    <u-switch v-model="values[key]" class="shrink-0 mt-0.5" @update:model-value="save" />
+                    <u-switch v-model="values[key]" :aria-label="$t(`animations.${key}`)" class="shrink-0 mt-0.5" @update:model-value="save" />
                 </div>
             </div>
         </u-card>

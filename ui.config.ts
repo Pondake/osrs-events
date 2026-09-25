@@ -89,6 +89,12 @@ export const uiConfig = {
             content: 'z-[60]',
         },
     },
+    // A 20px switch, with a hit area that reaches 44px on a phone.
+    switch: {
+        slots: {
+            base: 'relative max-sm:before:absolute max-sm:before:-inset-x-2 max-sm:before:-inset-y-3',
+        },
+    },
     main: {
         base: 'min-h-[calc(100vh-var(--ui-header-height)-var(--ui-footer-height,0px))]',
     },

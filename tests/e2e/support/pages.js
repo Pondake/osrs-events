@@ -67,11 +67,29 @@ export function measure() {
         .filter((element) => element.getBoundingClientRect().right > root.clientWidth + 1)
         .slice(0, 3)
         .map((element) => `${element.tagName.toLowerCase()}.${String(element.className).split(' ')[0]}`.slice(0, 50));
+    // The target a finger gets: the box, grown by an absolutely placed
+    // ::before that reaches past it. A link inside a sentence is exempt, as
+    // WCAG 2.5.8 exempts it.
+    const reach = (element) => {
+        const box = element.getBoundingClientRect();
+        const before = getComputedStyle(element, '::before');
+        const grow = before.position === 'absolute' && before.content !== 'none'
+            ? -Math.min(0, parseFloat(before.top) || 0) - Math.min(0, parseFloat(before.bottom) || 0)
+            : 0;
+
+        return box.height + grow;
+    };
     const small = [...document.querySelectorAll('button, a[href]')].filter((element) => {
         const box = element.getBoundingClientRect();
 
-        return box.width > 0 && box.height > 0 && box.height < 44;
-    }).length;
+        if (getComputedStyle(element).display === 'inline') return false;
+
+        return box.width > 0 && box.height > 0 && reach(element) < 44;
+    }).map((element) => {
+        const text = (element.getAttribute('aria-label') || element.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+
+        return `${element.tagName.toLowerCase()} "${text}" ${Math.round(reach(element))}px`;
+    });
 
     return { dark: root.classList.contains('dark'), width: root.clientWidth, overflow: root.scrollWidth - root.clientWidth, wide, under44: small };
 }

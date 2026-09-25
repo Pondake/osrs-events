@@ -187,10 +187,11 @@ not use it).
   expected with `allow()` / `allowConsole()`, don't loosen the net.
 - **`crawl.spec.js`** follows every link each seat is offered and fails on a
   dead end. **`layout.spec.js`** reads horizontal overflow at 1280, 1024, 768
-  and 375, in both themes. **`theme.spec.js`** measures text contrast in both
-  themes (4.5:1, 3:1 for large text) on landing, events list, event page,
-  settings and an admin page; a spec picks a theme with
-  `test.use({ colorScheme })`. A bug found this way that is not fixed yet is
+  and 375, in both themes, and fails on a button or link under 44px tall at
+  375 (a `::before` hit area counts; an inline link in a sentence is exempt).
+  **`theme.spec.js`** measures text contrast in both themes (4.5:1, 3:1 for
+  large text) on landing, events list, event page, settings and an admin
+  page; a spec picks a theme with `test.use({ colorScheme })`. A bug found this way that is not fixed yet is
   pinned with `test.fail()` or an explicit list in the spec — equality, so
   fixing it turns the run red until the marker is removed.
 - **Play-throughs and admin mutations** (`bingo`, `drop-race`, `notifications`,

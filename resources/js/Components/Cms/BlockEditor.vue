@@ -8,7 +8,7 @@
         >
             <div class="flex items-center gap-2 px-3 py-2">
                 <u-icon :name="iconFor(block.type)" class="size-4 shrink-0 text-muted" />
-                <button type="button" class="flex-1 min-w-0 text-left text-sm" @click="toggle(block._key)">
+                <button type="button" class="flex-1 min-w-0 max-sm:min-h-11 text-left text-sm cursor-pointer" @click="toggle(block._key)">
                     <span class="font-medium">{{ labelFor(block.type) }}</span>
                     <!-- The first bit of the block's own copy, so a collapsed
                          list is readable as content rather than as eight rows
