@@ -441,7 +441,7 @@
                                         <span>
                                             {{ reveal.remaining > 0
                                                 ? $t('bingo.info_reveal_count', { revealed: reveal.revealed, remaining: reveal.remaining })
-                                                : $t('bingo.info_reveal_done', { revealed: reveal.revealed }) }}
+                                                : $t(reveal.revealed ? 'bingo.info_reveal_done' : 'bingo.info_reveal_empty', { revealed: reveal.revealed }) }}
                                             <span v-if="nextRevealText" class="block text-xs text-muted">{{ nextRevealText }}</span>
                                         </span>
                                     </div>

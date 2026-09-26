@@ -2652,5 +2652,6 @@
     "bingo.info_reveal_count": ":revealed revealed, :remaining still to come",
     "bingo.info_reveal_done": "All :revealed squares are revealed",
     "bingo.info_reveal_next": "Next square :when",
-    "bingo.info_reveal_soon": "Next square any moment now"
+    "bingo.info_reveal_soon": "Next square any moment now",
+    "bingo.info_reveal_empty": "Squares are revealed one at a time, once they have something on them"
 }
