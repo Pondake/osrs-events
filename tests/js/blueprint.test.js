@@ -31,6 +31,29 @@ describe('summariseBlueprint', () => {
         ]);
     });
 
+    /** A lockout card is won on points, so the win condition it stores says nothing. */
+    it('describes a lockout card that reveals its squares', () => {
+        const chips = summariseBlueprint({
+            settings: {
+                mode: 'TEAM',
+                bingo_size: 5,
+                win_condition: 'LINE',
+                lockout: true,
+                reveal: true,
+                reveal_limit: 12,
+            },
+        });
+
+        expect(chips).toEqual([
+            't:blueprints.mode_team',
+            't:blueprints.card',
+            't:blueprints.lockout',
+            't:blueprints.reveal_limit',
+        ]);
+
+        expect(summariseBlueprint({ settings: { reveal: true } })).toEqual(['t:blueprints.reveal']);
+    });
+
     it('describes a board by its grid and its roll limit', () => {
         const chips = summariseBlueprint({
             settings: { mode: 'SOLO', size: 'SIZE_7X7', dice_roll_limit: 2 },

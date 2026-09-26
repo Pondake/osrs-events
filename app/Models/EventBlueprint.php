@@ -54,6 +54,10 @@ class EventBlueprint extends Model
         'win_lines',
         'line_bonus',
         'requires_approval',
+        'lockout',
+        'reveal',
+        'reveal_limit',
+        'reveal_every_minutes',
     ];
 
     public function creator(): BelongsTo
@@ -145,6 +149,10 @@ class EventBlueprint extends Model
             $settings['win_lines'] = $event->bingoCard->winLines();
             $settings['line_bonus'] = $event->bingoCard->line_bonus;
             $settings['requires_approval'] = $event->bingoCard->requires_approval;
+            $settings['lockout'] = $event->bingoCard->usesLockout();
+            $settings['reveal'] = $event->bingoCard->reveal;
+            $settings['reveal_limit'] = $event->bingoCard->reveal_limit;
+            $settings['reveal_every_minutes'] = $event->bingoCard->reveal_every_minutes;
         }
 
         return collect($settings)->reject(fn ($value) => $value === null)->all();

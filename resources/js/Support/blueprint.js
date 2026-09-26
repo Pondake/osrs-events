@@ -41,10 +41,20 @@ export function summariseBlueprint(blueprint) {
         chips.push(trans('blueprints.card', { size: `${settings.bingo_size}×${settings.bingo_size}` }));
     }
 
-    if (settings.win_condition) {
+    // Lockout is won on points when the card closes, so it stands in for the
+    // win condition rather than sitting beside one it overrides.
+    if (settings.lockout) {
+        chips.push(trans('blueprints.lockout'));
+    } else if (settings.win_condition) {
         chips.push(trans(settings.win_condition === 'FULL_HOUSE'
             ? 'blueprints.win_full_house'
             : 'blueprints.win_line'));
+    }
+
+    if (settings.reveal) {
+        chips.push(settings.reveal_limit
+            ? trans('blueprints.reveal_limit', { n: settings.reveal_limit })
+            : trans('blueprints.reveal'));
     }
 
     // Only worth saying when it is the answer people care about: a card

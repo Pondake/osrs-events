@@ -256,4 +256,56 @@ class EventBlueprintTest extends TestCase
             $this->assertContains($blueprint->metric, $expected, $blueprint->title);
         }
     }
+
+    /**
+     * Item Race: a team card with lockout and reveal. Applied the way the
+     * create modal applies it (the settings ride along as form fields), it
+     * has to come out as exactly that card.
+     */
+    #[Test]
+    public function the_item_race_blueprint_creates_a_lockout_card_that_reveals_twelve(): void
+    {
+        $this->seed(EventBlueprintSeeder::class);
+        $blueprint = EventBlueprint::where('title', 'Item Race')->sole();
+
+        $this->actingAs($this->creator())->post('/events', [
+            'title' => 'Item Race',
+            'type' => $blueprint->type,
+            ...$blueprint->applicableSettings(),
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addWeek()->toDateString(),
+        ])->assertSessionHasNoErrors();
+
+        $event = Event::where('title', 'Item Race')->sole();
+        $card = $event->bingoCard;
+
+        $this->assertSame('TEAM', $event->mode);
+        $this->assertTrue($card->usesLockout());
+        $this->assertTrue($card->reveal);
+        $this->assertSame(12, $card->reveal_limit);
+        $this->assertNull($card->reveal_every_minutes);
+    }
+
+    /** Saving an event as a template keeps its lockout and reveal settings. */
+    #[Test]
+    public function saving_a_template_keeps_lockout_and_reveal(): void
+    {
+        $event = Event::create(['title' => 'Crucible', 'type' => 'BINGO', 'mode' => 'TEAM', 'access_mode' => 'OPEN']);
+        $event->bingoCard()->create([
+            'size' => 5,
+            'win_condition' => 'LINE',
+            'lockout' => true,
+            'reveal' => true,
+            'reveal_limit' => 12,
+            'reveal_every_minutes' => 60,
+        ]);
+
+        $settings = EventBlueprint::settingsFrom($event->fresh());
+
+        $this->assertTrue($settings['lockout']);
+        $this->assertTrue($settings['reveal']);
+        $this->assertSame(12, $settings['reveal_limit']);
+        $this->assertSame(60, $settings['reveal_every_minutes']);
+        $this->assertSame($settings, (new EventBlueprint(['settings' => $settings]))->applicableSettings());
+    }
 }

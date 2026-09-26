@@ -179,6 +179,22 @@ class EventBlueprintSeeder extends Seeder
                     'requires_approval' => true,
                 ],
             ],
+            [
+                'title' => 'Item Race',
+                'type' => 'BINGO',
+                'metric' => null,
+                'description' => 'Teams race for items drawn one at a time. The first team to get an item keeps it, the card stops after twelve, and the most points wins. Any final fight happens in game.',
+                'settings' => [
+                    'mode' => 'TEAM',
+                    'bingo_size' => 5,
+                    'win_condition' => 'LINE',
+                    'requires_approval' => true,
+                    'lockout' => true,
+                    'reveal' => true,
+                    // Twelve, as the Crucible format this comes from runs it.
+                    'reveal_limit' => 12,
+                ],
+            ],
 
             // Snakes & Ladders boards.
             [
