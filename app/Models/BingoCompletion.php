@@ -28,10 +28,17 @@ class BingoCompletion extends Model
 
     protected $fillable = [
         'bingo_square_id', 'team_id', 'user_id', 'marked_by', 'completed_via', 'plugin_completion_id',
-        'status', 'proof_url', 'note', 'rsn', 'reviewed_by', 'reviewed_at', 'review_note',
+        'status', 'claimed_at', 'proof_url', 'note', 'rsn', 'reviewed_by', 'reviewed_at', 'review_note',
     ];
 
-    protected $casts = ['reviewed_at' => 'datetime'];
+    protected $casts = ['reviewed_at' => 'datetime', 'claimed_at' => 'datetime'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (BingoCompletion $completion) {
+            $completion->claimed_at ??= now();
+        });
+    }
 
     public function isApproved(): bool
     {

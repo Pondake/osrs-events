@@ -13,6 +13,7 @@ use App\Services\BoardAccessService;
 use App\Services\EventFinishService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -105,12 +106,23 @@ class BingoController extends Controller
 
             $existing->delete();
 
+            // On a lockout card a withdrawal can free the square, and the
+            // next team in line gets it.
+            $this->handOn($event, $card, $square, $bingo, $notifier);
+
             // Withdrawing a square can take a line apart again, which
             // un-wins the card. Answered in both directions by one call —
             // see EventFinishService.
             $finishes->evaluateBingo($event, $competitor);
 
             return back()->with('board-save', trans('bingo.square_cleared'));
+        }
+
+        // Lockout: another team got here first. Before the form is
+        // validated, so a player is told the square is gone rather than
+        // asked for a screenshot of it.
+        if ($refusal = $this->takenBy($card, $square, $bingo)) {
+            return back()->with('board-save-error', $refusal);
         }
 
         // Validated here, not up front — a withdrawal above is a bare POST
@@ -135,7 +147,7 @@ class BingoController extends Controller
             throw ValidationException::withMessages(['rsn' => trans('validation.osrs_character_not_allowed')]);
         }
 
-        $completion = BingoCompletion::create([
+        $completion = $bingo->createClaim($card, $square, [
             ...$competitor,
             'bingo_square_id' => $square->id,
             'marked_by' => $request->user()->id,
@@ -145,6 +157,11 @@ class BingoController extends Controller
             'proof_url' => $data['proof_url'] ?? null,
             'note' => $data['note'] ?? null,
         ]);
+
+        // Taken between the check above and the write.
+        if ($completion === null) {
+            return back()->with('board-save-error', $this->takenBy($card, $square, $bingo) ?? trans('bingo.lockout_taken', ['team' => trans('common.deleted_user')]));
+        }
 
         // On a card with no approval step the claim IS the score, so the
         // team hears about it here — there is no review() call coming to do
@@ -159,9 +176,9 @@ class BingoController extends Controller
         // nothing — review() is what makes it true.
         $finishes->evaluateBingo($event, $competitor);
 
-        return back()->with('board-save', $card->requires_approval
-            ? trans('bingo.claim_submitted')
-            : trans('bingo.square_marked'));
+        return back()->with('board-save', $completion->status === 'APPROVED'
+            ? trans('bingo.square_marked')
+            : trans('bingo.claim_submitted'));
     }
 
     /**
@@ -170,7 +187,7 @@ class BingoController extends Controller
      * A rejection keeps the row rather than deleting it, so the claimant can
      * see why and a host can see a pattern of re-submissions.
      */
-    public function review(Request $request, Event $event, BingoCompletion $completion, BingoNotifier $notifier, EventFinishService $finishes): RedirectResponse
+    public function review(Request $request, Event $event, BingoCompletion $completion, BingoService $bingo, BingoNotifier $notifier, EventFinishService $finishes): RedirectResponse
     {
         abort_unless($event->type === 'BINGO', 404);
         $this->assertCanEditEvent($request->user(), $event);
@@ -186,12 +203,35 @@ class BingoController extends Controller
             'review_note' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $completion->update([
+        $verdict = [
             'status' => $data['status'],
             'review_note' => $data['review_note'] ?? null,
             'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(),
-        ]);
+        ];
+
+        // Lockout: only the claim first in line for a square that nobody
+        // holds may be approved. Checked and written with the square locked,
+        // so two hosts approving two teams at once cannot both succeed.
+        if ($data['status'] === 'APPROVED' && $card->usesLockout()) {
+            $refusal = DB::transaction(function () use ($bingo, $card, $completion, $verdict) {
+                BingoSquare::whereKey($completion->bingo_square_id)->lockForUpdate()->first();
+
+                return $bingo->lockoutRefusal($card, $completion) ?? tap(null, fn () => $completion->update($verdict));
+            });
+
+            if ($refusal !== null) {
+                return back()->with('board-save-error', $refusal);
+            }
+        } else {
+            $completion->update($verdict);
+        }
+
+        // A rejection on a lockout card can free the square for the next
+        // team in line.
+        if ($data['status'] === 'REJECTED') {
+            $this->handOn($event, $card, $completion->square, $bingo, $notifier);
+        }
 
         // The claimant has been waiting on a human, which is the whole reason
         // this notification exists — the live stream only reaches somebody
@@ -212,6 +252,32 @@ class BingoController extends Controller
         return back()->with('board-save', $data['status'] === 'APPROVED'
             ? trans('bingo.claim_approved')
             : trans('bingo.claim_rejected'));
+    }
+
+    /**
+     * Why this square cannot be claimed on a lockout card, or null.
+     */
+    private function takenBy(BingoCard $card, BingoSquare $square, BingoService $bingo): ?string
+    {
+        if (! $card->usesLockout()) {
+            return null;
+        }
+
+        $holder = $bingo->lockHolder($square);
+
+        return $holder === null
+            ? null
+            : trans('bingo.lockout_taken', ['team' => $holder->team?->name ?? trans('common.deleted_user')]);
+    }
+
+    /** Give a square that may have come free to the next team in line. */
+    private function handOn(Event $event, BingoCard $card, BingoSquare $square, BingoService $bingo, BingoNotifier $notifier): void
+    {
+        $next = $bingo->advanceLine($card, $square);
+
+        if ($next !== null) {
+            $notifier->teamScored($event, $next->load('square', 'markedBy'));
+        }
     }
 
     /** Set what a square asks for. Authors only, like the tile editor. */
@@ -277,9 +343,14 @@ class BingoController extends Controller
             'line_bonus' => ['sometimes', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['sometimes', 'boolean'],
             'trust_runelite_completions' => ['sometimes', 'boolean'],
+            'lockout' => ['sometimes', 'boolean'],
             'win_lines' => ['sometimes', 'array', 'min:1'],
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
         ]);
+
+        if ($refusal = $bingo->lockoutChangeRefusal($event->mode, $card, $data['lockout'] ?? null)) {
+            return back()->with('board-save-error', $refusal);
+        }
 
         if (! $bingo->applyCardSettings($card, $data)) {
             return back()->with('board-save-error', trans('bingo.cannot_shrink'));

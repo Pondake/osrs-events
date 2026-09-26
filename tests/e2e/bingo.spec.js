@@ -172,3 +172,78 @@ test('a signed-in reader who has not joined can open a square, and claiming join
     await expect(player.getByText('Square marked').first()).toBeVisible();
     await expect(player.getByRole('button', { name: 'Leave event' })).toBeVisible();
 });
+
+/**
+ * Lockout, from both teams' side. The red seat plays for E2E Reds, the blue
+ * seat for E2E Blues; the first team to have a square approved keeps it.
+ */
+const LOCKOUT = 'E2E Lockout';
+
+test.describe('lockout', () => {
+    test.beforeEach(() => resetEvent(LOCKOUT));
+
+    test('the first claim in line takes the square, and the other team sees it taken', async ({ as }) => {
+        const red = await as('red');
+        const blue = await as('blue');
+        const host = await as('owner');
+
+        await open(red, LOCKOUT);
+        await expect(red.getByText('Lockout: the first team to a square keeps it')).toBeVisible();
+        await claim(red, 1);
+
+        // Nobody holds it yet, so Blues can still get in line behind them.
+        await open(blue, LOCKOUT);
+        await claim(blue, 1);
+
+        await open(host, LOCKOUT);
+        await expect(host.getByRole('button', { name: '2 waiting for review' })).toBeVisible();
+        await openQueue(host);
+
+        const dialog = host.getByRole('dialog');
+
+        // Blues' claim came second: it cannot be approved while Reds' waits.
+        await dialog.getByRole('button', { name: 'Next claim' }).click();
+        await expect(dialog.getByText('Not first in line')).toBeVisible();
+        await expect(dialog.getByRole('button', { name: 'Approve' })).toBeDisabled();
+
+        await dialog.getByRole('button', { name: 'Previous claim' }).click();
+        await expect(dialog.getByText('Not first in line')).toHaveCount(0);
+        await dialog.getByRole('button', { name: 'Approve' }).click();
+        await expect(host.getByText('Claim approved').first()).toBeVisible();
+
+        // Blues' claim leaves the queue: it is not a question any more.
+        await expect(dialog.getByText('Nothing waiting for review')).toBeVisible();
+
+        await red.reload();
+        await hydrated(red);
+        await expect(red.getByText('1 pt', { exact: true })).toBeVisible();
+
+        await blue.reload();
+        await hydrated(blue);
+        await blue.getByRole('button', { name: 'Taken by E2E Reds' }).click();
+        await expect(blue.getByRole('dialog').getByText('Your claim stays in line, and only counts if theirs is overturned.')).toBeVisible();
+    });
+
+    test('a square another team holds offers no claim', async ({ as }) => {
+        const red = await as('red');
+        const blue = await as('blue');
+        const host = await as('owner');
+
+        await open(red, LOCKOUT);
+        await claim(red, 5);
+
+        await open(host, LOCKOUT);
+        await openQueue(host);
+        await host.getByRole('dialog').getByRole('button', { name: 'Approve' }).click();
+        await expect(host.getByText('Claim approved').first()).toBeVisible();
+
+        await open(blue, LOCKOUT);
+        await blue.getByRole('button', { name: 'Taken by E2E Reds' }).click();
+
+        const dialog = blue.getByRole('dialog');
+
+        await expect(dialog.getByText('Another team had this square approved first, so it can no longer be claimed.')).toBeVisible();
+        await expect(dialog.getByRole('button', { name: 'Submit claim' })).toHaveCount(0);
+        await expect(dialog.getByLabel('Screenshot link')).toHaveCount(0);
+    });
+});

@@ -384,6 +384,7 @@ function blankForm() {
         line_bonus: 0,
         requires_approval: true,
         trust_runelite_completions: false,
+        lockout: false,
         mode: 'SOLO',
         // What happens when the first competitor gets home. CONTINUE is the
         // forgiving default — see the finish_rule migration.
@@ -701,6 +702,7 @@ function cardFields(board) {
         line_bonus: board.card.lineBonus ?? 0,
         requires_approval: board.card.requiresApproval ?? true,
         trust_runelite_completions: board.card.trustRuneliteCompletions ?? false,
+        lockout: board.card.lockout ?? false,
     };
 }
 
@@ -999,7 +1001,10 @@ function submit() {
                 delete payload.win_condition;
                 delete payload.win_lines;
                 delete payload.line_bonus;
+                delete payload.lockout;
             }
+
+            if (data.mode !== 'TEAM') delete payload.lockout;
 
             if (data.type !== 'SNAKES_LADDERS') {
                 delete payload.size;
@@ -1042,6 +1047,7 @@ function submit() {
             delete payload.win_condition;
             delete payload.win_lines;
             delete payload.line_bonus;
+            delete payload.lockout;
         }
 
         if (data.type !== 'SNAKES_LADDERS') {
@@ -1092,6 +1098,7 @@ const FIELD_TABS = {
     line_bonus: 'format',
     requires_approval: 'format',
     trust_runelite_completions: 'format',
+    lockout: 'format',
     dice_roll_limit: 'format',
     access_mode: 'access',
     required_guild_id: 'access',

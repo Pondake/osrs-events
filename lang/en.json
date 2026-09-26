@@ -755,6 +755,8 @@
     "bingo.win_full_house": "Full house",
     "bingo.win_full_house_hint": "The winner is whoever completes every square on the card first.",
     "bingo.win_line": "First line wins",
+    "bingo.win_lockout": "Most points wins",
+    "bingo.win_lockout_hint": "Lockout: the team with the most points when the event ends wins.",
     "bingo.win_line_hint": "The winner is whoever completes a full row, column, or diagonal first.",
     "bingo.win_lines": "What counts as a line",
     "bingo.win_lines_desc": "Tick the shapes that win. On a small card this decides how long the event runs.",
@@ -2617,5 +2619,18 @@
     "plugin_tests.checks_desc": "A few quick free-to-play checks that every tester can do the same way. They tick off on any event, the shared test set is there if you want one ready-made.",
     "plugin_tests.checks_done": ":done / :total",
     "plugin_tests.admin_claims": "Claims",
-    "plugin_tests.admin_events": "Events"
+    "plugin_tests.admin_events": "Events",
+    "bingo.lockout": "Lockout: first team keeps the square",
+    "bingo.lockout_desc": "The first team to have a square approved keeps it, and no other team can claim it after that. The team with the most points when the event ends wins. Team events only.",
+    "bingo.lockout_team_only": "Lockout is only available on a team event.",
+    "bingo.lockout_locked": "Lockout can't be switched once squares have been claimed.",
+    "bingo.lockout_taken": ":team got this square first.",
+    "bingo.lockout_not_first": ":team claimed this square earlier. Rule on their claim first.",
+    "bingo.lockout_taken_by": "Taken by :team",
+    "bingo.lockout_taken_anonymous": "Taken by another team",
+    "bingo.lockout_claim_blocked": "Your claim stays in line, and only counts if theirs is overturned.",
+    "bingo.lockout_closed_desc": "Another team had this square approved first, so it can no longer be claimed.",
+    "bingo.info_lockout": "Lockout: the first team to a square keeps it",
+    "bingo.review_lockout_behind_title": "Not first in line",
+    "bingo.review_lockout_behind": ":team claimed this square earlier. Approve or reject their claim first."
 }

@@ -136,6 +136,18 @@
                         : $t('bingo.review_winning_desc')"
                 />
 
+                <!-- Lockout: another team's claim for this square came
+                     first, so this one waits until that is ruled on. The
+                     server refuses the approval too. -->
+                <u-alert
+                    v-if="claim.lockoutAhead"
+                    icon="i-lucide-lock"
+                    color="warning"
+                    variant="subtle"
+                    :title="$t('bingo.review_lockout_behind_title')"
+                    :description="$t('bingo.review_lockout_behind', { team: claim.lockoutAhead })"
+                />
+
                 <p v-if="claim.note" class="text-sm text-muted rounded-lg ring ring-default px-3 py-2">{{ claim.note }}</p>
 
                 <!-- The proof, inline. Claims carry a URL rather than an
@@ -223,6 +235,7 @@
                             color="success"
                             icon="i-lucide-check"
                             :label="$t('bingo.approve')"
+                            :disabled="Boolean(claim.lockoutAhead)"
                             :loading="submitting === 'APPROVED'"
                             @click="review('APPROVED')"
                         />

@@ -69,6 +69,7 @@ final class EventCard
             'lineBonus' => $card->line_bonus,
             'requiresApproval' => $card->requires_approval,
             'trustRuneliteCompletions' => $card->trust_runelite_completions,
+            'lockout' => $card->usesLockout(),
             'winLines' => $card->winLines(),
         ] : null;
     }

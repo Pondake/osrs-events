@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\User;
 use App\Support\RuneliteName;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Bingo's rules: who has claimed what, what has been approved, and what
@@ -195,6 +196,13 @@ class BingoService
      */
     public function hasWon(BingoCard $card, array $completed): bool
     {
+        // A lockout card is won on the count when it closes, not by the
+        // first line: every square one team takes is a square the others
+        // can never have, so a line is just part of the score.
+        if ($card->usesLockout()) {
+            return false;
+        }
+
         if ($card->win_condition === 'FULL_HOUSE') {
             // Against the squares that actually exist, not size², so a card
             // that was never fully filled in cannot be unwinnable.
@@ -254,7 +262,25 @@ class BingoService
                 ];
             })
             ->sortByDesc(fn ($row) => [$row['points'], $row['lines'], $row['squares']])
-            ->values();
+            ->values()
+            ->pipe(fn (Collection $rows) => $this->lockoutWinners($event, $card, $rows));
+    }
+
+    /**
+     * On a lockout card the win is whoever leads when the card closes, so
+     * the trophy goes on the top row then. Every team level with it on
+     * points shares it, rather than a tie being broken by something nobody
+     * was told counted.
+     */
+    private function lockoutWinners(Event $event, BingoCard $card, Collection $rows): Collection
+    {
+        if (! $card->usesLockout() || ! $event->isEnded() || $rows->isEmpty() || $rows->first()['points'] <= 0) {
+            return $rows;
+        }
+
+        $best = $rows->first()['points'];
+
+        return $rows->map(fn ($row) => [...$row, 'won' => $row['points'] === $best]);
     }
 
     /**
@@ -273,6 +299,12 @@ class BingoService
         // cannot see that will believe it does.
         $winning = $this->winningClaims($card);
 
+        // On a lockout card, where each claim stands in the line for its
+        // square. A claim on a square another team already holds is left
+        // out altogether: it is not a question for the host, it is a place
+        // held in case that team's claim is ever overturned.
+        $lockout = $card->usesLockout() ? $this->lockoutLines($card) : null;
+
         return BingoCompletion::query()
             ->join('bingo_squares', 'bingo_squares.id', '=', 'bingo_completions.bingo_square_id')
             ->where('bingo_squares.bingo_card_id', $card->id)
@@ -290,6 +322,8 @@ class BingoService
             ])
             ->orderBy('bingo_completions.created_at')
             ->get(['bingo_completions.*', 'bingo_squares.position as square_position'])
+            ->reject(fn (BingoCompletion $c) => $lockout !== null && $lockout['held']->has($c->bingo_square_id))
+            ->values()
             ->map(fn (BingoCompletion $c) => [
                 'id' => $c->id,
                 'position' => (int) $c->square_position,
@@ -330,7 +364,225 @@ class BingoService
                 // so an ordinary claim has nothing extra drawn on it.
                 'raceOrder' => $winning->count() > 1 ? $winning->get($c->id) : null,
                 'raceTotal' => $winning->count() > 1 ? $winning->count() : null,
+                // Lockout: the team ahead of this claim for the square. Null
+                // when it is first in line, the only claim a host can
+                // approve. See lockoutRefusal().
+                'lockoutAhead' => $lockout === null ? null : $this->aheadName($lockout['lines']->get($c->bingo_square_id), $c),
             ]);
+    }
+
+    /** The team first in line for a square, when that is not this claim. */
+    private function aheadName(?Collection $line, BingoCompletion $claim): ?string
+    {
+        $first = $line?->first();
+
+        return $first === null || $first->id === $claim->id
+            ? null
+            : ($first->team?->name ?? trans('common.deleted_user'));
+    }
+
+    /**
+     * Every square on a lockout card that a team holds, and the line of
+     * pending claims for each of the rest.
+     *
+     * @return array{held: Collection<string, BingoCompletion>, lines: Collection<string, Collection<int, BingoCompletion>>}
+     */
+    private function lockoutLines(BingoCard $card): array
+    {
+        $claims = BingoCompletion::query()
+            ->whereIn('bingo_square_id', $card->squares()->select('id'))
+            ->whereIn('status', ['APPROVED', 'PENDING'])
+            ->with('team:id,name')
+            ->orderBy('claimed_at')
+            ->orderBy('created_at')
+            ->get();
+
+        return [
+            'held' => $claims->where('status', 'APPROVED')->keyBy('bingo_square_id'),
+            'lines' => $claims->where('status', 'PENDING')->groupBy('bingo_square_id')->map->values(),
+        ];
+    }
+
+    /**
+     * The claim that holds a square on a lockout card, or null while it is
+     * still open.
+     *
+     * The oldest approved one, should there ever be two. A card cannot be
+     * switched to lockout once it has claims, so that is a safety net rather
+     * than a rule anyone plays by.
+     */
+    public function lockHolder(BingoSquare $square): ?BingoCompletion
+    {
+        return BingoCompletion::where('bingo_square_id', $square->id)
+            ->where('status', 'APPROVED')
+            ->with('team:id,name')
+            ->orderBy('claimed_at')
+            ->orderBy('created_at')
+            ->first();
+    }
+
+    /**
+     * Pending claims for a square, first in line first.
+     *
+     * The line goes by when a claim was made, not when a host gets to it:
+     * two teams getting the same drop minutes apart is a race, and the team
+     * that got there first should not lose it to the order of a queue.
+     *
+     * @return Collection<int, BingoCompletion>
+     */
+    public function lockoutLine(BingoSquare $square): Collection
+    {
+        return BingoCompletion::where('bingo_square_id', $square->id)
+            ->where('status', 'PENDING')
+            ->with('team:id,name')
+            ->orderBy('claimed_at')
+            ->orderBy('created_at')
+            ->get();
+    }
+
+    /**
+     * Write a claim, obeying the card's lockout.
+     *
+     * Returns null when another team already holds the square. Otherwise the
+     * claim is written as asked, except that one which would have been
+     * approved on the spot waits instead when another team's claim for the
+     * square was made before it. Reaching the queue first is not being first.
+     *
+     * The square row is locked throughout, so two claims landing in the same
+     * instant are decided one after the other rather than both approved.
+     */
+    public function createClaim(BingoCard $card, BingoSquare $square, array $attributes): ?BingoCompletion
+    {
+        if (! $card->usesLockout()) {
+            return BingoCompletion::create($attributes);
+        }
+
+        return DB::transaction(function () use ($square, $attributes) {
+            BingoSquare::whereKey($square->id)->lockForUpdate()->first();
+
+            if ($this->lockHolder($square) !== null) {
+                return null;
+            }
+
+            $attributes['claimed_at'] ??= now();
+
+            $ahead = $this->lockoutLine($square)
+                ->contains(fn (BingoCompletion $c) => $c->team_id !== $attributes['team_id'] && $c->claimed_at->lte($attributes['claimed_at']));
+
+            if ($attributes['status'] === 'APPROVED' && $ahead) {
+                $attributes['status'] = 'PENDING';
+            }
+
+            return BingoCompletion::create($attributes);
+        });
+    }
+
+    /**
+     * Why a host may not approve this claim on a lockout card, or null.
+     *
+     * Another team already holds the square, or another team's claim for it
+     * was made first and has not been ruled on.
+     */
+    public function lockoutRefusal(BingoCard $card, BingoCompletion $claim): ?string
+    {
+        if (! $card->usesLockout()) {
+            return null;
+        }
+
+        $square = $claim->square;
+        $holder = $this->lockHolder($square);
+
+        if ($holder !== null && $holder->id !== $claim->id) {
+            return trans('bingo.lockout_taken', ['team' => $holder->team?->name ?? trans('common.deleted_user')]);
+        }
+
+        $first = $this->lockoutLine($square)
+            ->reject(fn (BingoCompletion $c) => $c->id === $claim->id)
+            ->first(fn (BingoCompletion $c) => $c->claimed_at->lt($claim->claimed_at)
+                || ($c->claimed_at->eq($claim->claimed_at) && $c->created_at->lt($claim->created_at)));
+
+        return $first === null
+            ? null
+            : trans('bingo.lockout_not_first', ['team' => $first->team?->name ?? trans('common.deleted_user')]);
+    }
+
+    /**
+     * Hand a square that has just come free to the next claim in line.
+     *
+     * Only as far as that claim would have gone on its own: one that would
+     * have been approved on the spot, had nobody been ahead of it, is
+     * approved now; one that needs a host stays in the queue, now first.
+     * Returns the claim it approved, if any.
+     */
+    public function advanceLine(BingoCard $card, BingoSquare $square): ?BingoCompletion
+    {
+        if (! $card->usesLockout()) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($card, $square) {
+            BingoSquare::whereKey($square->id)->lockForUpdate()->first();
+
+            if ($this->lockHolder($square) !== null) {
+                return null;
+            }
+
+            $next = $this->lockoutLine($square)->first();
+
+            if ($next === null) {
+                return null;
+            }
+
+            $next->load('markedBy', 'pluginCompletion');
+
+            if ($card->initialClaimStatus($next->completed_via, $next->markedBy, filled($next->pluginCompletion?->doubts), $next->rsn) !== 'APPROVED') {
+                return null;
+            }
+
+            $next->update(['status' => 'APPROVED']);
+
+            return $next;
+        });
+    }
+
+    /**
+     * Why lockout cannot be switched to this value, or null.
+     *
+     * Only on a team event, and only before the first claim: switching it
+     * mid-event would hand squares that two teams both have to one of them,
+     * or open squares a team already took.
+     */
+    public function lockoutChangeRefusal(string $mode, BingoCard $card, ?bool $lockout): ?string
+    {
+        if ($lockout === null || $lockout === (bool) $card->lockout) {
+            return null;
+        }
+
+        if ($lockout && $mode !== 'TEAM') {
+            return trans('bingo.lockout_team_only');
+        }
+
+        $hasClaims = BingoCompletion::whereIn('bingo_square_id', $card->squares()->select('id'))->exists();
+
+        return $hasClaims ? trans('bingo.lockout_locked') : null;
+    }
+
+    /**
+     * Square ids another team holds, for a competitor on a lockout card.
+     *
+     * @return Collection<int, string>
+     */
+    public function lockedSquareIds(BingoCard $card, array $competitor): Collection
+    {
+        if (! $card->usesLockout()) {
+            return collect();
+        }
+
+        return BingoCompletion::query()
+            ->whereIn('bingo_square_id', $card->squares()->select('id'))
+            ->where('status', 'APPROVED')
+            ->where('team_id', '!=', $competitor['team_id'])
+            ->pluck('bingo_square_id');
     }
 
     /**

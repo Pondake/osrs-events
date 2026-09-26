@@ -76,6 +76,11 @@ class BingoChannel implements EventChannel
             $card->win_condition,
             $card->line_bonus,
             implode(',', $card->winLines()),
+            // Lockout decides whether a square another team holds is still
+            // claimable, which is the whole game on such a card. The locks
+            // themselves are approved claims, so claimsVersion() already
+            // moves when one is taken or freed.
+            $card->usesLockout() ? '1' : '0',
         ]);
 
         // Who has won, and whether that closed the event — the same reason

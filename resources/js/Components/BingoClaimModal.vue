@@ -79,6 +79,17 @@
                  quietly undid a claim and (on a reviewed card) sent its
                  place in the queue with it. -->
             <div v-if="claim" class="space-y-4 py-2">
+                <!-- Lockout: your claim is waiting behind a team that
+                     already has the square. -->
+                <u-alert
+                    v-if="lockedBy && claim.status === 'PENDING'"
+                    color="neutral"
+                    variant="subtle"
+                    icon="i-lucide-lock"
+                    :title="lockedBy"
+                    :description="$t('bingo.lockout_claim_blocked')"
+                />
+
                 <div class="flex items-center gap-2">
                     <u-icon :name="statusIcon" class="size-5 shrink-0" :class="statusClass" />
                     <span class="font-medium" :class="statusClass">{{ $t(`bingo.status_${claim.status.toLowerCase()}`) }}</span>
@@ -145,6 +156,19 @@
             <!-- A reader who is not in this event still gets everything
                  above; what they do not get is a form that would be refused.
                  Same answer for a paused or not-yet-started card. -->
+            <!-- Lockout: another team has it, so there is nothing to
+                 claim — said before the join notice, because joining would
+                 not change it. -->
+            <u-alert
+                v-else-if="lockedBy"
+                color="neutral"
+                variant="subtle"
+                icon="i-lucide-lock"
+                :title="lockedBy"
+                :description="$t('bingo.lockout_closed_desc')"
+                class="my-2"
+            />
+
             <p v-else-if="!canClaim" class="text-sm text-muted py-2">{{ $t('board.detail_join_to_claim') }}</p>
 
             <!-- A card that trusts its players asks for nothing: the button
@@ -197,7 +221,7 @@
                 <u-button
                     color="neutral"
                     variant="ghost"
-                    :label="$t(claim && !canWithdraw ? 'common.close' : 'common.cancel')"
+                    :label="$t((claim && !canWithdraw) || (!claim && lockedBy) ? 'common.close' : 'common.cancel')"
                     @click="isOpen = false"
                 />
 
@@ -215,7 +239,7 @@
                      else-branch would have offered "Submit claim" on a square
                      that already has one. -->
                 <u-button
-                    v-if="!claim && canClaim"
+                    v-if="!claim && canClaim && !lockedBy"
                     color="primary"
                     :disabled="requiresApproval && !form.proof_url.trim()"
                     :loading="form.processing"
@@ -269,6 +293,8 @@ const props = defineProps({
     // public event they have not joined, and while the card is paused or
     // has not started — they still get the detail, which is the point.
     canClaim: { type: Boolean, default: true },
+    // Lockout: "Taken by <team>" when another team holds this square.
+    lockedBy: { type: String, default: null },
     // Whether the event counts alts — see ClaimCharacterField.
     allowAlts: { type: Boolean, default: true },
 });

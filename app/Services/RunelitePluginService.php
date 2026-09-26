@@ -456,7 +456,10 @@ class RunelitePluginService
         $claimed = BingoCompletion::query()
             ->whereIn('bingo_square_id', $card->squares()->select('id'))
             ->where($competitor['team_id'] !== null ? 'team_id' : 'user_id', $competitor['team_id'] ?? $competitor['user_id'])
-            ->pluck('bingo_square_id');
+            ->pluck('bingo_square_id')
+            // Lockout: a square another team holds is not a target, the same
+            // as it is not claimable by hand.
+            ->merge($this->bingo->lockedSquareIds($card, $competitor));
 
         return $card->squares()
             ->with('task')
@@ -544,7 +547,7 @@ class RunelitePluginService
         $competitor = $this->bingo->competitorFor($event, $user);
 
         try {
-            $completion = DB::transaction(fn () => BingoCompletion::create([
+            $completion = DB::transaction(fn () => $this->bingo->createClaim($event->bingoCard, $square, [
                 ...$competitor,
                 'bingo_square_id' => $square->id,
                 'marked_by' => $user->id,
@@ -552,8 +555,18 @@ class RunelitePluginService
                 'plugin_completion_id' => $pluginCompletion->id,
                 'rsn' => $user->characterFor($event, $pluginCompletion->rsn)?->username,
                 'status' => $event->bingoCard->initialClaimStatus('RUNELITE', $user, filled($pluginCompletion->doubts), $pluginCompletion->rsn),
+                // When it happened in game, which is what a lockout line is
+                // ordered by: a client that sent its report late still got
+                // the drop first. Never later than now, so a clock running
+                // fast cannot put a report ahead of one already made.
+                'claimed_at' => $pluginCompletion->occurred_at?->min(now()) ?? now(),
             ]));
         } catch (UniqueConstraintViolationException) {
+            return null;
+        }
+
+        // Lockout: another team took the square first.
+        if ($completion === null) {
             return null;
         }
 

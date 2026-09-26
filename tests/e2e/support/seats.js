@@ -23,6 +23,8 @@ export const STATES = {
     notifier: { username: 'e2e_notifier' },
     roled: { username: 'e2e_roled' },
     stranded: { username: 'e2e_stranded' },
+    red: { username: 'e2e_red' },
+    blue: { username: 'e2e_blue' },
 };
 
 export const PASSWORD = 'E2e-Password-1';

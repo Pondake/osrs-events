@@ -9,6 +9,8 @@ use App\Models\Event;
 use App\Models\Page;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\Team;
+use App\Models\TeamMember;
 use App\Models\Tile;
 use App\Models\User;
 use App\Services\BingoService;
@@ -77,6 +79,7 @@ class E2eSeeder extends Seeder
         // The event the admin event list edits, pauses, deletes and restores. Its card
         // is set away from the defaults on purpose, so a save that resets it shows.
         $this->bingo('E2E Admin Event', requiresApproval: false, winCondition: 'FULL_HOUSE');
+        $this->lockout();
         $this->dropRace();
         $this->coHost('e2e_cohost', ['Teams of four', 'Invite only night', 'E2E Ladder']);
     }
@@ -117,6 +120,9 @@ class E2eSeeder extends Seeder
             'roled' => [],
             // Has a standing that will not sync; the diagnostics page acts on it.
             'stranded' => [],
+            // One player on each team of the lockout card.
+            'red' => [],
+            'blue' => [],
         ];
     }
 
@@ -220,6 +226,25 @@ class E2eSeeder extends Seeder
 
         foreach ($card->squares()->orderBy('position')->get() as $square) {
             $square->update(['title_override' => 'Square '.($square->position + 1)]);
+        }
+    }
+
+    /**
+     * A team card with lockout: the red seat plays for E2E Reds, the blue seat
+     * for E2E Blues, and the owner reviews.
+     */
+    private function lockout(): void
+    {
+        $this->bingo('E2E Lockout', requiresApproval: true);
+
+        $event = Event::where('title', 'E2E Lockout')->firstOrFail();
+        $event->update(['mode' => 'TEAM']);
+        $event->bingoCard->update(['lockout' => true]);
+
+        foreach (['red' => 'E2E Reds', 'blue' => 'E2E Blues'] as $seat => $name) {
+            $team = Team::create(['name' => $name]);
+            TeamMember::create(['team_id' => $team->id, 'user_id' => User::where('discord_username', "e2e_{$seat}")->value('id')]);
+            $event->eventTeams()->create(['team_id' => $team->id]);
         }
     }
 

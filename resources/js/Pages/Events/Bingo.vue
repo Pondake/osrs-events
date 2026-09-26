@@ -26,10 +26,10 @@
                             </span>
                             <span
                                 class="inline-flex items-center gap-1.5"
-                                :title="liveCard.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house_hint') : $t('bingo.win_line_hint')"
+                                :title="$t(winKey + '_hint')"
                             >
                                 <u-icon name="i-lucide-trophy" class="size-4 shrink-0" />
-                                {{ liveCard.winCondition === 'FULL_HOUSE' ? $t('bingo.win_full_house') : $t('bingo.win_line') }}
+                                {{ $t(winKey) }}
                             </span>
                         </template>
                     </event-type-heading>
@@ -264,6 +264,11 @@
                                     class="text-warning shrink-0"
                                     :class="square.label ? 'size-5' : 'size-8'"
                                 />
+                                <!-- Lockout: another team holds it. Ahead of
+                                     the pending clock, because a claim of
+                                     yours waiting behind theirs is no longer
+                                     the news on this square. -->
+                                <u-icon v-else-if="lockHolder(square)" name="i-lucide-lock" class="size-5 text-muted shrink-0" />
                                 <u-icon v-else-if="statusOf(square) === 'PENDING'" name="i-lucide-clock" class="size-5 text-warning shrink-0" />
                                 <u-icon v-else-if="statusOf(square) === 'REJECTED'" name="i-lucide-x" class="size-5 text-error shrink-0" />
                                 <img
@@ -411,6 +416,11 @@
                                     <span>{{ $t('bingo.mark_hint') }}</span>
                                 </div>
 
+                                <div v-if="liveCard.lockout" class="flex items-center gap-2">
+                                    <u-icon name="i-lucide-lock" class="size-4 text-muted shrink-0" />
+                                    <span>{{ $t('bingo.info_lockout') }}</span>
+                                </div>
+
                                 <div class="flex items-center gap-2">
                                     <u-icon :name="liveCard.requiresApproval ? 'i-lucide-gavel' : 'i-lucide-zap'" class="size-4 text-muted shrink-0" />
                                     <span>{{ liveCard.requiresApproval ? $t('bingo.info_reviewed') : $t('bingo.info_instant') }}</span>
@@ -473,6 +483,7 @@
                 :event-id="liveEvent.id"
                 :square="claimingSquare"
                 :claim="claims[claimingSquare.position] ?? null"
+                :locked-by="lockLabel(claimingSquare)"
                 :requires-approval="liveCard.requiresApproval"
                 :progress="progress[claimingSquare.position] ?? 0"
                 :detail="detailFor(claimingSquare)"
@@ -873,8 +884,48 @@ const mine = computed(() => new Set(props.completed));
 const suggestedPositions = computed(() => {
     if (editing.value || hoveredPosition.value === null) return [];
 
-    return openLinesThrough(hoveredPosition.value, liveCard.value.size, mine.value, winLines.value);
+    // A line through a square another team holds can never be finished.
+    return openLinesThrough(hoveredPosition.value, liveCard.value.size, mine.value, winLines.value)
+        .filter((line) => !line.some((position) => lockedPositions.value.has(position)));
 });
+
+/**
+ * Lockout: the team holding a square, when it is not yours.
+ *
+ * Read off the faces the card already carries. On a lockout card a square
+ * has one holder at most, and it is yours exactly when it is among your own
+ * approved squares.
+ */
+/** How this card is won: lockout is decided on the count when it closes. */
+const winKey = computed(() => {
+    if (liveCard.value.lockout) return 'bingo.win_lockout';
+
+    return liveCard.value.winCondition === 'FULL_HOUSE' ? 'bingo.win_full_house' : 'bingo.win_line';
+});
+
+function lockHolder(square) {
+    if (!liveCard.value.lockout || mine.value.has(square.position)) return null;
+
+    const entry = holders.value[square.position];
+
+    return entry?.total ? (entry.holders[0] ?? {}) : null;
+}
+
+const lockedPositions = computed(() => new Set(
+    squares.value.filter((square) => lockHolder(square)).map((square) => square.position),
+));
+
+// What the square says about who holds it. A team kept anonymous on a
+// listed invite-only event is "another team", not a blank.
+function lockLabel(square) {
+    const holder = square ? lockHolder(square) : null;
+
+    if (!holder) return null;
+
+    return holder.name
+        ? trans('bingo.lockout_taken_by', { team: holder.name })
+        : trans('bingo.lockout_taken_anonymous');
+}
 
 // The squares to tint: every square on every candidate line, minus what you
 // already hold and minus the one under the pointer, which has its own hover
@@ -902,6 +953,9 @@ function squareClass(square) {
     if (square.isWildcard) {
         return 'ring-1 ring-warning/50 bg-warning/10 text-highlighted';
     }
+
+    // Taken by another team: settled, and not yours to have.
+    if (lockHolder(square)) return 'ring-1 ring-accented bg-elevated';
 
     const state = statusOf(square);
 
@@ -939,6 +993,7 @@ function hasRequirement(square) {
 function squareTitle(square) {
     if (square.isWildcard) return trans('bingo.wildcard_desc');
     if (editing.value) return trans('bingo.edit_tiles_desc');
+    if (lockHolder(square)) return lockLabel(square);
 
     // A claimed square says a click opens it rather than what the verdict
     // was — the verdict is on the square already, and the reason lives in

@@ -34,13 +34,14 @@ class BingoCard extends Model
      */
     public const SIZES = [3, 4, 5, 6, 7, 8, 9, 10];
 
-    protected $fillable = ['event_id', 'size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'win_lines'];
+    protected $fillable = ['event_id', 'size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'lockout', 'win_lines'];
 
     protected $casts = [
         'size' => 'integer',
         'line_bonus' => 'integer',
         'requires_approval' => 'boolean',
         'trust_runelite_completions' => 'boolean',
+        'lockout' => 'boolean',
         'win_lines' => 'array',
     ];
 
@@ -60,6 +61,18 @@ class BingoCard extends Model
         $lines = $this->win_lines;
 
         return is_array($lines) && $lines !== [] ? $lines : self::LINE_KINDS;
+    }
+
+    /**
+     * Whether the first team to have a square approved keeps it.
+     *
+     * Only ever on a team event: on a solo card every player would be racing
+     * every other one for each square, which is a different game nobody asked
+     * for, and a card switched to solo keeps a stored `true` that means nothing.
+     */
+    public function usesLockout(): bool
+    {
+        return $this->lockout && $this->event?->mode === 'TEAM';
     }
 
     public function event(): BelongsTo

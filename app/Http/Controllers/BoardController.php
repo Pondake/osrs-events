@@ -642,6 +642,9 @@ class BoardController extends Controller
                 'lineBonus' => $card->line_bonus,
                 'requiresApproval' => $card->requires_approval,
                 'trustRuneliteCompletions' => $card->trust_runelite_completions,
+                // First team to a square keeps it: the page draws a square
+                // another team holds as taken instead of offering a claim.
+                'lockout' => $card->usesLockout(),
                 // Which shapes count, so the page can draw the same lines the
                 // server scores — a hint pointing at a diagonal on a
                 // rows-only card would be a lie the grid tells.
@@ -885,6 +888,7 @@ class BoardController extends Controller
             'line_bonus' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['nullable', 'boolean'],
             'trust_runelite_completions' => ['nullable', 'boolean'],
+            'lockout' => ['nullable', 'boolean'],
             // At least one shape, or "first line wins" is a condition no card
             // can ever meet.
             'win_lines' => ['nullable', 'array', 'min:1'],
@@ -963,6 +967,9 @@ class BoardController extends Controller
                     // named rather than left to it for the same reason
                     // every other field here is.
                     'trust_runelite_completions' => $data['trust_runelite_completions'] ?? true,
+                    // A team race for each square; meaningless solo, so
+                    // never stored on a solo card.
+                    'lockout' => ($data['mode'] ?? 'SOLO') === 'TEAM' && ($data['lockout'] ?? false),
                 ]);
 
                 // Filled out immediately, unlike S&L tiles which appear on
@@ -1072,6 +1079,7 @@ class BoardController extends Controller
             'line_bonus' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:1000'],
             'requires_approval' => ['sometimes', 'nullable', 'boolean'],
             'trust_runelite_completions' => ['sometimes', 'nullable', 'boolean'],
+            'lockout' => ['sometimes', 'nullable', 'boolean'],
             'win_lines' => ['sometimes', 'nullable', 'array', 'min:1'],
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
@@ -1113,8 +1121,20 @@ class BoardController extends Controller
         // shrink that would delete somebody's completions is rejected as a
         // validation error rather than half-applied alongside the rest.
         if ($event->type === 'BINGO' && $event->bingoCard) {
+            // Lockout only exists on a team card, so switching to solo
+            // switches it off with it.
+            $mode = $data['mode'] ?? $event->mode;
+
+            if ($mode !== 'TEAM' && $event->bingoCard->lockout) {
+                $data['lockout'] = false;
+            }
+
+            if ($refusal = app(BingoService::class)->lockoutChangeRefusal($mode, $event->bingoCard, $data['lockout'] ?? null)) {
+                throw ValidationException::withMessages(['lockout' => $refusal]);
+            }
+
             $cardChanges = collect($data)
-                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'win_lines'])
+                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'lockout', 'win_lines'])
                 // Nulls are "not submitted for this type", not "clear it" —
                 // see the nullable note on the rules above.
                 ->reject(fn ($value) => $value === null)

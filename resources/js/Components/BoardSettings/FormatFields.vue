@@ -62,7 +62,9 @@
                     <u-select v-model="form.bingo_size" :items="bingoSizeOptions" class="w-full" />
                 </u-form-field>
 
-                <u-form-field :label="$t('bingo.win_condition')" :description="$t('bingo.win_condition_desc')">
+                <!-- A lockout card is won on points when it closes, so
+                     there is no first line or full house to choose. -->
+                <u-form-field v-if="!lockout" :label="$t('bingo.win_condition')" :description="$t('bingo.win_condition_desc')">
                     <u-select v-model="form.win_condition" :items="winConditionOptions" class="w-full" />
                 </u-form-field>
             </div>
@@ -100,6 +102,12 @@
 
             <u-form-field v-if="form.requires_approval" :description="$t('board.trust_runelite_desc')">
                 <u-switch v-model="form.trust_runelite_completions" :label="$t('board.trust_runelite')" />
+            </u-form-field>
+
+            <!-- A race between teams for each square. Solo has no teams to
+                 lock anyone out, so the switch only exists on TEAM. -->
+            <u-form-field v-if="form.mode === 'TEAM'" :description="$t('bingo.lockout_desc')" :error="form.errors.lockout">
+                <u-switch v-model="form.lockout" :label="$t('bingo.lockout')" />
             </u-form-field>
         </template>
 
@@ -198,6 +206,7 @@ const metrics = computed(() => site.value.metricsByKind?.[metricKind.value] ?? [
 
 const hasBoard = computed(() => props.form.type === 'SNAKES_LADDERS');
 const isBingo = computed(() => props.form.type === 'BINGO');
+const lockout = computed(() => props.form.mode === 'TEAM' && props.form.lockout);
 
 // The types with something to finish — mirrors Event::canBeFinished() on
 // the server, which is what actually validates and enforces it.
