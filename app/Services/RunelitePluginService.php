@@ -464,6 +464,9 @@ class RunelitePluginService
         return $card->squares()
             ->with('task')
             ->where('is_wildcard', false)
+            // Reveal: a square not drawn yet is not a target, or the plugin
+            // would tell a player what to farm before anyone may know.
+            ->when($card->reveal, fn ($q) => $q->whereNotNull('revealed_at'))
             ->whereNotIn('id', $claimed)
             ->orderBy('position')
             ->get()

@@ -247,3 +247,84 @@ test.describe('lockout', () => {
         await expect(dialog.getByLabel('Screenshot link')).toHaveCount(0);
     });
 });
+
+/**
+ * Reveal, from the host who draws and the players who may only see what was
+ * drawn. The card is the Item Race format: lockout on, two squares at most,
+ * claims count at once.
+ */
+const REVEAL = 'E2E Reveal';
+
+/** Every square name anywhere in the page, the props it was rendered from included. */
+async function namesIn(page) {
+    return [...new Set((await page.content()).match(/Square \d/g) ?? [])];
+}
+
+test.describe('reveal', () => {
+    test.beforeEach(() => resetEvent(REVEAL));
+
+    test('the host draws squares one at a time, and players only ever see what was drawn', async ({ as }) => {
+        const host = await as('owner');
+        const red = await as('red');
+        const blue = await as('blue');
+
+        await open(red, REVEAL);
+        await expect(red.getByRole('button', { name: 'Not revealed yet' })).toHaveCount(9);
+        await expect(red.getByRole('button', { name: 'Not revealed yet' }).first()).toBeDisabled();
+        expect(await namesIn(red)).toEqual([]);
+
+        // The host sees the whole card, marked as hidden from players.
+        await open(host, REVEAL);
+        await expect(host.getByRole('button', { name: /^Hidden from players: Square \d$/ })).toHaveCount(9);
+        await expect(host.getByText('0 revealed, 2 still to come')).toBeVisible();
+
+        await host.getByRole('button', { name: 'Reveal next square' }).click();
+
+        const toast = host.getByText(/^Revealed: Square \d$/).first();
+
+        await expect(toast).toBeVisible();
+        const drawn = (await toast.textContent()).match(/Square \d/)[0];
+
+        await expect(host.getByText('1 revealed, 1 still to come')).toBeVisible();
+        await expect(host.getByRole('button', { name: /^Hidden from players: Square \d$/ })).toHaveCount(8);
+
+        await red.reload();
+        await hydrated(red);
+        await expect(red.getByRole('button', { name: 'Not revealed yet' })).toHaveCount(8);
+        expect(await namesIn(red)).toEqual([drawn]);
+
+        // Drawn, it plays like any other square, lockout included.
+        await red.getByRole('button', { name: drawn, exact: true }).click();
+        await red.getByRole('dialog').getByRole('button', { name: 'Mark as done' }).click();
+        await expect(red.getByText('Square marked').first()).toBeVisible();
+
+        await open(blue, REVEAL);
+        expect(await namesIn(blue)).toEqual([drawn]);
+        await expect(blue.getByRole('button', { name: 'Taken by E2E Reds' })).toBeVisible();
+
+        // The second draw is the last one this card allows.
+        await host.getByRole('button', { name: 'Reveal next square' }).click();
+        await expect(host.getByText('All 2 squares are revealed')).toBeVisible();
+        await expect(host.getByRole('button', { name: 'Reveal next square' })).toBeDisabled();
+
+        await blue.reload();
+        await hydrated(blue);
+        await expect(blue.getByRole('button', { name: 'Not revealed yet' })).toHaveCount(7);
+        expect(await namesIn(blue)).toHaveLength(2);
+    });
+
+    test('a player cannot draw, and has no button to', async ({ as }) => {
+        const red = await as('red');
+
+        await open(red, REVEAL);
+        await expect(red.getByText('0 revealed, 2 still to come')).toBeVisible();
+        await expect(red.getByRole('button', { name: 'Reveal next square' })).toHaveCount(0);
+
+        const xsrf = (await red.context().cookies()).find((cookie) => cookie.name === 'XSRF-TOKEN');
+        const response = await red.request.post(`/events/${eventId(REVEAL)}/bingo/reveal`, {
+            headers: { 'X-XSRF-TOKEN': decodeURIComponent(xsrf.value) },
+        });
+
+        expect(response.status()).toBe(403);
+    });
+});

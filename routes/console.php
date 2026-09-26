@@ -75,6 +75,19 @@ Schedule::command('push:sweep')
     ->onSuccess(fn () => ScheduleHeartbeat::record('push:sweep'));
 
 /**
+ * Bingo cards that reveal a square on a timer.
+ *
+ * Every minute, because the interval a host sets is in minutes; a card with
+ * nothing due costs one query. BingoService::revealNext() locks the card, so
+ * a host pressing the button in the same instant cannot draw past the limit.
+ */
+Schedule::command('bingo:reveal-due')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->onSuccess(fn () => ScheduleHeartbeat::record('bingo:reveal-due'));
+
+/**
  * New bosses arrive with every game update, and the icon package lags them.
  *
  * Weekly rather than daily: the thing it watches for moves on Jagex's release

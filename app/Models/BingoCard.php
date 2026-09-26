@@ -34,7 +34,7 @@ class BingoCard extends Model
      */
     public const SIZES = [3, 4, 5, 6, 7, 8, 9, 10];
 
-    protected $fillable = ['event_id', 'size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'lockout', 'win_lines'];
+    protected $fillable = ['event_id', 'size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'lockout', 'reveal', 'reveal_limit', 'reveal_every_minutes', 'win_lines'];
 
     protected $casts = [
         'size' => 'integer',
@@ -42,6 +42,9 @@ class BingoCard extends Model
         'requires_approval' => 'boolean',
         'trust_runelite_completions' => 'boolean',
         'lockout' => 'boolean',
+        'reveal' => 'boolean',
+        'reveal_limit' => 'integer',
+        'reveal_every_minutes' => 'integer',
         'win_lines' => 'array',
     ];
 
@@ -73,6 +76,17 @@ class BingoCard extends Model
     public function usesLockout(): bool
     {
         return $this->lockout && $this->event?->mode === 'TEAM';
+    }
+
+    /**
+     * Whether this square is still hidden from everyone but the hosts.
+     *
+     * Wildcards never are: a free square counts for everybody from the start,
+     * so there is nothing on it to farm ahead of time.
+     */
+    public function hides(BingoSquare $square): bool
+    {
+        return $this->reveal && $square->revealed_at === null && ! $square->is_wildcard;
     }
 
     public function event(): BelongsTo

@@ -225,7 +225,7 @@
                                 type="button"
                                 class="@container relative aspect-square overflow-hidden min-w-0 rounded-md p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-150"
                                 :class="[squareClass(square), hasRequirement(square) ? 'pb-3.5 sm:pb-5' : '']"
-                                :disabled="(!canPlay && !editing) || (square.isWildcard && !editing)"
+                                :disabled="(!canPlay && !editing) || (square.isWildcard && !editing) || (square.hidden && !canEdit)"
                                 :title="squareTitle(square)"
                                 :aria-label="squareTitle(square)"
                                 @click="onSquareClick(square)"
@@ -237,8 +237,15 @@
                                 <!-- Points sit in the corner rather than in the
                                      label: they matter when choosing what to go
                                      for, not when reading what a square is. -->
+                                <!-- A host sees a hidden square in full; this
+                                     marks it as one players cannot. -->
+                                <u-icon
+                                    v-if="square.hidden && square.label"
+                                    name="i-lucide-eye-off"
+                                    class="absolute top-1 left-1 size-3.5 text-muted"
+                                />
                                 <span
-                                    v-if="square.points !== 1"
+                                    v-if="square.points !== 1 && square.points !== null"
                                     class="absolute top-1 right-1 text-[10px] font-semibold text-muted tabular-nums"
                                 >{{ square.points }}</span>
 
@@ -259,7 +266,12 @@
                                      is mostly empty space, and a 24px glyph
                                      floating in it reads as an accident. -->
                                 <u-icon
-                                    v-if="square.isWildcard"
+                                    v-if="square.hidden && !square.label"
+                                    name="i-lucide-eye-off"
+                                    class="size-6 text-dimmed shrink-0"
+                                />
+                                <u-icon
+                                    v-else-if="square.isWildcard"
                                     name="i-lucide-star"
                                     class="text-warning shrink-0"
                                     :class="square.label ? 'size-5' : 'size-8'"
@@ -303,7 +315,7 @@
                                         : (hasRequirement(square) ? 'line-clamp-1 sm:line-clamp-2' : 'line-clamp-2')"
                                 >{{ square.label }}</span>
                                 <span
-                                    v-else-if="!square.iconUrl && !square.isWildcard"
+                                    v-else-if="!square.iconUrl && !square.isWildcard && !square.hidden"
                                     class="text-[11px] leading-tight text-dimmed italic"
                                 >{{ $t('bingo.empty_square') }}</span>
 
@@ -421,6 +433,32 @@
                                     <span>{{ $t('bingo.info_lockout') }}</span>
                                 </div>
 
+                                <!-- Reveal: how far the draw has got, and for
+                                     a host the button that makes the next one. -->
+                                <template v-if="reveal">
+                                    <div class="flex items-start gap-2">
+                                        <u-icon name="i-lucide-eye" class="size-4 text-muted shrink-0 mt-0.5" />
+                                        <span>
+                                            {{ reveal.remaining > 0
+                                                ? $t('bingo.info_reveal_count', { revealed: reveal.revealed, remaining: reveal.remaining })
+                                                : $t('bingo.info_reveal_done', { revealed: reveal.revealed }) }}
+                                            <span v-if="nextRevealText" class="block text-xs text-muted">{{ nextRevealText }}</span>
+                                        </span>
+                                    </div>
+                                    <u-button
+                                        v-if="canEdit"
+                                        color="primary"
+                                        variant="outline"
+                                        size="xs"
+                                        icon="i-lucide-shuffle"
+                                        class="mt-1"
+                                        :label="$t('bingo.reveal_next')"
+                                        :disabled="reveal.remaining < 1 || status === 'ended'"
+                                        :loading="revealing"
+                                        @click="revealNext"
+                                    />
+                                </template>
+
                                 <div class="flex items-center gap-2">
                                     <u-icon :name="liveCard.requiresApproval ? 'i-lucide-gavel' : 'i-lucide-zap'" class="size-4 text-muted shrink-0" />
                                     <span>{{ liveCard.requiresApproval ? $t('bingo.info_reviewed') : $t('bingo.info_instant') }}</span>
@@ -488,7 +526,7 @@
                 :progress="progress[claimingSquare.position] ?? 0"
                 :detail="detailFor(claimingSquare)"
                 :detail-loading="detailLoading"
-                :can-claim="canPlay && !isPaused && status !== 'upcoming'"
+                :can-claim="canPlay && !isPaused && status !== 'upcoming' && !claimingSquare.hidden"
                 :allow-alts="liveEvent.allow_alts ?? true"
             />
             <template v-if="canEdit">
@@ -536,7 +574,7 @@
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { eventStatus, formatDate, ordinal } from '@/Support/board';
+import { eventStatus, formatDate, ordinal, relativeTime } from '@/Support/board';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
 import TileSurface from '@/Components/TileSurface.vue';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
@@ -717,6 +755,56 @@ const liveCard = ref({ ...props.card });
 watch(() => props.card, (value) => (liveCard.value = { ...value }));
 
 const squares = ref([...props.card.squares]);
+
+/**
+ * Reveal: where the draw stands, or null on a card that shows everything.
+ * Streamed, so a draw reaches every open card.
+ */
+const reveal = ref(props.card.revealState ?? null);
+watch(() => props.card.revealState, (value) => (reveal.value = value ?? null));
+
+// Only after mount: a time relative to now would differ between the server
+// render and the browser.
+const mounted = ref(false);
+onMounted(() => (mounted.value = true));
+
+const nextRevealText = computed(() => {
+    const at = reveal.value?.nextAt;
+
+    if (!mounted.value || !at || reveal.value.remaining < 1) return null;
+
+    return new Date(at) > new Date()
+        ? trans('bingo.info_reveal_next', { when: relativeTime(at) })
+        : trans('bingo.info_reveal_soon');
+});
+
+const revealing = ref(false);
+
+function revealNext() {
+    revealing.value = true;
+    router.post(`/events/${liveEvent.value.id}/bingo/reveal`, {}, {
+        preserveScroll: true,
+        onFinish: () => (revealing.value = false),
+    });
+}
+
+/**
+ * The live channel is shared by every viewer, so it sends a hidden square as a
+ * blank even to a host. A host keeps their own copy of those; one they do not
+ * have yet (reveal just switched on, the card grew) is fetched.
+ */
+function withHostCopies(incoming) {
+    if (!props.canEdit) return incoming;
+
+    const current = new Map(squares.value.map((square) => [square.id, square]));
+
+    if (incoming.some((square) => square.hidden && !current.get(square.id)?.hidden)) {
+        router.reload({ only: ['card'] });
+    }
+
+    return incoming.map((square) => (square.hidden ? (current.get(square.id) ?? square) : square));
+}
+
 const holders = ref({ ...props.approvedBy });
 const winLines = ref(props.card.winLines ?? ['ROW', 'COLUMN', 'DIAGONAL']);
 
@@ -812,7 +900,8 @@ const { streaming, stale } = useEventStream({
             // The same card the settings modal edits, from the same builder.
             if (payload.event.card) liveCard.value = { ...liveCard.value, ...payload.event.card };
         }
-        if (payload.squares) squares.value = payload.squares;
+        if (payload.squares) squares.value = withHostCopies(payload.squares);
+        if ('revealState' in payload) reveal.value = payload.revealState;
         if (payload.approvedBy) holders.value = payload.approvedBy;
         // A host changing which shapes count mid-event reaches every open
         // card, so the hint never points at a line that stopped counting.
@@ -954,6 +1043,14 @@ function squareClass(square) {
         return 'ring-1 ring-warning/50 bg-warning/10 text-highlighted';
     }
 
+    // Not drawn yet: a face-down square for players, a dashed outline of what
+    // is coming for a host.
+    if (square.hidden) {
+        return square.label
+            ? 'border border-dashed border-accented bg-elevated/50 text-muted'
+            : 'board-tile bg-stone-300/70 dark:bg-stone-900/70';
+    }
+
     // Taken by another team: settled, and not yours to have.
     if (lockHolder(square)) return 'ring-1 ring-accented bg-elevated';
 
@@ -991,6 +1088,9 @@ function hasRequirement(square) {
 }
 
 function squareTitle(square) {
+    if (square.hidden) {
+        return square.label ? trans('bingo.hidden_square_host', { square: square.label }) : trans('bingo.hidden_square');
+    }
     if (square.isWildcard) return trans('bingo.wildcard_desc');
     if (editing.value) return trans('bingo.edit_tiles_desc');
     if (lockHolder(square)) return lockLabel(square);

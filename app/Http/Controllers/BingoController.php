@@ -80,6 +80,11 @@ class BingoController extends Controller
             return back()->with('board-save-error', trans('bingo.wildcard_not_claimable'));
         }
 
+        // Not drawn yet: nobody knows what it asks for, so nobody can have it.
+        if ($card->hides($square)) {
+            return back()->with('board-save-error', trans('bingo.reveal_hidden'));
+        }
+
         $competitor = $bingo->competitorFor($event, $request->user());
 
         if ($competitor === null) {
@@ -280,6 +285,29 @@ class BingoController extends Controller
         }
     }
 
+    /**
+     * Draw the next hidden square at random and show it to everyone. Hosts
+     * only; the live channel carries it to every open card.
+     */
+    public function reveal(Request $request, Event $event, BingoService $bingo): RedirectResponse
+    {
+        abort_unless($event->type === 'BINGO', 404);
+        $this->assertCanEditEvent($request->user(), $event);
+
+        $card = $event->bingoCard;
+        abort_unless($card !== null, 404);
+
+        if ($refusal = $bingo->revealRefusal($event, $card)) {
+            return back()->with('board-save-error', $refusal);
+        }
+
+        $square = $bingo->revealNext($event, $card);
+
+        return $square === null
+            ? back()->with('board-save-error', trans('bingo.reveal_none_left'))
+            : back()->with('board-save', trans('bingo.revealed', ['square' => $square->label() ?? trans('bingo.square_number', ['n' => $square->position + 1])]));
+    }
+
     /** Set what a square asks for. Authors only, like the tile editor. */
     public function updateSquare(Request $request, Event $event, BingoSquare $square): RedirectResponse
     {
@@ -344,11 +372,18 @@ class BingoController extends Controller
             'requires_approval' => ['sometimes', 'boolean'],
             'trust_runelite_completions' => ['sometimes', 'boolean'],
             'lockout' => ['sometimes', 'boolean'],
+            'reveal' => ['sometimes', 'boolean'],
+            'reveal_limit' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
+            'reveal_every_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
             'win_lines' => ['sometimes', 'array', 'min:1'],
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
         ]);
 
         if ($refusal = $bingo->lockoutChangeRefusal($event->mode, $card, $data['lockout'] ?? null)) {
+            return back()->with('board-save-error', $refusal);
+        }
+
+        if ($refusal = $bingo->revealChangeRefusal($card, $data['reveal'] ?? null)) {
             return back()->with('board-save-error', $refusal);
         }
 

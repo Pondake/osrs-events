@@ -280,6 +280,7 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::patch('/events/{event}/bingo/claims/{completion}', [BingoController::class, 'review'])->name('events.bingo.review');
     Route::patch('/events/{event}/bingo/squares/{square}', [BingoController::class, 'updateSquare'])->name('events.bingo.square');
     Route::patch('/events/{event}/bingo', [BingoController::class, 'updateCard'])->name('events.bingo.card');
+    Route::post('/events/{event}/bingo/reveal', [BingoController::class, 'reveal'])->name('events.bingo.reveal');
 
     // Entering a race is a separate decision from being allowed to look at
     // one — see SkillRaceController::enter.

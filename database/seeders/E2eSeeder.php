@@ -80,6 +80,7 @@ class E2eSeeder extends Seeder
         // is set away from the defaults on purpose, so a save that resets it shows.
         $this->bingo('E2E Admin Event', requiresApproval: false, winCondition: 'FULL_HOUSE');
         $this->lockout();
+        $this->reveal();
         $this->dropRace();
         $this->coHost('e2e_cohost', ['Teams of four', 'Invite only night', 'E2E Ladder']);
     }
@@ -245,6 +246,24 @@ class E2eSeeder extends Seeder
             $team = Team::create(['name' => $name]);
             TeamMember::create(['team_id' => $team->id, 'user_id' => User::where('discord_username', "e2e_{$seat}")->value('id')]);
             $event->eventTeams()->create(['team_id' => $team->id]);
+        }
+    }
+
+    /**
+     * A team card that reveals its squares one at a time, with lockout, and
+     * stops after two: the Item Race format. Same two teams as the lockout
+     * card; claims count at once, so the draw is the only thing a host does.
+     */
+    private function reveal(): void
+    {
+        $this->bingo('E2E Reveal', requiresApproval: false);
+
+        $event = Event::where('title', 'E2E Reveal')->firstOrFail();
+        $event->update(['mode' => 'TEAM']);
+        $event->bingoCard->update(['lockout' => true, 'reveal' => true, 'reveal_limit' => 2]);
+
+        foreach (['E2E Reds', 'E2E Blues'] as $name) {
+            $event->eventTeams()->create(['team_id' => Team::where('name', $name)->value('id')]);
         }
     }
 

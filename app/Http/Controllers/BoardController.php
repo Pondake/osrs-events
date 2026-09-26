@@ -645,13 +645,20 @@ class BoardController extends Controller
                 // First team to a square keeps it: the page draws a square
                 // another team holds as taken instead of offering a claim.
                 'lockout' => $card->usesLockout(),
+                // Reveal: squares are drawn one at a time. Where the draw
+                // stands; the squares themselves say which are still hidden.
+                'revealState' => $bingo->revealState($event, $card),
                 // Which shapes count, so the page can draw the same lines the
                 // server scores — a hint pointing at a diagonal on a
                 // rows-only card would be a lie the grid tells.
                 'winLines' => $card->winLines(),
-                'squares' => $card->squares->sortBy('position')->values()->map(fn ($square) => [
+                // A square not drawn yet is a blank to everyone but a host,
+                // so nobody can farm it ahead of the draw. A host sees it in
+                // full, marked hidden.
+                'squares' => $card->squares->sortBy('position')->values()->map(fn ($square) => $card->hides($square) && ! $canEdit ? BingoService::hiddenSquare($square) : [
                     'id' => $square->id,
                     'position' => $square->position,
+                    'hidden' => $card->hides($square),
                     'label' => $square->label(),
                     'iconUrl' => $square->task?->icon_url,
                     'points' => $square->points,
@@ -705,7 +712,7 @@ class BoardController extends Controller
             // when the dialog opens rather than shipped with the page — see
             // TargetDetailService. Optional, so a normal render and every
             // other partial reload never touch it.
-            'squareDetail' => Inertia::optional(fn () => $this->squareDetail($card, $bingoNamesArePublic, $competitor)),
+            'squareDetail' => Inertia::optional(fn () => $this->squareDetail($card, $bingoNamesArePublic, $competitor, $canEdit)),
             // Who holds each square, for the faces on the grid. Same source
             // the live channel pushes, so a card that updates mid-event does
             // not disagree with the one that was rendered.
@@ -772,12 +779,12 @@ class BoardController extends Controller
      * progress map are all keyed by, so the page asks for a square the same
      * way it talks about one everywhere else.
      */
-    private function squareDetail(BingoCard $card, bool $namesArePublic, ?array $competitor): ?array
+    private function squareDetail(BingoCard $card, bool $namesArePublic, ?array $competitor, bool $canEdit): ?array
     {
         $position = request()->integer('square', -1);
         $square = $card->squares->firstWhere('position', $position);
 
-        if ($square === null) {
+        if ($square === null || ($card->hides($square) && ! $canEdit)) {
             return null;
         }
 
@@ -889,6 +896,9 @@ class BoardController extends Controller
             'requires_approval' => ['nullable', 'boolean'],
             'trust_runelite_completions' => ['nullable', 'boolean'],
             'lockout' => ['nullable', 'boolean'],
+            'reveal' => ['nullable', 'boolean'],
+            'reveal_limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'reveal_every_minutes' => ['nullable', 'integer', 'min:1', 'max:10080'],
             // At least one shape, or "first line wins" is a condition no card
             // can ever meet.
             'win_lines' => ['nullable', 'array', 'min:1'],
@@ -970,6 +980,10 @@ class BoardController extends Controller
                     // A team race for each square; meaningless solo, so
                     // never stored on a solo card.
                     'lockout' => ($data['mode'] ?? 'SOLO') === 'TEAM' && ($data['lockout'] ?? false),
+                    // Limit and timer only mean something with reveal on.
+                    'reveal' => $data['reveal'] ?? false,
+                    'reveal_limit' => ($data['reveal'] ?? false) ? ($data['reveal_limit'] ?? null) : null,
+                    'reveal_every_minutes' => ($data['reveal'] ?? false) ? ($data['reveal_every_minutes'] ?? null) : null,
                 ]);
 
                 // Filled out immediately, unlike S&L tiles which appear on
@@ -1080,6 +1094,9 @@ class BoardController extends Controller
             'requires_approval' => ['sometimes', 'nullable', 'boolean'],
             'trust_runelite_completions' => ['sometimes', 'nullable', 'boolean'],
             'lockout' => ['sometimes', 'nullable', 'boolean'],
+            'reveal' => ['sometimes', 'nullable', 'boolean'],
+            'reveal_limit' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:100'],
+            'reveal_every_minutes' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:10080'],
             'win_lines' => ['sometimes', 'nullable', 'array', 'min:1'],
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
             'mode' => ['sometimes', 'in:SOLO,TEAM'],
@@ -1133,11 +1150,16 @@ class BoardController extends Controller
                 throw ValidationException::withMessages(['lockout' => $refusal]);
             }
 
+            if ($refusal = app(BingoService::class)->revealChangeRefusal($event->bingoCard, $data['reveal'] ?? null)) {
+                throw ValidationException::withMessages(['reveal' => $refusal]);
+            }
+
             $cardChanges = collect($data)
-                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'lockout', 'win_lines'])
+                ->only(['bingo_size', 'win_condition', 'line_bonus', 'requires_approval', 'trust_runelite_completions', 'lockout', 'reveal', 'reveal_limit', 'reveal_every_minutes', 'win_lines'])
                 // Nulls are "not submitted for this type", not "clear it" —
-                // see the nullable note on the rules above.
-                ->reject(fn ($value) => $value === null)
+                // see the nullable note on the rules above. Except the reveal
+                // limit and timer, where null is "none" and sent on purpose.
+                ->reject(fn ($value, $key) => $value === null && ! in_array($key, ['reveal_limit', 'reveal_every_minutes'], true))
                 ->mapWithKeys(fn ($value, $key) => [$key === 'bingo_size' ? 'size' : $key => $value])
                 ->all();
 

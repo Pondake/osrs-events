@@ -385,6 +385,9 @@ function blankForm() {
         requires_approval: true,
         trust_runelite_completions: false,
         lockout: false,
+        reveal: false,
+        reveal_limit: null,
+        reveal_every_minutes: null,
         mode: 'SOLO',
         // What happens when the first competitor gets home. CONTINUE is the
         // forgiving default — see the finish_rule migration.
@@ -703,6 +706,9 @@ function cardFields(board) {
         requires_approval: board.card.requiresApproval ?? true,
         trust_runelite_completions: board.card.trustRuneliteCompletions ?? false,
         lockout: board.card.lockout ?? false,
+        reveal: board.card.reveal ?? false,
+        reveal_limit: board.card.revealLimit ?? null,
+        reveal_every_minutes: board.card.revealEveryMinutes ?? null,
     };
 }
 
@@ -978,6 +984,22 @@ function destroyEvent({ notify }) {
 
 // ----------------------------------------------------------------- submit
 
+/**
+ * The reveal fields as the server wants them: absent on anything but bingo,
+ * and an emptied number box as null ("no limit", "by hand only").
+ */
+function revealFields(data) {
+    if (data.type !== 'BINGO') {
+        return { reveal: undefined, reveal_limit: undefined, reveal_every_minutes: undefined };
+    }
+
+    return {
+        reveal: Boolean(data.reveal),
+        reveal_limit: data.reveal && data.reveal_limit ? data.reveal_limit : null,
+        reveal_every_minutes: data.reveal && data.reveal_every_minutes ? data.reveal_every_minutes : null,
+    };
+}
+
 function submit() {
     if (!isEdit.value) {
         // The step on screen is not necessarily the one with the problem, so
@@ -1005,6 +1027,8 @@ function submit() {
             }
 
             if (data.mode !== 'TEAM') delete payload.lockout;
+
+            Object.assign(payload, revealFields(data));
 
             if (data.type !== 'SNAKES_LADDERS') {
                 delete payload.size;
@@ -1049,6 +1073,8 @@ function submit() {
             delete payload.line_bonus;
             delete payload.lockout;
         }
+
+        Object.assign(payload, revealFields(data));
 
         if (data.type !== 'SNAKES_LADDERS') {
             delete payload.size;
@@ -1099,6 +1125,9 @@ const FIELD_TABS = {
     requires_approval: 'format',
     trust_runelite_completions: 'format',
     lockout: 'format',
+    reveal: 'format',
+    reveal_limit: 'format',
+    reveal_every_minutes: 'format',
     dice_roll_limit: 'format',
     access_mode: 'access',
     required_guild_id: 'access',

@@ -70,6 +70,9 @@ final class EventCard
             'requiresApproval' => $card->requires_approval,
             'trustRuneliteCompletions' => $card->trust_runelite_completions,
             'lockout' => $card->usesLockout(),
+            'reveal' => $card->reveal,
+            'revealLimit' => $card->reveal_limit,
+            'revealEveryMinutes' => $card->reveal_every_minutes,
             'winLines' => $card->winLines(),
         ] : null;
     }

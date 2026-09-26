@@ -55,7 +55,7 @@ class BingoChannel implements EventChannel
         // mid-event reaches everyone looking at the card.
         $squares = $card->squares()
             ->orderBy('position')
-            ->get(['id', 'position', 'task_id', 'title_override', 'points', 'min_quantity', 'required_count', 'is_wildcard']);
+            ->get(['id', 'position', 'task_id', 'title_override', 'points', 'min_quantity', 'required_count', 'is_wildcard', 'revealed_at']);
 
         // The card's own rules are part of what everybody is looking at, and
         // they were missing. The payload carries winLines so that "a host
@@ -81,6 +81,12 @@ class BingoChannel implements EventChannel
             // themselves are approved claims, so claimsVersion() already
             // moves when one is taken or freed.
             $card->usesLockout() ? '1' : '0',
+            // Reveal: which squares are out is in the squares below, via
+            // revealed_at. The limit and timer change what the page says
+            // is still to come.
+            $card->reveal ? '1' : '0',
+            $card->reveal_limit,
+            $card->reveal_every_minutes,
         ]);
 
         // Who has won, and whether that closed the event — the same reason
@@ -101,7 +107,7 @@ class BingoChannel implements EventChannel
         return md5(
             $this->claimsVersion($card)
             .'#'
-            .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->min_quantity}:{$s->required_count}:{$s->is_wildcard}")->implode('|')
+            .$squares->map(fn ($s) => "{$s->position}:{$s->task_id}:{$s->title_override}:{$s->points}:{$s->min_quantity}:{$s->required_count}:{$s->is_wildcard}:{$s->revealed_at?->timestamp}")->implode('|')
             .'#'
             .$rules
             .'#'
@@ -154,6 +160,7 @@ class BingoChannel implements EventChannel
                 'standings' => [],
                 'finishes' => [],
                 'squares' => [],
+                'revealState' => null,
                 'approvedBy' => [],
                 'event_version' => $this->eventVersion($event),
                 'event' => EventCard::fresh($event),
@@ -191,8 +198,13 @@ class BingoChannel implements EventChannel
             // the standings, so putting the same fact on the square it was
             // approved for carries nothing new about anyone.
             'approvedBy' => $this->bingo->approvedBy($card),
-            'squares' => $card->squares->sortBy('position')->values()->map(fn ($square) => [
+            'revealState' => $this->bingo->revealState($event, $card),
+            // A square not drawn yet goes out as a blank. This stream is
+            // shared by every viewer, hosts included, so it never carries
+            // what a hidden square asks for; a host's page keeps its own copy.
+            'squares' => $card->squares->sortBy('position')->values()->map(fn ($square) => $card->hides($square) ? BingoService::hiddenSquare($square) : [
                 'id' => $square->id,
+                'hidden' => false,
                 'position' => $square->position,
                 'label' => $square->label(),
                 'iconUrl' => $square->task?->icon_url,

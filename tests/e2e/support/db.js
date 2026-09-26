@@ -81,6 +81,7 @@ export function resetEvent(title) {
     const card = `SELECT id FROM bingo_squares WHERE bingo_card_id IN (SELECT id FROM bingo_cards WHERE event_id = ?)`;
 
     run(`DELETE FROM bingo_completions WHERE bingo_square_id IN (${card})`, [id]);
+    run(`UPDATE bingo_squares SET revealed_at = NULL WHERE id IN (${card})`, [id]);
     run('DELETE FROM event_standings WHERE event_id = ?', [id]);
     run('DELETE FROM event_finishes WHERE event_id = ?', [id]);
     run('DELETE FROM event_participants WHERE event_id = ?', [id]);

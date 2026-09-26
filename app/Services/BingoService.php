@@ -8,6 +8,8 @@ use App\Models\BingoSquare;
 use App\Models\Event;
 use App\Models\User;
 use App\Support\RuneliteName;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -453,6 +455,12 @@ class BingoService
      */
     public function createClaim(BingoCard $card, BingoSquare $square, array $attributes): ?BingoCompletion
     {
+        // Not drawn yet. Both claim paths refuse it before getting here; this
+        // is the backstop.
+        if ($card->hides($square)) {
+            return null;
+        }
+
         if (! $card->usesLockout()) {
             return BingoCompletion::create($attributes);
         }
@@ -586,6 +594,152 @@ class BingoService
     }
 
     /**
+     * The squares a reveal card can still draw from: hidden, not free, and
+     * with something on them. An empty square has nothing to reveal.
+     */
+    private function revealPool(BingoCard $card): HasMany
+    {
+        return $card->squares()
+            ->whereNull('revealed_at')
+            ->where('is_wildcard', false)
+            ->where(fn ($q) => $q->whereNotNull('task_id')->orWhereNotNull('title_override'));
+    }
+
+    /**
+     * Where a reveal card stands, for the page and the live channel: how many
+     * squares are out, how many may still be drawn, and when the timer draws
+     * the next one. Null on a card without reveal.
+     *
+     * @return array{revealed: int, limit: ?int, remaining: int, nextAt: ?string}|null
+     */
+    public function revealState(Event $event, BingoCard $card): ?array
+    {
+        if (! $card->reveal) {
+            return null;
+        }
+
+        $revealed = $card->squares()->whereNotNull('revealed_at')->where('is_wildcard', false)->count();
+        $pool = $this->revealPool($card)->count();
+        $remaining = $card->reveal_limit === null ? $pool : max(0, min($pool, $card->reveal_limit - $revealed));
+
+        return [
+            'revealed' => $revealed,
+            'limit' => $card->reveal_limit,
+            'remaining' => $remaining,
+            'nextAt' => $remaining > 0 && ! $event->isEnded() && ! $event->isPaused()
+                ? $this->nextRevealAt($event, $card)?->toIso8601String()
+                : null,
+        ];
+    }
+
+    /**
+     * When the timer draws next: an interval after the last draw, or the
+     * start of the event for the first one. Null without a timer.
+     */
+    private function nextRevealAt(Event $event, BingoCard $card): ?Carbon
+    {
+        if ($card->reveal_every_minutes === null) {
+            return null;
+        }
+
+        $last = $card->squares()->max('revealed_at');
+
+        if ($last === null) {
+            return $event->start_date?->copy()->startOfDay() ?? now();
+        }
+
+        return Carbon::parse($last)->addMinutes($card->reveal_every_minutes);
+    }
+
+    /** Why the next square cannot be drawn now, or null. */
+    public function revealRefusal(Event $event, BingoCard $card): ?string
+    {
+        if (! $card->reveal) {
+            return trans('bingo.reveal_off');
+        }
+
+        if ($event->isEnded()) {
+            return trans('bingo.event_ended');
+        }
+
+        return $this->revealState($event, $card)['remaining'] > 0 ? null : trans('bingo.reveal_none_left');
+    }
+
+    /**
+     * Draw one hidden square at random and reveal it to everyone.
+     *
+     * The card row is locked while the pool is counted, so two hosts pressing
+     * the button together, or a host and the timer, cannot draw past the limit.
+     */
+    public function revealNext(Event $event, BingoCard $card): ?BingoSquare
+    {
+        return DB::transaction(function () use ($event, $card) {
+            $card = BingoCard::whereKey($card->id)->lockForUpdate()->first();
+
+            if ($this->revealRefusal($event, $card) !== null) {
+                return null;
+            }
+
+            $square = $this->revealPool($card)->inRandomOrder()->first();
+            $square?->update(['revealed_at' => now()]);
+
+            return $square;
+        });
+    }
+
+    /** Whether the timer should draw a square on this card now. */
+    public function revealDue(Event $event, BingoCard $card): bool
+    {
+        if (! $card->reveal || $card->reveal_every_minutes === null || $event->isUpcoming() || $event->isPaused()) {
+            return false;
+        }
+
+        $next = $this->nextRevealAt($event, $card);
+
+        return $next !== null && $next->lte(now()) && $this->revealRefusal($event, $card) === null;
+    }
+
+    /**
+     * Why reveal cannot be switched on, or null.
+     *
+     * Only before the first claim: hiding a square somebody already has would
+     * take it off their card. Switching it off is always allowed, and simply
+     * shows everything.
+     */
+    public function revealChangeRefusal(BingoCard $card, ?bool $reveal): ?string
+    {
+        if ($reveal !== true || $card->reveal) {
+            return null;
+        }
+
+        $hasClaims = BingoCompletion::whereIn('bingo_square_id', $card->squares()->select('id'))->exists();
+
+        return $hasClaims ? trans('bingo.reveal_locked') : null;
+    }
+
+    /**
+     * A hidden square as anyone but a host sees it: where it is, and nothing
+     * about what it asks for. Same keys as a visible one, so the page does not
+     * have to guard every read.
+     */
+    public static function hiddenSquare(BingoSquare $square): array
+    {
+        return [
+            'id' => $square->id,
+            'position' => $square->position,
+            'hidden' => true,
+            'label' => null,
+            'iconUrl' => null,
+            'points' => null,
+            'minQuantity' => 1,
+            'requiredCount' => 1,
+            'titleOverride' => null,
+            'isWildcard' => false,
+            'task' => null,
+        ];
+    }
+
+    /**
      * The pending claims whose approval would complete the card, mapped to
      * their place in submission order.
      *
@@ -707,6 +861,11 @@ class BingoService
             }
 
             $card->squares()->where('position', '>=', $data['size'] ** 2)->delete();
+        }
+
+        // Switched on: every square starts hidden again.
+        if (($data['reveal'] ?? false) && ! $card->reveal) {
+            $card->squares()->update(['revealed_at' => null]);
         }
 
         $card->update($data);

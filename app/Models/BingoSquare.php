@@ -15,9 +15,9 @@ class BingoSquare extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['bingo_card_id', 'position', 'task_id', 'title_override', 'points', 'min_quantity', 'required_count', 'is_wildcard'];
+    protected $fillable = ['bingo_card_id', 'position', 'task_id', 'title_override', 'points', 'min_quantity', 'required_count', 'is_wildcard', 'revealed_at'];
 
-    protected $casts = ['position' => 'integer', 'points' => 'integer', 'min_quantity' => 'integer', 'required_count' => 'integer', 'is_wildcard' => 'boolean'];
+    protected $casts = ['position' => 'integer', 'points' => 'integer', 'min_quantity' => 'integer', 'required_count' => 'integer', 'is_wildcard' => 'boolean', 'revealed_at' => 'datetime'];
 
     public function card(): BelongsTo
     {
