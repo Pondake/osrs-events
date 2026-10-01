@@ -266,7 +266,7 @@
     "admin.perm_revoked": "Permission :key revoked.",
     "admin.permission_granted": "Permission granted.",
     "admin.permission_label_cancreateboards": "Hosts events",
-    "admin.permission_label_cancreatetiles": "Edits task library",
+    "admin.permission_label_cancreatetiles": "Edits global task library",
     "admin.permission_placeholder": "+ permission",
     "admin.permission_revoked": "Permission revoked.",
     "admin.permissions": "Permissions",

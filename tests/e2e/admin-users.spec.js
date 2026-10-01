@@ -51,10 +51,10 @@ test('a permission opens a page for the account it is given to, and only then', 
 
     await openUsers(admin, 'e2e_roled');
     await actions(admin, 'e2e_roled').click();
-    await admin.getByRole('menuitem', { name: 'Grant: Edits task library' }).click();
+    await admin.getByRole('menuitem', { name: 'Grant: Edits global task library' }).click();
 
     await expect(admin.getByText('Permission granted.').first()).toBeVisible();
-    await expect(row(admin, 'e2e_roled')).toContainText('Edits task library');
+    await expect(row(admin, 'e2e_roled')).toContainText('Edits global task library');
 
     expect((await account.goto('/admin/tasks')).status()).toBe(200);
     // Not the other one: a permission opens what it names.
