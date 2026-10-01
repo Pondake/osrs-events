@@ -106,8 +106,13 @@
 
             <!-- A race between teams for each square. Solo has no teams to
                  lock anyone out, so the switch only exists on TEAM. -->
-            <u-form-field v-if="form.mode === 'TEAM'" :description="$t('bingo.lockout_desc')" :error="form.errors.lockout">
-                <u-switch v-model="form.lockout" :label="$t('bingo.lockout')" />
+            <u-form-field :description="$t(form.mode === 'TEAM' ? 'bingo.lockout_desc' : 'bingo.lockout_solo_desc')" :error="form.errors.lockout">
+                <u-switch
+                    :model-value="form.mode === 'TEAM' && form.lockout"
+                    :disabled="form.mode !== 'TEAM'"
+                    :label="$t('bingo.lockout')"
+                    @update:model-value="(on) => (form.lockout = on)"
+                />
             </u-form-field>
 
             <!-- Squares drawn one at a time, so nobody farms ahead. -->

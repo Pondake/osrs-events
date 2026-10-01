@@ -84,6 +84,8 @@ class HandleInertiaRequests extends Middleware
                 // of their own, and this way footer and page content cannot
                 // drift to different URLs.
                 'kofiUrl' => Setting::get('kofi_url'),
+                // Dev-only conveniences, such as "Fill randomly".
+                'isLocal' => app()->environment('local'),
                 // Shared rather than passed per page: the create-event modal
                 // opens from the events index, the admin list and onboarding.
                 'eventTypes' => collect(Event::EVENT_TYPES)

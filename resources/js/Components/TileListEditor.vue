@@ -194,6 +194,16 @@
         </template>
 
         <template #footer>
+            <!-- Local only: fills every empty square with a random task. -->
+            <u-button
+                v-if="isLocal"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-shuffle"
+                :loading="filling"
+                :label="$t('tile_list.fill_random')"
+                @click="fillRandomly"
+            />
             <u-button color="neutral" variant="outline" class="ms-auto" :label="$t('tile_list.done')" @click="isOpen = false" />
         </template>
     </u-modal>
@@ -201,7 +211,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import TaskPicker from '@/Components/TaskPicker.vue';
 
@@ -236,6 +246,17 @@ const emit = defineEmits(['update:open']);
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
 const isBingo = computed(() => props.type === 'BINGO');
+
+const isLocal = computed(() => Boolean(usePage().props?.site?.isLocal));
+const filling = ref(false);
+
+function fillRandomly() {
+    filling.value = true;
+    router.post(`/dev/events/${props.eventId}/fill-random`, {}, {
+        preserveScroll: true,
+        onFinish: () => (filling.value = false),
+    });
+}
 
 /**
  * One row per position, whether or not a record exists for it yet.

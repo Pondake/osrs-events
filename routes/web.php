@@ -584,6 +584,8 @@ if (app()->environment('local')) {
 
         return redirect('/');
     })->middleware('signed')->withoutMiddleware(App\Http\Middleware\EnsureSiteUnlocked::class)->name('dev.login');
+
+    Route::post('/dev/events/{event}/fill-random', App\Http\Controllers\DevFillController::class)->middleware('auth')->name('dev.fill-random');
 }
 
 Route::get('/{page}', [PageController::class, 'show'])->name('pages.show');
