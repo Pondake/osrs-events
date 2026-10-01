@@ -70,7 +70,7 @@ test('the log can be narrowed by action, and says so when nothing matches', asyn
     const row = await usersRow(admin, 'e2e_roled');
 
     await row.getByRole('button', { name: 'Edit' }).click();
-    await admin.getByRole('menuitem', { name: 'Grant: canCreateTiles' }).click();
+    await admin.getByRole('menuitem', { name: 'Grant: Edits task library' }).click();
     await expect(admin.getByText('Permission granted.').first()).toBeVisible();
 
     await admin.goto('/admin/audit?action=user.permission_granted');

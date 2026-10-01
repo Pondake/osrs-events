@@ -33,10 +33,11 @@
                     <u-badge
                         v-for="permission in u.permissions"
                         :key="permission.id"
-                        :label="permission.name"
+                        :label="permissionLabel(permission.name)"
+                        :title="permission.name"
                         color="neutral"
                         variant="outline"
-                        icon="i-lucide-key"
+                        :icon="permissionIcon(permission.name)"
                     />
 
                     <!-- One menu per user instead of two always-visible selects
@@ -71,6 +72,7 @@ import { ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
+import { permissionLabel } from '@/Support/audit';
 import AdminLayout from '@/Components/AdminLayout.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
@@ -91,6 +93,9 @@ const { user: currentUser } = useAuth();
 const ROLE_OPTIONS = ['ADMIN', 'EDITOR', 'PLAYER'];
 const ROLE_COLORS = { ADMIN: 'error', EDITOR: 'warning', PLAYER: 'primary' };
 const roleColor = (name) => ROLE_COLORS[name] ?? 'neutral';
+
+const PERMISSION_ICONS = { canCreateBoards: 'i-lucide-calendar-plus', canCreateTiles: 'i-lucide-list-checks' };
+const permissionIcon = (name) => PERMISSION_ICONS[name] ?? 'i-lucide-key';
 
 const displayName = (u) => u.nickname ?? u.discord_username ?? u.email;
 
@@ -133,8 +138,8 @@ function menuFor(u) {
     const grantablePerms = props.permissionKeys.filter((k) => !heldPerms.includes(k));
     if (grantablePerms.length) {
         groups.push(grantablePerms.map((key) => ({
-            label: trans('admin.grant_permission', { key }),
-            icon: 'i-lucide-key',
+            label: trans('admin.grant_permission', { key: permissionLabel(key) }),
+            icon: permissionIcon(key),
             onSelect: () => router.post(`/admin/users/${u.id}/permissions`, { permission_key: key }, { preserveScroll: true }),
         })));
     }

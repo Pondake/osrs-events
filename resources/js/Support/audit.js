@@ -86,7 +86,7 @@ function roleLabel(role) {
     return label === key ? role : label;
 }
 
-function permissionLabel(permission) {
+export function permissionLabel(permission) {
     const key = `admin.permission_label_${String(permission).toLowerCase()}`;
     const label = trans(key);
 
