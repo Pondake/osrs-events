@@ -100,6 +100,11 @@ class BingoLockoutTest extends TestCase
         return BingoCompletion::where('bingo_square_id', $this->square($position)->id)->where('team_id', $team->id)->first();
     }
 
+    private function displayName(User $user): string
+    {
+        return $user->nickname ?: $user->discord_username;
+    }
+
     private function instant(): void
     {
         $this->card->update(['requires_approval' => false]);
@@ -143,11 +148,32 @@ class BingoLockoutTest extends TestCase
     }
 
     #[Test]
-    public function lockout_does_nothing_on_a_solo_event(): void
+    public function on_a_solo_card_the_first_player_keeps_the_square(): void
+    {
+        $this->event->update(['mode' => 'SOLO']);
+        $this->instant();
+
+        $this->claim($this->red, data: [])->assertSessionHas('board-save');
+        $this->claim($this->blue, data: [])->assertSessionHas('board-save-error', "{$this->displayName($this->red)} got this square first.");
+
+        $claims = BingoCompletion::where('bingo_square_id', $this->square()->id)->get();
+        $this->assertCount(1, $claims);
+        $this->assertSame($this->red->id, $claims->first()->user_id);
+    }
+
+    #[Test]
+    public function on_a_solo_card_the_queue_names_the_player_ahead(): void
     {
         $this->event->update(['mode' => 'SOLO']);
 
-        $this->assertFalse($this->card->fresh()->usesLockout());
+        $this->claim($this->red);
+        $this->travel(1)->minutes();
+        $this->claim($this->blue);
+
+        $blueClaim = BingoCompletion::where('bingo_square_id', $this->square()->id)->where('user_id', $this->blue->id)->first();
+
+        $this->review($blueClaim, 'APPROVED')
+            ->assertSessionHas('board-save-error', "{$this->displayName($this->red)} claimed this square earlier. Rule on their claim first.");
     }
 
     // ---------------------------------------------------------------- review
@@ -393,22 +419,12 @@ class BingoLockoutTest extends TestCase
     }
 
     #[Test]
-    public function lockout_is_refused_on_a_solo_event(): void
-    {
-        $this->event->update(['mode' => 'SOLO']);
-        $this->card->update(['lockout' => false]);
-
-        $this->actingAs($this->host)->patch("/events/{$this->event->id}/bingo", ['lockout' => true])
-            ->assertSessionHas('board-save-error', 'Lockout is only available on a team event.');
-    }
-
-    #[Test]
-    public function creating_a_team_bingo_stores_lockout_and_a_solo_one_does_not(): void
+    public function creating_a_bingo_stores_lockout_on_both_modes(): void
     {
         $creator = User::factory()->create();
         $creator->grantStarterAccess();
 
-        foreach (['TEAM' => true, 'SOLO' => false] as $mode => $expected) {
+        foreach (['TEAM' => true, 'SOLO' => true] as $mode => $expected) {
             $this->actingAs($creator)->post('/events', [
                 'title' => "Lockout {$mode}",
                 'type' => 'BINGO',

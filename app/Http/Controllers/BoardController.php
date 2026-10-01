@@ -977,9 +977,7 @@ class BoardController extends Controller
                     // named rather than left to it for the same reason
                     // every other field here is.
                     'trust_runelite_completions' => $data['trust_runelite_completions'] ?? true,
-                    // A team race for each square; meaningless solo, so
-                    // never stored on a solo card.
-                    'lockout' => ($data['mode'] ?? 'SOLO') === 'TEAM' && ($data['lockout'] ?? false),
+                    'lockout' => $data['lockout'] ?? false,
                     // Limit and timer only mean something with reveal on.
                     'reveal' => $data['reveal'] ?? false,
                     'reveal_limit' => ($data['reveal'] ?? false) ? ($data['reveal_limit'] ?? null) : null,
@@ -1138,15 +1136,7 @@ class BoardController extends Controller
         // shrink that would delete somebody's completions is rejected as a
         // validation error rather than half-applied alongside the rest.
         if ($event->type === 'BINGO' && $event->bingoCard) {
-            // Lockout only exists on a team card, so switching to solo
-            // switches it off with it.
-            $mode = $data['mode'] ?? $event->mode;
-
-            if ($mode !== 'TEAM' && $event->bingoCard->lockout) {
-                $data['lockout'] = false;
-            }
-
-            if ($refusal = app(BingoService::class)->lockoutChangeRefusal($mode, $event->bingoCard, $data['lockout'] ?? null)) {
+            if ($refusal = app(BingoService::class)->lockoutChangeRefusal($event->bingoCard, $data['lockout'] ?? null)) {
                 throw ValidationException::withMessages(['lockout' => $refusal]);
             }
 

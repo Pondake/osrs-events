@@ -67,15 +67,12 @@ class BingoCard extends Model
     }
 
     /**
-     * Whether the first team to have a square approved keeps it.
-     *
-     * Only ever on a team event: on a solo card every player would be racing
-     * every other one for each square, which is a different game nobody asked
-     * for, and a card switched to solo keeps a stored `true` that means nothing.
+     * Whether the first competitor to have a square approved keeps it: a
+     * team on a team event, a player on a solo one.
      */
     public function usesLockout(): bool
     {
-        return $this->lockout && $this->event?->mode === 'TEAM';
+        return (bool) $this->lockout;
     }
 
     /**

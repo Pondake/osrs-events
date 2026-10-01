@@ -373,14 +373,28 @@ class BingoService
             ]);
     }
 
-    /** The team first in line for a square, when that is not this claim. */
+    /** Who is first in line for a square, when that is not this claim. */
     private function aheadName(?Collection $line, BingoCompletion $claim): ?string
     {
         $first = $line?->first();
 
-        return $first === null || $first->id === $claim->id
-            ? null
-            : ($first->team?->name ?? trans('common.deleted_user'));
+        return $first === null || $first->id === $claim->id ? null : $this->competitorName($first);
+    }
+
+    /** The team a claim counts for, or the player on a solo card. */
+    public function competitorName(BingoCompletion $claim): string
+    {
+        return $claim->team?->name
+            ?? ($claim->user?->nickname ?: $claim->user?->discord_username)
+            ?: trans('common.deleted_user');
+    }
+
+    /** The team or player a claim counts for, as one comparable key. */
+    private static function competitorKey(array|BingoCompletion $claim): ?string
+    {
+        return is_array($claim)
+            ? ($claim['team_id'] ?? $claim['user_id'] ?? null)
+            : ($claim->team_id ?? $claim->user_id);
     }
 
     /**
@@ -394,7 +408,7 @@ class BingoService
         $claims = BingoCompletion::query()
             ->whereIn('bingo_square_id', $card->squares()->select('id'))
             ->whereIn('status', ['APPROVED', 'PENDING'])
-            ->with('team:id,name')
+            ->with(['team:id,name', 'user:id,discord_username,nickname'])
             ->orderBy('claimed_at')
             ->orderBy('created_at')
             ->get();
@@ -417,7 +431,7 @@ class BingoService
     {
         return BingoCompletion::where('bingo_square_id', $square->id)
             ->where('status', 'APPROVED')
-            ->with('team:id,name')
+            ->with(['team:id,name', 'user:id,discord_username,nickname'])
             ->orderBy('claimed_at')
             ->orderBy('created_at')
             ->first();
@@ -436,7 +450,7 @@ class BingoService
     {
         return BingoCompletion::where('bingo_square_id', $square->id)
             ->where('status', 'PENDING')
-            ->with('team:id,name')
+            ->with(['team:id,name', 'user:id,discord_username,nickname'])
             ->orderBy('claimed_at')
             ->orderBy('created_at')
             ->get();
@@ -475,7 +489,7 @@ class BingoService
             $attributes['claimed_at'] ??= now();
 
             $ahead = $this->lockoutLine($square)
-                ->contains(fn (BingoCompletion $c) => $c->team_id !== $attributes['team_id'] && $c->claimed_at->lte($attributes['claimed_at']));
+                ->contains(fn (BingoCompletion $c) => self::competitorKey($c) !== self::competitorKey($attributes) && $c->claimed_at->lte($attributes['claimed_at']));
 
             if ($attributes['status'] === 'APPROVED' && $ahead) {
                 $attributes['status'] = 'PENDING';
@@ -501,7 +515,7 @@ class BingoService
         $holder = $this->lockHolder($square);
 
         if ($holder !== null && $holder->id !== $claim->id) {
-            return trans('bingo.lockout_taken', ['team' => $holder->team?->name ?? trans('common.deleted_user')]);
+            return trans('bingo.lockout_taken', ['team' => $this->competitorName($holder)]);
         }
 
         $first = $this->lockoutLine($square)
@@ -511,7 +525,7 @@ class BingoService
 
         return $first === null
             ? null
-            : trans('bingo.lockout_not_first', ['team' => $first->team?->name ?? trans('common.deleted_user')]);
+            : trans('bingo.lockout_not_first', ['team' => $this->competitorName($first)]);
     }
 
     /**
@@ -556,18 +570,14 @@ class BingoService
     /**
      * Why lockout cannot be switched to this value, or null.
      *
-     * Only on a team event, and only before the first claim: switching it
-     * mid-event would hand squares that two teams both have to one of them,
-     * or open squares a team already took.
+     * Only before the first claim: switching it mid-event would hand squares
+     * that two competitors both have to one of them, or open squares one
+     * already took.
      */
-    public function lockoutChangeRefusal(string $mode, BingoCard $card, ?bool $lockout): ?string
+    public function lockoutChangeRefusal(BingoCard $card, ?bool $lockout): ?string
     {
         if ($lockout === null || $lockout === (bool) $card->lockout) {
             return null;
-        }
-
-        if ($lockout && $mode !== 'TEAM') {
-            return trans('bingo.lockout_team_only');
         }
 
         $hasClaims = BingoCompletion::whereIn('bingo_square_id', $card->squares()->select('id'))->exists();
@@ -576,7 +586,7 @@ class BingoService
     }
 
     /**
-     * Square ids another team holds, for a competitor on a lockout card.
+     * Square ids somebody else holds, for a competitor on a lockout card.
      *
      * @return Collection<int, string>
      */
@@ -589,7 +599,9 @@ class BingoService
         return BingoCompletion::query()
             ->whereIn('bingo_square_id', $card->squares()->select('id'))
             ->where('status', 'APPROVED')
-            ->where('team_id', '!=', $competitor['team_id'])
+            ->where(fn ($q) => $competitor['team_id'] !== null
+                ? $q->whereNull('team_id')->orWhere('team_id', '!=', $competitor['team_id'])
+                : $q->whereNull('user_id')->orWhere('user_id', '!=', $competitor['user_id']))
             ->pluck('bingo_square_id');
     }
 

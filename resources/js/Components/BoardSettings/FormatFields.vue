@@ -106,13 +106,8 @@
 
             <!-- A race between teams for each square. Solo has no teams to
                  lock anyone out, so the switch only exists on TEAM. -->
-            <u-form-field :description="$t(form.mode === 'TEAM' ? 'bingo.lockout_desc' : 'bingo.lockout_solo_desc')" :error="form.errors.lockout">
-                <u-switch
-                    :model-value="form.mode === 'TEAM' && form.lockout"
-                    :disabled="form.mode !== 'TEAM'"
-                    :label="$t('bingo.lockout')"
-                    @update:model-value="(on) => (form.lockout = on)"
-                />
+            <u-form-field :description="$t('bingo.lockout_desc')" :error="form.errors.lockout">
+                <u-switch v-model="form.lockout" :label="$t('bingo.lockout')" />
             </u-form-field>
 
             <!-- Squares drawn one at a time, so nobody farms ahead. -->
@@ -240,7 +235,7 @@ const metrics = computed(() => site.value.metricsByKind?.[metricKind.value] ?? [
 
 const hasBoard = computed(() => props.form.type === 'SNAKES_LADDERS');
 const isBingo = computed(() => props.form.type === 'BINGO');
-const lockout = computed(() => props.form.mode === 'TEAM' && props.form.lockout);
+const lockout = computed(() => Boolean(props.form.lockout));
 
 // The types with something to finish — mirrors Event::canBeFinished() on
 // the server, which is what actually validates and enforces it.

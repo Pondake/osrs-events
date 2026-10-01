@@ -270,9 +270,7 @@ class BingoController extends Controller
 
         $holder = $bingo->lockHolder($square);
 
-        return $holder === null
-            ? null
-            : trans('bingo.lockout_taken', ['team' => $holder->team?->name ?? trans('common.deleted_user')]);
+        return $holder === null ? null : trans('bingo.lockout_taken', ['team' => $bingo->competitorName($holder)]);
     }
 
     /** Give a square that may have come free to the next team in line. */
@@ -379,7 +377,7 @@ class BingoController extends Controller
             'win_lines.*' => [Rule::in(BingoCard::LINE_KINDS)],
         ]);
 
-        if ($refusal = $bingo->lockoutChangeRefusal($event->mode, $card, $data['lockout'] ?? null)) {
+        if ($refusal = $bingo->lockoutChangeRefusal($card, $data['lockout'] ?? null)) {
             return back()->with('board-save-error', $refusal);
         }
 

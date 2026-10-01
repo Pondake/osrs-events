@@ -1026,7 +1026,6 @@ function submit() {
                 delete payload.lockout;
             }
 
-            if (data.mode !== 'TEAM') delete payload.lockout;
 
             Object.assign(payload, revealFields(data));
 
