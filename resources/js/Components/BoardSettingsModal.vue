@@ -57,6 +57,9 @@
 
                     <format-fields :form="form" />
                 </template>
+                <template #rules>
+                    <rules-fields :form="form" />
+                </template>
                 <template #access>
                     <access-fields
                         :form="form"
@@ -174,6 +177,10 @@
                     <format-fields :form="form" />
                 </template>
 
+                <template #rules>
+                    <rules-fields :form="form" />
+                </template>
+
                 <template #access>
                     <access-fields
                         :form="form"
@@ -270,6 +277,7 @@ import AccessFields from '@/Components/BoardSettings/AccessFields.vue';
 import AnnouncementFields from '@/Components/BoardSettings/AnnouncementFields.vue';
 import BasicsFields from '@/Components/BoardSettings/BasicsFields.vue';
 import FormatFields from '@/Components/BoardSettings/FormatFields.vue';
+import RulesFields from '@/Components/BoardSettings/RulesFields.vue';
 import InviteFields from '@/Components/BoardSettings/InviteFields.vue';
 import DangerFields from '@/Components/BoardSettings/DangerFields.vue';
 import TeamFields from '@/Components/BoardSettings/TeamFields.vue';
@@ -456,6 +464,9 @@ const metricsForKind = computed(() => site().metricsByKind?.[metricKind.value] ?
  * Teams is conditional because the question it answers — which teams play —
  * only exists once you have said the event has teams at all.
  */
+// Claim rules only exist on the types with something to claim.
+const hasRules = computed(() => ['BINGO', 'SNAKES_LADDERS'].includes(form.type));
+
 const steps = computed(() => [
     // First, because it is the step that can answer several of the others.
     // Skippable in one click — see TemplateFields' "start from scratch".
@@ -463,6 +474,7 @@ const steps = computed(() => [
     { value: 'type', slot: 'type', title: trans('admin.step_type'), icon: 'i-lucide-shapes' },
     { value: 'basics', slot: 'basics', title: trans('admin.step_basics'), icon: 'i-lucide-text' },
     { value: 'format', slot: 'format', title: trans('admin.step_format'), icon: 'i-lucide-settings-2' },
+    ...(hasRules.value ? [{ value: 'rules', slot: 'rules', title: trans('admin.step_rules'), icon: 'i-lucide-gavel' }] : []),
     { value: 'access', slot: 'access', title: trans('admin.step_access'), icon: 'i-lucide-lock' },
     ...(form.mode === 'TEAM'
         ? [{ value: 'teams', slot: 'teams', title: trans('admin.team_assignment'), icon: 'i-lucide-users' }]
@@ -483,6 +495,7 @@ const stepIndex = computed(() => Math.max(0, steps.value.findIndex((s) => s.valu
 const tabs = computed(() => [
     { value: 'basics', slot: 'basics', label: trans('admin.step_basics') },
     { value: 'format', slot: 'format', label: trans('admin.step_format') },
+    ...(hasRules.value ? [{ value: 'rules', slot: 'rules', label: trans('admin.step_rules') }] : []),
     { value: 'access', slot: 'access', label: trans('admin.step_access') },
     // Always present, including while the site switch is off — the tab then
     // says so. It used to be a field on Access that simply vanished, which
@@ -1121,12 +1134,12 @@ const FIELD_TABS = {
     bingo_size: 'format',
     win_condition: 'format',
     line_bonus: 'format',
-    requires_approval: 'format',
-    trust_runelite_completions: 'format',
-    lockout: 'format',
-    reveal: 'format',
-    reveal_limit: 'format',
-    reveal_every_minutes: 'format',
+    requires_approval: 'rules',
+    trust_runelite_completions: 'rules',
+    lockout: 'rules',
+    reveal: 'rules',
+    reveal_limit: 'rules',
+    reveal_every_minutes: 'rules',
     dice_roll_limit: 'format',
     access_mode: 'access',
     required_guild_id: 'access',

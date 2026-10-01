@@ -188,7 +188,7 @@ test.describe('lockout', () => {
         const host = await as('owner');
 
         await open(red, LOCKOUT);
-        await expect(red.getByText('Lockout: the first team to a square keeps it')).toBeVisible();
+        await expect(red.getByText('Lockout: the first to a square keeps it')).toBeVisible();
         await claim(red, 1);
 
         // Nobody holds it yet, so Blues can still get in line behind them.
@@ -242,7 +242,7 @@ test.describe('lockout', () => {
 
         const dialog = blue.getByRole('dialog');
 
-        await expect(dialog.getByText('Another team had this square approved first, so it can no longer be claimed.')).toBeVisible();
+        await expect(dialog.getByText('Someone else had this square approved first, so it can no longer be claimed.')).toBeVisible();
         await expect(dialog.getByRole('button', { name: 'Submit claim' })).toHaveCount(0);
         await expect(dialog.getByLabel('Screenshot link')).toHaveCount(0);
     });

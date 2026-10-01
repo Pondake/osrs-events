@@ -369,6 +369,7 @@
     "admin.step_editors": "Editors",
     "admin.step_editors_desc": "Authors & teams",
     "admin.step_format": "Format",
+    "admin.step_rules": "Rules",
     "admin.step_schedule": "Schedule",
     "admin.step_schedule_desc": "Dates & dice rules",
     "admin.step_status": "Status",

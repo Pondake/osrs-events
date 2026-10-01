@@ -35,6 +35,7 @@ async function createThroughTheSteps(page, title) {
     await dialog.getByLabel('Title').first().fill(title);
     await dialog.getByRole('button', { name: 'Next', exact: true }).click();
     await dialog.getByRole('button', { name: 'Next', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Next', exact: true }).click();
     await dialog.getByRole('button', { name: /^Create event$|^Create$/ }).click();
 
     // A new event opens straight into filling in its tiles.
