@@ -59,6 +59,7 @@ class EventNotificationService
                 // A cancelled event's page is gone the moment this is sent.
                 $change === EventStatusChanged::CANCELLED ? null : route('events.show', $event),
                 $change === EventStatusChanged::PAUSED ? $event->pause_reason : null,
+                $event->type,
             ));
         }
 

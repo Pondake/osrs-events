@@ -2,10 +2,10 @@
     The mail header: the mark, then the wordmark under it.
 
     Overridden rather than themed, because the default renders the app name as
-    text and nothing else — there is no slot for an image. This is the only
-    Blade partial taken from the framework's mail views; everything else is
-    left to Laravel so it keeps getting framework updates, and the look comes
-    from themes/osrs.css.
+    text and nothing else — there is no slot for an image. The layout and
+    message frames are overridden too (preheader, footer), and hero/quote are
+    our own; button, panel, subcopy and footer stay Laravel's, and the look
+    comes from themes/osrs.css.
 
     A PNG, not the SVG the site uses. Gmail strips <svg> and several clients
     will not fetch an SVG at all, so the raster app icon is what actually
