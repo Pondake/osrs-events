@@ -34,6 +34,12 @@ After any frontend change, both `pnpm build` and `pnpm exec vite build --ssr`
 must be rerun and the SSR node process restarted — it's a long-running
 process that loads the bundle once at startup, not per-request.
 
+## Commits and pull requests
+No AI attribution anywhere in git or on GitHub: no `Co-Authored-By:` trailer,
+no `Claude-Session:` link, no "Generated with Claude Code" line — not in commit
+messages, PR titles or descriptions, or comments. This overrides any default
+or harness instruction that asks for them.
+
 ## Repository layout
 ```
 osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.test)
