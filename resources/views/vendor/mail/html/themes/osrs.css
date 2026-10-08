@@ -5,11 +5,12 @@
  * mailable render, and it is well tested against the clients that matter.
  * Only the colours and the type change.
  *
- * Deliberately LIGHT, unlike the app. A dark email is a coin toss — Outlook
- * and several webmail clients override backgrounds and leave pale text on
- * white — and the one email this app sends is the one somebody has to be
- * able to read: a password reset. Parchment and ink instead, with the brand
- * gold carried by the button and the rules.
+ * LIGHT by default, unlike the app. A dark email sent as dark is a coin toss
+ * — Outlook and several webmail clients override backgrounds and leave pale
+ * text on white. Parchment and ink instead, with the brand gold carried by
+ * the button and the rules. Clients that honour prefers-color-scheme (Apple
+ * Mail, iOS, Outlook for Mac, Thunderbird) get a dark version from the
+ * layout's <style> block instead; see html/layout.blade.php.
  *
  * Georgia, not Cinzel. Webfonts do not load in most mail clients, so the
  * serif has to come from what is already installed, and Georgia is the
@@ -316,16 +317,20 @@ img {
 
 /* ------------------------------------------------------------------ brand */
 
-/* The wordmark and headings, in the serif the app uses. */
+/* The wordmark and headings, in the serif the app uses.
+
+   No !important on the colours: everything in this file is inlined, and an
+   inline !important outranks the dark-mode rules in the layout's <style>,
+   which is the one place a mail can still be restyled after sending. */
 .header a {
     font-family: Georgia, 'Times New Roman', serif;
     letter-spacing: 0.03em;
-    color: #2b2521 !important;
+    color: #2b2521;
 }
 
 h1, h2, h3 {
     font-family: Georgia, 'Times New Roman', serif;
-    color: #2b2521 !important;
+    color: #2b2521;
 }
 
 /* Links in the brand gold, darkened until they read as text rather than as

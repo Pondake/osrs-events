@@ -42,7 +42,8 @@
 
 @isset($actionText)
 <x-slot:subcopy>
-{{ trans('mail.button_trouble') }} <span class="break-all">[{{ $displayableActionUrl }}]({{ $actionUrl }})</span>
+{{ trans('mail.button_trouble') }}<br>
+<span class="break-all">[{{ $displayableActionUrl }}]({{ $actionUrl }})</span>
 </x-slot:subcopy>
 @endisset
 </x-mail::message>

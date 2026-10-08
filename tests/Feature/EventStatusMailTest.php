@@ -115,4 +115,29 @@ class EventStatusMailTest extends TestCase
         $this->assertStringContainsString('Jagex', $html);
         $this->assertStringNotContainsString('All rights reserved', $html);
     }
+
+    /**
+     * A dark version for the clients that ask for one. It has to live in the
+     * <style> block, the one part the inliner leaves alone — and the mail has
+     * to say it supports dark, or Apple Mail never applies it.
+     */
+    #[Test]
+    public function the_mail_has_a_dark_version(): void
+    {
+        $html = $this->render(EventStatusChanged::PAUSED);
+
+        $this->assertStringContainsString('<meta name="color-scheme" content="light dark">', $html);
+        $this->assertStringContainsString('@media (prefers-color-scheme: dark)', $html);
+        // An inline !important on a heading would outrank the dark rule.
+        $this->assertDoesNotMatchRegularExpression('/<h1[^>]*style="[^"]*color: #2b2521 !important/', $html);
+    }
+
+    /** The fallback link starts its own line, so it can be long-pressed and copied whole. */
+    #[Test]
+    public function the_fallback_link_is_on_a_line_of_its_own(): void
+    {
+        $html = $this->render(EventStatusChanged::PAUSED);
+
+        $this->assertMatchesRegularExpression('/'.preg_quote(e(trans('mail.button_trouble')), '/').'<br>\s*<span class="break-all"/', $html);
+    }
 }
