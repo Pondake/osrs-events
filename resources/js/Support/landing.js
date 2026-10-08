@@ -19,6 +19,7 @@ export const LANDING_PAGES = [
     'OsrsBingo',
     'OsrsSkillRace',
     'OsrsDropRace',
+    'OsrsHardcoreWorlds',
     // Every CMS page — privacy, terms, donate. They are read by the same
     // people, in the same frame of mind, and they are what a search result
     // lands on.
@@ -73,6 +74,7 @@ const NO_BACKGROUND = [
     'OsrsBingo',
     'OsrsSkillRace',
     'OsrsDropRace',
+    'OsrsHardcoreWorlds',
     'OsrsClanEvents',
     'OsrsEventIdeas',
     'SnakesAndLadders',
@@ -122,6 +124,7 @@ export const PUBLIC_PATHS = [
     '/osrs-bingo',
     '/osrs-skill-race',
     '/osrs-drop-race',
+    '/osrs-hardcore-worlds-clan-events',
     '/about',
 ];
 

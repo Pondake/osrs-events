@@ -148,6 +148,12 @@ Een permanente nieuwe spelmodus, aangekondigd op de RuneFest 2026 Summit (3 okto
 
 Dat is het beste moment voor een clanevent in jaren: iedereen begint op dezelfde dag vanaf nul. Daar kan dit product precies op inspelen.
 
+**Gebouwd op 2026-10-08:** de pagina op `/osrs-hardcore-worlds-clan-events` (`LandingController::hardcoreWorlds()`, `OsrsHardcoreWorlds.vue`, copy onder `landing.hardcore.*`) en de blueprint "Hardcore Worlds Launch Bingo". Nog open:
+- de feiten in `landing.hardcore.fact*` en de tegels controleren;
+- een eigen OG-afbeelding via `scripts/og-images.mjs`;
+- `php artisan db:seed --class=EventBlueprintSeeder` op productie, want de seeder draait niet bij een deploy;
+- de URL indienen bij Search Console.
+
 - **Pagina `/osrs-hardcore-worlds-clan-events`.** Zelfde opzet als de andere gidsen (`GuideLayout`), met FAQ-JSON-LD via `View::share('jsonLd')` vanwege de `@context`-valkuil die in `LandingController` beschreven staat. De pagina krijgt een plek in `SitemapController::STATIC_PATHS` en een link vanaf `/osrs-event-ideas` en de home. Inhoud:
   - waarom een gedeelde start zich zo goed leent voor een clanevent;
   - drie of vier formats: een launch-race, een bingo voor verse accounts, "wie leeft het langst" en een teamrace;

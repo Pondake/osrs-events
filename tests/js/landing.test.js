@@ -20,6 +20,7 @@ describe('isLandingPage', () => {
         expect(isLandingPage('OsrsBingo')).toBe(true);
         expect(isLandingPage('OsrsSkillRace')).toBe(true);
         expect(isLandingPage('OsrsDropRace')).toBe(true);
+        expect(isLandingPage('OsrsHardcoreWorlds')).toBe(true);
     });
 
     /** About, Privacy, Terms and anything an admin adds later. */
@@ -74,6 +75,7 @@ describe('isPublicPath', () => {
         expect(isPublicPath('/osrs-bingo')).toBe(true);
         expect(isPublicPath('/osrs-skill-race')).toBe(true);
         expect(isPublicPath('/osrs-drop-race')).toBe(true);
+        expect(isPublicPath('/osrs-hardcore-worlds-clan-events')).toBe(true);
         expect(isPublicPath('/about')).toBe(true);
     });
 

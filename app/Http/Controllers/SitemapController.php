@@ -39,6 +39,9 @@ class SitemapController extends Controller
         '/osrs-bingo' => ['priority' => '0.9', 'changefreq' => 'monthly'],
         '/osrs-skill-race' => ['priority' => '0.9', 'changefreq' => 'monthly'],
         '/osrs-drop-race' => ['priority' => '0.9', 'changefreq' => 'monthly'],
+        // Weekly rather than monthly until launch settles: the page follows
+        // a game mode whose details were still moving when it was written.
+        '/osrs-hardcore-worlds-clan-events' => ['priority' => '0.9', 'changefreq' => 'weekly'],
         // Listed here rather than picked up as a CMS row: /about stopped
         // being one on 2026-09-07. Lower priority than the guides, which are
         // what the search traffic is actually for.

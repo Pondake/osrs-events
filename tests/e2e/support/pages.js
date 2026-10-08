@@ -22,6 +22,7 @@ export const PAGES = {
         '/osrs-bingo',
         '/osrs-skill-race',
         '/osrs-drop-race',
+        '/osrs-hardcore-worlds-clan-events',
         '/about',
         '/beta',
         '/privacy',

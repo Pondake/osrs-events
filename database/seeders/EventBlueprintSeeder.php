@@ -180,6 +180,21 @@ class EventBlueprintSeeder extends Seeder
                 ],
             ],
             [
+                'title' => 'Hardcore Worlds Launch Bingo',
+                'type' => 'BINGO',
+                'metric' => null,
+                'description' => 'A team card for launch week on Hardcore Worlds, every square within reach of a fresh character. Agree what a death costs before kickoff and put it in the description.',
+                'settings' => [
+                    'mode' => 'TEAM',
+                    'bingo_size' => 5,
+                    'win_condition' => 'LINE',
+                    // The site cannot see a death. Reviewing claims is how a
+                    // host turns down a square claimed after one, which is
+                    // the only enforcement the death rule gets.
+                    'requires_approval' => true,
+                ],
+            ],
+            [
                 'title' => 'Item Race',
                 'type' => 'BINGO',
                 'metric' => null,

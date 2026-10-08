@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Page;
 use App\Models\Supporter;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\View;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -358,6 +359,70 @@ class LandingController extends Controller
     public function dropRace(): Response
     {
         return $this->metricRacePage('drop_race', 'OsrsDropRace');
+    }
+
+    /**
+     * The Hardcore Worlds guide. Unlike the other guides it is about a
+     * moment, not an event type: the game mode opens on 2026-11-04 and every
+     * clan starts it from nothing on the same day, which is the event this
+     * page sells.
+     *
+     * Two things it is careful about, both because they can change under it:
+     *
+     *  - The game facts (`landing.hardcore.fact*`) are from Jagex's RuneFest
+     *    2026 announcement as reported before launch, and the page says so.
+     *    They sit in their own keys so a correction is a one-line edit.
+     *  - Races are offered last and conditionally. They read progress from
+     *    Wise Old Man, and whether it tracks Hardcore Worlds characters was
+     *    not known when this was written. Bingo and Snakes & Ladders are
+     *    claimed by hand and work regardless, so those lead.
+     *
+     * The site does not detect deaths. The death rules are therefore advice
+     * for the host, not a feature, and the copy never implies otherwise.
+     */
+    public function hardcoreWorlds(): Response
+    {
+        $facts = collect(range(1, 5))->map(fn ($i) => trans("landing.hardcore.fact{$i}"))->all();
+
+        // `guide` is the event type's own guide, so the page hands off to
+        // the explanation it does not repeat.
+        $formats = [
+            ['key' => 'bingo', 'icon' => 'i-lucide-grid-3x3', 'guide' => '/osrs-bingo'],
+            ['key' => 'snakes', 'icon' => 'i-lucide-arrow-up-from-line', 'guide' => '/osrs-snakes-and-ladders'],
+            ['key' => 'survival', 'icon' => 'i-lucide-heart-crack', 'guide' => null],
+            ['key' => 'sprint', 'icon' => 'i-lucide-trophy', 'guide' => '/osrs-skill-race'],
+        ];
+
+        $deathRules = collect(range(1, 4))->map(fn ($i) => [
+            'title' => trans("landing.hardcore.death{$i}_title"),
+            'description' => trans("landing.hardcore.death{$i}_desc"),
+        ])->all();
+
+        $faqs = collect(range(1, 5))->map(fn ($i) => [
+            'question' => trans("landing.hardcore.faq_q{$i}"),
+            'answer' => trans("landing.hardcore.faq_a{$i}"),
+        ])->all();
+
+        $this->shareFaqJsonLd($faqs);
+
+        return Inertia::render('OsrsHardcoreWorlds', [
+            'facts' => $facts,
+            'formats' => collect($formats)->map(fn (array $format) => [
+                'icon' => $format['icon'],
+                'title' => trans("landing.hardcore.format_{$format['key']}_title"),
+                'description' => trans("landing.hardcore.format_{$format['key']}_desc"),
+                'guide' => $format['guide'],
+            ])->all(),
+            'deathRules' => $deathRules,
+            // A note only where a square needs one; most explain themselves.
+            'squares' => collect(range(1, 12))->map(fn ($i) => [
+                'title' => trans("landing.hardcore.square{$i}"),
+                'note' => Lang::has("landing.hardcore.square{$i}_note")
+                    ? trans("landing.hardcore.square{$i}_note")
+                    : null,
+            ])->all(),
+            'faqs' => $faqs,
+        ]);
     }
 
     public function clanEvents(): Response

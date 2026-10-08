@@ -1,5 +1,5 @@
 /**
- * The six OSRS Events guide pages, in one place.
+ * The OSRS Events guide pages, in one place.
  *
  * Two surfaces show this same list — the header's Guides dropdown
  * (AppHeader.vue) and every guide page's own "Other guides" sidebar link
@@ -11,12 +11,12 @@
  */
 /**
  * Tailwind classes for a guide page's article body — same handful of
- * heading/paragraph/list/FAQ styles needed on all six guide pages. A scoped
+ * heading/paragraph/list/FAQ styles needed on every guide page. A scoped
  * `<style>` with `@apply` was tried first and dropped: Tailwind v4 rejects
  * `@apply` inside a Vue SFC's scoped style block unless it also imports the
  * theme via `@reference`, which isn't a pattern used anywhere else in this
  * codebase — plain utility classes on the tags themselves, shared from here
- * so the six pages don't each retype the same class strings, is the smaller
+ * so the pages don't each retype the same class strings, is the smaller
  * amount of new machinery.
  */
 export const GUIDE_PROSE = {
@@ -41,4 +41,5 @@ export const GUIDE_LINKS = [
     { to: '/osrs-drop-race', labelKey: 'nav.drop_race', icon: 'i-lucide-swords' },
     { to: '/osrs-clan-events', labelKey: 'nav.clan_events', icon: 'i-lucide-users' },
     { to: '/osrs-event-ideas', labelKey: 'nav.event_ideas', icon: 'i-lucide-lightbulb' },
+    { to: '/osrs-hardcore-worlds-clan-events', labelKey: 'nav.hardcore_worlds', icon: 'i-lucide-heart-crack' },
 ];

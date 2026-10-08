@@ -104,6 +104,7 @@ class EnsureSiteUnlocked
         'landing.bingo',
         'landing.skill-race',
         'landing.drop-race',
+        'landing.hardcore-worlds',
         'pages.show',
         // Off the CMS since 2026-09-07, so it no longer arrives through
         // `pages.show` and needs naming here in its own right.

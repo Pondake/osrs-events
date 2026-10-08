@@ -135,6 +135,10 @@ Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name(
 Route::get('/osrs-bingo', [LandingController::class, 'bingo'])->name('landing.bingo');
 Route::get('/osrs-skill-race', [LandingController::class, 'skillRace'])->name('landing.skill-race');
 Route::get('/osrs-drop-race', [LandingController::class, 'dropRace'])->name('landing.drop-race');
+// Not an event type but a moment: the Hardcore Worlds launch on 2026-11-04.
+// See LandingController::hardcoreWorlds().
+Route::get('/osrs-hardcore-worlds-clan-events', [LandingController::class, 'hardcoreWorlds'])
+    ->name('landing.hardcore-worlds');
 
 // A fixed route rather than the CMS catch-all, since 2026-09-07 — see
 // LandingController::about(). Declared here, above the catch-all, so a

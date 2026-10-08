@@ -112,6 +112,7 @@ class SiteLockTest extends TestCase
         $this->get('/osrs-bingo')->assertOk();
         $this->get('/osrs-skill-race')->assertOk();
         $this->get('/osrs-drop-race')->assertOk();
+        $this->get('/osrs-hardcore-worlds-clan-events')->assertOk();
         $this->get('/about')->assertOk();
         $this->get('/sitemap.xml')->assertOk()->assertDontSee(url('/events').'<', false);
     }
