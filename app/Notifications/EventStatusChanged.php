@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
 
 /**
  * "The event you joined has been paused / resumed / cancelled."
@@ -60,6 +61,20 @@ class EventStatusChanged extends Notification implements ShouldQueue
     public const RESTORED = 'restored';
 
     /**
+     * The colour of the label at the top of the mail, per change — see the
+     * .status-* rules in the mail theme. Three of them are the same good news
+     * ("it runs again"), so they share a tone; the label says which.
+     */
+    private const TONES = [
+        self::PAUSED => 'paused',
+        self::RESUMED => 'live',
+        self::REOPENED => 'live',
+        self::RESTORED => 'live',
+        self::ENDED => 'finished',
+        self::CANCELLED => 'cancelled',
+    ];
+
+    /**
      * @param  string  $change  one of the constants above
      * @param  string|null  $url  where to go and look — null for a cancelled
      *                            event, which no longer has a page
@@ -70,6 +85,8 @@ class EventStatusChanged extends Notification implements ShouldQueue
         public readonly ?string $url = null,
         /** The host's own words, when they gave any. Paused only. */
         public readonly ?string $reason = null,
+        /** An Event::EVENT_TYPES key, shown above the title ("Bingo"). */
+        public readonly ?string $eventType = null,
     ) {}
 
     /** @return array<int, string> */
@@ -80,23 +97,42 @@ class EventStatusChanged extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
+        $event = ['event' => $this->eventTitle];
+
+        // Both squished onto one line: they are a host's own typing, and the
+        // template sets them in an HTML block that a blank line would end
+        // early, spilling the rest into Markdown.
+        $title = Str::squish($this->eventTitle);
+        $reason = filled($this->reason) ? Str::squish($this->reason) : null;
+
         $mail = (new MailMessage)
-            ->subject(trans("notifications.event_{$this->change}_subject", ['event' => $this->eventTitle]))
+            ->subject(trans("notifications.event_{$this->change}_subject", $event))
             ->greeting(trans('notifications.greeting', ['name' => $notifiable->displayName()]))
-            ->line(trans("notifications.event_{$this->change}_line", ['event' => $this->eventTitle]));
+            ->line(trans("notifications.event_{$this->change}_line"));
 
-        // The host's reason, in their words, on its own line. It is the part
-        // people actually want — "paused" they can see for themselves.
-        if (filled($this->reason)) {
-            $mail->line(trans('notifications.event_reason', ['reason' => $this->reason]));
+        // A cancelled event has no page left, and a button leading to a 404
+        // is worse than no button — so that one mail points at the events
+        // that are still on, which is the useful next step anyway.
+        $url = $this->url ?? ($this->change === self::CANCELLED ? route('events.index') : null);
+
+        if ($url !== null) {
+            $mail->action(trans("notifications.event_{$this->change}_action"), $url);
         }
 
-        // A cancelled event has nowhere to send anyone: the page is gone, and
-        // a button leading to a 404 is worse than no button.
-        if ($this->url !== null) {
-            $mail->action(trans('notifications.event_action'), $this->url);
-        }
-
-        return $mail->line(trans('notifications.event_footer'));
+        return $mail->markdown('mail.notice', [
+            'hero' => [
+                'tone' => self::TONES[$this->change],
+                'label' => trans("notifications.event_{$this->change}_label"),
+                'title' => $title,
+                'eyebrow' => $this->eventType !== null ? trans('events.type_'.strtolower($this->eventType)) : null,
+            ],
+            // The host's reason, in their words, set apart. It is the part
+            // people actually want — "paused" they can see for themselves —
+            // so it is also what the inbox preview shows.
+            'quote' => $reason,
+            'quoteLabel' => trans('notifications.event_reason_label'),
+            'preheader' => $reason ?? trans("notifications.event_{$this->change}_preheader"),
+            'reason' => trans('notifications.event_footer', $event),
+        ]);
     }
 }

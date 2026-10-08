@@ -348,8 +348,143 @@ a {
     color: #2b2521 !important;
 }
 
-/* A hairline of gold under the header, the way the app's panels are lit
+/* ------------------------------------------------------------------ card */
+
+/* A bar of gold along the top of the card, the way the app's panels are lit
    from the top. */
 .header {
-    border-bottom: 2px solid #d4a33e;
+    padding: 28px 0 20px;
+}
+
+.inner-body {
+    border-top: 4px solid #d4a33e;
+    border-radius: 6px;
+}
+
+/* ------------------------------------------------------------------ hero */
+
+/* What happened (the label) and what it happened to (the title). */
+.hero {
+    margin: 0 0 22px;
+}
+
+.hero-cell {
+    border-bottom: 1px solid #ded3c2;
+    padding-bottom: 20px;
+}
+
+.status {
+    border-radius: 999px;
+    display: inline-block;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    padding: 6px 11px;
+    text-transform: uppercase;
+}
+
+/* One tone per kind of news. Each pair measures at least 4.5:1. */
+.status-paused {
+    background-color: #fbecc8;
+    color: #6f4700;
+}
+
+.status-live {
+    background-color: #dcefd9;
+    color: #1f5a27;
+}
+
+.status-finished {
+    background-color: #d4a33e;
+    color: #2b2521;
+}
+
+.status-cancelled {
+    background-color: #f5ddd6;
+    color: #8a2b1a;
+}
+
+.status-account {
+    background-color: #ece6dc;
+    color: #4a423a;
+}
+
+.eyebrow {
+    color: #8a7f72;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    margin: 16px 0 0;
+    text-transform: uppercase;
+}
+
+/* Georgia, for the reason at the top of this file. */
+.hero-title {
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: 27px;
+    font-weight: bold;
+    line-height: 1.2;
+    margin: 10px 0 0;
+}
+
+/* ----------------------------------------------------------------- quote */
+
+/* A person's own words: a host's note on a pause. Set apart from the mail's
+   voice by the gold rule and the serif. */
+.quote {
+    margin: 4px 0 22px;
+}
+
+.quote-cell {
+    background-color: #faf5ec;
+    border-left: 4px solid #d4a33e;
+    padding: 14px 18px;
+}
+
+.quote-label {
+    color: #8a7f72;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+}
+
+.quote-text {
+    color: #2b2521;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: 17px;
+    font-style: italic;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* --------------------------------------------------------------- sign-off */
+
+.signoff {
+    color: #4a423a;
+    margin-top: 8px;
+}
+
+.signoff strong {
+    color: #2b2521;
+    font-family: Georgia, 'Times New Roman', serif !important;
+}
+
+/* ---------------------------------------------------------------- button */
+
+.button-primary,
+.button-blue {
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.footer p {
+    line-height: 1.6;
+}
+
+.footer a {
+    white-space: nowrap;
 }

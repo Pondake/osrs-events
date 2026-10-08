@@ -200,6 +200,38 @@ class PasswordResetMailTest extends TestCase
         $this->assertStringContainsString(config('app.url').'/android-chrome-192x192.png', $html);
     }
 
+    /**
+     * Our words, not Laravel's. The stock mail opens with "Hello!" and "You
+     * are receiving this email because we received a password reset
+     * request" — the wording of every phishing mail that imitates one.
+     */
+    #[Test]
+    public function the_mail_greets_the_player_by_name_in_our_own_words(): void
+    {
+        $user = $this->user();
+        $user->update(['nickname' => 'Zezima']);
+
+        $mail = (new ResetPassword('a-token'))->toMail($user);
+        $html = (string) $mail->render();
+
+        $this->assertSame(trans('mail.reset_subject'), $mail->subject);
+        $this->assertStringContainsString('Hi Zezima,', $html);
+        $this->assertStringContainsString(e(trans('mail.reset_action')), $html);
+        $this->assertStringNotContainsString('Hello!', $html);
+        $this->assertStringNotContainsString('All rights reserved', $html);
+    }
+
+    /** The link's lifetime is the configured one, not a number in a string. */
+    #[Test]
+    public function the_mail_says_how_long_the_link_works(): void
+    {
+        config(['auth.passwords.users.expire' => 45]);
+
+        $html = (string) (new ResetPassword('a-token'))->toMail($this->user())->render();
+
+        $this->assertStringContainsString('next 45 minutes', $html);
+    }
+
     #[Test]
     public function the_mail_carries_a_link_that_actually_works(): void
     {

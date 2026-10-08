@@ -510,10 +510,11 @@ class EventPauseTest extends TestCase
         $this->assertStringNotContainsString('notifications.', implode(' ', $paused->introLines));
         $this->assertSame('https://osrs-events.test/e/1', $paused->actionUrl);
 
-        // Nowhere to send anyone once the event is gone.
+        // The event's own page is gone, so the button goes to the events
+        // that are still on rather than to a 404.
         $cancelled = (new EventStatusChanged(EventStatusChanged::CANCELLED, 'Clan Bingo'))->toMail($reader);
 
-        $this->assertNull($cancelled->actionUrl);
+        $this->assertSame(route('events.index'), $cancelled->actionUrl);
         $this->assertStringContainsString('cancelled', $cancelled->subject);
     }
 
