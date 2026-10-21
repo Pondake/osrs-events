@@ -46,6 +46,30 @@ class LandingController extends Controller
     {
         $page = Page::where('slug', 'home')->where('is_published', true)->first();
 
+        // Identifies the site as an entity, which is what a navigational
+        // brand query ("osrs events") needs to resolve to this domain.
+        $home = rtrim(url('/'), '/').'/';
+        View::share('jsonLd', [
+            json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'Organization',
+                '@id' => $home.'#organization',
+                'name' => 'OSRS Events',
+                'url' => $home,
+                'logo' => url('/android-chrome-512x512.png'),
+                'sameAs' => ['https://github.com/Pondake/osrs-events'],
+            ], JSON_UNESCAPED_SLASHES),
+            json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'WebSite',
+                '@id' => $home.'#website',
+                'name' => 'OSRS Events',
+                'alternateName' => 'OSRS Events — free clan events for Old School RuneScape',
+                'url' => $home,
+                'publisher' => ['@id' => $home.'#organization'],
+            ], JSON_UNESCAPED_SLASHES),
+        ]);
+
         return Inertia::render('Home', [
             'page' => $page === null ? null : [
                 'title' => $page->title,
@@ -304,6 +328,51 @@ class LandingController extends Controller
             'hostSteps' => $hostSteps,
             'playerSteps' => $playerSteps,
             'modes' => $modes,
+            'faqs' => $faqs,
+        ]);
+    }
+
+    /**
+     * Tile ideas per tier, as `landing.tile_ideas.<tier>_<n>_{title,desc}`
+     * keys. The counts live here so adding a tile is one row in en.json plus
+     * one number.
+     */
+    private const TILE_IDEA_TIERS = [
+        'starter' => ['icon' => 'i-lucide-sprout', 'count' => 6],
+        'bossing' => ['icon' => 'i-lucide-swords', 'count' => 8],
+        'endgame' => ['icon' => 'i-lucide-crown', 'count' => 8],
+        'skilling' => ['icon' => 'i-lucide-pickaxe', 'count' => 4],
+        'clues' => ['icon' => 'i-lucide-scroll', 'count' => 4],
+    ];
+
+    public function bingoTileIdeas(): Response
+    {
+        $tips = collect(range(1, 5))->map(fn ($i) => [
+            'title' => trans("landing.tile_ideas.tip{$i}_title"),
+            'description' => trans("landing.tile_ideas.tip{$i}_desc"),
+        ])->all();
+
+        $tiers = collect(self::TILE_IDEA_TIERS)->map(fn ($tier, $key) => [
+            'id' => $key,
+            'icon' => $tier['icon'],
+            'title' => trans("landing.tile_ideas.{$key}_title"),
+            'intro' => trans("landing.tile_ideas.{$key}_intro"),
+            'tiles' => collect(range(1, $tier['count']))->map(fn ($i) => [
+                'title' => trans("landing.tile_ideas.{$key}_{$i}_title"),
+                'description' => trans("landing.tile_ideas.{$key}_{$i}_desc"),
+            ])->all(),
+        ])->values()->all();
+
+        $faqs = collect(range(1, 4))->map(fn ($i) => [
+            'question' => trans("landing.tile_ideas.faq_q{$i}"),
+            'answer' => trans("landing.tile_ideas.faq_a{$i}"),
+        ])->all();
+
+        $this->shareFaqJsonLd($faqs);
+
+        return Inertia::render('OsrsBingoTileIdeas', [
+            'tips' => $tips,
+            'tiers' => $tiers,
             'faqs' => $faqs,
         ]);
     }

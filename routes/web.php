@@ -26,6 +26,7 @@ use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\EventBlueprintController;
 use App\Http\Controllers\EventParticipationController;
 use App\Http\Controllers\EventStreamController;
+use App\Http\Controllers\IndexNowKeyController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\OnboardingController;
@@ -126,6 +127,7 @@ Route::middleware('guest')->group(function () {
 // sitemap at all in production, which for a site whose traffic plan is
 // organic search is the cheapest omission there is to fix.
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+Route::get('/indexnow.txt', IndexNowKeyController::class)->name('indexnow.key');
 
 Route::get('/', [LandingController::class, 'home'])->name('home');
 Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadders'])
@@ -133,6 +135,7 @@ Route::get('/osrs-snakes-and-ladders', [LandingController::class, 'snakesAndLadd
 Route::get('/osrs-clan-events', [LandingController::class, 'clanEvents'])->name('landing.clan-events');
 Route::get('/osrs-event-ideas', [LandingController::class, 'eventIdeas'])->name('landing.event-ideas');
 Route::get('/osrs-bingo', [LandingController::class, 'bingo'])->name('landing.bingo');
+Route::get('/osrs-bingo-tile-ideas', [LandingController::class, 'bingoTileIdeas'])->name('landing.bingo-tile-ideas');
 Route::get('/osrs-skill-race', [LandingController::class, 'skillRace'])->name('landing.skill-race');
 Route::get('/osrs-drop-race', [LandingController::class, 'dropRace'])->name('landing.drop-race');
 

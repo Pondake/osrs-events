@@ -1,5 +1,5 @@
 /**
- * The six OSRS Events guide pages, in one place.
+ * The OSRS Events guide pages, in one place.
  *
  * Two surfaces show this same list — the header's Guides dropdown
  * (AppHeader.vue) and every guide page's own "Other guides" sidebar link
@@ -37,6 +37,7 @@ export const GUIDE_PROSE = {
 export const GUIDE_LINKS = [
     { to: '/osrs-snakes-and-ladders', labelKey: 'nav.snakes', icon: 'i-lucide-arrow-up-from-line' },
     { to: '/osrs-bingo', labelKey: 'nav.bingo', icon: 'i-lucide-grid-3x3' },
+    { to: '/osrs-bingo-tile-ideas', labelKey: 'nav.tile_ideas', icon: 'i-lucide-list-checks' },
     { to: '/osrs-skill-race', labelKey: 'nav.skill_race', icon: 'i-lucide-trophy' },
     { to: '/osrs-drop-race', labelKey: 'nav.drop_race', icon: 'i-lucide-swords' },
     { to: '/osrs-clan-events', labelKey: 'nav.clan_events', icon: 'i-lucide-users' },

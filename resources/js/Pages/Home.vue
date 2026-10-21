@@ -178,6 +178,7 @@ const guideLinks = [
     { label: trans('nav.snakes'), to: '/osrs-snakes-and-ladders', icon: 'i-lucide-arrow-up-from-line', color: 'primary', variant: 'outline' },
     { label: trans('nav.clan_events'), to: '/osrs-clan-events', icon: 'i-lucide-users', color: 'neutral', variant: 'outline' },
     { label: trans('nav.event_ideas'), to: '/osrs-event-ideas', icon: 'i-lucide-lightbulb', color: 'neutral', variant: 'outline' },
+    { label: trans('nav.tile_ideas'), to: '/osrs-bingo-tile-ideas', icon: 'i-lucide-list-checks', color: 'neutral', variant: 'outline' },
 ];
 
 const adminLinks = [

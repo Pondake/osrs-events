@@ -45,7 +45,10 @@
         <section id="supported">
             <h2 :class="prose.h2">{{ $t('landing.event_ideas.supported_title') }}</h2>
             <p :class="prose.p">{{ $t('landing.event_ideas.supported_body') }}</p>
-            <u-button href="/osrs-snakes-and-ladders" color="primary" variant="outline" trailing-icon="i-lucide-arrow-right" :label="$t('landing.event_ideas.supported_cta')" />
+            <div class="flex flex-wrap gap-3">
+                <u-button href="/osrs-snakes-and-ladders" color="primary" variant="outline" trailing-icon="i-lucide-arrow-right" :label="$t('landing.event_ideas.supported_cta')" />
+                <u-button href="/osrs-bingo-tile-ideas" color="neutral" variant="outline" trailing-icon="i-lucide-arrow-right" :label="$t('landing.tile_ideas.title')" />
+            </div>
         </section>
     </guide-layout>
 </template>

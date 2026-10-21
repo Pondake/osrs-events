@@ -87,6 +87,12 @@
             </ul>
         </section>
 
+        <section id="tile-ideas">
+            <h2 :class="prose.h2">{{ $t('landing.bingo.tile_ideas_title') }}</h2>
+            <p :class="prose.p">{{ $t('landing.bingo.tile_ideas_body') }}</p>
+            <u-button href="/osrs-bingo-tile-ideas" color="primary" variant="outline" trailing-icon="i-lucide-arrow-right" :label="$t('landing.tile_ideas.title')" />
+        </section>
+
         <section id="faq">
             <h2 :class="prose.h2">{{ faqTitle }}</h2>
             <guide-faq :faqs="faqs" />
@@ -129,6 +135,7 @@ const sections = [
     { id: 'how-it-works', label: howItWorksTitle },
     { id: 'why', label: trans('landing.bingo.why_title') },
     { id: 'win-conditions', label: trans('landing.bingo.modes_title') },
+    { id: 'tile-ideas', label: trans('landing.bingo.tile_ideas_title') },
     { id: 'faq', label: faqTitle },
 ];
 
