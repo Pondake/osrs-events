@@ -102,6 +102,7 @@ class EnsureSiteUnlocked
         'landing.clan-events',
         'landing.event-ideas',
         'landing.bingo',
+        'landing.bingo-tile-ideas',
         'landing.skill-race',
         'landing.drop-race',
         'pages.show',
@@ -117,6 +118,7 @@ class EnsureSiteUnlocked
         // A door that redirects that link back to itself is a closed loop.
         'discord',
         'sitemap',
+        'indexnow.key',
         // The catch-all miss. A locked site should answer a dead URL the same
         // way an open one does — and it already did for single-segment paths,
         // which `pages.show` above lets through to 404 from PageController.

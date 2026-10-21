@@ -59,4 +59,11 @@ return [
         'user_agent' => env('WOM_USER_AGENT', 'osrs-events'),
     ],
 
+    // IndexNow tells Bing (and through it Copilot and ChatGPT search) about
+    // changed URLs. The key is public by design — /indexnow.txt serves it —
+    // but it is per-site, so it lives in the environment, not the repository.
+    'indexnow' => [
+        'key' => env('INDEXNOW_KEY'),
+    ],
+
 ];

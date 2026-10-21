@@ -17,6 +17,7 @@ export const LANDING_PAGES = [
     'OsrsClanEvents',
     'OsrsEventIdeas',
     'OsrsBingo',
+    'OsrsBingoTileIdeas',
     'OsrsSkillRace',
     'OsrsDropRace',
     // Every CMS page — privacy, terms, donate. They are read by the same
@@ -71,6 +72,7 @@ const MOTIFS = {
  */
 const NO_BACKGROUND = [
     'OsrsBingo',
+    'OsrsBingoTileIdeas',
     'OsrsSkillRace',
     'OsrsDropRace',
     'OsrsClanEvents',

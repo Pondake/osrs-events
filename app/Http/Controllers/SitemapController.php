@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Event;
 use App\Models\Page;
 use App\Models\Setting;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 
 /**
  * The XML sitemap, built from the routes and CMS rows rather than kept as a
@@ -28,25 +30,43 @@ class SitemapController extends Controller
      * fails closed where a filter would quietly start publishing whatever
      * gets added next.
      *
-     * @var array<string, array{priority: string, changefreq: string}>
+     * `lastmod` is the date the page's content last changed, kept by hand:
+     * Google only trusts it while it stays accurate, and a file mtime would
+     * move on every deploy. Bump it when a page's copy changes.
+     *
+     * @var array<string, array{priority: string, changefreq: string, lastmod?: string}>
      */
     private const STATIC_PATHS = [
-        '/' => ['priority' => '1.0', 'changefreq' => 'weekly'],
+        '/' => ['priority' => '1.0', 'changefreq' => 'weekly', 'lastmod' => '2026-10-21'],
         '/events' => ['priority' => '0.8', 'changefreq' => 'daily'],
-        '/osrs-snakes-and-ladders' => ['priority' => '0.9', 'changefreq' => 'monthly'],
-        '/osrs-clan-events' => ['priority' => '0.9', 'changefreq' => 'monthly'],
-        '/osrs-event-ideas' => ['priority' => '0.9', 'changefreq' => 'monthly'],
-        '/osrs-bingo' => ['priority' => '0.9', 'changefreq' => 'monthly'],
-        '/osrs-skill-race' => ['priority' => '0.9', 'changefreq' => 'monthly'],
-        '/osrs-drop-race' => ['priority' => '0.9', 'changefreq' => 'monthly'],
+        '/osrs-snakes-and-ladders' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-10-21'],
+        '/osrs-clan-events' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-08-27'],
+        '/osrs-event-ideas' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-10-21'],
+        '/osrs-bingo' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-10-21'],
+        '/osrs-bingo-tile-ideas' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-10-21'],
+        '/osrs-skill-race' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-09-24'],
+        '/osrs-drop-race' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-09-24'],
         // Listed here rather than picked up as a CMS row: /about stopped
         // being one on 2026-09-07. Lower priority than the guides, which are
         // what the search traffic is actually for.
-        '/about' => ['priority' => '0.5', 'changefreq' => 'monthly'],
-        '/supporters' => ['priority' => '0.3', 'changefreq' => 'monthly'],
+        '/about' => ['priority' => '0.5', 'changefreq' => 'monthly', 'lastmod' => '2026-09-23'],
+        '/supporters' => ['priority' => '0.3', 'changefreq' => 'monthly', 'lastmod' => '2026-09-23'],
     ];
 
     public function __invoke(): Response
+    {
+        $xml = view('sitemap', ['urls' => $this->entries()])->render();
+
+        return response($xml, 200, ['Content-Type' => 'application/xml']);
+    }
+
+    /**
+     * Every URL the sitemap lists. Public so `seo:indexnow` submits exactly
+     * the same set.
+     *
+     * @return array<int, array{loc: string, priority: string, changefreq: string, lastmod: ?string}>
+     */
+    public function entries(): array
     {
         $urls = [];
 
@@ -59,10 +79,10 @@ class SitemapController extends Controller
             }
 
             $urls[] = [
-                'loc' => url($path),
+                'loc' => $path === '/' ? rtrim(url('/'), '/').'/' : url($path),
                 'priority' => $meta['priority'],
                 'changefreq' => $meta['changefreq'],
-                'lastmod' => null,
+                'lastmod' => $path === '/events' ? $this->eventsLastmod() : ($meta['lastmod'] ?? null),
             ];
         }
 
@@ -83,8 +103,13 @@ class SitemapController extends Controller
             ];
         }
 
-        $xml = view('sitemap', ['urls' => $urls])->render();
+        return $urls;
+    }
 
-        return response($xml, 200, ['Content-Type' => 'application/xml']);
+    private function eventsLastmod(): ?string
+    {
+        $latest = Event::where('is_listed', true)->max('updated_at');
+
+        return $latest === null ? null : Carbon::parse($latest)->toAtomString();
     }
 }
