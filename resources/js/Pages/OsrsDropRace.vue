@@ -118,7 +118,7 @@ const prose = GUIDE_PROSE;
 const seo = {
     title: trans('landing.drop_race.meta_title'),
     description: trans('landing.drop_race.meta_desc'),
-    image: '/images/og/drop-race.png',
+    image: 'drop-race',
 };
 
 const howItWorksTitle = trans('landing.drop_race.how_title');
