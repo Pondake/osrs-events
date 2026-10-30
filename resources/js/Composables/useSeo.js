@@ -1,12 +1,12 @@
 import { computed } from 'vue';
 import { usePage, Head } from '@inertiajs/vue3';
+import ogImages from '../og-images.json';
 
 const SITE_URL = 'https://osrs-events.com';
 const SITE_NAME = 'OSRS Events';
-const DEFAULT_OG_IMAGE = '/og-image.png';
-// Bump after re-running scripts/og-images.mjs. Discord and X cache a preview
-// by URL for days, so a new image under the same URL stays invisible.
-const OG_IMAGE_VERSION = 2;
+// Written by scripts/og-images.mjs: variant name to a path with the image's
+// content hash in it, so a new image always gets a new URL.
+const DEFAULT_OG_IMAGE = 'default';
 
 /**
  * Inertia equivalent of frontend/app/composables/useSeo.ts. Same contract —
@@ -73,9 +73,8 @@ export function useSeoData(options) {
     const path = computed(() => page.url.split('?')[0]);
     const canonical = computed(() => new URL(path.value, origin.value).toString());
     const imageUrl = computed(() => {
-        const url = new URL(resolved.value.image ?? DEFAULT_OG_IMAGE, origin.value);
-        url.searchParams.set('v', OG_IMAGE_VERSION);
-        return url.toString();
+        const image = resolved.value.image ?? DEFAULT_OG_IMAGE;
+        return new URL(ogImages[image] ?? image, origin.value).toString();
     });
 
     /**

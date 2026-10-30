@@ -22,6 +22,7 @@
         <meta property="og:image" :content="imageUrl" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/png" />
         <meta property="og:image:alt" :content="resolved.title" />
 
         <meta name="twitter:card" content="summary_large_image" />
@@ -196,7 +197,7 @@ const prose = GUIDE_PROSE;
 const { resolved, canonical, imageUrl, robots, Head } = useSeoData({
     title: trans('beta.meta_title'),
     description: trans('beta.meta_desc'),
-    image: '/images/og/beta.png',
+    image: 'beta',
     noindex: true,
 });
 

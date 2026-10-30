@@ -67,7 +67,7 @@ const props = defineProps({
 const seo = {
     title: trans('landing.tile_ideas.meta_title'),
     description: trans('landing.tile_ideas.meta_desc'),
-    image: '/images/og/bingo.png',
+    image: 'bingo',
 };
 
 const faqTitle = trans('landing.faq_title');

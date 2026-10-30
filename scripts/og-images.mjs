@@ -4,13 +4,14 @@
  *     node scripts/og-images.mjs
  *     node scripts/og-images.mjs --preview <dir>   also writes each image at 400px wide
  *
- * Writes public/og-image.png (every page without its own) and
- * public/images/og/<name>.png (pages that pass `image` to useSeoData).
+ * Writes public/images/og/<name>-<hash>.png per variant and records the paths
+ * in resources/js/og-images.json, which useSeoData reads: `default` for every
+ * page without its own, the other names for pages that pass `image`.
  *
- * After changing any output, bump OG_IMAGE_VERSION in
- * resources/js/Composables/useSeo.js. Discord, X and Reddit cache a preview by
- * its URL for days; the version in the query string is what makes them fetch
- * the new one.
+ * The content hash is in the file name because Discord, X and Reddit cache a
+ * preview by its URL for days, and WhatsApp ignores an og:image whose URL has
+ * a query string. A changed image gets a new name; an unchanged one keeps its
+ * name, so re-running the script is safe.
  *
  * Needs network access for Cinzel and Instrument Sans (Google Fonts, same
  * source app.blade.php uses) and Playwright's Chromium
@@ -19,7 +20,8 @@
  * the pixels behind it, or when text runs into the artwork or the bottom strip.
  */
 import { chromium } from '@playwright/test';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -59,34 +61,34 @@ const FEATURES = ['Discord', 'RuneLite plugin', 'Wise Old Man'];
 
 const VARIANTS = [
     {
-        out: 'public/og-image.png',
+        name: 'default',
         subtitle: 'Free events for your clan',
         chips: TYPES,
         art: snakesBoard,
     },
     {
-        out: 'public/images/og/beta.png',
+        name: 'beta',
         badge: 'Closed beta',
         subtitle: 'Testers welcome',
         chips: TYPES,
         art: snakesBoard,
     },
     {
-        out: 'public/images/og/bingo.png',
+        name: 'bingo',
         subtitle: 'Bingo for OSRS clans',
         detail: 'A card of goals, claimed with a screenshot. Line or full house wins.',
         features: ['Discord', 'RuneLite plugin'],
         art: bingoCard,
     },
     {
-        out: 'public/images/og/skill-race.png',
+        name: 'skill-race',
         subtitle: 'Skill races for OSRS clans',
         detail: 'Pick a skill, race on XP gained. Tracked from the hiscores.',
         features: ['Discord', 'Wise Old Man'],
         art: (assets) => raceBoard(assets.skillIcon),
     },
     {
-        out: 'public/images/og/drop-race.png',
+        name: 'drop-race',
         subtitle: 'Drop races for OSRS clans',
         detail: 'Pick a boss, race on kills. Tracked from the hiscores.',
         features: ['Discord', 'Wise Old Man'],
@@ -364,6 +366,13 @@ const assets = {
     bossIcon: await pngIcon('public/images/osrs/bosses/vorkath.png'),
 };
 
+const OUT_DIR = 'public/images/og';
+const MANIFEST = 'resources/js/og-images.json';
+// Variants that fail a check keep their previous entry.
+const manifest = JSON.parse(await readFile(join(root, MANIFEST), 'utf8').catch(() => '{}'));
+await mkdir(join(root, OUT_DIR), { recursive: true });
+const existing = await readdir(join(root, OUT_DIR));
+
 const browser = await chromium.launch();
 const tab = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
 let failed = false;
@@ -390,7 +399,7 @@ try {
         }
 
         const worst = Math.min(...results.map((r) => r.contrast));
-        console.log(`${variant.out}  worst contrast ${worst.toFixed(2)}:1  smallest text ${Math.min(...results.map((r) => r.fontSize))}px`);
+        console.log(`${variant.name}  worst contrast ${worst.toFixed(2)}:1  smallest text ${Math.min(...results.map((r) => r.fontSize))}px`);
         for (const r of results) console.log(`    ${r.contrast.toFixed(2)}:1  ${r.fontSize}px  ${r.text}`);
 
         if (problems.length) {
@@ -399,9 +408,13 @@ try {
             continue;
         }
 
-        const out = join(root, variant.out);
-        await mkdir(dirname(out), { recursive: true });
-        await writeFile(out, image);
+        const hash = createHash('sha256').update(image).digest('hex').slice(0, 8);
+        const file = `${variant.name}-${hash}.png`;
+        for (const old of existing.filter((f) => f !== file && f.startsWith(`${variant.name}-`) && /^[0-9a-f]{8}\.png$/.test(f.slice(variant.name.length + 1)))) {
+            await rm(join(root, OUT_DIR, old));
+        }
+        await writeFile(join(root, OUT_DIR, file), image);
+        manifest[variant.name] = `/${OUT_DIR.replace(/^public\//, '')}/${file}`;
 
         if (previewDir) {
             const small = await browser.newPage({ viewport: { width: 400, height: 210 } });
@@ -409,12 +422,14 @@ try {
                 `<body style="margin:0"><img style="display:block;width:400px;height:210px" src="data:image/png;base64,${image.toString('base64')}"></body>`,
             );
             await mkdir(previewDir, { recursive: true });
-            await small.screenshot({ path: join(previewDir, variant.out.split('/').pop().replace('.png', '-400.png')) });
+            await small.screenshot({ path: join(previewDir, `${variant.name}-400.png`) });
             await small.close();
         }
     }
 } finally {
     await browser.close();
 }
+
+await writeFile(join(root, MANIFEST), `${JSON.stringify(manifest, null, 4)}\n`);
 
 if (failed) process.exit(1);
