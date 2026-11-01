@@ -103,6 +103,9 @@ class AuditLog extends Model
         'team.member_role_changed',
         'board.team_added',
         'board.team_removed',
+        // A host letting the site fill the rest of their board. Logged to
+        // see whether it gets used, and how much of it is edited afterwards.
+        'board.auto_filled',
         // Stopping an event, in both senses. Logged because each of these
         // is felt by everyone playing and none of them leaves a trace
         // anywhere else — a paused event looks the same as one nobody has

@@ -292,7 +292,7 @@ class TileEditingTest extends TestCase
      */
     #[Test]
     #[DataProvider('jumpTypes')]
-    public function a_jump_tile_is_saved_without_the_task_it_was_sent(string $type): void
+    public function a_jump_tile_is_saved_without_the_task_it_was_sent(string $type, int $target): void
     {
         [$owner, $event] = $this->board();
         $task = Task::create(['title' => 'Kill 50 cows']);
@@ -302,7 +302,7 @@ class TileEditingTest extends TestCase
             'task_id' => $task->id,
             'title_override' => 'Not this either',
             'type' => $type,
-            'target_position' => 9,
+            'target_position' => $target,
         ])->assertRedirect();
 
         $tile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
@@ -310,7 +310,7 @@ class TileEditingTest extends TestCase
         $this->assertNull($tile->task_id);
         $this->assertNull($tile->title_override);
         // The move itself is the point of the tile and must survive.
-        $this->assertSame(9, $tile->target_position);
+        $this->assertSame($target, $tile->target_position);
     }
 
     /**
@@ -373,8 +373,58 @@ class TileEditingTest extends TestCase
     public static function jumpTypes(): array
     {
         return [
-            'snake' => ['SNAKE'],
-            'ladder' => ['LADDER'],
+            'snake' => ['SNAKE', 1],
+            'ladder' => ['LADDER', 9],
         ];
+    }
+
+    // ------------------------------------------- a jump that cannot work is refused
+
+    /**
+     * Seen on production: a snake on tile 1 with no target. It moves nobody,
+     * and the board drew it as if it did.
+     */
+    #[Test]
+    #[DataProvider('brokenJumps')]
+    public function a_jump_that_cannot_move_anyone_is_refused(string $type, int $position, ?int $target): void
+    {
+        [$owner, $event] = $this->board('SIZE_5X5');
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => $position,
+            'type' => $type,
+            'target_position' => $target,
+        ])->assertSessionHasErrors('target_position');
+
+        $this->assertSame(0, Tile::where('board_id', $event->board->id)->count());
+    }
+
+    public static function brokenJumps(): array
+    {
+        return [
+            'snake on the first tile' => ['SNAKE', 0, null],
+            'ladder on the first tile' => ['LADDER', 0, 5],
+            'snake on the finish' => ['SNAKE', 24, 3],
+            'snake without a target' => ['SNAKE', 10, null],
+            'ladder without a target' => ['LADDER', 10, null],
+            'snake going up' => ['SNAKE', 10, 15],
+            'ladder going down' => ['LADDER', 10, 5],
+            'snake onto itself' => ['SNAKE', 10, 10],
+        ];
+    }
+
+    /** A target sent with a normal tile is not kept: it would draw an arrow. */
+    #[Test]
+    public function a_normal_tile_keeps_no_target(): void
+    {
+        [$owner, $event] = $this->board();
+
+        $this->actingAs($owner)->post("/events/{$event->id}/tiles", [
+            'position' => 3,
+            'type' => 'NORMAL',
+            'target_position' => 9,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertNull(Tile::where('board_id', $event->board->id)->where('position', 3)->value('target_position'));
     }
 }

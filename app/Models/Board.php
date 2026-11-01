@@ -41,6 +41,32 @@ class Board extends Model
     }
 
     /**
+     * Why a snake or ladder at this spot would not work, or null if it does.
+     *
+     * The first tile is where everybody starts, so nobody lands on it; a jump
+     * on the last tile would turn the finish into a move. A target is
+     * required because a jump without one does nothing, and the direction is
+     * the whole difference between the two.
+     */
+    public function jumpError(string $type, int $position, ?int $target): ?string
+    {
+        if ($type === 'NORMAL') {
+            return null;
+        }
+
+        $last = $this->tileCount() - 1;
+
+        return match (true) {
+            $position === 0 => trans('validation.jump_on_first_tile'),
+            $position === $last => trans('validation.jump_on_last_tile'),
+            $target === null => trans('validation.jump_target_required'),
+            $type === 'SNAKE' && $target >= $position => trans('validation.snake_must_go_down'),
+            $type === 'LADDER' && $target <= $position => trans('validation.ladder_must_go_up'),
+            default => null,
+        };
+    }
+
+    /**
      * The Snakes & Ladders payload of an Event: the grid and the progress on
      * it. Everything about what the competition IS — title, dates, who may
      * join, which teams play — moved to Event when the second event type

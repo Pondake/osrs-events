@@ -18,6 +18,23 @@
                     <u-progress :model-value="pct" size="sm" />
                 </div>
 
+                <!-- The way out of filling 49 rows by hand, offered up front
+                     while there is anything left to fill. -->
+                <div
+                    v-if="!isBingo && filled < rows.length"
+                    class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg ring ring-default p-3"
+                >
+                    <p class="text-sm text-muted flex-1">{{ $t('tile_list.fill_rest_hint') }}</p>
+                    <u-button
+                        color="primary"
+                        icon="i-lucide-wand-sparkles"
+                        class="shrink-0 justify-center"
+                        :loading="fillingRest"
+                        :label="$t('tile_list.fill_rest')"
+                        @click="fillRest"
+                    />
+                </div>
+
                 <!-- Which way the numbering runs. The two grids genuinely
                      disagree — a Snakes & Ladders board is a track that
                      starts bottom-left and snakes upward, a bingo card is
@@ -144,7 +161,7 @@
 
                             <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <u-form-field :label="$t('tile_editor.tile_type')">
-                                    <u-select v-model="draft.type" :items="tileTypeOptions" class="w-full" />
+                                    <u-select v-model="draft.type" :items="tileTypeOptions(row.position)" class="w-full" />
                                 </u-form-field>
 
                                 <!-- A picker, not a number box. "Target
@@ -152,7 +169,7 @@
                                      board's own zero-based indexing; this
                                      lists the tiles by the number printed on
                                      them. -->
-                                <u-form-field v-if="draft.type !== 'NORMAL'" :label="$t('tile_editor.target_tile')">
+                                <u-form-field v-if="draft.type !== 'NORMAL'" :label="$t('tile_editor.target_tile')" :error="saveErrors.target_position">
                                     <u-select v-model="draft.targetPosition" :items="targetOptions(row.position)" class="w-full" />
                                 </u-form-field>
                             </div>
@@ -194,9 +211,10 @@
         </template>
 
         <template #footer>
-            <!-- Local only: fills every empty square with a random task. -->
+            <!-- Local only: fills every empty square with a random task. A
+                 board has "Fill the rest" above instead. -->
             <u-button
-                v-if="isLocal"
+                v-if="isLocal && isBingo"
                 color="neutral"
                 variant="ghost"
                 icon="i-lucide-shuffle"
@@ -214,6 +232,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import TaskPicker from '@/Components/TaskPicker.vue';
+import { canHoldJump, jumpTargetPositions } from '@/Support/board';
 
 /**
  * Fills in a whole board, one row at a time.
@@ -255,6 +274,17 @@ function fillRandomly() {
     router.post(`/dev/events/${props.eventId}/fill-random`, {}, {
         preserveScroll: true,
         onFinish: () => (filling.value = false),
+    });
+}
+
+const fillingRest = ref(false);
+
+function fillRest() {
+    fillingRest.value = true;
+    router.post(`/events/${props.eventId}/tiles/fill`, {}, {
+        preserveScroll: true,
+        onError: (errors) => console.error(errors),
+        onFinish: () => (fillingRest.value = false),
     });
 }
 
@@ -358,26 +388,49 @@ watch(() => props.open, (open) => {
     if (!open) expanded.value = null;
 });
 
-const tileTypeOptions = [
-    { label: trans('tile_editor.type_normal'), value: 'NORMAL' },
-    { label: trans('tile_editor.type_snake_full'), value: 'SNAKE' },
-    { label: trans('tile_editor.type_ladder_full'), value: 'LADDER' },
-];
+function tileTypeOptions(position) {
+    const normal = { label: trans('tile_editor.type_normal'), value: 'NORMAL' };
 
-/** Every other tile, by its printed number — not its zero-based position. */
-function targetOptions(from) {
-    return rows.value
-        .filter((r) => r.position !== from)
-        .map((r) => ({ label: trans('tile_list.tile_n', { n: r.label }), value: r.position }));
+    if (!canHoldJump(position, props.total)) return [normal];
+
+    return [
+        normal,
+        { label: trans('tile_editor.type_snake_full'), value: 'SNAKE' },
+        { label: trans('tile_editor.type_ladder_full'), value: 'LADDER' },
+    ];
 }
+
+/** The tiles this jump may lead to, by printed number — not zero-based position. */
+function targetOptions(from) {
+    return jumpTargetPositions(draft.type, from, props.total)
+        .map((position) => ({ label: trans('tile_list.tile_n', { n: position + 1 }), value: position }));
+}
+
+// A target picked for a ladder points the wrong way once the tile becomes a
+// snake, so it is dropped rather than carried over.
+watch(() => draft.type, () => {
+    if (expanded.value === null || draft.targetPosition === null) return;
+
+    if (!jumpTargetPositions(draft.type, expanded.value, props.total).includes(draft.targetPosition)) {
+        draft.targetPosition = null;
+    }
+});
+
+const saveErrors = ref({});
+
+watch(expanded, () => (saveErrors.value = {}));
 
 function save(row) {
     saving.value = true;
+    saveErrors.value = {};
 
     const done = {
         preserveScroll: true,
         onSuccess: () => (expanded.value = null),
-        onError: (errors) => console.error(errors),
+        onError: (errors) => {
+            console.error(errors);
+            saveErrors.value = errors;
+        },
         onFinish: () => (saving.value = false),
     };
 

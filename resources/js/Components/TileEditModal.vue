@@ -69,14 +69,14 @@
                     <u-form-field
                         v-if="form.type !== 'NORMAL'"
                         :label="$t('tile_editor.target_tile')"
-                        :description="$t('tile_editor.target_tile_desc', { max: tileCount })"
+                        :description="$t('tile_editor.target_tile_desc', { min: targetMin, max: targetMax })"
                         :error="form.errors.target_position"
                     >
                         <u-input
                             v-model.number="targetTileNumber"
                             type="number"
-                            min="1"
-                            :max="tileCount"
+                            :min="targetMin"
+                            :max="targetMax"
                             class="w-full"
                         />
                     </u-form-field>
@@ -101,6 +101,7 @@ import { computed, ref, watch } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import TaskPicker from '@/Components/TaskPicker.vue';
+import { canHoldJump } from '@/Support/board';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -121,11 +122,20 @@ const emit = defineEmits(['update:open']);
 
 const isOpen = computed({ get: () => props.open, set: (v) => emit('update:open', v) });
 
-const typeOptions = [
+const typeOptions = computed(() => [
     { label: trans('tile_editor.type_normal'), value: 'NORMAL' },
-    { label: trans('tile_editor.type_snake_full'), value: 'SNAKE' },
-    { label: trans('tile_editor.type_ladder_full'), value: 'LADDER' },
-];
+    ...(canHoldJump(props.position, props.tileCount)
+        ? [
+            { label: trans('tile_editor.type_snake_full'), value: 'SNAKE' },
+            { label: trans('tile_editor.type_ladder_full'), value: 'LADDER' },
+        ]
+        : []),
+]);
+
+// Printed numbers: a snake leads to tile 1 up to the one below it, a ladder
+// to the one above it up to the last.
+const targetMin = computed(() => (form.type === 'LADDER' ? props.position + 2 : 1));
+const targetMax = computed(() => (form.type === 'SNAKE' ? props.position : props.tileCount));
 
 const selectedTask = ref(null);
 

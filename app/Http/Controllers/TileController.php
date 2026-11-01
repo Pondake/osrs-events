@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Board;
 use App\Models\Event;
 use App\Models\Task;
 use App\Models\Tile;
+use App\Services\BoardFillService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Ported from TilesService::upsert() — a tile is identified by (board_id,
@@ -54,6 +57,12 @@ class TileController extends Controller
             'target_position' => ['nullable', 'integer', 'min:0', "max:{$lastPosition}"],
         ]);
 
+        $jumpError = $board->jumpError($data['type'], $data['position'], $data['target_position'] ?? null);
+
+        if ($jumpError !== null) {
+            throw ValidationException::withMessages(['target_position' => $jumpError]);
+        }
+
         // A snake or a ladder is a move, not a thing to do. Landing on one
         // takes the player somewhere else in the same roll, so any task on
         // it is a task nobody can ever be standing on to complete — and one
@@ -76,11 +85,34 @@ class TileController extends Controller
                 'min_quantity' => $isJump ? 1 : ($data['min_quantity'] ?? 1),
                 'required_count' => $isJump ? 1 : ($data['required_count'] ?? 1),
                 'type' => $data['type'],
-                'target_position' => $data['target_position'] ?? null,
+                'target_position' => $isJump ? $data['target_position'] : null,
             ],
         );
 
         return back()->with('board-save', trans('admin.tile_saved'));
+    }
+
+    /** "Fill the rest": a task on every empty tile, and snakes and ladders if there are none. */
+    public function fill(Request $request, Event $event, BoardFillService $filler): RedirectResponse
+    {
+        $this->assertCanEditEvent($request->user(), $event);
+
+        $board = $event->board;
+        abort_unless($board !== null, 404);
+
+        if (! Task::query()->exists()) {
+            return back()->with('board-save-error', trans('tile_list.fill_random_no_tasks'));
+        }
+
+        $result = $filler->fill($board);
+
+        if (array_sum($result) === 0) {
+            return back()->with('board-save', trans('tile_list.fill_nothing_left'));
+        }
+
+        AuditLog::record('board.auto_filled', $event, $result);
+
+        return back()->with('board-save', trans('tile_list.fill_done', $result));
     }
 
     public function destroy(Event $event, Tile $tile): RedirectResponse

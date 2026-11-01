@@ -24,6 +24,7 @@ export const AUDIT_STYLES = {
     'team.member_role_changed': { color: 'neutral', icon: 'i-lucide-user-cog' },
     'board.team_added': { color: 'success', icon: 'i-lucide-layout-grid' },
     'board.team_removed': { color: 'warning', icon: 'i-lucide-layout-grid' },
+    'board.auto_filled': { color: 'neutral', icon: 'i-lucide-wand-sparkles' },
     'event.paused': { color: 'warning', icon: 'i-lucide-pause' },
     'event.resumed': { color: 'success', icon: 'i-lucide-play' },
     'event.finished': { color: 'success', icon: 'i-lucide-flag' },

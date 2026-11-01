@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { trans } from 'laravel-vue-i18n';
 
-import { BOARD_TILE_COUNT, boardEventStatus, claimAreaIsShown, eventStatus, finishSubtitle, formatBoardSize, formatDate, ordinal, settledPlace } from '@/Support/board';
+import { BOARD_TILE_COUNT, boardEventStatus, canHoldJump, claimAreaIsShown, eventStatus, finishSubtitle, formatBoardSize, formatDate, jumpTargetPositions, ordinal, settledPlace } from '@/Support/board';
 import { eventTypeMeta } from '@/Support/eventTypes';
 import { metricIconUrl, metricKindFor, metricLabel, rankedByLabel } from '@/Support/metrics';
 
@@ -345,5 +345,19 @@ describe('claimAreaIsShown', () => {
         expect(claimAreaIsShown({ ...live, closed_at: '2026-09-07T07:15:59Z' }, null, now)).toBe(false);
         expect(claimAreaIsShown({ ...live, paused_at: '2026-09-06' }, null, now)).toBe(false);
         expect(claimAreaIsShown({ start_date: '2026-10-01', end_date: '2026-10-30' }, null, now)).toBe(false);
+    });
+});
+
+describe('snake and ladder rules', () => {
+    it('keeps the first and last tile free of jumps', () => {
+        expect(canHoldJump(0, 25)).toBe(false);
+        expect(canHoldJump(24, 25)).toBe(false);
+        expect(canHoldJump(1, 25)).toBe(true);
+        expect(canHoldJump(23, 25)).toBe(true);
+    });
+
+    it('sends a snake down and a ladder up', () => {
+        expect(jumpTargetPositions('SNAKE', 3, 25)).toEqual([0, 1, 2]);
+        expect(jumpTargetPositions('LADDER', 21, 25)).toEqual([22, 23, 24]);
     });
 });
