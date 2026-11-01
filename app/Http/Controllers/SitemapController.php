@@ -37,9 +37,9 @@ class SitemapController extends Controller
      * @var array<string, array{priority: string, changefreq: string, lastmod?: string}>
      */
     private const STATIC_PATHS = [
-        '/' => ['priority' => '1.0', 'changefreq' => 'weekly', 'lastmod' => '2026-10-21'],
+        '/' => ['priority' => '1.0', 'changefreq' => 'weekly', 'lastmod' => '2026-11-01'],
         '/events' => ['priority' => '0.8', 'changefreq' => 'daily'],
-        '/osrs-snakes-and-ladders' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-10-21'],
+        '/osrs-snakes-and-ladders' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-11-01'],
         '/osrs-clan-events' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-08-27'],
         '/osrs-event-ideas' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-10-21'],
         '/osrs-bingo' => ['priority' => '0.9', 'changefreq' => 'monthly', 'lastmod' => '2026-10-21'],
