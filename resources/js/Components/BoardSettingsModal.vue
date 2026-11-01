@@ -284,7 +284,7 @@ import TeamFields from '@/Components/BoardSettings/TeamFields.vue';
 import TemplateFields from '@/Components/BoardSettings/TemplateFields.vue';
 import BlueprintSaveModal from '@/Components/BlueprintSaveModal.vue';
 import { blueprintPatch, decidesType, layoutFits } from '@/Support/blueprint';
-import { DEFAULT_DURATION, addDuration } from '@/Support/duration';
+import { defaultEventWindow } from '@/Support/duration';
 
 const { user: currentUser } = useAuth();
 
@@ -341,34 +341,6 @@ const discordWebhooksEnabled = computed(() => usePage().props?.site?.discordWebh
 
 // ---------------------------------------------------------------- the form
 
-/**
- * Today, and a fortnight from today, as `<input type="date">` wants them.
- *
- * Built from the local date parts rather than toISOString(): that converts
- * to UTC first, so anyone east of UTC gets tomorrow and anyone far enough
- * west gets yesterday — the same timezone trap dateFields() below avoids
- * when reading a saved date back.
- */
-function isoDate(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function defaultDates() {
-    const start = new Date();
-
-    // How long a new event is pre-filled to run for, from the admin site
-    // settings — a clan that always runs weeklies should say so once rather
-    // than correct the same field on every event.
-    //
-    // A duration, not a day count: "1m" from 31 January has to land on
-    // 28 February, and only the unit can tell you that. See
-    // Support/duration.js, and app/Support/EventDuration.php for the copy
-    // the server computes from.
-    const end = addDuration(start, site().defaultEventDuration ?? DEFAULT_DURATION);
-
-    return { start_date: isoDate(start), end_date: isoDate(end) };
-}
-
 function blankForm() {
     // Size and roll limit come from the admin site settings so a clan can set
     // the shape its events usually take once, instead of every creator
@@ -402,7 +374,9 @@ function blankForm() {
         finish_rule: 'CONTINUE',
         allow_alts: true,
         alts_locked: false,
-        ...defaultDates(),
+        // How long a new event runs comes from the admin site settings — a
+        // clan that always runs weeklies should say so once.
+        ...defaultEventWindow(settings.defaultEventDuration),
         dice_roll_limit: settings.defaultDiceRollLimit ?? null,
         is_listed: true,
         discord_webhook_url: '',

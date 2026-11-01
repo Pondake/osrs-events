@@ -135,6 +135,18 @@
                         <u-form-field :label="$t('admin.board_mode')" :description="$t('admin.board_mode_desc')">
                             <u-select v-model="form.mode" :items="modeOptions" class="w-full" />
                         </u-form-field>
+
+                        <!-- This step has no field for most of what the create
+                             endpoint checks, so a refusal on one of those
+                             would otherwise leave the step standing with no
+                             word about why. -->
+                        <u-alert
+                            v-if="otherBoardError"
+                            color="error"
+                            variant="subtle"
+                            icon="i-lucide-circle-alert"
+                            :description="otherBoardError"
+                        />
                     </template>
 
                     <!-- The counterpart to 'board' for accounts that can't
@@ -348,6 +360,7 @@ import { characterNames, characterRows } from '@/Support/osrsCharacters';
 import { useAuth } from '@/Composables/useAuth';
 import BoardPreview from '@/Components/BoardPreview.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, formatBoardSize } from '@/Support/board';
+import { defaultEventWindow } from '@/Support/duration';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -519,12 +532,18 @@ const modeOptions = [
 const form = useForm({
     title: '',
     description: '',
+    type: 'SNAKES_LADDERS',
+    // Required by the create endpoint. Missing here, every create from this
+    // step was refused on two fields the step does not show.
+    ...defaultEventWindow(page.props?.site?.defaultEventDuration),
     size: 'SIZE_7X7',
     mode: 'SOLO',
     access_mode: 'OPEN',
     is_listed: true,
     author_ids: [],
 });
+
+const otherBoardError = computed(() => Object.entries(form.errors).find(([field]) => field !== 'title')?.[1] ?? null);
 
 // The plain code exists only in the response that created it, so it is kept
 // here; the page prop it arrived in is gone by the next visit.
@@ -655,6 +674,7 @@ function next() {
         form.post('/events', {
             preserveScroll: true,
             onSuccess: () => stepIndex.value++,
+            onError: (errors) => console.error(errors),
         });
 
         return;
