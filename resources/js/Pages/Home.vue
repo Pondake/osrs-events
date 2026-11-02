@@ -91,6 +91,12 @@
                 </u-container>
             </u-page-section>
 
+            <u-page-section v-if="pluginAvailable" :title="$t('home.plugin_demo_title')" :description="$t('home.plugin_demo_subtitle')">
+                <u-container class="max-w-4xl">
+                    <plugin-demo-video caption-class="text-center sm:text-sm" />
+                </u-container>
+            </u-page-section>
+
             <!-- The editable region. Anything an admin adds in
                  /admin/content/home lands here, between the preview and the
                  fixed "what's available" grid. -->
@@ -119,6 +125,7 @@ import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import SeoHead from '@/Components/SeoHead.vue';
 import PageRenderer from '@/Components/Cms/PageRenderer.vue';
+import PluginDemoVideo from '@/Components/PluginDemoVideo.vue';
 import { useAuth } from '@/Composables/useAuth';
 import { useSiteLock } from '@/Composables/useSiteLock';
 import { useCurrentPage } from '@/Support/pageState';
@@ -133,6 +140,7 @@ const page = useCurrentPage();
 // Null until an admin sets one, and the button is withheld rather than
 // pointed at a dead link — same reasoning as the beta page's copy of this.
 const discordInviteUrl = computed(() => page.value.props?.site?.discordInviteUrl ?? null);
+const pluginAvailable = computed(() => (page.value.props?.site?.runelitePluginMode ?? 'off') !== 'off');
 
 /**
  * Unlike /about, /privacy and /terms, this page is only PARTLY editable.

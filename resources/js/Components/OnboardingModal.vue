@@ -209,6 +209,8 @@
                         </div>
                         <p class="text-sm text-muted leading-relaxed">{{ $t('onboarding.runelite_body') }}</p>
 
+                        <plugin-demo-video class="md:hidden" />
+
                         <u-alert
                             v-if="pluginMode === 'testing'"
                             color="warning"
@@ -291,6 +293,8 @@
                         <!-- Where to look, then where to paste: the hub listing
                              until the account has a code, the plugin's own
                              settings once it does. -->
+                        <plugin-demo-video />
+
                         <figure v-if="pluginCode || hasPluginCode" class="space-y-1.5">
                             <img
                                 src="/images/guides/plugin-settings.png"
@@ -359,6 +363,7 @@ import OsrsCharactersField from '@/Components/OsrsCharactersField.vue';
 import { characterNames, characterRows } from '@/Support/osrsCharacters';
 import { useAuth } from '@/Composables/useAuth';
 import BoardPreview from '@/Components/BoardPreview.vue';
+import PluginDemoVideo from '@/Components/PluginDemoVideo.vue';
 import { BOARD_SIZE_LABEL, BOARD_TILE_COUNT, formatBoardSize } from '@/Support/board';
 import { defaultEventWindow } from '@/Support/duration';
 
