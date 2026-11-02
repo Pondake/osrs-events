@@ -12,8 +12,26 @@
             />
         </template>
 
+        <!-- Plain buttons, not u-tabs: see the same choice in Admin/Site.vue. -->
+        <nav class="flex gap-1 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 border-b border-default">
+            <button
+                v-for="tab in tabs"
+                :key="tab.key"
+                type="button"
+                class="flex min-h-11 items-center gap-2 px-3 py-2 rounded-t-md text-sm shrink-0 whitespace-nowrap border-b-2 -mb-px transition-colors sm:min-h-0"
+                :class="activeRole === tab.key
+                    ? 'border-primary text-highlighted font-medium'
+                    : 'border-transparent text-muted hover:text-highlighted'"
+                :aria-pressed="activeRole === tab.key"
+                @click="selectRole(tab.key)"
+            >
+                {{ tab.label }}
+                <u-badge :label="String(tab.count)" color="neutral" variant="soft" size="sm" class="tabular-nums" />
+            </button>
+        </nav>
+
         <div class="divide-y divide-default rounded-lg ring ring-default bg-default">
-            <div v-for="u in users" :key="u.id" class="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
+            <div v-for="u in visibleUsers" :key="u.id" class="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
                 <u-link :to="`/admin/users/${u.id}`" raw class="group flex items-center gap-3 min-w-0 flex-1 min-h-11">
                     <u-avatar :src="u.avatar_url ?? undefined" :alt="displayName(u)" size="sm" />
                     <div class="min-w-0">
@@ -53,7 +71,7 @@
                     </u-dropdown-menu>
                 </div>
             </div>
-            <p v-if="!users.length" class="px-4 py-10 text-center text-muted text-sm">{{ $t('admin.no_users') }}</p>
+            <p v-if="!visibleUsers.length" class="px-4 py-10 text-center text-muted text-sm">{{ $t('admin.no_users') }}</p>
         </div>
 
         <client-only>
@@ -73,8 +91,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import { permissionLabel } from '@/Support/audit';
@@ -105,10 +123,49 @@ const permissionIcon = (name) => PERMISSION_ICONS[name] ?? 'i-lucide-key';
 
 const displayName = (u) => u.nickname ?? u.discord_username ?? u.email;
 
+const roleLabel = (name) => {
+    const key = `admin.role_label_${name.toLowerCase()}`;
+    const label = trans(key);
+    return label === key ? name : label;
+};
+
+// All first, ADMIN last, every other role in between — the known ones even
+// when nobody holds them, plus any role an account still carries.
+const tabs = computed(() => {
+    const held = new Set(props.users.flatMap((u) => u.roles.map((role) => role.name)));
+    const middle = [...new Set([...ROLE_OPTIONS, ...held])].filter((name) => name !== 'ADMIN');
+    const count = (name) => props.users.filter((u) => u.roles.some((role) => role.name === name)).length;
+
+    return [
+        { key: 'all', label: trans('admin.users_tab_all'), count: props.users.length },
+        ...[...middle, 'ADMIN'].map((name) => ({ key: name, label: roleLabel(name), count: count(name) })),
+    ];
+});
+
+const page = usePage();
+const activeRole = ref(new URLSearchParams(page.url.split('?')[1] ?? '').get('role') ?? 'all');
+
+const visibleUsers = computed(() => (activeRole.value === 'all'
+    ? props.users
+    : props.users.filter((u) => u.roles.some((role) => role.name === activeRole.value))));
+
+function query(overrides = {}) {
+    const params = { search: search.value, role: activeRole.value, ...overrides };
+    return Object.fromEntries(Object.entries(params).filter(([key, value]) => value && !(key === 'role' && value === 'all')));
+}
+
+// Client-side: the whole list is already on the page, so switching tabs only
+// rewrites the URL to keep the tab across reloads and shared links.
+function selectRole(key) {
+    activeRole.value = key;
+    const qs = new URLSearchParams(query()).toString();
+    router.replace({ url: `/admin/users${qs ? `?${qs}` : ''}`, preserveState: true, preserveScroll: true });
+}
+
 const search = ref(props.search);
 
 function doSearch(value) {
-    router.get('/admin/users', { search: value }, { preserveState: true, replace: true });
+    router.get('/admin/users', query({ search: value }), { preserveState: true, replace: true });
 }
 
 /**
