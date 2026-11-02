@@ -275,8 +275,8 @@
                                     v-else-if="square.iconUrl"
                                     :src="square.iconUrl"
                                     alt=""
-                                    class="object-contain shrink-0"
-                                    :class="square.label ? 'size-8 sm:size-7' : 'size-10'"
+                                    class="object-contain shrink-0 [image-rendering:pixelated]"
+                                    :class="square.label ? 'size-[clamp(1.75rem,28cqi,5rem)]' : 'size-[clamp(2.5rem,40cqi,7rem)]'"
                                 />
 
                                 <!-- On a phone a square stops being a label
@@ -297,7 +297,7 @@
                                      would otherwise be blank. -->
                                 <span
                                     v-if="square.label"
-                                    class="text-[11px] leading-tight"
+                                    class="text-[clamp(11px,6cqi,15px)] leading-tight"
                                     :class="square.iconUrl
                                         ? 'hidden sm:line-clamp-2'
                                         : (hasRequirement(square) ? 'line-clamp-1 sm:line-clamp-2' : 'line-clamp-2')"
