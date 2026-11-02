@@ -1,4 +1,4 @@
-import { eventId } from './db.js';
+import { eventId, user } from './db.js';
 
 /** The page types the layout and colour passes read, by the seat that sees them. */
 export const EVENT_TITLES = [
@@ -47,6 +47,8 @@ export const PAGES = {
     admin: () => [
         '/admin',
         '/admin/users',
+        `/admin/users/${user('e2e_owner').id}`,
+        `/admin/users/${user('e2e_member').id}`,
         '/admin/events',
         '/admin/tasks',
         '/admin/boss-icons',

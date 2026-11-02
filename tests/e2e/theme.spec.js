@@ -1,5 +1,5 @@
 import { test, expect, hydrated } from './fixtures.js';
-import { eventId } from './support/db.js';
+import { eventId, user } from './support/db.js';
 import { measureContrast, measureRoles } from './support/contrast.js';
 
 /**
@@ -20,6 +20,7 @@ const PAGES = [
     { seat: null, path: () => `/events/${eventId('E2E Ladder')}`, name: 'event page' },
     { seat: 'unreachable', path: () => '/settings/profile', name: 'settings' },
     { seat: 'admin', path: () => '/admin/users', name: 'admin' },
+    { seat: 'admin', path: () => `/admin/users/${user('e2e_owner').id}`, name: 'admin user profile' },
 ];
 
 /**

@@ -38,6 +38,7 @@ declare module 'vue' {
     UInput: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
     UInputMenu: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/InputMenu.vue')['default']
     UKbd: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Kbd.vue')['default']
+    ULink: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/vue/overrides/inertia/Link.vue')['default']
     UMain: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Main.vue')['default']
     UModal: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']
     UNavigationMenu: typeof import('./node_modules/.pnpm/@nuxt+ui@4.10.0_7fe849c53c264a701f3bc2250e3ee16e/node_modules/@nuxt/ui/dist/runtime/components/NavigationMenu.vue')['default']
