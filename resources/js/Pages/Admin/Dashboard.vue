@@ -55,11 +55,17 @@
                 </template>
 
                 <div class="divide-y divide-default -my-2">
-                    <div v-for="user in newestUsers" :key="user.id" class="flex items-center gap-3 py-2.5">
+                    <u-link
+                        v-for="user in newestUsers"
+                        :key="user.id"
+                        :to="`/admin/users/${user.id}`"
+                        raw
+                        class="flex items-center gap-3 py-2.5 min-h-11 -mx-2 px-2 rounded-md hover:bg-elevated/60"
+                    >
                         <u-avatar :src="user.avatarUrl ?? undefined" :alt="user.name" size="xs" />
-                        <span class="text-sm truncate flex-1 min-w-0">{{ user.name }}</span>
+                        <span class="text-sm text-default truncate flex-1 min-w-0">{{ user.name }}</span>
                         <span class="text-xs text-dimmed tabular-nums shrink-0">{{ formatDate(user.createdAt) }}</span>
-                    </div>
+                    </u-link>
                 </div>
             </u-card>
         </div>

@@ -187,3 +187,18 @@ export function eventStatus(event, now = new Date()) {
 export function claimAreaIsShown(event, claim, now = new Date()) {
     return Boolean(claim) || eventStatus(event, now) === 'live';
 }
+
+/**
+ * Whether a tile can be a snake or a ladder. Everybody starts on the first
+ * tile, so nobody lands on it, and the last one is the finish. Mirrors
+ * Board::jumpError() on the server.
+ */
+export function canHoldJump(position, total) {
+    return position > 0 && position < total - 1;
+}
+
+/** Where a snake (only down) or a ladder (only up) from this tile may lead. */
+export function jumpTargetPositions(type, from, total) {
+    return Array.from({ length: total }, (_, position) => position)
+        .filter((position) => (type === 'SNAKE' ? position < from : position > from));
+}

@@ -4,12 +4,22 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\BingoCompletion;
+use App\Models\BoardAuthor;
+use App\Models\BoardTeam;
+use App\Models\CompletedTile;
+use App\Models\Event;
+use App\Models\EventParticipant;
+use App\Models\OsrsAccount;
 use App\Models\Permission;
+use App\Models\PluginToken;
 use App\Models\Role;
+use App\Models\TeamMember;
 use App\Services\AccountDeletionService;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -51,6 +61,181 @@ class UserController extends Controller
             'search' => $request->string('search')->toString(),
             'permissionKeys' => self::PERMISSION_KEYS,
         ]);
+    }
+
+    /**
+     * One account, everything attached to it. Admin-only and read-only: the
+     * role and permission controls stay on the list.
+     */
+    public function show(User $user): Response
+    {
+        abort_unless(Auth::user()->isAdmin(), 403);
+
+        $user->load(['roles:id,name', 'permissions:id,name', 'osrsAccounts', 'userGuilds']);
+
+        return Inertia::render('Admin/UserShow', [
+            'profile' => [
+                'id' => $user->id,
+                'name' => $user->displayName(),
+                'discordUsername' => $user->discord_username,
+                'email' => $user->email,
+                'avatarUrl' => $user->avatar_url,
+                'createdAt' => $user->created_at,
+                'onboardedAt' => $user->onboarding_completed_at,
+                'roles' => $user->roles->pluck('name'),
+                'access' => $this->accessFor($user),
+                'isSelf' => $user->id === Auth::id(),
+            ],
+            'characters' => $user->osrsAccounts->map(fn (OsrsAccount $account) => [
+                'username' => $account->username,
+                'isMain' => $account->isMain(),
+                'verifiedAt' => $account->osrs_verified_at,
+                'provenAt' => $account->osrs_proven_at,
+            ]),
+            'connections' => [
+                'discord' => $user->discord_id !== null,
+                'password' => $user->password !== null,
+                'guilds' => $user->userGuilds->pluck('guild_name')->filter()->sort()->values(),
+                'pushDevices' => $user->pushSubscriptions()->whereNull('expired_at')->count(),
+                'plugin' => PluginToken::where('user_id', $user->id)->first(['last_used_at', 'last_plugin_version']),
+            ],
+            'events' => $this->eventsFor($user),
+            'teams' => $user->teamMembers()->with('team:id,name')->get()
+                ->filter(fn (TeamMember $member) => $member->team)
+                ->map(fn (TeamMember $member) => [
+                    'id' => $member->team->id,
+                    'name' => $member->team->name,
+                    'role' => $member->role,
+                ])
+                ->values(),
+            'claims' => $this->claimsBy($user),
+            'auditRetentionDays' => AuditLog::retentionDays(),
+            'activity' => AuditLog::query()
+                ->where('actor_id', $user->id)
+                ->orWhere(fn ($q) => $q->where('target_type', 'User')->where('target_id', $user->id))
+                ->orderByDesc('created_at')
+                ->limit(30)
+                ->get(['id', 'actor_id', 'action', 'actor_label', 'target_label', 'created_at']),
+        ]);
+    }
+
+    /**
+     * Every event the account is tied to, one row each: hosting, playing solo,
+     * or playing through a team. Deleted events included — this page is
+     * where you find out what somebody was part of.
+     */
+    private function eventsFor(User $user): Collection
+    {
+        $links = collect();
+
+        foreach (BoardAuthor::where('user_id', $user->id)->get() as $author) {
+            $links->push([$author->event_id, $author->is_owner ? 'owner' : 'cohost', null]);
+        }
+
+        foreach (EventParticipant::where('user_id', $user->id)->pluck('event_id') as $eventId) {
+            $links->push([$eventId, 'participant', null]);
+        }
+
+        $teamIds = $user->teamMembers()->pluck('team_id');
+        foreach (BoardTeam::whereIn('team_id', $teamIds)->with('team:id,name')->get() as $entry) {
+            $links->push([$entry->event_id, 'team', $entry->team?->name]);
+        }
+
+        $events = Event::withTrashed()
+            ->whereIn('id', $links->pluck(0)->unique())
+            ->get(['id', 'title', 'type', 'mode', 'start_date', 'end_date', 'paused_at', 'closed_at', 'deleted_at'])
+            ->keyBy('id');
+
+        return $links->groupBy(0)
+            ->map(function (Collection $rows, string $eventId) use ($events) {
+                $event = $events->get($eventId);
+
+                if (! $event) {
+                    return null;
+                }
+
+                return [
+                    'id' => $event->id,
+                    'title' => $event->title,
+                    'type' => $event->type,
+                    'status' => match (true) {
+                        $event->trashed() => 'deleted',
+                        $event->isPaused() => 'paused',
+                        $event->isEnded() => 'ended',
+                        $event->start_date?->isFuture() ?? false => 'upcoming',
+                        default => 'live',
+                    },
+                    'startDate' => $event->start_date,
+                    'links' => $rows->map(fn ($row) => ['kind' => $row[1], 'team' => $row[2]])->values(),
+                ];
+            })
+            ->filter()
+            ->sortByDesc('startDate')
+            ->values();
+    }
+
+    /**
+     * The claims this account marked itself, newest first, across both event
+     * types that have them.
+     */
+    private function claimsBy(User $user): Collection
+    {
+        $tiles = CompletedTile::where('marked_by', $user->id)
+            ->with(['tile.task:id,title', 'playerBoard.board.event' => fn ($q) => $q->withTrashed()->select('id', 'title', 'deleted_at')])
+            ->latest('completed_at')
+            ->limit(25)
+            ->get()
+            ->map(fn (CompletedTile $claim) => [
+                'id' => $claim->id,
+                'label' => $claim->tile?->title_override ?: $claim->tile?->task?->title,
+                'event' => $this->claimEvent($claim->playerBoard?->board?->event),
+                'status' => $claim->status,
+                'via' => $claim->completed_via,
+                'at' => $claim->completed_at,
+            ]);
+
+        $squares = BingoCompletion::where('marked_by', $user->id)
+            ->with(['square.task:id,title', 'square.card.event' => fn ($q) => $q->withTrashed()->select('id', 'title', 'deleted_at')])
+            ->latest('claimed_at')
+            ->limit(25)
+            ->get()
+            ->map(fn (BingoCompletion $claim) => [
+                'id' => $claim->id,
+                'label' => $claim->square?->label(),
+                'event' => $this->claimEvent($claim->square?->card?->event),
+                'status' => $claim->status,
+                'via' => $claim->completed_via,
+                'at' => $claim->claimed_at,
+            ]);
+
+        return $tiles->concat($squares)->sortByDesc('at')->take(25)->values();
+    }
+
+    private function claimEvent(?Event $event): ?array
+    {
+        return $event ? ['id' => $event->id, 'title' => $event->title, 'deleted' => $event->trashed()] : null;
+    }
+
+    /**
+     * Where each permission in the catalogue comes from, if anywhere. The
+     * account's own grants are only part of it: a role can carry one, and
+     * ADMIN passes every check (see User::hasPermission()).
+     */
+    private function accessFor(User $user): array
+    {
+        $roles = $user->roles()->with('permissions:id,name')->get();
+
+        return array_map(function (string $key) use ($user, $roles) {
+            $viaRole = $roles->first(fn (Role $role) => $role->permissions->contains('name', $key));
+            $source = match (true) {
+                $user->permissions->contains('name', $key) => 'direct',
+                $viaRole !== null => 'role',
+                $user->isAdmin() => 'admin',
+                default => null,
+            };
+
+            return ['key' => $key, 'source' => $source, 'role' => $source === 'role' ? $viaRole->name : null];
+        }, self::PERMISSION_KEYS);
     }
 
     public function assignRole(Request $request, User $user): RedirectResponse

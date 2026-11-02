@@ -308,6 +308,7 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
     Route::delete('/events/{event}/invites/{invite}', [BoardInviteController::class, 'destroy'])->name('events.invites.destroy');
 
     Route::post('/events/{event}/tiles', [TileController::class, 'upsert'])->name('events.tiles.upsert');
+    Route::post('/events/{event}/tiles/fill', [TileController::class, 'fill'])->name('events.tiles.fill');
     Route::delete('/events/{event}/tiles/{tile}', [TileController::class, 'destroy'])->name('events.tiles.destroy');
 
     Route::get('/events/{event}/teams', [BoardController::class, 'teamsIndex'])->name('events.teams.index');
@@ -446,6 +447,7 @@ Route::middleware(['auth', 'require-osrs-username'])->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::get('/users', [AdminUserController::class, 'index'])->name('users');
+        Route::get('/users/{user}', [AdminUserController::class, 'show'])->name('users.show');
         Route::post('/users/{user}/roles', [AdminUserController::class, 'assignRole'])->name('users.roles.assign');
         Route::delete('/users/{user}/roles/{role}', [AdminUserController::class, 'removeRole'])->name('users.roles.remove');
         Route::post('/users/{user}/permissions', [AdminUserController::class, 'grantPermission'])->name('users.permissions.grant');

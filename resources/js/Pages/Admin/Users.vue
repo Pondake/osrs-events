@@ -14,13 +14,13 @@
 
         <div class="divide-y divide-default rounded-lg ring ring-default bg-default">
             <div v-for="u in users" :key="u.id" class="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
-                <div class="flex items-center gap-3 min-w-0 flex-1">
+                <u-link :to="`/admin/users/${u.id}`" raw class="group flex items-center gap-3 min-w-0 flex-1 min-h-11">
                     <u-avatar :src="u.avatar_url ?? undefined" :alt="displayName(u)" size="sm" />
                     <div class="min-w-0">
-                        <div class="font-medium truncate">{{ displayName(u) }}</div>
+                        <div class="font-medium text-highlighted truncate group-hover:underline">{{ displayName(u) }}</div>
                         <div class="text-xs text-muted truncate">{{ u.discord_username ? `@${u.discord_username}` : u.email }}</div>
                     </div>
-                </div>
+                </u-link>
 
                 <div class="flex items-center gap-1.5 flex-wrap justify-end">
                     <u-badge
@@ -39,6 +39,11 @@
                         variant="outline"
                         :icon="permissionIcon(permission.name)"
                     />
+
+                    <div class="hidden sm:block w-36 shrink-0 ps-2 text-xs text-muted tabular-nums text-end">
+                        <div>{{ $t('admin.user_joined', { date: formatDate(u.created_at) }) }}</div>
+                        <div>{{ $t('admin.user_updated', { date: formatDate(u.updated_at) }) }}</div>
+                    </div>
 
                     <!-- One menu per user instead of two always-visible selects
                          plus a delete button — the row was a wall of controls
@@ -73,6 +78,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import { permissionLabel } from '@/Support/audit';
+import { formatDate } from '@/Support/invite';
 import AdminLayout from '@/Components/AdminLayout.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 

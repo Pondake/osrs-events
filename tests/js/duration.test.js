@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addDuration, describeDuration, isValidDuration, parseDuration } from '@/Support/duration';
+import { addDuration, defaultEventWindow, describeDuration, isValidDuration, parseDuration } from '@/Support/duration';
 
 /**
  * How long a new event is pre-filled to run for.
@@ -118,5 +118,19 @@ describe('describeDuration', () => {
 
     it('says nothing about something it cannot read', () => {
         expect(describeDuration('2y')).toBeNull();
+    });
+});
+
+describe('defaultEventWindow', () => {
+    /**
+     * The intro's quick create posts this to the same endpoint as the modal,
+     * which refuses an event without both dates.
+     */
+    it('runs from today for the given duration', () => {
+        expect(defaultEventWindow('2w', on(2026, 11, 1))).toEqual({ start_date: '2026-11-01', end_date: '2026-11-15' });
+    });
+
+    it('falls back to the default duration when the site sets none', () => {
+        expect(defaultEventWindow(undefined, on(2026, 11, 1))).toEqual({ start_date: '2026-11-01', end_date: '2026-11-15' });
     });
 });

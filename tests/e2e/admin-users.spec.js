@@ -1,5 +1,5 @@
 import { test, expect, hydrated } from './fixtures.js';
-import { addUser, query, resetUsers } from './support/db.js';
+import { addUser, eventId, query, resetUsers } from './support/db.js';
 
 /**
  * The people an admin manages: roles, permissions, and removing an account.
@@ -126,4 +126,33 @@ test('the search narrows the list to who was asked for', async ({ as }) => {
 
     await admin.getByPlaceholder('Search by name or email…').fill('nobody-has-this-name');
     await expect(admin.getByText('No users found')).toBeVisible();
+});
+
+test('a row opens the account, with the events it hosts', async ({ as }) => {
+    const admin = await as('admin');
+
+    await openUsers(admin, 'e2e_owner');
+    await row(admin, 'e2e_owner').getByRole('link').click();
+
+    await expect(admin).toHaveURL(/\/admin\/users\/[0-9a-f-]{36}$/);
+    await hydrated(admin);
+    const ladder = admin.locator(`a[href="/events/${eventId('E2E Ladder')}"]`);
+    await expect(ladder).toContainText('E2E Ladder');
+    await expect(ladder).toContainText('Owner');
+});
+
+test('what an admin did to an account shows on it, and leads to the audit log', async ({ as }) => {
+    const admin = await as('admin');
+
+    await openUsers(admin, 'e2e_roled');
+    await actions(admin, 'e2e_roled').click();
+    await admin.getByRole('menuitem', { name: 'Add role: EDITOR' }).click();
+    await expect(admin.getByText('Role EDITOR assigned.').first()).toBeVisible();
+
+    await row(admin, 'e2e_roled').getByRole('link').click();
+    await hydrated(admin);
+    await expect(admin.getByText('Role granted').first()).toBeVisible();
+
+    await admin.getByRole('link', { name: 'View all' }).click();
+    await expect(admin).toHaveURL(/\/admin\/audit\?user=Roled/);
 });

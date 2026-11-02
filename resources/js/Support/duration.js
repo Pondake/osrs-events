@@ -79,6 +79,26 @@ export function addDuration(start, spec) {
 }
 
 /**
+ * A date as `<input type="date">` wants it.
+ *
+ * Built from the local date parts rather than toISOString(): that converts
+ * to UTC first, so anyone east of UTC gets tomorrow and anyone far enough
+ * west gets yesterday.
+ */
+export function isoDate(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * The window a new event is pre-filled with: today, and the site's default
+ * duration from today. Shared by the create modal and the intro's quick
+ * create, because the create endpoint requires both dates.
+ */
+export function defaultEventWindow(spec, today = new Date()) {
+    return { start_date: isoDate(today), end_date: isoDate(addDuration(today, spec ?? DEFAULT_DURATION)) };
+}
+
+/**
  * "2 weeks", for the hint under the admin field.
  *
  * transChoice, not trans: "1 months" is the kind of small wrongness that
