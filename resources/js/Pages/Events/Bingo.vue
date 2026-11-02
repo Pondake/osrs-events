@@ -6,14 +6,7 @@
             <u-container class="py-8 sm:py-12">
                 <u-breadcrumb :items="breadcrumbs" class="mb-4" />
 
-                <!-- `flex-col sm:flex-row`, not `flex flex-wrap` — see the
-                     identical note on this row in BoardShow.vue. `flex-1`'s
-                     zero flex-basis makes the browser's wrap decision think
-                     the heading wants no space at all, so at 375px it never
-                     wrapped and instead got squeezed to ~5px — its title
-                     rendered one letter per line. Stacking below `sm`
-                     sidesteps the heuristic instead of fighting it. -->
-                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                <event-page-header>
                     <event-type-heading
                         :event="liveEvent"
                         :streaming="streaming"
@@ -34,12 +27,7 @@
                         </template>
                     </event-type-heading>
 
-                    <!-- Wraps on a phone. `shrink-0` kept this bar at its full
-                         natural width, so it never wrapped and simply ran
-                         off the side — 772px of controls on a 375px screen
-                         on the bingo card. It only needs to hold its ground
-                         once there is room for it to. -->
-                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 sm:shrink-0">
+                    <template #actions>
                         <span class="text-sm text-muted">
                             {{ $t('bingo.squares_done', { done: completed.length, total: squares.length }) }}
                         </span>
@@ -59,8 +47,8 @@
                         <join-event-button v-if="joined || (!isPaused && status !== 'ended')" :event-id="liveEvent.id" :joined="joined" :needs-team="needsTeam" :teams="teamOptions" size="sm" />
 
                         <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
-                    </div>
-                </div>
+                    </template>
+                </event-page-header>
 
                 <!-- Full page width, not the heading's half: these are
                      page-wide news and used to stop where the action bar
@@ -581,6 +569,7 @@ import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import EventPageHeader from '@/Components/EventPageHeader.vue';
 import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import HostInviteCard from '@/Components/HostInviteCard.vue';

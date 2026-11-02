@@ -14,20 +14,7 @@
                      as the heading. A plain flex row instead, matching the
                      bingo and race pages so all three announce themselves the
                      same way. -->
-                <!-- `flex-col sm:flex-row`, not `flex flex-wrap`: with a
-                     `flex-1` first child and `justify-between`, the browser
-                     decides whether to wrap using each child's HYPOTHETICAL
-                     size — `flex-1`'s basis is 0, so the heading "wants" 0px
-                     going into that decision, the action bar's own auto
-                     width (its widest wrapped line) already fits beside it,
-                     and the row never wraps at all. What actually happens at
-                     375px: the action bar claims ~320 of 343px and the
-                     heading is squeezed to ~5px, so its title renders one
-                     character per line. Measured, not guessed — a real
-                     event page, real viewport. `flex-col` below `sm`
-                     sidesteps the whole heuristic: the two stack, full width
-                     each, no wrap decision to get wrong. -->
-                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+                <event-page-header>
                     <event-type-heading
                         :event="liveBoard"
                         :streaming="streaming"
@@ -48,18 +35,7 @@
                             </template>
                     </event-type-heading>
 
-                    <!-- Wraps on a phone. `shrink-0` kept this bar at its full
-                         natural width, so it never wrapped and simply ran
-                         off the side — 772px of controls on a 375px screen
-                         on the bingo card. It only needs to hold its ground
-                         once there is room for it to.
-                         `lg`, not `sm`: five buttons need about 470px, so from
-                         `sm` up they sat beside the title and took nearly all
-                         of it — on a 700px window the heading was squeezed to
-                         one letter per line. There is only room for both from
-                         `lg`, which is also where the title stops needing the
-                         full width. -->
-                    <div class="flex flex-wrap gap-2 lg:shrink-0">
+                    <template #actions>
                             <!-- Two buttons that both sound like "see who else is
                                  here", so each says what it does: this one draws
                                  the other players' markers on the board, the next
@@ -98,8 +74,8 @@
                                 size="sm"
                             />
                             <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
-                    </div>
-                </div>
+                    </template>
+                </event-page-header>
 
                 <!-- Full page width, not the heading's half: these are
                      page-wide news and used to stop where the action bar
@@ -1036,6 +1012,7 @@ import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import BoardConnectors from '@/Components/BoardConnectors.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
+import EventPageHeader from '@/Components/EventPageHeader.vue';
 import EventNotices from '@/Components/EventNotices.vue';
 import InviteCodeCard from '@/Components/InviteCodeCard.vue';
 import HostInviteCard from '@/Components/HostInviteCard.vue';
