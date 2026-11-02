@@ -1895,7 +1895,7 @@
     "landing.snakes.player_step4_title": "Come back tomorrow",
     "landing.snakes.player_subtitle": "What actually happens once you open a board someone invited you to.",
     "landing.snakes.player_title": "Playing",
-    "landing.snakes.screenshot_board_alt": "A live board mid-event: every tile carries an OSRS task and its icon, a snake and two ladders are drawn across the grid, other players' pieces sit on the tiles they reached, and the player's own tile is marked \"You are here\".",
+    "landing.snakes.video_board_alt": "A silent, looping clip of a live board with twelve players: pieces move across the tiles as players roll, climb ladders, slide down snakes, and one player reaches the last tile.",
     "landing.snakes.screenshot_editor_alt": "The host's tile list for a board: every tile in play order with its icon and its OSRS task, a progress bar reading forty-nine of forty-nine filled in, and a switch to show only the tiles that are still empty.",
     "landing.snakes.size_5_desc": "A weekend event. A good first run, and enough for a smaller clan.",
     "landing.snakes.size_5_title": "5×5 — 25 tiles",

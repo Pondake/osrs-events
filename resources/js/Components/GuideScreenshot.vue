@@ -14,6 +14,25 @@
             <p class="text-sm text-muted max-w-sm">{{ alt }}</p>
         </div>
 
+        <!-- A silent loop that behaves like a moving picture: `src` is its
+             poster, it only starts once scrolled into view, and it never
+             starts for someone who asked for reduced motion. -->
+        <video
+            v-else-if="videos.length"
+            ref="video"
+            :poster="src"
+            :width="width"
+            :height="height"
+            :aria-label="alt"
+            muted
+            loop
+            playsinline
+            preload="none"
+            class="rounded-lg ring ring-default w-full h-auto"
+        >
+            <source v-for="url in videos" :key="url" :src="url" :type="url.endsWith('.webm') ? 'video/webm' : 'video/mp4'" />
+        </video>
+
         <!-- `width`/`height` are the file's own pixel size, not a display
              size: the class below still scales the image to its column. They
              are here so the browser knows the aspect ratio before the file
@@ -39,6 +58,8 @@
 </template>
 
 <script setup>
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+
 defineProps({
     // Left null until a real screenshot exists under public/images/guides/.
     src: { type: String, default: null },
@@ -55,5 +76,25 @@ defineProps({
     // `alt` when not given, so a caller that only has one description isn't
     // forced to write it twice.
     caption: { type: String, default: null },
+    // Video sources (webm first, mp4 as fallback); `src` becomes the poster.
+    videos: { type: Array, default: () => [] },
 });
+
+const video = ref(null);
+let observer = null;
+
+onMounted(() => {
+    if (!video.value || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+    observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+            video.value.play().catch((error) => console.error(error));
+        } else {
+            video.value.pause();
+        }
+    }, { threshold: 0.25 });
+    observer.observe(video.value);
+});
+
+onBeforeUnmount(() => observer?.disconnect());
 </script>
