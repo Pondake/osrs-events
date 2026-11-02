@@ -68,6 +68,15 @@
                     />
                 </div>
             </div>
+
+            <guide-screenshot
+                class="mt-8"
+                src="/videos/bingo-review-poster-70238f4e.webp"
+                :videos="['/videos/bingo-review-c58aa363.webm', '/videos/bingo-review-9e1ba5d5.mp4']"
+                :width="1920"
+                :height="1312"
+                :alt="$t('landing.bingo.video_review_alt')"
+            />
         </section>
 
         <section id="why">
