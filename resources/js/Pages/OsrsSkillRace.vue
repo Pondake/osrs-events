@@ -61,10 +61,11 @@
 
                     <guide-screenshot
                         class="mt-4"
-                        src="/images/guides/skill-race-board.webp"
-                        :width="1653"
-                        :height="940"
-                        :alt="$t('landing.skill_race.screenshot_board_alt')"
+                        src="/videos/skill-race-poster-c44bad93.webp"
+                        :videos="['/videos/skill-race-5fb8f202.webm', '/videos/skill-race-19aeb48a.mp4']"
+                        :width="1080"
+                        :height="1340"
+                        :alt="$t('landing.skill_race.video_board_alt')"
                     />
                 </div>
             </div>

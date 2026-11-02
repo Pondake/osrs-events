@@ -1840,7 +1840,7 @@
     "landing.skill_race.player_step4_title": "Watch the leaderboard",
     "landing.skill_race.player_subtitle": "One thing to set up first, then it tracks itself.",
     "landing.skill_race.player_title": "Joining a skill race",
-    "landing.skill_race.screenshot_board_alt": "A live skill race standings table: six entrants ranked by Mining XP gained since the race started, each with their OSRS name, their display name and their gain, and a line saying when the numbers were last read.",
+    "landing.skill_race.video_board_alt": "A silent, looping clip of a live Mining race with eight entrants: with every sync the XP numbers rise and players slide past each other, until the highlighted player climbs from fifth to first.",
     "landing.skill_race.screenshot_editor_alt": "The first step of the create-event dialog: a five-step bar reading Template, Type, Basics, Format and Access, with ready-made formats to start from — among them Skill of the Month, Skill of the Week and Gathering Week — or the option to start from scratch.",
     "landing.skill_race.title": "OSRS Skill Race",
     "landing.skill_race.why_body": "A skill race starts everyone from their own current XP rather than zero, so it measures who gained the most rather than who already had the most. A level 60 and a level 99 in the chosen skill compete on equal terms — the only thing that matters from the moment you enter is how much you train before the event ends.",

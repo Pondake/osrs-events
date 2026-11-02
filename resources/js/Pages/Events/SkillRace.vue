@@ -190,11 +190,20 @@
                                 </div>
                             </template>
 
-                            <ul v-if="rows.length" class="divide-y divide-default">
+                            <!-- Rows slide to their new place when a sync reorders
+                                 them, so an overtake reads as one instead of the
+                                 table silently reshuffling. -->
+                            <transition-group
+                                v-if="rows.length"
+                                tag="ul"
+                                move-class="transition-transform duration-700 ease-out motion-reduce:transition-none"
+                                class="divide-y divide-default"
+                            >
                                 <li
                                     v-for="entry in rows"
                                     :key="entry.id"
-                                    :class="isMine(entry) ? 'bg-primary/5' : ''"
+                                    class="relative bg-default"
+                                    :class="isMine(entry) ? 'z-10 bg-linear-to-r from-primary/5 to-primary/5' : ''"
                                 >
                                     <div class="flex items-center gap-3 px-4 py-3">
                                         <!-- No rank for anyone we have no
@@ -317,7 +326,7 @@
                                         </li>
                                     </ul>
                                 </li>
-                            </ul>
+                            </transition-group>
 
                             <div v-else class="text-center py-14 px-6">
                                 <u-icon name="i-lucide-trophy" class="size-10 text-dimmed mx-auto mb-3" />
