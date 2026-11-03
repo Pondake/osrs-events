@@ -69,7 +69,7 @@
                     <div class="relative">
                         <div class="absolute inset-0 -z-10 bg-primary/20 blur-3xl rounded-full scale-90" aria-hidden="true" />
                         <plugin-demo-video
-                            :sources="['/videos/intro-a33613e6.webm', '/videos/intro-910a4fe6.mp4']"
+                            :sources="['/videos/intro-5fa402be.webm', '/videos/intro-8586fd24.mp4']"
                             poster="/videos/intro-poster-b510ce39.webp"
                             label="home.intro_label"
                             caption=""

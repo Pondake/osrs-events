@@ -40,8 +40,8 @@ import { ref } from 'vue';
 
 defineProps({
     captionClass: { type: String, default: '' },
-    sources: { type: Array, default: () => ['/videos/plugin-demo-91eaea83.webm', '/videos/plugin-demo-ad7e4562.mp4'] },
-    poster: { type: String, default: '/videos/plugin-demo-poster-e3b42295.webp' },
+    sources: { type: Array, default: () => ['/videos/plugin-demo-aff9fe27.webm', '/videos/plugin-demo-50ada0c7.mp4'] },
+    poster: { type: String, default: '/videos/plugin-demo-poster-e18d9138.webp' },
     width: { type: Number, default: 1920 },
     height: { type: Number, default: 1080 },
     // i18n keys

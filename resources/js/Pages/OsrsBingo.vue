@@ -71,8 +71,8 @@
 
             <guide-screenshot
                 class="mt-8 max-w-3xl mx-auto"
-                src="/videos/bingo-review-poster-15adee8e.webp"
-                :videos="['/videos/bingo-review-c5e225e9.webm', '/videos/bingo-review-219a3121.mp4']"
+                src="/videos/bingo-review-poster-4139898b.webp"
+                :videos="['/videos/bingo-review-f817b2a5.webm', '/videos/bingo-review-939f6a50.mp4']"
                 :width="1200"
                 :height="1300"
                 :alt="$t('landing.bingo.video_review_alt')"
