@@ -2821,8 +2821,8 @@
     "blueprints.reveal_limit": ":n squares revealed one at a time",
     "home.plugin_demo_title": "Watch a square tick itself off",
     "home.plugin_demo_subtitle": "With the OSRS Events plugin for RuneLite, the kill or drop you just got is claimed on your card for you, with no screenshot to post.",
-    "plugin.demo_label": "Demo video of the RuneLite plugin, no sound: an empty 3×3 bingo card; a goblin is killed in RuneLite and the game chat reads \"OSRS Events: Claimed Goblin in Clan Bingo Night - approved\"; the Goblin square turns green; the same happens for a chicken and a cow, completing a line, and the card says \"You won!\"",
-    "plugin.demo_caption": "Three kills in RuneLite, three squares, one line. 57 seconds, no sound.",
+    "plugin.demo_label": "Demo video of the RuneLite plugin, no sound. The game is on the left and the event page on the right, with an empty 3×3 bingo card. A goblin is killed and the game chat reads \"OSRS Events: Claimed Goblin in Clan Bingo Night - approved\", shown enlarged; the Goblin square turns green. The same happens for a cow and a chicken, which completes a line: the chat reads \"You finished Clan Bingo Night - 1st place!\" and the card says \"You won!\"",
+    "plugin.demo_caption": "Three kills in RuneLite, three squares, one line. 18 seconds, no sound.",
     "plugin.demo_play": "Play the demo video",
     "plugin.demo_pause": "Pause the demo video"
 }

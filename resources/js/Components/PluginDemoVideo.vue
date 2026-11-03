@@ -6,10 +6,9 @@
         <div class="relative overflow-hidden rounded-xl border border-default shadow-2xl shadow-primary/10 ring-1 ring-default">
             <video
                 ref="video"
-                src="/videos/plugin-demo-144e3c84.mp4"
-                poster="/videos/plugin-demo-poster-652d49b1.webp"
-                width="1280"
-                height="720"
+                poster="/videos/plugin-demo-poster-e3b42295.webp"
+                width="1920"
+                height="1080"
                 muted
                 playsinline
                 loop
@@ -19,7 +18,10 @@
                 @click="toggle"
                 @play="playing = true"
                 @pause="playing = false"
-            />
+            >
+                <source src="/videos/plugin-demo-91eaea83.webm" type="video/webm" />
+                <source src="/videos/plugin-demo-ad7e4562.mp4" type="video/mp4" />
+            </video>
             <button
                 type="button"
                 :aria-label="playing ? $t('plugin.demo_pause') : $t('plugin.demo_play')"
