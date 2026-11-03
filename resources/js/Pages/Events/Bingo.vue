@@ -119,20 +119,25 @@
                      keeps running after the first win — the default — "you
                      won" said the same thing to the team that got there
                      first and to the one that got there fourth. -->
-                <u-alert
-                    v-if="hasWon"
-                    icon="i-lucide-party-popper"
-                    color="success"
-                    variant="subtle"
-                    class="mb-6"
-                    :title="finishTitle"
-                    :description="finishDescription"
-                />
+                <transition
+                    enter-active-class="motion-safe:transition motion-safe:duration-500 motion-safe:ease-out"
+                    enter-from-class="motion-safe:opacity-0 motion-safe:scale-95 motion-safe:-translate-y-2"
+                >
+                    <u-alert
+                        v-if="hasWon"
+                        icon="i-lucide-party-popper"
+                        color="success"
+                        variant="subtle"
+                        class="mb-6"
+                        :title="finishTitle"
+                        :description="finishDescription"
+                    />
+                </transition>
 
                 <!-- A TEAM event where you are on no assigned team: you can
                      look, but a claim would score against nobody. -->
                 <u-alert
-                    v-else-if="!canPlay && !canEdit"
+                    v-if="!hasWon && !canPlay && !canEdit"
                     icon="i-lucide-users"
                     color="warning"
                     variant="subtle"
@@ -566,6 +571,7 @@ import { eventStatus, formatDate, ordinal, relativeTime } from '@/Support/board'
 import EventManageMenu from '@/Components/EventManageMenu.vue';
 import TileSurface from '@/Components/TileSurface.vue';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
+import { celebrate } from '@/Support/celebrate';
 import { useEventStream } from '@/Composables/useEventStream';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
@@ -687,6 +693,12 @@ const manageItems = computed(() => [
  * saying the same thing to the team that got there first and the one that
  * got there fourth.
  */
+// Only on the change, never on a page load that already shows a finish, and
+// not while the place is provisional — an earlier claim may still overtake it.
+watch(() => props.myFinish, (now, before) => {
+    if (now && !now.provisional && (!before || before.provisional)) celebrate();
+});
+
 const finishTitle = computed(() => {
     if (!props.myFinish) return trans('bingo.you_won');
     if (props.myFinish.provisional) return trans('board.finished_pending_title');
