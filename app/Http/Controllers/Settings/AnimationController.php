@@ -23,6 +23,7 @@ class AnimationController extends Controller
             'keys' => DisplayPreference::MOVEMENT,
             // The site-wide switches, in their own card — see the catalogue.
             'ambientKeys' => DisplayPreference::AMBIENT,
+            'celebrationKeys' => DisplayPreference::CELEBRATION,
             'overrideKey' => DisplayPreference::PLAY_WHEN_REDUCED,
         ]);
     }

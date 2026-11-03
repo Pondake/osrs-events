@@ -113,6 +113,24 @@ class DisplayPreferenceTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('auth.user.display', DisplayPreference::ALL)
                 ->where('keys', DisplayPreference::MOVEMENT)
+                ->where('celebrationKeys', DisplayPreference::CELEBRATION)
                 ->where('overrideKey', DisplayPreference::PLAY_WHEN_REDUCED));
+    }
+
+    /** Confetti and sound are separate answers, both on until somebody says no. */
+    #[Test]
+    public function the_sound_can_be_turned_off_without_the_confetti(): void
+    {
+        $user = User::factory()->create();
+
+        $this->assertTrue(DisplayPreference::resolve(null)[DisplayPreference::CELEBRATE_SOUND]);
+
+        $this->actingAs($user)->put('/settings/animations', [
+            'preferences' => [DisplayPreference::CELEBRATE => true, DisplayPreference::CELEBRATE_SOUND => false],
+        ])->assertRedirect();
+
+        $resolved = DisplayPreference::resolve($user->fresh()->display_preferences);
+        $this->assertTrue($resolved[DisplayPreference::CELEBRATE]);
+        $this->assertFalse($resolved[DisplayPreference::CELEBRATE_SOUND]);
     }
 }

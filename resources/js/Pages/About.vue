@@ -143,6 +143,7 @@
                     — {{ $t('common.not_affiliated') }}
                 </span>
             </p>
+            <p class="px-5 text-xs text-dimmed leading-relaxed">{{ $t('about.sound_credit') }}</p>
         </div>
     </u-main>
 </template>

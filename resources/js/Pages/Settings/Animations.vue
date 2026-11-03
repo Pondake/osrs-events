@@ -75,6 +75,33 @@
                 </div>
             </div>
         </u-card>
+
+        <u-card>
+            <template #header>
+                <p class="font-medium">{{ $t('animations.celebration_title') }}</p>
+                <p class="text-sm text-muted">{{ $t('animations.celebration_desc') }}</p>
+            </template>
+
+            <div class="flex flex-col gap-5">
+                <div v-for="key in celebrationKeys" :key="key" class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="font-medium">{{ $t(`animations.${key}`) }}</p>
+                        <p class="text-sm text-muted">{{ $t(`animations.${key}_desc`) }}</p>
+                    </div>
+                    <u-switch v-model="values[key]" :aria-label="$t(`animations.${key}`)" class="shrink-0 mt-0.5" @update:model-value="save" />
+                </div>
+
+                <div>
+                    <u-button
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-party-popper"
+                        :label="$t('animations.celebration_preview')"
+                        @click="tryIt"
+                    />
+                </div>
+            </div>
+        </u-card>
         </div>
     </settings-layout>
 </template>
@@ -84,6 +111,7 @@ import { computed, onMounted, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 
 import SettingsLayout from '@/Components/SettingsLayout.vue';
+import { celebrate, JINGLES } from '@/Support/celebrate';
 
 const props = defineProps({
     // Already resolved against the catalogue's defaults by the controller.
@@ -93,6 +121,7 @@ const props = defineProps({
     keys: { type: Array, required: true },
     // Site-wide rather than board-wide, so its own card below.
     ambientKeys: { type: Array, required: true },
+    celebrationKeys: { type: Array, default: () => [] },
     // Rendered apart from the list above, because it is only a question on a
     // machine that asks for reduced motion.
     overrideKey: { type: String, required: true },
@@ -113,6 +142,15 @@ onMounted(() => {
 
 /** What the board will actually do, which is what the switches should look like. */
 const overridden = computed(() => reducedMotion.value && !values.value[props.overrideKey]);
+
+// Each press plays the next event type's jingle, so all of them can be heard.
+const types = Object.keys(JINGLES);
+let next = 0;
+
+function tryIt() {
+    celebrate(values.value, types[next]);
+    next = (next + 1) % types.length;
+}
 
 function save() {
     router.put('/settings/animations', { preferences: values.value }, { preserveScroll: true });

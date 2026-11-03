@@ -65,29 +65,22 @@
             </u-page-hero>
 
             <u-page-section :title="$t('home.preview_title')" :description="$t('home.preview_subtitle')">
-                <u-container class="max-w-4xl">
+                <u-container class="max-w-6xl">
                     <div class="relative">
                         <div class="absolute inset-0 -z-10 bg-primary/20 blur-3xl rounded-full scale-90" aria-hidden="true" />
-                        <div class="rounded-xl border border-default shadow-2xl shadow-primary/10 overflow-hidden ring-1 ring-default">
-                            <!-- A real screenshot of a running demo event, not
-                                 a drawing of one: the tiles carry their actual
-                                 OSRS tasks and wiki icons, the snake and the
-                                 ladders are the ones that board really has,
-                                 and the other players' pieces are where they
-                                 stand. `width`/`height` are the file's own 2x
-                                 pixels, so the browser keeps the space while a
-                                 lazily loaded image is still on its way. -->
-                            <img
-                                src="/images/demo/board-preview.webp"
-                                :alt="$t('home.preview_alt')"
-                                width="2528"
-                                height="2262"
-                                loading="lazy"
-                                class="w-full h-auto block"
-                            />
-                        </div>
+                        <plugin-demo-video
+                            :sources="['/videos/intro-5fa402be.webm', '/videos/intro-8586fd24.mp4']"
+                            poster="/videos/intro-poster-b510ce39.webp"
+                            label="home.intro_label"
+                            caption=""
+                        />
                     </div>
-                    <p class="mt-4 text-center text-sm text-muted">{{ $t('home.preview_caption') }}</p>
+                </u-container>
+            </u-page-section>
+
+            <u-page-section v-if="pluginAvailable" :title="$t('home.plugin_demo_title')" :description="$t('home.plugin_demo_subtitle')">
+                <u-container class="max-w-6xl">
+                    <plugin-demo-video caption-class="text-center sm:text-sm" />
                 </u-container>
             </u-page-section>
 
@@ -119,6 +112,7 @@ import { computed } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import SeoHead from '@/Components/SeoHead.vue';
 import PageRenderer from '@/Components/Cms/PageRenderer.vue';
+import PluginDemoVideo from '@/Components/PluginDemoVideo.vue';
 import { useAuth } from '@/Composables/useAuth';
 import { useSiteLock } from '@/Composables/useSiteLock';
 import { useCurrentPage } from '@/Support/pageState';
@@ -133,6 +127,7 @@ const page = useCurrentPage();
 // Null until an admin sets one, and the button is withheld rather than
 // pointed at a dead link — same reasoning as the beta page's copy of this.
 const discordInviteUrl = computed(() => page.value.props?.site?.discordInviteUrl ?? null);
+const pluginAvailable = computed(() => (page.value.props?.site?.runelitePluginMode ?? 'off') !== 'off');
 
 /**
  * Unlike /about, /privacy and /terms, this page is only PARTLY editable.

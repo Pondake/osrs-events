@@ -61,6 +61,14 @@
         <section id="setup">
             <h2 :class="prose.h2">{{ $t('landing.clan_events.setup_title') }}</h2>
             <p :class="prose.p">{{ $t('landing.clan_events.setup_body') }}</p>
+            <guide-screenshot
+                class="mb-6"
+                src="/videos/create-event-poster-951ba929.webp"
+                :videos="['/videos/create-event-8bd85de2.webm', '/videos/create-event-b764de7e.mp4']"
+                :width="1536"
+                :height="1350"
+                :alt="$t('landing.clan_events.video_create_alt')"
+            />
             <u-button href="/osrs-event-ideas" color="primary" variant="outline" trailing-icon="i-lucide-arrow-right" :label="$t('landing.event_ideas.title')" />
         </section>
 
@@ -75,6 +83,7 @@
 import { trans } from 'laravel-vue-i18n';
 import SeoHead from '@/Components/SeoHead.vue';
 import GuideLayout from '@/Components/GuideLayout.vue';
+import GuideScreenshot from '@/Components/GuideScreenshot.vue';
 import GuideFaq from '@/Components/GuideFaq.vue';
 import { useAuth } from '@/Composables/useAuth';
 import { useSiteLock } from '@/Composables/useSiteLock';

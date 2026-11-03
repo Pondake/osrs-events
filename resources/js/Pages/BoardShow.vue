@@ -1023,6 +1023,7 @@ import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
 import TileSurface from '@/Components/TileSurface.vue';
 import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, claimAreaIsShown, formatBoardSize, formatDate, eventStatus, finishSubtitle as finishSubtitleFor, ordinal, settledPlace } from '@/Support/board';
+import { celebrate } from '@/Support/celebrate';
 import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';
 import { useEventStream } from '@/Composables/useEventStream';
 
@@ -1447,6 +1448,7 @@ watch([celebrationPending, finishIsProvisional, aDialogIsOpen], () => {
     if (celebrationPending.value && !finishIsProvisional.value && !aDialogIsOpen.value) {
         celebrationPending.value = false;
         showCompleted.value = true;
+        celebrate(authUser.value?.display, 'SNAKES_LADDERS');
     }
 }, { immediate: true });
 

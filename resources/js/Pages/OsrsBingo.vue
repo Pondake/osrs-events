@@ -68,6 +68,15 @@
                     />
                 </div>
             </div>
+
+            <guide-screenshot
+                class="mt-8 max-w-3xl mx-auto"
+                src="/videos/bingo-review-poster-4139898b.webp"
+                :videos="['/videos/bingo-review-f817b2a5.webm', '/videos/bingo-review-939f6a50.mp4']"
+                :width="1200"
+                :height="1300"
+                :alt="$t('landing.bingo.video_review_alt')"
+            />
         </section>
 
         <section id="why">
@@ -85,6 +94,26 @@
                     <span><span class="font-medium text-highlighted">{{ mode.title }}</span><span class="text-muted"> — {{ mode.description }}</span></span>
                 </li>
             </ul>
+        </section>
+
+        <section id="teams">
+            <h2 :class="prose.h2">{{ $t('landing.bingo.teams_title') }}</h2>
+
+            <div class="grid sm:grid-cols-[1fr_16rem] gap-x-8 gap-y-6 items-start">
+                <div>
+                    <p :class="prose.p">{{ $t('landing.bingo.teams_body') }}</p>
+                    <p :class="prose.p">{{ $t('landing.bingo.teams_push') }}</p>
+                </div>
+
+                <guide-screenshot
+                    class="w-full max-w-64 mx-auto"
+                    src="/videos/team-push-poster-464680d7.webp"
+                    :videos="['/videos/team-push-3d469c6c.webm', '/videos/team-push-642cdc82.mp4']"
+                    :width="720"
+                    :height="1280"
+                    :alt="$t('landing.bingo.video_push_alt')"
+                />
+            </div>
         </section>
 
         <section id="tile-ideas">
@@ -135,6 +164,7 @@ const sections = [
     { id: 'how-it-works', label: howItWorksTitle },
     { id: 'why', label: trans('landing.bingo.why_title') },
     { id: 'win-conditions', label: trans('landing.bingo.modes_title') },
+    { id: 'teams', label: trans('landing.bingo.teams_title') },
     { id: 'tile-ideas', label: trans('landing.bingo.tile_ideas_title') },
     { id: 'faq', label: faqTitle },
 ];
