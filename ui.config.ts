@@ -37,11 +37,14 @@ export const uiConfig = {
             },
         ],
     },
-    // Same 44px floor for form triggers on phones.
+    // Same 44px floor for form triggers on phones. Their menus sit above the
+    // z-[60] modal, like the popover below.
     input: { slots: { base: 'max-sm:min-h-11' } },
-    select: { slots: { base: 'max-sm:min-h-11' } },
-    selectMenu: { slots: { base: 'max-sm:min-h-11' } },
-    inputMenu: { slots: { base: 'max-sm:min-h-11', trailing: 'max-sm:min-w-11 justify-center' } },
+    select: { slots: { base: 'max-sm:min-h-11', content: 'z-[70]' } },
+    selectMenu: { slots: { base: 'max-sm:min-h-11', content: 'z-[70]' } },
+    inputMenu: { slots: { base: 'max-sm:min-h-11', trailing: 'max-sm:min-w-11 justify-center', content: 'z-[70]' } },
+    dropdownMenu: { slots: { content: 'z-[70]' } },
+    contextMenu: { slots: { content: 'z-[70]' } },
     breadcrumb: {
         slots: {
             link: 'max-sm:min-h-11',
@@ -71,7 +74,7 @@ export const uiConfig = {
     // page on one truncated line.
     tooltip: {
         slots: {
-            content: 'h-auto max-w-64 py-1.5',
+            content: 'z-[70] h-auto max-w-64 py-1.5',
             text: 'whitespace-normal leading-snug',
         },
     },
