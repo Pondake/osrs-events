@@ -697,7 +697,7 @@ const manageItems = computed(() => [
 // not while the place is provisional — an earlier claim may still overtake it.
 const page = usePage();
 watch(() => props.myFinish, (now, before) => {
-    if (now && !now.provisional && (!before || before.provisional)) celebrate(page.props.auth?.user?.display);
+    if (now && !now.provisional && (!before || before.provisional)) celebrate(page.props.auth?.user?.display, 'BINGO');
 });
 
 const finishTitle = computed(() => {

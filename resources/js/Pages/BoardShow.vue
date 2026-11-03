@@ -1448,7 +1448,7 @@ watch([celebrationPending, finishIsProvisional, aDialogIsOpen], () => {
     if (celebrationPending.value && !finishIsProvisional.value && !aDialogIsOpen.value) {
         celebrationPending.value = false;
         showCompleted.value = true;
-        celebrate(authUser.value?.display);
+        celebrate(authUser.value?.display, 'SNAKES_LADDERS');
     }
 }, { immediate: true });
 

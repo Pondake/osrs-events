@@ -6,12 +6,23 @@
 // preferences (App\Support\DisplayPreference): the confetti is motion, so the
 // OS reduced-motion setting stills it unless the account plays animations
 // anyway; the jingle is not motion and has its own switch.
+//
+// One jingle per event type. They are original pieces rendered with the
+// FluidR3_GM soundfont (CC BY 3.0, credited on the About page), not game
+// audio: the Fan Content Policy does not cover sound effects.
 
 const COLORS = ['#fbbf24', '#f59e0b', '#fde68a', '#22c55e', '#86efac', '#ffffff'];
 const DURATION = 3400;
 const FADE = 800;
 
-export function celebrate(display = {}) {
+export const JINGLES = {
+    SNAKES_LADDERS: '/sounds/finish-quest-f57e76cc.m4a',
+    BINGO: '/sounds/finish-medal-a0467a91.m4a',
+    SKILL_RACE: '/sounds/finish-triumph-e2ebbc89.m4a',
+    DROP_RACE: '/sounds/finish-boss-2a3a6e07.m4a',
+};
+
+export function celebrate(display = {}, type = 'BINGO') {
     if (typeof window === 'undefined') return;
 
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -19,7 +30,7 @@ export function celebrate(display = {}) {
         confetti();
     }
     if (display.celebrate_sound !== false) {
-        jingle();
+        jingle(JINGLES[type] ?? JINGLES.BINGO);
     }
 }
 
@@ -112,41 +123,11 @@ function piece(x, y, vx, vy, delay, i) {
     };
 }
 
-// A rising arpeggio and a held chord, synthesised so there is no file to load.
-// Browsers refuse audio before the page has had a click or a key press; that
-// refusal is silent and the confetti still runs.
-function jingle() {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    let audio;
-    try {
-        audio = new Ctx();
-    } catch (error) {
-        console.error(error);
-        return;
-    }
-    const master = audio.createGain();
-    master.gain.value = 0.18;
-    master.connect(audio.destination);
-
-    const note = (freq, at, length, type = 'triangle') => {
-        const osc = audio.createOscillator();
-        const gain = audio.createGain();
-        osc.type = type;
-        osc.frequency.value = freq;
-        const t0 = audio.currentTime + at;
-        gain.gain.setValueAtTime(0, t0);
-        gain.gain.linearRampToValueAtTime(1, t0 + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.001, t0 + length);
-        osc.connect(gain).connect(master);
-        osc.start(t0);
-        osc.stop(t0 + length + 0.05);
-    };
-
-    // G4 C5 E5 G5, then a C major chord with the octave on top.
-    [392, 523.25, 659.25, 783.99].forEach((f, i) => note(f, i * 0.09, 0.22));
-    [523.25, 659.25, 783.99, 1046.5].forEach((f) => note(f, 0.4, 1.1));
-    note(130.81, 0.4, 1.1, 'sine');
-
-    setTimeout(() => audio.close().catch(() => {}), 2000);
+// Browsers refuse sound before the page has had a click or a key press, so it
+// is not even tried then; the confetti still runs.
+function jingle(url) {
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+    const audio = new Audio(url);
+    audio.volume = 0.6;
+    audio.play().catch((error) => console.error(error));
 }

@@ -97,7 +97,7 @@
                         variant="outline"
                         icon="i-lucide-party-popper"
                         :label="$t('animations.celebration_preview')"
-                        @click="celebrate(values)"
+                        @click="tryIt"
                     />
                 </div>
             </div>
@@ -111,7 +111,7 @@ import { computed, onMounted, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 
 import SettingsLayout from '@/Components/SettingsLayout.vue';
-import { celebrate } from '@/Support/celebrate';
+import { celebrate, JINGLES } from '@/Support/celebrate';
 
 const props = defineProps({
     // Already resolved against the catalogue's defaults by the controller.
@@ -142,6 +142,15 @@ onMounted(() => {
 
 /** What the board will actually do, which is what the switches should look like. */
 const overridden = computed(() => reducedMotion.value && !values.value[props.overrideKey]);
+
+// Each press plays the next event type's jingle, so all of them can be heard.
+const types = Object.keys(JINGLES);
+let next = 0;
+
+function tryIt() {
+    celebrate(values.value, types[next]);
+    next = (next + 1) % types.length;
+}
 
 function save() {
     router.put('/settings/animations', { preferences: values.value }, { preserveScroll: true });
