@@ -6,21 +6,20 @@
         <div class="relative overflow-hidden rounded-xl border border-default shadow-2xl shadow-primary/10 ring-1 ring-default">
             <video
                 ref="video"
-                poster="/videos/plugin-demo-poster-e3b42295.webp"
-                width="1920"
-                height="1080"
+                :poster="poster"
+                :width="width"
+                :height="height"
                 muted
                 playsinline
                 loop
                 preload="none"
-                :aria-label="$t('plugin.demo_label')"
+                :aria-label="$t(label)"
                 class="block w-full h-auto aspect-video bg-black cursor-pointer"
                 @click="toggle"
                 @play="playing = true"
                 @pause="playing = false"
             >
-                <source src="/videos/plugin-demo-91eaea83.webm" type="video/webm" />
-                <source src="/videos/plugin-demo-ad7e4562.mp4" type="video/mp4" />
+                <source v-for="url in sources" :key="url" :src="url" :type="url.endsWith('.webm') ? 'video/webm' : 'video/mp4'" />
             </video>
             <button
                 type="button"
@@ -32,7 +31,7 @@
                 <u-icon :name="playing ? 'i-lucide-pause' : 'i-lucide-play'" :class="playing ? 'size-5' : 'size-7 ms-1'" />
             </button>
         </div>
-        <figcaption class="text-xs text-muted" :class="captionClass">{{ $t('plugin.demo_caption') }}</figcaption>
+        <figcaption class="text-xs text-muted" :class="captionClass">{{ $t(caption) }}</figcaption>
     </figure>
 </template>
 
@@ -41,6 +40,13 @@ import { ref } from 'vue';
 
 defineProps({
     captionClass: { type: String, default: '' },
+    sources: { type: Array, default: () => ['/videos/plugin-demo-91eaea83.webm', '/videos/plugin-demo-ad7e4562.mp4'] },
+    poster: { type: String, default: '/videos/plugin-demo-poster-e3b42295.webp' },
+    width: { type: Number, default: 1920 },
+    height: { type: Number, default: 1080 },
+    // i18n keys
+    label: { type: String, default: 'plugin.demo_label' },
+    caption: { type: String, default: 'plugin.demo_caption' },
 });
 
 const video = ref(null);
