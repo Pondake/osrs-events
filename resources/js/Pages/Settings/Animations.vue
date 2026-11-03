@@ -75,6 +75,23 @@
                 </div>
             </div>
         </u-card>
+
+        <u-card>
+            <template #header>
+                <p class="font-medium">{{ $t('animations.celebration_title') }}</p>
+                <p class="text-sm text-muted">{{ $t('animations.celebration_desc') }}</p>
+            </template>
+
+            <div class="flex flex-col gap-5">
+                <div v-for="key in celebrationKeys" :key="key" class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="font-medium">{{ $t(`animations.${key}`) }}</p>
+                        <p class="text-sm text-muted">{{ $t(`animations.${key}_desc`) }}</p>
+                    </div>
+                    <u-switch v-model="values[key]" :aria-label="$t(`animations.${key}`)" class="shrink-0 mt-0.5" @update:model-value="save" />
+                </div>
+            </div>
+        </u-card>
         </div>
     </settings-layout>
 </template>
@@ -93,6 +110,7 @@ const props = defineProps({
     keys: { type: Array, required: true },
     // Site-wide rather than board-wide, so its own card below.
     ambientKeys: { type: Array, required: true },
+    celebrationKeys: { type: Array, default: () => [] },
     // Rendered apart from the list above, because it is only a question on a
     // machine that asks for reduced motion.
     overrideKey: { type: String, required: true },

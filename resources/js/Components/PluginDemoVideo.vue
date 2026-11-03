@@ -31,7 +31,7 @@
                 <u-icon :name="playing ? 'i-lucide-pause' : 'i-lucide-play'" :class="playing ? 'size-5' : 'size-7 ms-1'" />
             </button>
         </div>
-        <figcaption class="text-xs text-muted" :class="captionClass">{{ $t(caption) }}</figcaption>
+        <figcaption v-if="caption" class="text-xs text-muted" :class="captionClass">{{ $t(caption) }}</figcaption>
     </figure>
 </template>
 

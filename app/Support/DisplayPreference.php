@@ -46,6 +46,12 @@ class DisplayPreference
      */
     public const BACKGROUND = 'animate_background';
 
+    /** Confetti when your own run finishes an event. Reduced motion stills it, like a move. */
+    public const CELEBRATE = 'celebrate_finish';
+
+    /** A short jingle with it. Not motion, so reduced motion leaves it alone. */
+    public const CELEBRATE_SOUND = 'celebrate_sound';
+
     /**
      * On by default except the override: somebody who has never seen the
      * animation cannot know to turn it on. PLAY_WHEN_REDUCED is off for the
@@ -58,6 +64,8 @@ class DisplayPreference
         self::OWN_MOVES => true,
         self::OTHER_MOVES => true,
         self::BACKGROUND => true,
+        self::CELEBRATE => true,
+        self::CELEBRATE_SOUND => true,
         self::PLAY_WHEN_REDUCED => false,
     ];
 
@@ -86,6 +94,12 @@ class DisplayPreference
      */
     public const AMBIENT = [
         self::BACKGROUND,
+    ];
+
+    /** @var array<int, string> the moment you finish, in a card of its own. */
+    public const CELEBRATION = [
+        self::CELEBRATE,
+        self::CELEBRATE_SOUND,
     ];
 
     /** @return array<string, bool> every setting, stored value or default. */

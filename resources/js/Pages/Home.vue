@@ -72,8 +72,7 @@
                             :sources="['/videos/intro-a33613e6.webm', '/videos/intro-910a4fe6.mp4']"
                             poster="/videos/intro-poster-b510ce39.webp"
                             label="home.intro_label"
-                            caption="home.preview_caption"
-                            caption-class="text-center sm:text-sm"
+                            caption=""
                         />
                     </div>
                 </u-container>

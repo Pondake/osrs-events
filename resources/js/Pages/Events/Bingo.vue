@@ -565,7 +565,7 @@
 
 <script setup>
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { eventStatus, formatDate, ordinal, relativeTime } from '@/Support/board';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
@@ -695,8 +695,9 @@ const manageItems = computed(() => [
  */
 // Only on the change, never on a page load that already shows a finish, and
 // not while the place is provisional — an earlier claim may still overtake it.
+const page = usePage();
 watch(() => props.myFinish, (now, before) => {
-    if (now && !now.provisional && (!before || before.provisional)) celebrate();
+    if (now && !now.provisional && (!before || before.provisional)) celebrate(page.props.auth?.user?.display);
 });
 
 const finishTitle = computed(() => {
