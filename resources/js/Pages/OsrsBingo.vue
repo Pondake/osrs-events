@@ -96,6 +96,26 @@
             </ul>
         </section>
 
+        <section id="teams">
+            <h2 :class="prose.h2">{{ $t('landing.bingo.teams_title') }}</h2>
+
+            <div class="grid sm:grid-cols-[1fr_16rem] gap-x-8 gap-y-6 items-start">
+                <div>
+                    <p :class="prose.p">{{ $t('landing.bingo.teams_body') }}</p>
+                    <p :class="prose.p">{{ $t('landing.bingo.teams_push') }}</p>
+                </div>
+
+                <guide-screenshot
+                    class="w-full max-w-64 mx-auto"
+                    src="/videos/team-push-poster-464680d7.webp"
+                    :videos="['/videos/team-push-3d469c6c.webm', '/videos/team-push-642cdc82.mp4']"
+                    :width="720"
+                    :height="1280"
+                    :alt="$t('landing.bingo.video_push_alt')"
+                />
+            </div>
+        </section>
+
         <section id="tile-ideas">
             <h2 :class="prose.h2">{{ $t('landing.bingo.tile_ideas_title') }}</h2>
             <p :class="prose.p">{{ $t('landing.bingo.tile_ideas_body') }}</p>
@@ -144,6 +164,7 @@ const sections = [
     { id: 'how-it-works', label: howItWorksTitle },
     { id: 'why', label: trans('landing.bingo.why_title') },
     { id: 'win-conditions', label: trans('landing.bingo.modes_title') },
+    { id: 'teams', label: trans('landing.bingo.teams_title') },
     { id: 'tile-ideas', label: trans('landing.bingo.tile_ideas_title') },
     { id: 'faq', label: faqTitle },
 ];
