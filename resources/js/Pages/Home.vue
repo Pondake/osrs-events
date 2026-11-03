@@ -65,12 +65,12 @@
             </u-page-hero>
 
             <u-page-section :title="$t('home.preview_title')" :description="$t('home.preview_subtitle')">
-                <u-container class="max-w-4xl">
+                <u-container class="max-w-6xl">
                     <div class="relative">
                         <div class="absolute inset-0 -z-10 bg-primary/20 blur-3xl rounded-full scale-90" aria-hidden="true" />
                         <plugin-demo-video
-                            :sources="['/videos/intro-076ad5d7.webm', '/videos/intro-fc547998.mp4']"
-                            poster="/videos/intro-poster-420cfad1.webp"
+                            :sources="['/videos/intro-a33613e6.webm', '/videos/intro-910a4fe6.mp4']"
+                            poster="/videos/intro-poster-b510ce39.webp"
                             label="home.intro_label"
                             caption="home.preview_caption"
                             caption-class="text-center sm:text-sm"
@@ -80,7 +80,7 @@
             </u-page-section>
 
             <u-page-section v-if="pluginAvailable" :title="$t('home.plugin_demo_title')" :description="$t('home.plugin_demo_subtitle')">
-                <u-container class="max-w-4xl">
+                <u-container class="max-w-6xl">
                     <plugin-demo-video caption-class="text-center sm:text-sm" />
                 </u-container>
             </u-page-section>

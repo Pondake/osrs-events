@@ -17,21 +17,35 @@
         <!-- A silent loop that behaves like a moving picture: `src` is its
              poster, it only starts once scrolled into view, and it never
              starts for someone who asked for reduced motion. -->
-        <video
-            v-else-if="videos.length"
-            ref="video"
-            :poster="src"
-            :width="width"
-            :height="height"
-            :aria-label="alt"
-            muted
-            loop
-            playsinline
-            preload="none"
-            class="rounded-lg ring ring-default w-full h-auto"
-        >
-            <source v-for="url in videos" :key="url" :src="url" :type="url.endsWith('.webm') ? 'video/webm' : 'video/mp4'" />
-        </video>
+        <div v-else-if="videos.length" class="relative">
+            <video
+                ref="video"
+                :poster="src"
+                :width="width"
+                :height="height"
+                :aria-label="alt"
+                muted
+                loop
+                playsinline
+                preload="none"
+                class="rounded-lg ring ring-default w-full h-auto cursor-pointer"
+                @click="toggle"
+                @play="playing = true"
+                @pause="playing = false"
+            >
+                <source v-for="url in videos" :key="url" :src="url" :type="url.endsWith('.webm') ? 'video/webm' : 'video/mp4'" />
+            </video>
+            <!-- Moving for more than five seconds, so it gets a pause. A
+                 pause by hand sticks: scrolling away and back does not undo it. -->
+            <button
+                type="button"
+                :aria-label="playing ? $t('landing.video_pause') : $t('landing.video_play')"
+                class="absolute bottom-2 left-2 flex size-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm cursor-pointer transition hover:bg-primary hover:text-inverted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                @click="toggle"
+            >
+                <u-icon :name="playing ? 'i-lucide-pause' : 'i-lucide-play'" :class="playing ? 'size-5' : 'size-5 ms-0.5'" />
+            </button>
+        </div>
 
         <!-- `width`/`height` are the file's own pixel size, not a display
              size: the class below still scales the image to its column. They
@@ -81,15 +95,32 @@ defineProps({
 });
 
 const video = ref(null);
+const playing = ref(false);
 let observer = null;
+let heldByHand = false;
+
+function play() {
+    video.value?.play().catch((error) => console.error(error));
+}
+
+function toggle() {
+    if (!video.value) return;
+    if (video.value.paused) {
+        heldByHand = false;
+        play();
+    } else {
+        heldByHand = true;
+        video.value.pause();
+    }
+}
 
 onMounted(() => {
     if (!video.value || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
 
     observer = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) {
-            video.value.play().catch((error) => console.error(error));
-        } else {
+        if (entry.isIntersecting && !heldByHand) {
+            play();
+        } else if (!entry.isIntersecting) {
             video.value.pause();
         }
     }, { threshold: 0.25 });

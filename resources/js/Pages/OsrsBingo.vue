@@ -70,11 +70,11 @@
             </div>
 
             <guide-screenshot
-                class="mt-8"
-                src="/videos/bingo-review-poster-70238f4e.webp"
-                :videos="['/videos/bingo-review-c58aa363.webm', '/videos/bingo-review-9e1ba5d5.mp4']"
-                :width="1920"
-                :height="1312"
+                class="mt-8 max-w-3xl mx-auto"
+                src="/videos/bingo-review-poster-15adee8e.webp"
+                :videos="['/videos/bingo-review-c5e225e9.webm', '/videos/bingo-review-219a3121.mp4']"
+                :width="1200"
+                :height="1300"
                 :alt="$t('landing.bingo.video_review_alt')"
             />
         </section>
