@@ -1499,6 +1499,7 @@
     "events.paused_notice": "This event is paused, so it isn't taking moves right now.",
     "events.pending_sync": "Waiting for first sync",
     "events.preview_unavailable": "Preview not available",
+    "events.race_final_desc": "The race is over. These are the final standings.",
     "events.race_not_entered": "Not entered",
     "events.ranked_by": "Ranked by :skill XP gained",
     "events.ranked_by_kills": "Ranked by :metric kills",

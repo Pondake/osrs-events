@@ -128,6 +128,19 @@
                      first thing a reader without access needs. -->
                 <invite-code-card v-if="needsInvite && status !== 'ended'" :event-id="event.id" class="mb-6" />
 
+                <!-- Your place once the race is over and the numbers are the
+                     final ones; the confetti for it plays once, on the first
+                     visit that sees it. -->
+                <u-alert
+                    v-if="podiumPlace"
+                    icon="i-lucide-party-popper"
+                    color="success"
+                    variant="subtle"
+                    class="mb-6"
+                    :title="podiumTitle"
+                    :description="$t('events.race_final_desc')"
+                />
+
                 <!-- Without an RSN there is nothing to look up on the hiscores, so
                      this person is not in the race no matter that they joined. Said
                      plainly, at the top, with the fix one click away. -->
@@ -397,7 +410,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
@@ -408,7 +421,8 @@ import HostInviteCard from '@/Components/HostInviteCard.vue';
 import JoinEventButton from '@/Components/JoinEventButton.vue';
 import { trans } from 'laravel-vue-i18n';
 import RichText from '@/Components/RichText.vue';
-import { eventStatus, formatDate } from '@/Support/board';
+import { eventStatus, formatDate, ordinal } from '@/Support/board';
+import { celebrate } from '@/Support/celebrate';
 import { formatMetricValue, metricLabel, rankedByLabel } from '@/Support/metrics';
 import { useMetricIcon } from '@/Composables/useMetricIcon';
 import { useEventStream } from '@/Composables/useEventStream';
@@ -506,6 +520,43 @@ const lastSynced = computed(() => {
     const stamps = rows.value.map((row) => row.syncedAt).filter(Boolean).sort();
 
     return stamps.length ? stamps[stamps.length - 1] : null;
+});
+
+/**
+ * Your podium place in a finished race, or null.
+ *
+ * Only once the numbers are the final ones: standings keep syncing for a day
+ * after the end, so a place read before a sync that postdates the end date
+ * could still move.
+ */
+const podiumPlace = computed(() => {
+    if (status.value !== 'ended' || !lastSynced.value || !liveEvent.value.end_date) return null;
+    if (new Date(lastSynced.value) < new Date(liveEvent.value.end_date)) return null;
+
+    const mine = rows.value.find(isMine);
+
+    return mine && mine.rank !== null && mine.rank <= 3 && mine.gained > 0 ? mine.rank : null;
+});
+
+const podiumTitle = computed(() => {
+    if (podiumPlace.value === 1) return trans(liveEvent.value.mode === 'TEAM' ? 'board.won_team' : 'board.won_solo');
+
+    return trans('board.finished_place', { place: ordinal(podiumPlace.value) });
+});
+
+onMounted(() => {
+    watch(podiumPlace, (place) => {
+        if (!place) return;
+        const key = `osrs-events:celebrated:${liveEvent.value.id}`;
+        try {
+            if (localStorage.getItem(key)) return;
+            localStorage.setItem(key, '1');
+        } catch (error) {
+            console.error(error);
+            return;
+        }
+        celebrate(usePage().props?.auth?.user?.display, liveEvent.value.type);
+    }, { immediate: true });
 });
 
 /** "12:04" today, a date once it is older than that. */
