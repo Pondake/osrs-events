@@ -469,6 +469,7 @@
     "animations.celebrate_sound": "Sound when you finish",
     "animations.celebrate_sound_desc": "A short jingle with it, once.",
     "animations.celebration_desc": "What happens on the page when your run finishes an event.",
+    "animations.celebration_preview": "Try it",
     "animations.celebration_title": "Finishing an event",
     "animations.desc": "How the board plays a roll. With these off, a piece appears straight on its destination tile.",
     "animations.play_when_reduced_motion": "Play animations anyway",

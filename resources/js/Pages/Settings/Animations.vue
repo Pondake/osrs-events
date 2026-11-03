@@ -90,6 +90,16 @@
                     </div>
                     <u-switch v-model="values[key]" :aria-label="$t(`animations.${key}`)" class="shrink-0 mt-0.5" @update:model-value="save" />
                 </div>
+
+                <div>
+                    <u-button
+                        color="neutral"
+                        variant="outline"
+                        icon="i-lucide-party-popper"
+                        :label="$t('animations.celebration_preview')"
+                        @click="celebrate(values)"
+                    />
+                </div>
             </div>
         </u-card>
         </div>
@@ -101,6 +111,7 @@ import { computed, onMounted, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 
 import SettingsLayout from '@/Components/SettingsLayout.vue';
+import { celebrate } from '@/Support/celebrate';
 
 const props = defineProps({
     // Already resolved against the catalogue's defaults by the controller.
