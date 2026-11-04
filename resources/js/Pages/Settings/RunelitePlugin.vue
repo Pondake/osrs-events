@@ -191,11 +191,32 @@
             </div>
 
             <!-- Until the first connection only: after that the steps are done. -->
-            <ol v-if="!token || status.connection.state === 'never'" class="mt-4 list-decimal ps-5 space-y-1.5 text-sm text-muted">
+            <ol v-if="setupPending" class="mt-4 list-decimal ps-5 space-y-1.5 text-sm text-muted">
                 <li>{{ $t('plugin.step_install') }}</li>
                 <li>{{ $t('plugin.step_paste') }}</li>
                 <li>{{ $t('plugin.step_enable') }}</li>
             </ol>
+
+            <!-- Open while setting up; behind a button once connected, for a
+                 new computer or a second account. -->
+            <u-button
+                v-if="!setupPending"
+                class="mt-4"
+                color="neutral"
+                variant="link"
+                :icon="showSetupVideo ? 'i-lucide-chevron-up' : 'i-lucide-circle-play'"
+                :label="$t('plugin.setup_video_toggle')"
+                :aria-expanded="showSetupVideo"
+                @click="showSetupVideo = !showSetupVideo"
+            />
+            <plugin-demo-video
+                v-if="setupPending || showSetupVideo"
+                class="mt-4"
+                :sources="['/videos/plugin-setup-998355ac.webm', '/videos/plugin-setup-d0b0e59e.mp4']"
+                poster="/videos/plugin-setup-poster-4dcf1433.webp"
+                label="plugin.setup_video_label"
+                caption=""
+            />
 
             <div v-if="confirming" class="mt-4 flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">
                 <p class="text-sm">{{ $t(confirming === 'replace' ? 'plugin.replace_warning' : 'plugin.revoke_warning') }}</p>
@@ -228,6 +249,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import SettingsLayout from '@/Components/SettingsLayout.vue';
 import PluginReportLog from '@/Components/PluginReportLog.vue';
+import PluginDemoVideo from '@/Components/PluginDemoVideo.vue';
 import PluginTestChecklist from '@/Components/PluginTestChecklist.vue';
 import { formatDate, relativeTime } from '@/Support/board';
 import { useEventStream } from '@/Composables/useEventStream';
@@ -245,6 +267,7 @@ const props = defineProps({
 });
 
 const confirming = ref(null);
+const showSetupVideo = ref(false);
 const busy = ref(false);
 const copied = ref(false);
 const confirmingReset = ref(false);
@@ -257,6 +280,8 @@ const status = ref(props.status);
 // with fresh props on the same mounted component — the stream carries
 // on updating from there, but that reload itself has to reach the ref too.
 watch(() => props.status, (value) => (status.value = value));
+
+const setupPending = computed(() => !props.token || status.value.connection.state === 'never');
 
 useEventStream({
     url: () => (props.token ? '/settings/runelite/stream' : null),
