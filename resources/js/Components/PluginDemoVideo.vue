@@ -30,13 +30,34 @@
             >
                 <u-icon :name="playing ? 'i-lucide-pause' : 'i-lucide-play'" :class="playing ? 'size-5' : 'size-7 ms-1'" />
             </button>
+            <button
+                ref="enlargeButton"
+                type="button"
+                :aria-label="$t('landing.video_enlarge')"
+                class="absolute bottom-3 right-3 flex size-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm cursor-pointer transition hover:bg-primary hover:text-inverted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                @click="enlarge"
+            >
+                <u-icon name="i-lucide-maximize-2" class="size-5" />
+            </button>
         </div>
+        <video-lightbox
+            :open="large"
+            :sources="sources"
+            :poster="poster"
+            :width="width"
+            :height="height"
+            :label="$t(label)"
+            :start-at="startAt"
+            @close="shrink"
+        />
         <figcaption v-if="caption" class="text-xs text-muted" :class="captionClass">{{ $t(caption) }}</figcaption>
     </figure>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
+import VideoLightbox from '@/Components/VideoLightbox.vue';
+import { seekVideo } from '@/Support/video';
 
 defineProps({
     captionClass: { type: String, default: '' },
@@ -50,7 +71,11 @@ defineProps({
 });
 
 const video = ref(null);
+const enlargeButton = ref(null);
 const playing = ref(false);
+const large = ref(false);
+const startAt = ref(0);
+let resume = false;
 
 function toggle() {
     const el = video.value;
@@ -60,5 +85,21 @@ function toggle() {
     } else {
         el.pause();
     }
+}
+
+function enlarge() {
+    const el = video.value;
+    resume = Boolean(el && !el.paused);
+    startAt.value = el?.currentTime ?? 0;
+    el?.pause();
+    large.value = true;
+}
+
+// Back in the page where the large one stopped, playing again only if it was.
+async function shrink(time) {
+    large.value = false;
+    seekVideo(video.value, time, resume);
+    await nextTick();
+    enlargeButton.value?.focus();
 }
 </script>

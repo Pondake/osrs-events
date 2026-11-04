@@ -1,0 +1,9 @@
+{"id":"file.import","params":{"paths":["{RAW}"]}}
+{"id":"file.newSequenceFromClip","params":{"items":[1]}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/plugin/raw-a/f.jpg","format":"jpg","fps":30,"audio":false,"quality":92,"range":"custom","startSeconds":44,"endSeconds":61}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/plugin/raw-b/f.jpg","format":"jpg","fps":30,"audio":false,"quality":92,"range":"custom","startSeconds":88,"endSeconds":102}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/plugin/raw-c/f.jpg","format":"jpg","fps":30,"audio":false,"quality":92,"range":"custom","startSeconds":117,"endSeconds":133}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/plugin/raw-k/f.jpg","format":"jpg","fps":2,"audio":false,"quality":92,"range":"custom","startSeconds":12,"endSeconds":18}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/plugin/raw-l/f.jpg","format":"jpg","fps":2,"audio":false,"quality":92,"range":"custom","startSeconds":61,"endSeconds":66}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/plugin/raw-m/f.jpg","format":"jpg","fps":2,"audio":false,"quality":92,"range":"custom","startSeconds":102,"endSeconds":105}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/plugin/raw-n/f.jpg","format":"jpg","fps":2,"audio":false,"quality":92,"range":"custom","startSeconds":133,"endSeconds":139}}

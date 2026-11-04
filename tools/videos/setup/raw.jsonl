@@ -1,0 +1,6 @@
+{"id":"file.import","params":{"paths":["{RAW}"]}}
+{"id":"file.newSequenceFromClip","params":{"items":[1]}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/setup/raw-a/f.jpg","format":"jpg","fps":30,"audio":false,"quality":92,"range":"custom","startSeconds":4,"endSeconds":18}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/setup/raw-b/f.jpg","format":"jpg","fps":30,"audio":false,"quality":92,"range":"custom","startSeconds":36,"endSeconds":52}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/setup/raw-c/f.jpg","format":"jpg","fps":30,"audio":false,"quality":92,"range":"custom","startSeconds":60,"endSeconds":67}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/setup/raw-d/f.jpg","format":"jpg","fps":30,"audio":false,"quality":92,"range":"custom","startSeconds":106,"endSeconds":120}}

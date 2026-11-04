@@ -45,6 +45,25 @@
             >
                 <u-icon :name="playing ? 'i-lucide-pause' : 'i-lucide-play'" :class="playing ? 'size-5' : 'size-5 ms-0.5'" />
             </button>
+            <button
+                ref="enlargeButton"
+                type="button"
+                :aria-label="$t('landing.video_enlarge')"
+                class="absolute bottom-2 right-2 flex size-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm cursor-pointer transition hover:bg-primary hover:text-inverted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                @click="enlarge"
+            >
+                <u-icon name="i-lucide-maximize-2" class="size-5" />
+            </button>
+            <video-lightbox
+                :open="large"
+                :sources="videos"
+                :poster="src"
+                :width="width"
+                :height="height"
+                :label="alt"
+                :start-at="startAt"
+                @close="shrink"
+            />
         </div>
 
         <!-- `width`/`height` are the file's own pixel size, not a display
@@ -72,7 +91,9 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import VideoLightbox from '@/Components/VideoLightbox.vue';
+import { seekVideo } from '@/Support/video';
 
 defineProps({
     // Left null until a real screenshot exists under public/images/guides/.
@@ -96,6 +117,9 @@ defineProps({
 
 const video = ref(null);
 const playing = ref(false);
+const enlargeButton = ref(null);
+const large = ref(false);
+const startAt = ref(0);
 let observer = null;
 let heldByHand = false;
 
@@ -112,6 +136,20 @@ function toggle() {
         heldByHand = true;
         video.value.pause();
     }
+}
+
+function enlarge() {
+    startAt.value = video.value?.currentTime ?? 0;
+    video.value?.pause();
+    large.value = true;
+}
+
+// The small loop carries on from where the large one was, unless paused by hand.
+async function shrink(time) {
+    large.value = false;
+    seekVideo(video.value, time, !heldByHand && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+    await nextTick();
+    enlargeButton.value?.focus();
 }
 
 onMounted(() => {
