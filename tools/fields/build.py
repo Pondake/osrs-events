@@ -159,6 +159,14 @@ SHEETS = {
         ),
         'shape': faint, 'size': 40, 'turn': 30,
     },
+    'treasure': {
+        'things': details(
+            "Coins, Red partyhat, Santa hat, Christmas cracker, Gold ring, Ring of wealth, "
+            "Ring of coins, Amulet of glory, Gold necklace, Pharaoh's sceptre, Golden tench, "
+            "Gem bag, Casket, Diamond, Dragonstone, Zenyte, Platinum token"
+        ),
+        'shape': faint, 'size': 40, 'turn': 30,
+    },
 }
 
 

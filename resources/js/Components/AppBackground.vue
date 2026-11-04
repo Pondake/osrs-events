@@ -258,6 +258,7 @@ const SHAPES = {
     bones: sheet('bones'),
     keys: sheet('keys'),
     scrolls: sheet('scrolls'),
+    treasure: sheet('treasure'),
 };
 
 const name = computed(() => (props.motif in SHAPES ? props.motif : 'tiles'));

@@ -33,6 +33,7 @@ export const LANDING_PAGES = [
     // makes it read as a page rather than as a crash. It also gets the panel
     // bevel for free — see .landing-page in app.css.
     'Error',
+    'Supporters',
 ];
 
 export function isLandingPage(component) {
@@ -44,7 +45,8 @@ export function isLandingPage(component) {
  *
  * Every page that has a field gets its own, picked for what the page is: every
  * rune on the home page, every skill on /about, bones on a dead link, keys on
- * the privacy policy, scrolls on the terms. The page that sells an event type
+ * the privacy policy, scrolls on the terms, treasure on the page that thanks
+ * the people who chipped in. The page that sells an event type
  * would get the shape of that event — the bingo card's diamond lattice, a
  * Snakes & Ladders board — and the plain tile is the fallback.
  *
@@ -57,6 +59,7 @@ const MOTIFS = {
     About: 'skills',
     Error: 'bones',
     Page: 'runes',
+    Supporters: 'treasure',
     OsrsBingo: 'bingo',
     SnakesAndLadders: 'ladder',
 };
@@ -111,7 +114,7 @@ export function backgroundMotif(component, url = '') {
  * The same split collectopoly makes on `route.meta.layout`, decided here on
  * the component name because that is what the shell knows about the page.
  */
-const QUIET_PAGES = ['Page'];
+const QUIET_PAGES = ['Page', 'Supporters'];
 
 export function backgroundIsHero(component) {
     return ! QUIET_PAGES.includes(String(component ?? ''));

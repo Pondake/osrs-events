@@ -112,6 +112,7 @@ describe('backgroundMotif', () => {
         expect(backgroundMotif('Home')).toBe('runes');
         expect(backgroundMotif('About')).toBe('skills');
         expect(backgroundMotif('Error')).toBe('bones');
+        expect(backgroundMotif('Supporters')).toBe('treasure');
     });
 
     it('tells CMS pages apart by address', () => {
