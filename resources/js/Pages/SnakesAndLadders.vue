@@ -115,10 +115,10 @@
 
                     <guide-screenshot
                         class="mt-4"
-                        src="/videos/sl-board-poster-7370180c.webp"
-                        :videos="['/videos/sl-board-9f7b0b2a.webm', '/videos/sl-board-a1f220a8.mp4']"
-                        :width="1080"
-                        :height="1080"
+                        src="/videos/sl-board-poster-e1e20d11.webp"
+                        :videos="['/videos/sl-board-f0050b86.webm', '/videos/sl-board-80052149.mp4']"
+                        :width="1168"
+                        :height="1256"
                         :alt="$t('landing.snakes.video_board_alt')"
                     />
                 </div>

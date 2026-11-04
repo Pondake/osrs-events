@@ -63,10 +63,10 @@
             <p :class="prose.p">{{ $t('landing.clan_events.setup_body') }}</p>
             <guide-screenshot
                 class="mb-6"
-                src="/videos/create-event-poster-951ba929.webp"
-                :videos="['/videos/create-event-8bd85de2.webm', '/videos/create-event-b764de7e.mp4']"
-                :width="1536"
-                :height="1350"
+                src="/videos/create-event-poster-fd7f9133.webp"
+                :videos="['/videos/create-event-fef31cf9.webm', '/videos/create-event-b0c268d1.mp4']"
+                :width="1624"
+                :height="1526"
                 :alt="$t('landing.clan_events.video_create_alt')"
             />
             <u-button href="/osrs-event-ideas" color="primary" variant="outline" trailing-icon="i-lucide-arrow-right" :label="$t('landing.event_ideas.title')" />

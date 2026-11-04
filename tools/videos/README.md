@@ -23,6 +23,30 @@ E2E_PORT=9600 E2E_PHP_WORKERS=4 node tests/e2e/serve.js
 Each `art.mjs` runs artisan (tinker, `dev:login-link`) against that same
 environment. The database is fresh on every server start, so seed once per run.
 
+## House style
+
+Every video shares one look: `style/style.py` holds the background, panels,
+tags and the chat callout, `style/cards.mjs` and `style/assets.mjs` render the
+headings, step columns and title cards with the site's own fonts.
+
+```
+node tools/videos/style/assets.mjs
+node tools/videos/style/cards.mjs
+python tools/videos/style/restyle.py <name> peek 3 8    # stills first
+python tools/videos/style/restyle.py <name> sheet      # contact sheet
+python tools/videos/style/restyle.py <name>            # webm, master, poster
+python tools/videos/plugin/styled.py render            # plugin demo, 16:9 and 9:16
+```
+
+`restyle.py` wraps the frames from each clip's own `frames.py`, so the steps
+below still produce the raw material. Names: `intro`, `plugin-setup`,
+`bingo-review`, `sl-board`, `skill-race`, `drop-race`, `team-push`,
+`create-event`. Output lands in `styled/`.
+
+The plugin demo holds the game for 2 s after each claim so the chat line can be
+read. `plugin/reddit.jsonl` is the 9:16 cut with sound; its claim and medal
+sounds are the jingles lowered by 8 dB.
+
 ## How a clip is made
 
 1. `node <clip>/art.mjs tinker <clip>/seed.php` (or `reset.php`) sets the scene.
@@ -65,6 +89,11 @@ node tools/videos/plugin/bandsp.mjs && python tools/videos/plugin/vertical.py   
 The claim times in `compose.py` (`SEGS`) belong to that one recording; a new
 recording needs new ones. The chat window is cropped out of the game image on
 purpose: it shows the account name.
+
+Headless Chromium's screencast delivers frames in CSS pixels whatever the
+device scale factor, so a 2x recording made that way is a 1x one upscaled.
+`plugin/cardlive.mjs` therefore captures with `page.screenshot` in a loop, at
+a clock slowed 8x so the slower capture still lands every frame.
 
 ### Plugin setup
 

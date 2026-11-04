@@ -52,9 +52,10 @@ def raw(w, t):
 
 import bisect, json
 _cj = json.load(open(os.path.join(HERE, 'cardframes.json')))
-CARD_T = [m['t'] - _cj['t0'] for m in _cj['meta']]
+_K = _cj.get('K', 1)
+CARD_T = [(m['t'] - _cj['t0']) / _K for m in _cj['meta']]
 CARD_F = [os.path.join(HERE, 'cardframes', m['file']) for m in _cj['meta']]
-SHOWN = {m['n']: m['shown'] for m in _cj['marks'] if 'n' in m}
+SHOWN = {m['n']: m['shown'] / _K for m in _cj['marks'] if 'shown' in m}
 _cc = {}
 
 def card_raw(t):
@@ -66,9 +67,19 @@ def card_raw(t):
 
 def card_time(state, since, lag=0.35):
     # Before the claim lands: the frame just before this state appeared. After: the live clip from there on.
-    return SHOWN[state] - 0.15 + max(0.0, since - lag)
+    t = SHOWN[state] - 0.15 + max(0.0, since - lag)
+    # Never run on into the next claim's change.
+    return min(t, SHOWN[state + 1] - 0.15) if state + 1 in SHOWN else t
 
 CH = round(2430 * PW / 1800)
+
+def card_view(t, x0, x1, height, offsets):
+    """A window onto the page in CSS px; it eases down after the finish, when the banners push the card."""
+    before, after = offsets
+    off = before if t < SHOWN[3] else before + (after - before) * ease((t - SHOWN[3]) / 0.5)
+    img = card_raw(t)
+    k = img.width / 900
+    return img.crop((round(x0 * k), round(off * k), round(x1 * k), round((off + height) * k)))
 CY = (H - CH) // 2
 
 def pill(d, text, cx, y):
@@ -87,8 +98,9 @@ def timeline():
             s = a + i / FPS
             out.append((w, s, claim, state, k))
     w, a, b, claim, state = SEGS[-1]
+    # The game holds its last frame; the card keeps playing, so `claim` moves back.
     for i in range(round(HOLD * FPS)):
-        out.append((w, b, claim, state, len(SEGS) - 1))
+        out.append((w, b, claim - (i + 1) / FPS, state, len(SEGS) - 1))
     return out
 
 def frame(w, s, claim, state, k, prev_state):
@@ -97,7 +109,7 @@ def frame(w, s, claim, state, k, prev_state):
     canvas.paste(src.crop(GAME).resize((GW, GH), Image.LANCZOS), (0, GY))
     since = s - claim
     lag = 0.35
-    card = card_raw(card_time(state, since, lag)).resize((PW, CH), Image.LANCZOS)
+    card = card_view(card_time(state, since, lag), 0, 900, 1215, (0, 166)).resize((PW, CH), Image.LANCZOS)
     canvas.paste(card, (GW, CY))
     d = ImageDraw.Draw(canvas)
     if since >= lag and since - lag < 1.2:
