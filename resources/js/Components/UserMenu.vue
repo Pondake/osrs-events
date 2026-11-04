@@ -12,7 +12,7 @@
                  stacked would push the button taller than the rest of the
                  header row. -->
             <span class="hidden sm:flex flex-col items-start leading-none gap-0.5">
-                <span class="text-sm leading-none">{{ user.nickname ?? user.discordUsername }}</span>
+                <span class="text-sm leading-none">{{ displayName }}</span>
                 <span v-if="primaryRole" class="text-[10px] font-medium uppercase tracking-wide leading-none" :class="roleClass">
                     {{ primaryRole }}
                 </span>
@@ -37,69 +37,14 @@
 
 <script setup>
 import { computed } from 'vue';
-import { router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { useAuth } from '@/Composables/useAuth';
-import { settingsItems } from '@/Support/settingsNav';
+import { useUserMenu } from '@/Composables/useUserMenu';
 
-const { user, isAuthenticated, isAdmin, canCreateTiles } = useAuth();
+const { user, isAuthenticated, displayName, primaryRole, roleClass, linkGroups, logout } = useUserMenu();
 
-// Same gate as the /admin middleware — an EDITOR with canCreateTiles gets
-// in for the Tasks page alone. The link only mirrors that; the server is
-// what actually enforces it.
-const canReachAdmin = computed(() => isAdmin.value || canCreateTiles.value);
-
-/**
- * One badge, not all of them. An account can hold several roles and the
- * header has room for one line — so this shows the most privileged, which is
- * the one that explains what you can see. Ordered most-to-least; the first
- * match wins.
- *
- * PLAYER is deliberately absent: it is what everybody has, so printing it
- * under every name is a row of noise that distinguishes nobody. The full
- * set still shows on /settings/profile.
- */
-const ROLE_RANK = ['ADMIN', 'EDITOR'];
-
-const ROLE_CLASS = {
-    ADMIN: 'text-error',
-    EDITOR: 'text-warning',
-};
-
-const primaryRole = computed(() => {
-    const roles = user.value?.roles ?? [];
-
-    return ROLE_RANK.find((role) => roles.includes(role)) ?? null;
-});
-
-const roleClass = computed(() => ROLE_CLASS[primaryRole.value] ?? 'text-muted');
-
-/**
- * The settings rows come from the same list the settings sidebar prints.
- *
- * They used to be typed out again here, and fell behind twice — Connections
- * and then Animations existed in the sidebar and were missing from this menu,
- * which is the one most people open first. Only the wrapping is this menu's
- * own: the name on top, admin and logout underneath.
- */
 const items = computed(() => [
-    [{ label: user.value?.nickname ?? user.value?.discordUsername, disabled: true }],
-    settingsItems().map(({ label, icon, to }) => ({ label, icon, to })),
-    ...(canReachAdmin.value
-        ? [[{ label: trans('admin.nav_admin_area'), icon: 'i-lucide-layout-dashboard', to: '/admin' }]]
-        : []),
+    [{ label: displayName.value, disabled: true }],
+    ...linkGroups.value,
     [{ label: trans('common.logout'), icon: 'i-lucide-log-out', color: 'error', onSelect: logout }],
 ]);
-
-// router.post(), not a raw <form> submit — Inertia's client handles CSRF
-// itself via the XSRF-TOKEN cookie for its own fetch-based requests (same
-// mechanism BoardSettingsModal's invite fetch() calls use explicitly). A
-// plain form submission would need the SESSION _token instead (a different
-// value from the XSRF-TOKEN cookie), which isn't exposed anywhere in this
-// app (no <meta name="csrf-token">) — reaching for that would have been a
-// second, wrong fix on top of the barrel-import CSRF mixup already caught
-// once in this session.
-function logout() {
-    router.post('/logout');
-}
 </script>

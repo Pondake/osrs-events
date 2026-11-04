@@ -186,7 +186,11 @@
         <template #right>
             <client-only>
                 <u-color-mode-button />
-                <user-menu />
+                <!-- Desktop only: below lg the account lives in the drawer,
+                     so mobile has one menu instead of two side by side. -->
+                <div class="hidden lg:flex">
+                    <user-menu />
+                </div>
             </client-only>
         </template>
 
@@ -254,6 +258,53 @@
                     </ul>
                 </template>
             </nav>
+
+            <!-- The account menu, folded in: the same entries the desktop
+                 dropdown offers (useUserMenu), so mobile has one menu. -->
+            <div class="mx-4 mb-4 pt-4 border-t border-default flex flex-col gap-1">
+                <template v-if="isAuthenticated">
+                    <div class="flex items-center gap-3 px-3 pb-2">
+                        <u-avatar v-if="user.avatarUrl" :src="user.avatarUrl" :alt="user.discordUsername" size="sm" />
+                        <u-icon v-else name="i-lucide-user" class="size-6 text-muted" />
+                        <div class="flex flex-col leading-tight min-w-0">
+                            <span class="text-sm font-semibold text-highlighted truncate">{{ displayName }}</span>
+                            <span v-if="primaryRole" class="text-[10px] font-medium uppercase tracking-wide" :class="roleClass">{{ primaryRole }}</span>
+                        </div>
+                    </div>
+
+                    <template v-for="(group, index) in linkGroups" :key="index">
+                        <div v-if="index > 0" class="my-1 border-t border-default" />
+                        <a
+                            v-for="link in group"
+                            :key="link.to"
+                            :href="link.to"
+                            class="flex min-h-11 items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-default hover:bg-elevated transition-colors"
+                        >
+                            <u-icon :name="link.icon" class="size-4 shrink-0" />
+                            <span>{{ link.label }}</span>
+                        </a>
+                    </template>
+
+                    <div class="my-1 border-t border-default" />
+                    <button
+                        type="button"
+                        class="flex min-h-11 items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-error hover:bg-error/10 transition-colors text-left"
+                        @click="logout"
+                    >
+                        <u-icon name="i-lucide-log-out" class="size-4 shrink-0" />
+                        <span>{{ $t('common.logout') }}</span>
+                    </button>
+                </template>
+
+                <a
+                    v-else
+                    href="/login"
+                    class="flex min-h-11 items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium bg-primary text-inverted hover:bg-primary/90 transition-colors"
+                >
+                    <u-icon name="i-lucide-log-in" class="size-4 shrink-0" />
+                    <span>{{ $t('common.login') }}</span>
+                </a>
+            </div>
         </template>
     </u-header>
 </template>
@@ -262,6 +313,7 @@
 import { computed, ref } from 'vue';
 import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
+import { useUserMenu } from '@/Composables/useUserMenu';
 import AppLogo from '@/Components/AppLogo.vue';
 import { isPublicPath } from '@/Support/landing';
 import { GUIDE_LINKS } from '@/Support/guides';
@@ -269,7 +321,8 @@ import { useCurrentPage } from '@/Support/pageState';
 import UserMenu from '@/Components/UserMenu.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
-const { isAuthenticated, isAdmin } = useAuth();
+const { isAuthenticated } = useAuth();
+const { user, displayName, primaryRole, roleClass, linkGroups, logout } = useUserMenu();
 
 // Shared by HandleInertiaRequests, and it already means "the door is shut for
 // THIS visitor" — false for an admin and false for anyone who has typed the
