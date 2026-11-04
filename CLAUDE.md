@@ -51,6 +51,7 @@ osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.
 │   └── views/app.blade.php  root Blade shell — favicons, fonts, @inertiaHead
 ├── routes/web.php
 ├── tools/videos/        scripts that record the demo videos and jingles (README inside)
+├── tools/fields/        builds the shape sheets behind the landing pages
 ├── ui.config.ts          Nuxt UI theme (colors, component overrides) — wired into vite.config.js
 ├── lang/en.json           flat dotted-key translations (see i18n below)
 ├── docs/ideas.md           thought through, not scheduled

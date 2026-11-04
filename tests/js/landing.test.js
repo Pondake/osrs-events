@@ -108,9 +108,20 @@ describe('the two lists', () => {
 });
 
 describe('backgroundMotif', () => {
-    it('gives the home page the rune field and everything else the plain tile', () => {
+    it('gives each page with a field its own', () => {
         expect(backgroundMotif('Home')).toBe('runes');
-        expect(backgroundMotif('About')).toBe('tiles');
+        expect(backgroundMotif('About')).toBe('skills');
+        expect(backgroundMotif('Error')).toBe('bones');
+    });
+
+    it('tells CMS pages apart by address', () => {
+        expect(backgroundMotif('Page', '/privacy')).toBe('keys');
+        expect(backgroundMotif('Page', '/terms?ref=footer')).toBe('scrolls');
+        expect(backgroundMotif('Page', '/anything-else')).toBe('runes');
+    });
+
+    it('only reads the address for CMS pages', () => {
+        expect(backgroundMotif('Home', '/privacy')).toBe('runes');
     });
 
     it('leaves the pages that explain an event type bare', () => {

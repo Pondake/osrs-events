@@ -374,7 +374,7 @@ const AUTH_PAGES = ['Auth/Login', 'Auth/Register', 'Auth/ForgotPassword', 'Auth/
 
 const isLanding = computed(() => isLandingPage(inertiaPage.value.component));
 
-const backgroundMotif = computed(() => motifFor(inertiaPage.value.component));
+const backgroundMotif = computed(() => motifFor(inertiaPage.value.component, inertiaPage.value.url));
 const backgroundIsHero = computed(() => isHeroFor(inertiaPage.value.component));
 
 /**

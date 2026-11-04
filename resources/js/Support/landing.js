@@ -42,12 +42,11 @@ export function isLandingPage(component) {
 /**
  * Which pattern the generative background draws behind a landing page.
  *
- * Three motifs, all of them the app's own language rather than a borrowed
- * one: the square the game world is divided into, the bingo card's diamond
- * lattice, and a Snakes & Ladders board. The page that sells an event type
- * gets the shape of that event; everything else gets the plain tile, which is
- * the unit all three are made of. Home is the exception that sells the game
- * rather than an event: every rune there is.
+ * Every page that has a field gets its own, picked for what the page is: every
+ * rune on the home page, every skill on /about, bones on a dead link, keys on
+ * the privacy policy, scrolls on the terms. The page that sells an event type
+ * would get the shape of that event — the bingo card's diamond lattice, a
+ * Snakes & Ladders board — and the plain tile is the fallback.
  *
  * Only landing pages are asked — the caller gates on isLandingPage() first.
  * That gate is the whole point: this belongs on the pages people read, not
@@ -55,8 +54,17 @@ export function isLandingPage(component) {
  */
 const MOTIFS = {
     Home: 'runes',
+    About: 'skills',
+    Error: 'bones',
+    Page: 'runes',
     OsrsBingo: 'bingo',
     SnakesAndLadders: 'ladder',
+};
+
+/** Every CMS page renders through `Page`, so those are told apart by address. */
+const PAGE_MOTIFS = {
+    '/privacy': 'keys',
+    '/terms': 'scrolls',
 };
 
 /**
@@ -83,12 +91,12 @@ const NO_BACKGROUND = [
 ];
 
 /** The motif for a landing page, or null where the field is off. */
-export function backgroundMotif(component) {
+export function backgroundMotif(component, url = '') {
     const name = String(component ?? '');
 
     if (NO_BACKGROUND.includes(name)) return null;
 
-    return MOTIFS[name] ?? 'tiles';
+    return (name === 'Page' && PAGE_MOTIFS[String(url).split(/[?#]/)[0]]) || (MOTIFS[name] ?? 'tiles');
 }
 
 /**
