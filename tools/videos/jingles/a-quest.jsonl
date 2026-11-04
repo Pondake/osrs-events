@@ -1,0 +1,3 @@
+{"id":"file.import","params":{"paths":["{VIDEOS}/jingles/osrs-quest.wav"]}}
+{"id":"file.newSequenceFromClip","params":{"items":[1]}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/jingles/quest.m4a","preset":"AAC Audio 48 kHz 320 kbps","settings":{"audio":{"bitrate_kbps":96,"bits":16,"channels":2,"codec":"aac","flac_level":5,"float":false,"sample_rate":48000}}}}

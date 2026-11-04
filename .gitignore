@@ -58,3 +58,21 @@ lang/php_*.json
 /tests/e2e/.auth*
 /tests/e2e/.results*
 /playwright-report*
+
+# Video recordings: frames, intermediates and outputs stay local
+/tools/videos/**/*.jpg
+/tools/videos/**/*.png
+/tools/videos/**/*.webp
+/tools/videos/**/*.webm
+/tools/videos/**/*.mp4
+/tools/videos/**/*.mjpg
+/tools/videos/**/*.wav
+/tools/videos/**/*.m4a
+/tools/videos/**/*.txt
+/tools/videos/**/frames*.json
+/tools/videos/**/cardframes.json
+/tools/videos/**/frames*/
+/tools/videos/**/cardframes/
+/tools/videos/**/raw-*/
+/tools/videos/sf/
+/tools/videos/**/__pycache__/

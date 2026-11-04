@@ -1,0 +1,6 @@
+{"id": "file.import", "params": {"paths": ["{VIDEOS}/vertical/sl-master.webm"]}}
+{"id": "file.newSequenceFromClip", "params": {"items": [1]}}
+{"id": "file.exportMedia", "params": {"path": "{VIDEOS}/vertical/sl-9x16.mp4", "format": "h264", "bitrateMode": "crf", "crf": 24, "audio": false, "hardwareEncoding": "off"}}
+{"id": "file.import", "params": {"paths": ["{VIDEOS}/vertical/bingo-master.webm"]}}
+{"id": "file.newSequenceFromClip", "params": {"items": [3]}}
+{"id": "file.exportMedia", "params": {"path": "{VIDEOS}/vertical/bingo-9x16.mp4", "format": "h264", "bitrateMode": "crf", "crf": 24, "audio": false, "hardwareEncoding": "off"}}
