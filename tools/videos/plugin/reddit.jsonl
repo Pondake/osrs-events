@@ -1,0 +1,10 @@
+{"id":"file.import","params":{"paths":["{VIDEOS}/plugin/styled9-master.webm","{RAW}","{VIDEOS}/jingles/osrs-claim-soft.wav","{VIDEOS}/jingles/osrs-medal-soft.wav"]}}
+{"id":"file.newSequence","params":{"name":"reddit","width":1080,"height":1920,"fps":30}}
+{"id":"timeline.place","params":{"item":1,"track":"V1","seconds":0,"insert":false,"audio":false}}
+{"id":"timeline.place","params":{"item":2,"track":"A1","seconds":0,"insert":false,"video":false,"sourceIn":{"seconds":53.4},"duration":{"seconds":7.0}}}
+{"id":"timeline.place","params":{"item":2,"track":"A1","seconds":7.0,"insert":false,"video":false,"sourceIn":{"seconds":96.4},"duration":{"seconds":7.0}}}
+{"id":"timeline.place","params":{"item":2,"track":"A1","seconds":14.0,"insert":false,"video":false,"sourceIn":{"seconds":125.2},"duration":{"seconds":6.2}}}
+{"id":"timeline.place","params":{"item":3,"track":"A2","seconds":3.88,"insert":false}}
+{"id":"timeline.place","params":{"item":3,"track":"A2","seconds":10.82,"insert":false}}
+{"id":"timeline.place","params":{"item":4,"track":"A3","seconds":17.85,"insert":false}}
+{"id":"file.exportMedia","params":{"path":"{VIDEOS}/plugin/reddit.mp4","format":"h264","bitrateMode":"crf","crf":20,"audio":true,"audioCodec":"aac","loudnessLufs":-14,"hardwareEncoding":"off"}}

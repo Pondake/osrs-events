@@ -61,10 +61,10 @@
 
                     <guide-screenshot
                         class="mt-4"
-                        src="/videos/drop-race-poster-407bf655.webp"
-                        :videos="['/videos/drop-race-d6a87120.webm', '/videos/drop-race-22a43116.mp4']"
-                        :width="1080"
-                        :height="1340"
+                        src="/videos/drop-race-poster-a1225460.webp"
+                        :videos="['/videos/drop-race-6bca09a8.webm', '/videos/drop-race-59efac65.mp4']"
+                        :width="1168"
+                        :height="1516"
                         :alt="$t('landing.drop_race.video_board_alt')"
                     />
                 </div>

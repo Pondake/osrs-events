@@ -71,10 +71,10 @@
 
             <guide-screenshot
                 class="mt-8 max-w-3xl mx-auto"
-                src="/videos/bingo-review-poster-4139898b.webp"
-                :videos="['/videos/bingo-review-f817b2a5.webm', '/videos/bingo-review-939f6a50.mp4']"
-                :width="1200"
-                :height="1300"
+                src="/videos/bingo-review-poster-c9187e84.webp"
+                :videos="['/videos/bingo-review-7b6ccd2f.webm', '/videos/bingo-review-e9250b26.mp4']"
+                :width="1288"
+                :height="1460"
                 :alt="$t('landing.bingo.video_review_alt')"
             />
         </section>
@@ -107,10 +107,10 @@
 
                 <guide-screenshot
                     class="w-full max-w-64 mx-auto"
-                    src="/videos/team-push-poster-464680d7.webp"
-                    :videos="['/videos/team-push-3d469c6c.webm', '/videos/team-push-642cdc82.mp4']"
-                    :width="720"
-                    :height="1280"
+                    src="/videos/team-push-poster-69d39ad0.webp"
+                    :videos="['/videos/team-push-1194976a.webm', '/videos/team-push-33b339c8.mp4']"
+                    :width="808"
+                    :height="1456"
                     :alt="$t('landing.bingo.video_push_alt')"
                 />
             </div>

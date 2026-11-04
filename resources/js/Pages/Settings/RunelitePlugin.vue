@@ -212,8 +212,8 @@
             <plugin-demo-video
                 v-if="setupPending || showSetupVideo"
                 class="mt-4"
-                :sources="['/videos/plugin-setup-998355ac.webm', '/videos/plugin-setup-d0b0e59e.mp4']"
-                poster="/videos/plugin-setup-poster-4dcf1433.webp"
+                :sources="['/videos/plugin-setup-a7e083d6.webm', '/videos/plugin-setup-84320761.mp4']"
+                poster="/videos/plugin-setup-poster-2d6ac982.webp"
                 label="plugin.setup_video_label"
                 caption=""
             />
