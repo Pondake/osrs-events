@@ -34,10 +34,24 @@ RACE_T = [a + i / FPS for a, b in RSEGS for i in range(round((b - a) * FPS))]
 
 # Each section: (frames, builder(k) -> Image)
 SL_N = round(5.0 * FPS)
+
+def timeline(a, e, speed, holds):
+    # Source times at `speed`, with a still of `seconds` at each hold point.
+    out, t, pending = [], a, sorted(holds.items())
+    while t < e:
+        out.append(t)
+        while pending and t >= pending[0][0]:
+            out += [t] * round(pending[0][1] * FPS)
+            pending.pop(0)
+        t += speed / FPS
+    return out
+
+CREATE_T = timeline(0.5, 20.5, 1.25, {14.6: 0.8, 19.8: 1.0})
+BINGO_T = timeline(0.2, 12.2, 1.0, {8.5: 0.8})
 SECTIONS = [
     (round(2.6 * FPS), lambda k: img['title']),
-    (round(20.0 / 1.6 * FPS), lambda k: (lambda t: stage('col1' if t < 14.6 else 'col2', fit(create.at(t))))(0.5 + k * 1.6 / FPS)),
-    (round(12.0 / 1.25 * FPS), lambda k: stage('col3', fit(bingo_seq.frame(0.2 + k * 1.25 / FPS)))),
+    (len(CREATE_T), lambda k: (lambda t: stage('col1' if t < 14.6 else 'col2', fit(create.at(t))))(CREATE_T[k])),
+    (len(BINGO_T), lambda k: stage('col3', fit(bingo_seq.frame(BINGO_T[k])))),
     (SL_N, lambda k: stage('col4', fit(sl.at(5.5 + k / FPS)))),
     (len(RACE_T), lambda k: stage('col4', fit(race.at(RACE_T[k])))),
     (round(3.2 * FPS), lambda k: img['end']),
