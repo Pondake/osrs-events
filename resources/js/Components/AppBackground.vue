@@ -25,8 +25,8 @@
                 <div
                     class="app-bg__runes"
                     :class="hero
-                        ? 'opacity-[0.075] dark:opacity-[0.07]'
-                        : 'opacity-[0.04] dark:opacity-[0.035]'"
+                        ? 'opacity-[0.05] dark:opacity-[0.045]'
+                        : 'opacity-[0.03] dark:opacity-[0.025]'"
                 />
                 <div
                     v-for="(spot, i) in accents"
@@ -243,12 +243,12 @@ const SHAPES = {
         accents: [[1, 2], [5, 0], [3, 5], [8, 3], [12, 7], [6, 10], [15, 4], [18, 9], [10, 12], [20, 2], [2, 11], [22, 12]],
     },
     runes: {
-        tileW: 384,
-        tileH: 384,
-        step: 48,
+        tileW: 512,
+        tileH: 512,
+        step: 64,
         // The sheet is 8 by 8 runes, so a whole tile per cycle needs this long
         // to crawl at the same pace as the plain tiles.
-        drift: 750,
+        drift: 1000,
         // Odd rows sit half a rune along; see accents below.
         staggered: true,
         accents: [[1, 2], [6, 0], [4, 5], [9, 3], [13, 7], [7, 10], [16, 4], [19, 9], [11, 12], [22, 2], [2, 11], [24, 12]],
@@ -261,7 +261,7 @@ const shape = computed(() => SHAPES[name.value]);
 const markSize = computed(() => (name.value === 'ladder' ? 48 : 38));
 
 // A rune is solid where a mark above is mostly outline, so it needs less.
-const accentPeak = computed(() => (name.value === 'runes' ? 0.2 : 0.3));
+const accentPeak = computed(() => (name.value === 'runes' ? 0.14 : 0.3));
 
 /** A diamond around the origin, so the four corner quarters clip themselves. */
 function diamond(r) {

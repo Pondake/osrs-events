@@ -23,10 +23,10 @@ RUNES = (
     'Cosmic Chaos Nature Law Death Astral Blood Soul Wrath Cabbage'
 ).split()
 
-CELL = 48
+CELL = 64
 COLS = 8
 RUNE_SIZE = 37
-MAX_TILT = 9
+MAX_TILT = 30
 DENSITY = 2
 OUTPUT = Path(__file__).resolve().parents[2] / 'public/images/osrs/rune-field.webp'
 
@@ -110,15 +110,19 @@ def main():
     grid, rng = layout()
 
     side = CELL * COLS * DENSITY
-    size = RUNE_SIZE * DENSITY
+    # Half as much frame again, so a rune's corners survive the turn.
+    size = RUNE_SIZE * DENSITY * 3 // 2
+    inset = (CELL * DENSITY - size) // 2
     sheet = np.zeros((side, side), dtype=float)
 
     for (col, row), name in grid.items():
         # Rotated at full size, so the tilt costs no sharpness when it shrinks.
-        tilted = stencils[name].rotate(rng.uniform(-MAX_TILT, MAX_TILT), Image.BICUBIC)
+        framed = Image.new('L', (600, 600))
+        framed.paste(stencils[name], (100, 100))
+        tilted = framed.rotate(rng.uniform(-MAX_TILT, MAX_TILT), Image.BICUBIC)
         mark = np.asarray(tilted.resize((size, size), Image.LANCZOS), dtype=float) / 255
-        x = (col * CELL + (CELL // 2 if row % 2 else 0) + (CELL - RUNE_SIZE) // 2) * DENSITY
-        y = (row * CELL + (CELL - RUNE_SIZE) // 2) * DENSITY
+        x = (col * CELL + (CELL // 2 if row % 2 else 0)) * DENSITY + inset
+        y = row * CELL * DENSITY + inset
         for dy in range(size):
             for dx in range(size):
                 if mark[dy, dx]:
