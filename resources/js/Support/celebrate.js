@@ -50,12 +50,12 @@ function burst(done) {
         done();
         return;
     }
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // 1.5 is plenty for confetti and keeps a phone's canvas a third the size.
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const w = window.innerWidth;
     const h = window.innerHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    ctx.scale(dpr, dpr);
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
 
     // Two volleys from the bottom corners, the second a beat later, then a
     // drizzle from the top while the first ones come down.
@@ -81,7 +81,8 @@ function burst(done) {
         const t = now - start;
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
-        ctx.clearRect(0, 0, w, h);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = t > DURATION - FADE ? Math.max(0, (DURATION - t) / FADE) : 1;
         for (const p of pieces) {
             if (t < p.delay) continue;
@@ -91,18 +92,19 @@ function burst(done) {
             p.x += (p.vx + Math.sin(t / 180 + p.turn) * 30 * p.flutter) * dt;
             p.y += p.vy * dt;
             p.turn += p.spin * dt;
+            // Gone below the screen for good: nothing to draw.
+            if (p.vy > 0 && p.y > h + 30) continue;
+            const cos = Math.cos(p.turn) * dpr;
+            const sin = Math.sin(p.turn) * dpr;
+            ctx.setTransform(cos, sin, -sin, cos, p.x * dpr, p.y * dpr);
             ctx.fillStyle = p.color;
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.turn);
             if (p.round) {
                 ctx.beginPath();
                 ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
                 ctx.fill();
             } else {
-                ctx.fillRect(-p.size / 2, -p.size / 4, p.size, (p.size / 2) * Math.abs(Math.cos(p.turn)) + 1);
+                ctx.fillRect(-p.size / 2, -p.size / 4, p.size, (p.size / 2) * Math.abs(cos / dpr) + 1);
             }
-            ctx.restore();
         }
         if (t < DURATION) {
             requestAnimationFrame(frame);
