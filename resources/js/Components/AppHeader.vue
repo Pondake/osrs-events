@@ -208,14 +208,17 @@
                  is the link and the chevron beside it is its own button with
                  its own hit area — two targets, which is what a group that
                  is both a place and a list needs on touch. -->
-            <nav class="p-4 flex flex-col gap-1">
+            <!-- -mx-3, not padding: u-header's body already pads by p-4, and
+                 pulling the rows out by their own px-3 lines the icons up
+                 with the logo above. -->
+            <nav class="-mx-3 flex flex-col gap-1">
                 <template v-for="item in navigation" :key="item.label">
                     <div class="flex items-center gap-1">
                         <component
                             :is="item.to ? 'a' : 'button'"
                             :href="item.to"
                             :type="item.to ? undefined : 'button'"
-                            class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-default hover:bg-elevated transition-colors text-left"
+                            class="flex-1 flex min-h-11 items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-default hover:bg-elevated transition-colors text-left"
                             @click="!item.to && toggleGroup(item.label)"
                         >
                             <u-icon v-if="item.icon" :name="item.icon" class="size-4 shrink-0" />
@@ -261,9 +264,9 @@
 
             <!-- The account menu, folded in: the same entries the desktop
                  dropdown offers (useUserMenu), so mobile has one menu. -->
-            <div class="mx-4 mb-4 pt-4 border-t border-default flex flex-col gap-1">
+            <div class="mt-3 pt-4 border-t border-default">
                 <template v-if="isAuthenticated">
-                    <div class="flex items-center gap-3 px-3 pb-2">
+                    <div class="flex items-center gap-3 pb-3 mb-2 border-b border-default">
                         <u-avatar v-if="user.avatarUrl" :src="user.avatarUrl" :alt="user.discordUsername" size="sm" />
                         <u-icon v-else name="i-lucide-user" class="size-6 text-muted" />
                         <div class="flex flex-col leading-tight min-w-0">
@@ -272,28 +275,30 @@
                         </div>
                     </div>
 
-                    <template v-for="(group, index) in linkGroups" :key="index">
-                        <div v-if="index > 0" class="my-1 border-t border-default" />
-                        <a
-                            v-for="link in group"
-                            :key="link.to"
-                            :href="link.to"
-                            class="flex min-h-11 items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-default hover:bg-elevated transition-colors"
-                        >
-                            <u-icon :name="link.icon" class="size-4 shrink-0" />
-                            <span>{{ link.label }}</span>
-                        </a>
-                    </template>
+                    <div class="-mx-3 flex flex-col gap-1">
+                        <template v-for="(group, index) in linkGroups" :key="index">
+                            <div v-if="index > 0" class="mx-3 my-1 border-t border-default" />
+                            <a
+                                v-for="link in group"
+                                :key="link.to"
+                                :href="link.to"
+                                class="flex min-h-11 items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-default hover:bg-elevated transition-colors"
+                            >
+                                <u-icon :name="link.icon" class="size-4 shrink-0" />
+                                <span>{{ link.label }}</span>
+                            </a>
+                        </template>
 
-                    <div class="my-1 border-t border-default" />
-                    <button
-                        type="button"
-                        class="flex min-h-11 items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-error hover:bg-error/10 transition-colors text-left"
-                        @click="logout"
-                    >
-                        <u-icon name="i-lucide-log-out" class="size-4 shrink-0" />
-                        <span>{{ $t('common.logout') }}</span>
-                    </button>
+                        <div class="mx-3 my-1 border-t border-default" />
+                        <button
+                            type="button"
+                            class="flex min-h-11 items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium text-error hover:bg-error/10 transition-colors text-left"
+                            @click="logout"
+                        >
+                            <u-icon name="i-lucide-log-out" class="size-4 shrink-0" />
+                            <span>{{ $t('common.logout') }}</span>
+                        </button>
+                    </div>
                 </template>
 
                 <a
