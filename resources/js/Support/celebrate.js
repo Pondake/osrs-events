@@ -22,19 +22,22 @@ export const JINGLES = {
     DROP_RACE: '/sounds/finish-boss-2a3a6e07.m4a',
 };
 
+/** Resolves when the jingle has finished, or the confetti when there is no jingle. */
 export function celebrate(display = {}, type = 'BINGO') {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return Promise.resolve();
 
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (display.celebrate_finish !== false && (!reduced || display.play_when_reduced_motion === true)) {
-        confetti();
-    }
-    if (display.celebrate_sound !== false) {
-        jingle(JINGLES[type] ?? JINGLES.BINGO);
-    }
+    const burst = display.celebrate_finish !== false && (!reduced || display.play_when_reduced_motion === true)
+        ? confetti()
+        : Promise.resolve();
+    return display.celebrate_sound !== false ? jingle(JINGLES[type] ?? JINGLES.BINGO) : burst;
 }
 
 function confetti() {
+    return new Promise((done) => burst(done));
+}
+
+function burst(done) {
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-hidden', 'true');
     canvas.dataset.celebration = '';
@@ -44,6 +47,7 @@ function confetti() {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
         canvas.remove();
+        done();
         return;
     }
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -104,6 +108,7 @@ function confetti() {
             requestAnimationFrame(frame);
         } else {
             canvas.remove();
+            done();
         }
     }
     requestAnimationFrame(frame);
@@ -126,8 +131,15 @@ function piece(x, y, vx, vy, delay, i) {
 // Browsers refuse sound before the page has had a click or a key press, so it
 // is not even tried then; the confetti still runs.
 function jingle(url) {
-    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return Promise.resolve();
     const audio = new Audio(url);
     audio.volume = 0.6;
-    audio.play().catch((error) => console.error(error));
+    return new Promise((done) => {
+        audio.addEventListener('ended', done, { once: true });
+        audio.addEventListener('error', done, { once: true });
+        audio.play().catch((error) => {
+            console.error(error);
+            done();
+        });
+    });
 }

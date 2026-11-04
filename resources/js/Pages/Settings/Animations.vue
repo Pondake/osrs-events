@@ -97,6 +97,7 @@
                         variant="outline"
                         icon="i-lucide-party-popper"
                         :label="$t('animations.celebration_preview')"
+                        :disabled="trying"
                         @click="tryIt"
                     />
                 </div>
@@ -146,10 +147,19 @@ const overridden = computed(() => reducedMotion.value && !values.value[props.ove
 // Each press plays the next event type's jingle, so all of them can be heard.
 const types = Object.keys(JINGLES);
 let next = 0;
+// One at a time: the next press waits until this jingle has finished.
+const trying = ref(false);
 
-function tryIt() {
-    celebrate(values.value, types[next]);
+async function tryIt() {
+    if (trying.value) return;
+    trying.value = true;
+    const type = types[next];
     next = (next + 1) % types.length;
+    try {
+        await celebrate(values.value, type);
+    } finally {
+        trying.value = false;
+    }
 }
 
 function save() {
