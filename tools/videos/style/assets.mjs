@@ -26,6 +26,8 @@ html,body{margin:0;background:transparent}
 .vsub{font:500 27px 'Instrument Sans';color:#d6d3d1;text-align:center;margin-top:14px}
 .url{font:500 22px 'Instrument Sans';color:#a8a29e;margin-top:6px;text-align:center}
 .col{display:flex;flex-direction:column;align-items:center}
+.vbrand{font-size:64px;gap:22px}
+.vbrand img{width:88px;height:88px}
 </style>`;
 const pieces = {
   brand: `<div class="brand"><img src="${logo}">OSRS Events</div>`,
@@ -34,8 +36,8 @@ const pieces = {
   'tag-site': `<div class="tag"><i></i>On the site</div>`,
   'chat-label': `<div class="label">Game chat</div>`,
   title16: `<div class="right"><div class="title">Your kill, claimed on the card</div><div class="sub">The RuneLite plugin for clan bingo</div></div>`,
-  vhead: `<div class="col"><div class="vtitle">Your kill,<br>claimed on the card</div><div class="vsub">The RuneLite plugin for clan bingo</div></div>`,
-  vfoot: `<div class="col"><div class="brand"><img src="${logo}">OSRS Events</div><div class="url">Free for your clan · osrs-events.com</div></div>`,
+  vhead: `<div class="col"><div class="brand vbrand"><img src="${logo}">OSRS Events</div><div class="vsub">RuneLite plugin for clan bingo</div></div>`,
+  vfoot: `<div class="col"><div class="url">Free · osrs-events.com</div></div>`,
 };
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1600, height: 600 }, deviceScaleFactor: 1 });
