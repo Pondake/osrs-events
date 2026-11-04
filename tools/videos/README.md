@@ -66,6 +66,11 @@ The claim times in `compose.py` (`SEGS`) belong to that one recording; a new
 recording needs new ones. The chat window is cropped out of the game image on
 purpose: it shows the account name.
 
+Headless Chromium's screencast delivers frames in CSS pixels whatever the
+device scale factor, so a 2x recording made that way is a 1x one upscaled.
+`plugin/cardlive.mjs` therefore captures with `page.screenshot` in a loop, at
+a clock slowed 8x so the slower capture still lands every frame.
+
 ### Plugin setup
 
 Also from a raw recording. Export the windows (`raw.jsonl`, `rawe.jsonl`) with

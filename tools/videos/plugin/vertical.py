@@ -6,6 +6,8 @@ W, H = 1080, 1920
 GH = round((c.GAME[3] - c.GAME[1]) * W / (c.GAME[2] - c.GAME[0]))
 GY, CBAND, CY0, CWIN = 230, 120, None, 735
 CY0 = GY + GH + CBAND
+CW = round(850 * CWIN / 925)
+CX = (1080 - CW) // 2
 
 bands = Image.open(os.path.join(c.HERE, 'bands-plugin.png'))
 
@@ -15,17 +17,16 @@ def frame(w, s, claim, state, k, prev):
     im.paste(src.crop(c.GAME).resize((W, GH), Image.LANCZOS), (0, GY))
     since = s - claim; lag = 0.35
     t = c.card_time(state, since, lag)
-    o = 480 if (state == 3 and t >= c.SHOWN[3]) else 385
-    card = c.card_raw(t).resize((990, 1337), Image.LANCZOS).crop((0, o, 990, o + CWIN))
-    im.paste(card, (45, CY0))
+    card = c.card_view(t, 25, 875, 925, (270, 450)).resize((CW, CWIN), Image.LANCZOS)
+    im.paste(card, (CX, CY0))
     im.paste(bands, (0, 0), bands)
     d = ImageDraw.Draw(im)
     if since >= lag and since - lag < 1.2:
         a = 1 - (since - lag) / 1.2
         for r in range(6):
-            if a > r / 6: d.rectangle((45 + r, CY0 + r, 1034 - r, CY0 + CWIN - 1 - r), outline=(245, 166, 35))
+            if a > r / 6: d.rectangle((CX + r, CY0 + r, CX + CW - 1 - r, CY0 + CWIN - 1 - r), outline=(245, 166, 35))
     c.pill(d, 'In game', 110, GY + 16)
-    c.pill(d, 'On the site', 140, CY0 + 16)
+    c.pill(d, 'On the site', CX + 95, CY0 + 16)
     if since >= 0.15:
         ys = c.claimed_rows(src); cy = max(ys) if ys else 892
         lines = 2 if state == 3 else 1

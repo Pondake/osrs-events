@@ -61,8 +61,8 @@ import { seekVideo } from '@/Support/video';
 
 defineProps({
     captionClass: { type: String, default: '' },
-    sources: { type: Array, default: () => ['/videos/plugin-demo-944d0082.webm', '/videos/plugin-demo-8b9e7c65.mp4'] },
-    poster: { type: String, default: '/videos/plugin-demo-poster-8c93ef63.webp' },
+    sources: { type: Array, default: () => ['/videos/plugin-demo-cbec5916.webm', '/videos/plugin-demo-30d5b69b.mp4'] },
+    poster: { type: String, default: '/videos/plugin-demo-poster-3cb20f87.webp' },
     width: { type: Number, default: 1920 },
     height: { type: Number, default: 1080 },
     // i18n keys
