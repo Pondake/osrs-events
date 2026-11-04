@@ -52,9 +52,10 @@ def raw(w, t):
 
 import bisect, json
 _cj = json.load(open(os.path.join(HERE, 'cardframes.json')))
-CARD_T = [m['t'] - _cj['t0'] for m in _cj['meta']]
+_K = _cj.get('K', 1)
+CARD_T = [(m['t'] - _cj['t0']) / _K for m in _cj['meta']]
 CARD_F = [os.path.join(HERE, 'cardframes', m['file']) for m in _cj['meta']]
-SHOWN = {m['n']: m['shown'] for m in _cj['marks'] if 'n' in m}
+SHOWN = {m['n']: m['shown'] / _K for m in _cj['marks'] if 'n' in m}
 _cc = {}
 
 def card_raw(t):

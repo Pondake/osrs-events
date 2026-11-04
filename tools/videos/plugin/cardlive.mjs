@@ -18,8 +18,18 @@ const p = await ctx.newPage();
 await p.goto(art('dev:login-link', 'demo_iron', `--base=${ORIGIN}`).trim().split('\n').pop().trim());
 await p.goto(`${ORIGIN}/events/${id}`); await p.waitForLoadState('networkidle').catch(() => {});
 await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(2000);
+const K = Number(process.env.K ?? 4);
+await p.evaluate((k) => {
+    const now = performance.now.bind(performance); const base = now();
+    performance.now = () => base + (now() - base) / k;
+    const raf = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (cb) => raf(() => cb(performance.now()));
+    const st = window.setTimeout.bind(window); window.setTimeout = (f, ms = 0, ...a) => st(f, ms * k, ...a);
+    const si = window.setInterval.bind(window); window.setInterval = (f, ms = 0, ...a) => si(f, ms * k, ...a);
+}, K);
 const out = path.join(HERE, 'cardframes'); rmSync(out, { recursive: true, force: true }); mkdirSync(out);
 const cdp = await ctx.newCDPSession(p); const meta = [];
+await cdp.send('Animation.enable'); await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 / K });
 cdp.on('Page.screencastFrame', async ({ data, metadata, sessionId }) => {
   const file = `f${String(meta.length).padStart(5, '0')}.jpg`; writeFileSync(path.join(out, file), Buffer.from(data, 'base64'));
   meta.push({ file, t: metadata.timestamp }); await cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
@@ -36,8 +46,8 @@ for (let n = 1; n <= 3; n++) {
   marks.push({ n, sent, shown: clock() }); console.log('state', n, 'shown', clock().toFixed(2));
 }
 await p.waitForSelector('canvas[data-celebration]', { timeout: 15000 }).then(() => marks.push({ confetti: clock() }));
-await new Promise((r) => setTimeout(r, 4500));
+await new Promise((r) => setTimeout(r, 4500 * K));
 await cdp.send('Page.stopScreencast');
-writeFileSync(path.join(HERE, 'cardframes.json'), JSON.stringify({ t0, meta, marks }, null, 1));
+writeFileSync(path.join(HERE, 'cardframes.json'), JSON.stringify({ t0, meta, marks, K }, null, 1));
 console.log(JSON.stringify(marks), meta.length);
 await b.close();
