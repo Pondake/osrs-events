@@ -11,10 +11,40 @@
         :style="{
             '--bg-tile-w': `${shape.tileW}px`,
             '--bg-tile-h': `${shape.tileH}px`,
-            '--bg-accent-peak': hero ? 0.3 : 0.15,
+            '--bg-accent-peak': hero ? accentPeak : accentPeak / 2,
+            '--bg-drift-time': `${shape.drift ?? 90}s`,
+            ...(name === 'runes' ? { '--bg-rune-sheet': `url(${RUNE_SHEET})` } : {}),
         }"
     >
-        <svg class="app-bg__field" xmlns="http://www.w3.org/2000/svg">
+        <!-- Every rune in the game, one flat shape each. The sheet is an alpha
+             mask rather than an inline pattern: 24 traced runes would add more
+             to every home page's HTML than the sheet weighs as a cached file.
+             tools/rune-field/build.py makes it. -->
+        <div v-if="name === 'runes'" class="app-bg__field">
+            <div class="app-bg__drift app-bg__sheet">
+                <div
+                    class="app-bg__runes"
+                    :class="hero
+                        ? 'opacity-[0.075] dark:opacity-[0.07]'
+                        : 'opacity-[0.04] dark:opacity-[0.035]'"
+                />
+                <div
+                    v-for="(spot, i) in accents"
+                    :key="`accent-${i}`"
+                    class="app-bg__runes app-bg__accent text-amber-600 dark:text-amber-300"
+                    :style="{
+                        left: `${spot.x}px`,
+                        top: `${spot.y}px`,
+                        width: `${shape.step}px`,
+                        height: `${shape.step}px`,
+                        '--bg-rune-offset': `${-spot.x}px ${-spot.y}px`,
+                        animationDelay: `${spot.delay}s`,
+                    }"
+                />
+            </div>
+        </div>
+
+        <svg v-else class="app-bg__field" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <!-- The repeating unit. Every motif draws it around the same
                      origin, so a placement below is only a lattice coordinate.
@@ -173,7 +203,7 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-    // 'tiles' | 'bingo' | 'ladder'. An unknown value falls back to 'tiles'
+    // 'tiles' | 'bingo' | 'ladder' | 'runes'. An unknown value falls back to 'tiles'
     // rather than rendering nothing — this is decoration, and a typo in the
     // page map should not leave a blank layer nobody notices is missing.
     motif: { type: String, default: 'tiles' },
@@ -181,6 +211,8 @@ const props = defineProps({
     // has content in the top band cannot. See the rect's own comment.
     hero: { type: Boolean, default: true },
 });
+
+const RUNE_SHEET = '/images/osrs/rune-field.webp';
 
 const SHAPES = {
     tiles: {
@@ -210,12 +242,26 @@ const SHAPES = {
         step: 58,
         accents: [[1, 2], [5, 0], [3, 5], [8, 3], [12, 7], [6, 10], [15, 4], [18, 9], [10, 12], [20, 2], [2, 11], [22, 12]],
     },
+    runes: {
+        tileW: 384,
+        tileH: 384,
+        step: 48,
+        // The sheet is 8 by 8 runes, so a whole tile per cycle needs this long
+        // to crawl at the same pace as the plain tiles.
+        drift: 750,
+        // Odd rows sit half a rune along; see accents below.
+        staggered: true,
+        accents: [[1, 2], [6, 0], [4, 5], [9, 3], [13, 7], [7, 10], [16, 4], [19, 9], [11, 12], [22, 2], [2, 11], [24, 12]],
+    },
 };
 
 const name = computed(() => (props.motif in SHAPES ? props.motif : 'tiles'));
 const shape = computed(() => SHAPES[name.value]);
 
 const markSize = computed(() => (name.value === 'ladder' ? 48 : 38));
+
+// A rune is solid where a mark above is mostly outline, so it needs less.
+const accentPeak = computed(() => (name.value === 'runes' ? 0.2 : 0.3));
 
 /** A diamond around the origin, so the four corner quarters clip themselves. */
 function diamond(r) {
@@ -250,7 +296,7 @@ const ladder = (() => {
 })();
 
 const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
-    x: i * shape.value.step,
+    x: (i + (shape.value.staggered && j % 2 ? 0.5 : 0)) * shape.value.step,
     y: j * shape.value.step,
     // Spread far enough apart that no two are ever up at the same time.
     delay: index * 2.2,
@@ -290,7 +336,7 @@ const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
 }
 
 .app-bg__drift {
-    animation: bg-drift 90s linear infinite;
+    animation: bg-drift var(--bg-drift-time) linear infinite;
     will-change: transform;
 }
 
@@ -315,6 +361,21 @@ const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
     to {
         transform: translate3d(calc(-1 * var(--bg-tile-w)), calc(-1 * var(--bg-tile-h)), 0);
     }
+}
+
+.app-bg__sheet {
+    position: relative;
+    width: calc(100% + var(--bg-tile-w));
+    height: calc(100% + var(--bg-tile-h));
+}
+
+/* The accents share this, so a lit rune is the same pixels as the rune under it. */
+.app-bg__runes {
+    position: absolute;
+    inset: 0;
+    background-color: currentColor;
+    -webkit-mask: var(--bg-rune-sheet) var(--bg-rune-offset, 0 0) / var(--bg-tile-w) var(--bg-tile-h) repeat;
+    mask: var(--bg-rune-sheet) var(--bg-rune-offset, 0 0) / var(--bg-tile-w) var(--bg-tile-h) repeat;
 }
 
 .app-bg__accent {

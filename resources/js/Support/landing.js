@@ -46,13 +46,15 @@ export function isLandingPage(component) {
  * one: the square the game world is divided into, the bingo card's diamond
  * lattice, and a Snakes & Ladders board. The page that sells an event type
  * gets the shape of that event; everything else gets the plain tile, which is
- * the unit all three are made of.
+ * the unit all three are made of. Home is the exception that sells the game
+ * rather than an event: every rune there is.
  *
  * Only landing pages are asked — the caller gates on isLandingPage() first.
  * That gate is the whole point: this belongs on the pages people read, not
  * behind a bingo card somebody is playing or a scoreboard that is moving.
  */
 const MOTIFS = {
+    Home: 'runes',
     OsrsBingo: 'bingo',
     SnakesAndLadders: 'ladder',
 };

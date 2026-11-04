@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LANDING_PAGES, PUBLIC_PATHS, isLandingPage, isPublicPath } from '@/Support/landing';
+import { LANDING_PAGES, PUBLIC_PATHS, backgroundMotif, isLandingPage, isPublicPath } from '@/Support/landing';
 
 /**
  * Which pages wear the branding, and which links survive the lock.
@@ -104,5 +104,16 @@ describe('the two lists', () => {
         for (const path of PUBLIC_PATHS) {
             expect(path.startsWith('/'), path).toBe(true);
         }
+    });
+});
+
+describe('backgroundMotif', () => {
+    it('gives the home page the rune field and everything else the plain tile', () => {
+        expect(backgroundMotif('Home')).toBe('runes');
+        expect(backgroundMotif('About')).toBe('tiles');
+    });
+
+    it('leaves the pages that explain an event type bare', () => {
+        expect(backgroundMotif('OsrsBingo')).toBeNull();
     });
 });
