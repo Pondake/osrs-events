@@ -138,6 +138,16 @@ describe('gutterMotif', () => {
         expect(gutterMotif('Events/SkillRace')).toBe('skills');
     });
 
+    it('does the same for the guides, which have no field behind them', () => {
+        for (const component of ['OsrsBingo', 'OsrsBingoTileIdeas', 'OsrsSkillRace', 'OsrsDropRace', 'OsrsClanEvents', 'OsrsEventIdeas', 'SnakesAndLadders']) {
+            expect(backgroundMotif(component), component).toBeNull();
+            expect(gutterMotif(component), component).not.toBeNull();
+        }
+
+        expect(gutterMotif('OsrsSkillRace')).toBe('skills');
+        expect(gutterMotif('OsrsDropRace')).toBe('treasure');
+    });
+
     it('leaves the rest of the app alone', () => {
         expect(gutterMotif('Settings/Profile')).toBeNull();
         expect(gutterMotif('Admin/Boards')).toBeNull();

@@ -69,12 +69,13 @@ const PAGE_MOTIFS = {
 };
 
 /**
- * The landing pages that get no background at all, for now.
+ * The landing pages with no field behind their content.
  *
  * Every page that explains an event type: a heading, a paragraph and a table
  * of contents from the first line down, and a pattern behind that is one
  * thing too many on a screen that is already busy. They keep the torch light,
- * which is what LANDING_PAGES is for — this is only about the field.
+ * which is what LANDING_PAGES is for, and get the field beside the content
+ * instead: see GUTTER_MOTIFS.
  *
  * It means `bingo` and `ladder` above are currently unreachable: the two
  * pages that ask for them are on this list. They stay wired rather than
@@ -118,10 +119,17 @@ export function backgroundIsHero(component) {
 }
 
 /**
- * The pages people work in get the field beside their content, never behind
- * it: see `gutters` in AppBackground.
+ * The event pages and the guides that explain them get the field beside their
+ * content, never behind it: see `gutters` in AppBackground.
  */
 const GUTTER_MOTIFS = {
+    OsrsBingo: 'runes',
+    OsrsBingoTileIdeas: 'runes',
+    OsrsSkillRace: 'skills',
+    OsrsDropRace: 'treasure',
+    OsrsClanEvents: 'runes',
+    OsrsEventIdeas: 'runes',
+    SnakesAndLadders: 'runes',
     'Boards/Index': 'runes',
     'Boards/Mine': 'runes',
     BoardShow: 'runes',
