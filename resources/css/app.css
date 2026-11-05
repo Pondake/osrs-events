@@ -437,10 +437,9 @@ html:not(.dark) .landing-chrome::after {
    seat under it, and the faintest warm wash across the top. Box-shadows
    rather than a border-image, so it scales with the panel and costs no asset.
 
-   Applied to the cards on landing pages only, and by descendant selector so
-   no page component has to know about it. `:where()` keeps the specificity at
-   zero, so anything a component sets on its own card still wins. */
-.landing-page :where(.rounded-xl, .rounded-lg):where([class*='ring-default'], [class*='border-default']) {
+   Opt-in, and one or two to a page at most: it marks what to look at first,
+   so on every card it marks nothing. */
+.landing-panel {
     background-image: linear-gradient(180deg, rgba(255, 207, 92, .05), transparent 45%);
     box-shadow:
         inset 0 1px 0 rgba(255, 207, 92, .16),
@@ -451,7 +450,7 @@ html:not(.dark) .landing-chrome::after {
 
 /* The seat and the inner dark line are lighting for a dark panel; on a light
    one they read as grime. Keep the warm wash and the lift, drop the rest. */
-html:not(.dark) .landing-page :where(.rounded-xl, .rounded-lg):where([class*='ring-default'], [class*='border-default']) {
+html:not(.dark) .landing-panel {
     background-image: linear-gradient(180deg, rgba(212, 163, 62, .06), transparent 45%);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, .7),

@@ -25,13 +25,11 @@ export const LANDING_PAGES = [
     // lands on.
     'Page',
     // /about was one of those until 2026-09-07 and is its own component now,
-    // so it needs naming here in its own right. It leans on the panel bevel
-    // more than any of them — see About.vue.
+    // so it needs naming here in its own right.
     'About',
     // The error page, for the same reason: a dead link from a search result
     // is somebody's first sight of the site, and the panel treatment is what
-    // makes it read as a page rather than as a crash. It also gets the panel
-    // bevel for free — see .landing-page in app.css.
+    // makes it read as a page rather than as a crash.
     'Error',
     'Supporters',
 ];
@@ -75,9 +73,8 @@ const PAGE_MOTIFS = {
  *
  * Every page that explains an event type: a heading, a paragraph and a table
  * of contents from the first line down, and a pattern behind that is one
- * thing too many on a screen that is already busy. They keep the torch light
- * and the panel bevel, which is what LANDING_PAGES is for — this is only
- * about the field.
+ * thing too many on a screen that is already busy. They keep the torch light,
+ * which is what LANDING_PAGES is for — this is only about the field.
  *
  * It means `bingo` and `ladder` above are currently unreachable: the two
  * pages that ask for them are on this list. They stay wired rather than

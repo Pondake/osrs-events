@@ -3,7 +3,7 @@
 
     <u-main>
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 lg:py-10 space-y-4">
-            <header class="rounded-lg ring ring-default bg-elevated/50 px-5 py-5 sm:px-6 sm:py-6">
+            <header class="landing-panel rounded-lg ring ring-default bg-elevated/50 px-5 py-5 sm:px-6 sm:py-6">
                 <h1 class="font-bold text-highlighted">{{ $t('supporters.title') }}</h1>
                 <p class="mt-1.5 text-muted leading-relaxed max-w-2xl">{{ $t('supporters.subtitle') }}</p>
             </header>

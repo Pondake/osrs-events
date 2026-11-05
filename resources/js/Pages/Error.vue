@@ -4,11 +4,6 @@
     <u-main>
         <u-container class="py-16 sm:py-24">
             <div class="max-w-xl mx-auto">
-                <!-- The panel. `landing-page` (set by AppRoot for every page
-                     in LANDING_PAGES, this one included) turns any
-                     rounded-xl + border-default box into the OSRS interface
-                     bevel — so the styling is inherited rather than
-                     re-invented here. See .landing-page in app.css. -->
                 <!-- Centred from `sm` up, left-aligned below it — including
                      the logo and the button row, which are flex and so are
                      untouched by the rule that does it (see the max-width
@@ -21,7 +16,7 @@
                      through, and this panel was letting the pattern run
                      straight across the 404 underneath the text. A panel you
                      can see the wall through does not read as a panel. -->
-                <div class="rounded-xl border border-default bg-default px-6 py-10 sm:px-10 sm:py-14 text-center">
+                <div class="landing-panel rounded-xl border border-default bg-default px-6 py-10 sm:px-10 sm:py-14 text-center">
                     <app-logo class="!size-14 sm:mx-auto" />
 
                     <!-- The status code, at display size. Cinzel Decorative

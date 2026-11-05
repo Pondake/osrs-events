@@ -36,7 +36,7 @@
 
                     <div v-if="quickFacts?.length">
                         <p class="uppercase text-xs tracking-wide font-semibold text-dimmed mb-2">{{ $t('guide.quick_facts') }}</p>
-                        <dl class="rounded-lg ring ring-default bg-elevated divide-y divide-default">
+                        <dl class="landing-panel rounded-lg ring ring-default bg-elevated divide-y divide-default">
                             <div v-for="fact in quickFacts" :key="fact.label" class="px-3 py-2">
                                 <dt class="text-xs text-dimmed">{{ fact.label }}</dt>
                                 <dd class="text-default font-medium">{{ fact.value }}</dd>
