@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LANDING_PAGES, PUBLIC_PATHS, backgroundMotif, isLandingPage, isPublicPath } from '@/Support/landing';
+import { LANDING_PAGES, PUBLIC_PATHS, backgroundMotif, gutterMotif, isLandingPage, isPublicPath } from '@/Support/landing';
 
 /**
  * Which pages wear the branding, and which links survive the lock.
@@ -127,5 +127,20 @@ describe('backgroundMotif', () => {
 
     it('leaves the pages that explain an event type bare', () => {
         expect(backgroundMotif('OsrsBingo')).toBeNull();
+    });
+});
+
+describe('gutterMotif', () => {
+    it('gives the event pages a field beside their content', () => {
+        expect(gutterMotif('Boards/Index')).toBe('runes');
+        expect(gutterMotif('BoardShow')).toBe('runes');
+        expect(gutterMotif('Events/Bingo')).toBe('runes');
+        expect(gutterMotif('Events/SkillRace')).toBe('skills');
+    });
+
+    it('leaves the rest of the app alone', () => {
+        expect(gutterMotif('Settings/Profile')).toBeNull();
+        expect(gutterMotif('Admin/Boards')).toBeNull();
+        expect(gutterMotif(undefined)).toBeNull();
     });
 });

@@ -118,6 +118,23 @@ export function backgroundIsHero(component) {
 }
 
 /**
+ * The pages people work in get the field beside their content, never behind
+ * it: see `gutters` in AppBackground.
+ */
+const GUTTER_MOTIFS = {
+    'Boards/Index': 'runes',
+    'Boards/Mine': 'runes',
+    BoardShow: 'runes',
+    'Events/Bingo': 'runes',
+    'Events/SkillRace': 'skills',
+    'Events/Participants': 'runes',
+};
+
+export function gutterMotif(component) {
+    return GUTTER_MOTIFS[String(component ?? '')] ?? null;
+}
+
+/**
  * The header links that still go somewhere while the site is locked.
  *
  * Only these, because a nav full of links that bounce straight back to the

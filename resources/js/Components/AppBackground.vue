@@ -7,6 +7,7 @@
     -->
     <div
         class="app-bg text-stone-900 dark:text-stone-300"
+        :class="{ 'app-bg--gutters': gutters }"
         aria-hidden="true"
         :style="{
             '--bg-tile-w': `${shape.tileW}px`,
@@ -210,6 +211,8 @@ const props = defineProps({
     // A hero page can carry the pattern at full strength; a page that already
     // has content in the top band cannot. See the rect's own comment.
     hero: { type: Boolean, default: true },
+    // Only in the space left and right of the page container.
+    gutters: { type: Boolean, default: false },
 });
 
 /** A sheet from tools/fields/build.py: 8 by 8 cells, odd rows half a cell along. */
@@ -326,6 +329,27 @@ const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
        the way down the hero. */
     -webkit-mask-image: radial-gradient(ellipse 115% 80% at 50% 140px, #000 12%, transparent 78%);
     mask-image: radial-gradient(ellipse 115% 80% at 50% 140px, #000 12%, transparent 78%);
+}
+
+/* Fades out at the container's edge, so nothing runs behind the content. */
+.app-bg--gutters {
+    --bg-gutter: calc(50% - var(--ui-container) / 2);
+    --bg-gutter-mask: linear-gradient(
+        90deg,
+        #000 calc(var(--bg-gutter) - 64px),
+        transparent var(--bg-gutter),
+        transparent calc(100% - var(--bg-gutter)),
+        #000 calc(100% - var(--bg-gutter) + 64px)
+    );
+    -webkit-mask-image: var(--bg-gutter-mask);
+    mask-image: var(--bg-gutter-mask);
+}
+
+/* The container fills these screens: there is no gutter to show it in. */
+@media (max-width: 1360px) {
+    .app-bg--gutters {
+        display: none;
+    }
 }
 
 .app-bg__field {

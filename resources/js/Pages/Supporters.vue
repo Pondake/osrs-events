@@ -16,9 +16,7 @@
                 </h2>
 
                 <div class="p-5">
-                    <p class="text-sm text-muted">{{ $t(`supporters.role_${group.role}_desc`) }}</p>
-
-                    <ul class="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <ul class="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
                         <li v-for="supporter in group.supporters" :key="supporter.id" class="min-w-0">
                             <span class="block font-medium text-highlighted break-words">{{ supporter.name }}</span>
                             <a
