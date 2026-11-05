@@ -42,7 +42,7 @@ const pieces = {
   'chat-label': `<div class="label">Game chat</div>`,
   title16: `<div class="right"><div class="title">Your kill, claimed on the card</div><div class="sub">The RuneLite plugin for clan bingo</div></div>`,
   vhead: `<div class="col">${brand('vbrand')}</div>`,
-  vfoot: `<div class="col"><div class="url">Free · osrs-events.com</div></div>`,
+  vfoot: `<div class="col"><div class="url">osrs-events.com</div></div>`,
 };
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1600, height: 600 }, deviceScaleFactor: 1 });
