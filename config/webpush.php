@@ -43,8 +43,8 @@ return [
     | that is offline. Twelve hours: a "your rolls are back" that surfaces
     | two days later is worse than one that never arrives.
     |
-    | `timeout` is explicit on purpose. Some versions of the send library only
-    | apply their own default when one is actually passed, and leaving it null
+    | `timeout` is explicit on purpose. It is applied to the HTTP client handed to
+    | the send library, and leaving it unset
     | lets a single unresponsive push service hold a queue worker open with no
     | bound at all.
     |

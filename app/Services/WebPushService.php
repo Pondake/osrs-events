@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PushSubscription;
 use App\Support\PushMessage;
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Collection;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
@@ -75,11 +76,12 @@ class WebPushService
                     'urgency' => config('webpush.urgency'),
                     'topic' => $message->tag ?? $message->category,
                 ],
-                // Explicit, not null: the library only applies its own
-                // default when one is actually passed, and an unbounded
-                // request can hold a queue worker open indefinitely against
-                // a push service that has stopped answering.
-                config('webpush.timeout'),
+                // The timeout lives on the HTTP client now (web-push 11 takes
+                // a PSR-18 client instead of a timeout argument). Explicit, not
+                // left to the client default: an unbounded request can hold a
+                // queue worker open indefinitely against a push service that
+                // has stopped answering.
+                new GuzzleClient(['timeout' => (int) config('webpush.timeout')]),
             );
         } catch (Throwable $error) {
             // A malformed keypair throws here rather than at send time — the
