@@ -25,11 +25,11 @@
         "@vitejs/plugin-vue": "^6.0.10",
         "@vue/test-utils": "^2.5.1",
         "concurrently": "^10.0.7",
-        "happy-dom": "^20.14.6",
+        "happy-dom": "^21.0.4",
         "laravel-vite-plugin": "^3.2.1",
         "tailwindcss": "^4.3.5",
         "vite": "^8.3.8",
-        "vitest": "^4.1.12"
+        "vitest": "^5.1.0"
     },
     "dependencies": {
         "@internationalized/date": "^3.12.4",
