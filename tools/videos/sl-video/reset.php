@@ -1,5 +1,11 @@
 <?php
-use App\Models\{CompletedTile, Event, EventFinish, PlayerBoard, User};
+
+use App\Models\CompletedTile;
+use App\Models\Event;
+use App\Models\EventFinish;
+use App\Models\PlayerBoard;
+use App\Models\User;
+
 $event = Event::where('title', 'Saturday Snakes & Ladders')->firstOrFail();
 $start = ['hans' => 33, 'bob' => 28, 'aggie' => 20, 'duke' => 17, 'gnome' => 12, 'wise' => 9, 'aereck' => 7,
     'gertrude' => 5, 'romeo' => 2, 'juliet' => 1, 'thessalia' => 14, 'ned' => 24];

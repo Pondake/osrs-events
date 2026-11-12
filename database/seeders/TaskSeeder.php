@@ -115,7 +115,7 @@ class TaskSeeder extends Seeder
                 'wiki_url' => 'https://oldschool.runescape.wiki/w/Lobster',
             ],
             'Enchant 20 sapphire rings' => [
-                'description' => "Lvl-1 Enchant — cheapest jewelry enchant in the game.",
+                'description' => 'Lvl-1 Enchant — cheapest jewelry enchant in the game.',
                 'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Sapphire_ring_detail.png/100px-Sapphire_ring_detail.png',
                 'wiki_url' => 'https://oldschool.runescape.wiki/w/Lvl-1_Enchant',
             ],
@@ -147,7 +147,7 @@ class TaskSeeder extends Seeder
                 'wiki_url' => 'https://oldschool.runescape.wiki/w/Cerberus',
             ],
             'Defeat the Corporeal Beast' => [
-                'description' => "A team boss — solo is possible but slow. Spectral spirit shield helps.",
+                'description' => 'A team boss — solo is possible but slow. Spectral spirit shield helps.',
                 'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Corporeal_Beast.png/100px-Corporeal_Beast.png',
                 'wiki_url' => 'https://oldschool.runescape.wiki/w/Corporeal_Beast',
             ],
@@ -218,7 +218,7 @@ class TaskSeeder extends Seeder
                 'wiki_url' => 'https://oldschool.runescape.wiki/w/Wintertodt',
             ],
             'Catch a Guardian at Zalcano' => [
-                'description' => "Song of the Elves required. A fight that ends in a kill counts.",
+                'description' => 'Song of the Elves required. A fight that ends in a kill counts.',
                 'icon_url' => 'https://oldschool.runescape.wiki/images/thumb/Zalcano.png/100px-Zalcano.png',
                 'wiki_url' => 'https://oldschool.runescape.wiki/w/Zalcano',
             ],

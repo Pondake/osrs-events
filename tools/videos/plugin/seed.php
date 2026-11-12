@@ -1,5 +1,13 @@
 <?php
-use App\Models\{BingoCard, BingoCompletion, BoardAuthor, Event, EventFinish, EventParticipant, Task, User};
+
+use App\Models\BingoCard;
+use App\Models\BingoCompletion;
+use App\Models\BoardAuthor;
+use App\Models\Event;
+use App\Models\EventFinish;
+use App\Models\EventParticipant;
+use App\Models\Task;
+use App\Models\User;
 use App\Services\BingoService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;

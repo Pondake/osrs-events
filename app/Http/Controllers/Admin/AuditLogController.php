@@ -48,8 +48,12 @@ class AuditLogController extends Controller
             ->when($request->string('scope')->isNotEmpty(), function ($q) use ($request) {
                 [$type, $id] = array_pad(explode(':', $request->string('scope')->toString(), 2), 2, null);
 
-                if ($type === 'team') return $q->where('team_id', $id);
-                if ($type === 'guild') return $q->where('guild_id', $id);
+                if ($type === 'team') {
+                    return $q->where('team_id', $id);
+                }
+                if ($type === 'guild') {
+                    return $q->where('guild_id', $id);
+                }
 
                 return $q;
             })

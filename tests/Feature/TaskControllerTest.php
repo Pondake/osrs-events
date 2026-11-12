@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\Event;
 use App\Models\Permission;
 use App\Models\Task;
 use App\Models\Tile;
@@ -118,7 +119,7 @@ class TaskControllerTest extends TestCase
     {
         $owner = User::factory()->create(['osrs_username' => 'Owner']);
 
-        $event = \App\Models\Event::create([
+        $event = Event::create([
             'title' => 'Board night',
             'type' => 'SNAKES_LADDERS',
             'mode' => 'SOLO',

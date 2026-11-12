@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -32,7 +33,7 @@ return new class extends Migration
         // Everything that already exists was announced under the old rule.
         // Leaving these null would re-announce every finish on the next
         // review of any event that has one.
-        \Illuminate\Support\Facades\DB::table('event_finishes')->update(['announced_at' => now()]);
+        DB::table('event_finishes')->update(['announced_at' => now()]);
     }
 
     public function down(): void

@@ -1,5 +1,13 @@
 <?php
-use App\Models\{Board, BoardAuthor, Event, EventParticipant, PlayerBoard, Task, Tile, User};
+
+use App\Models\Board;
+use App\Models\BoardAuthor;
+use App\Models\Event;
+use App\Models\EventParticipant;
+use App\Models\PlayerBoard;
+use App\Models\Task;
+use App\Models\Tile;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 

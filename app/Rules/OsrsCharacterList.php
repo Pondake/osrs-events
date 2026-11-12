@@ -2,7 +2,6 @@
 
 namespace App\Rules;
 
-use App\Models\OsrsAccount;
 use App\Models\User;
 use App\Services\OsrsIdentityService;
 use App\Support\RuneliteName;

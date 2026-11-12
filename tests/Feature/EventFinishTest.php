@@ -7,6 +7,7 @@ use App\Models\BingoCard;
 use App\Models\BingoCompletion;
 use App\Models\BingoSquare;
 use App\Models\Board;
+use App\Models\BoardAccess;
 use App\Models\BoardAuthor;
 use App\Models\BoardTeam;
 use App\Models\CompletedTile;
@@ -20,6 +21,8 @@ use App\Models\Tile;
 use App\Models\User;
 use App\Notifications\EventStatusChanged;
 use App\Services\BingoService;
+use App\Services\BoardReviewService;
+use App\Services\EventFinishService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
@@ -258,7 +261,7 @@ class EventFinishTest extends TestCase
         $this->travel(1)->minutes();
         $this->tick($second, $event, $this->lastTile($event));
 
-        $places = app(\App\Services\EventFinishService::class)->places($event->fresh());
+        $places = app(EventFinishService::class)->places($event->fresh());
 
         $this->assertCount(2, $places);
         $this->assertSame(1, $places[0]['rank']);
@@ -275,7 +278,7 @@ class EventFinishTest extends TestCase
         $event = $this->board();
         [$user, $playerBoard] = $this->player($event);
 
-        $service = app(\App\Services\EventFinishService::class);
+        $service = app(EventFinishService::class);
 
         $this->tick($user, $event, $this->lastTile($event));
         $service->evaluateSnakesLadders($event->fresh(), $playerBoard->fresh());
@@ -319,7 +322,7 @@ class EventFinishTest extends TestCase
         $this->travelTo(now()->addMinutes(2));
         $this->actingAs($host)->patch("/events/{$event->id}/tiles/completions/{$claims[0]->id}", ['status' => 'APPROVED']);
 
-        $places = app(\App\Services\EventFinishService::class)->places($event->fresh());
+        $places = app(EventFinishService::class)->places($event->fresh());
 
         $this->assertSame($early->id, $places[0]['userId'], 'the earlier submission has to take first place');
         $this->assertSame($late->id, $places[1]['userId']);
@@ -368,7 +371,7 @@ class EventFinishTest extends TestCase
         $plainTile = Tile::where('board_id', $event->board->id)->where('position', 3)->firstOrFail();
         $this->tick($other, $event, $plainTile, ['proof_url' => 'https://i.imgur.com/c.png']);
 
-        $queue = app(\App\Services\BoardReviewService::class)->pendingQueue($event->board)->values();
+        $queue = app(BoardReviewService::class)->pendingQueue($event->board)->values();
 
         $race = $queue->where('finishesBoard', true)->values();
 
@@ -393,7 +396,7 @@ class EventFinishTest extends TestCase
 
         $this->tick($user, $event, $this->lastTile($event), ['proof_url' => 'https://i.imgur.com/a.png']);
 
-        $claim = app(\App\Services\BoardReviewService::class)->pendingQueue($event->board)->first();
+        $claim = app(BoardReviewService::class)->pendingQueue($event->board)->first();
 
         $this->assertTrue($claim['finishesBoard']);
         $this->assertNull($claim['raceOrder']);
@@ -430,7 +433,7 @@ class EventFinishTest extends TestCase
         $finish = EventFinish::where('user_id', $late->id)->firstOrFail();
 
         $this->assertNull($finish->announced_at, 'the second submission must not be announced as a win');
-        $this->assertTrue(app(\App\Services\EventFinishService::class)->isProvisional($event->fresh(), $finish->finished_at));
+        $this->assertTrue(app(EventFinishService::class)->isProvisional($event->fresh(), $finish->finished_at));
     }
 
     /** And once the queue is clear, both go out — in the right order. */
@@ -456,7 +459,7 @@ class EventFinishTest extends TestCase
         $this->assertNotNull(EventFinish::where('user_id', $early->id)->firstOrFail()->announced_at);
         $this->assertNotNull(EventFinish::where('user_id', $late->id)->firstOrFail()->announced_at);
 
-        $places = app(\App\Services\EventFinishService::class)->places($event->fresh());
+        $places = app(EventFinishService::class)->places($event->fresh());
         $this->assertSame($early->id, $places[0]['userId']);
         $this->assertFalse($places[0]['provisional']);
         $this->assertFalse($places[1]['provisional']);
@@ -686,7 +689,7 @@ class EventFinishTest extends TestCase
             'tile_id' => $this->lastTile($event)->id,
             'status' => 'APPROVED',
         ]);
-        app(\App\Services\EventFinishService::class)->evaluateSnakesLadders($event->fresh(), $secondBoard);
+        app(EventFinishService::class)->evaluateSnakesLadders($event->fresh(), $secondBoard);
 
         $this->assertEquals($closedAt, $event->fresh()->closed_at, 'the close stamp must not move');
         $this->assertSame(2, EventFinish::where('event_id', $event->id)->count());
@@ -753,7 +756,7 @@ class EventFinishTest extends TestCase
 
         $this->assertNotNull($event->fresh()->closed_at);
 
-        $places = app(\App\Services\EventFinishService::class)->places($event->fresh());
+        $places = app(EventFinishService::class)->places($event->fresh());
         $this->assertSame($early->id, $places[0]['userId']);
     }
 
@@ -782,7 +785,7 @@ class EventFinishTest extends TestCase
 
         $this->assertNotNull($event->fresh()->closed_at, 'nothing can beat the leader now');
 
-        $places = app(\App\Services\EventFinishService::class)->places($event->fresh());
+        $places = app(EventFinishService::class)->places($event->fresh());
         $this->assertCount(1, $places);
         $this->assertSame($late->id, $places[0]['userId']);
     }
@@ -1121,7 +1124,7 @@ class EventFinishTest extends TestCase
             }
         }
 
-        $places = app(\App\Services\EventFinishService::class)->places($event->fresh());
+        $places = app(EventFinishService::class)->places($event->fresh());
 
         $this->assertCount(2, $places);
         $this->assertSame($early->id, $places[0]['userId'], 'the earlier submission has to take first place');
@@ -1263,11 +1266,11 @@ class EventFinishTest extends TestCase
         Notification::fake();
         $event = $this->board(['access_mode' => 'INVITE']);
         [$user] = $this->player($event);
-        \App\Models\BoardAccess::create(['event_id' => $event->id, 'user_id' => $user->id, 'access_mode' => 'INVITE']);
+        BoardAccess::create(['event_id' => $event->id, 'user_id' => $user->id, 'access_mode' => 'INVITE']);
 
         $this->tick($user, $event, $this->lastTile($event))->assertRedirect();
 
-        $places = app(\App\Services\EventFinishService::class)->places($event->fresh(), namesArePublic: false);
+        $places = app(EventFinishService::class)->places($event->fresh(), namesArePublic: false);
 
         $this->assertSame(trans('events.anonymous_player'), $places[0]['label']);
         $this->assertNull($places[0]['userId']);

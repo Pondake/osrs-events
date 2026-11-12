@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Event;
+use App\Models\PushSubscription;
 use App\Models\User;
 use App\Support\NotificationCategory;
 use App\Support\PushMessage;
@@ -57,7 +58,7 @@ class PushNotifier
             return $result;
         }
 
-        $subscriptions = \App\Models\PushSubscription::query()
+        $subscriptions = PushSubscription::query()
             ->active()
             ->whereIn('user_id', $wanted->pluck('id'))
             ->get();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Page;
 use App\Models\Role;
 use App\Models\Setting;
@@ -77,7 +78,7 @@ class SiteLockTest extends TestCase
         // (Worth knowing on its own — after a deploy that check already
         // forces the hard navigation. The gap this closes is a lock toggled
         // WITHOUT a deploy, which is exactly how it was reported.)
-        $version = app(\App\Http\Middleware\HandleInertiaRequests::class)->version(request());
+        $version = app(HandleInertiaRequests::class)->version(request());
 
         $this->get('/events', ['X-Inertia' => 'true', 'X-Inertia-Version' => $version])
             ->assertStatus(409)

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\BoardAuthor;
 use App\Models\Event;
 use App\Models\EventStanding;
 use App\Models\Setting;

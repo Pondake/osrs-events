@@ -100,6 +100,7 @@ class TileEditingTest extends TestCase
             ->post("/events/{$event->id}/tiles", ['position' => 3, 'type' => 'NORMAL', 'min_quantity' => 0])
             ->assertSessionHasErrors('min_quantity');
     }
+
     /** "Do this N times", and a jump carries none of it either. */
     #[Test]
     public function an_author_can_set_how_many_times_a_tile_asks_for(): void
