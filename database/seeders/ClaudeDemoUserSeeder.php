@@ -27,7 +27,9 @@ use Illuminate\Support\Facades\Hash;
 class ClaudeDemoUserSeeder extends Seeder
 {
     public const EMAIL = 'claude-demo@absolit.nl';
+
     public const PASSWORD = 'ClaudeDemo!2026';
+
     public const OSRS_USERNAME = 'Claude Demo';
 
     public function run(): void

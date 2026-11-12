@@ -13,10 +13,12 @@ use App\Models\EventParticipant;
 use App\Models\EventStanding;
 use App\Models\PlayerBoard;
 use App\Models\PushSubscription;
+use App\Models\Role;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
 use App\Services\AccountDeletionService;
+use App\Services\BingoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use InvalidArgumentException;
@@ -514,7 +516,7 @@ class AccountDeletionTest extends TestCase
 
         $this->service()->delete($user);
 
-        $standings = app(\App\Services\BingoService::class)->standings($event->fresh(), $card->fresh());
+        $standings = app(BingoService::class)->standings($event->fresh(), $card->fresh());
 
         $this->assertNotEmpty($standings);
         $this->assertSame(trans('common.deleted_user'), $standings->first()['name']);
@@ -575,7 +577,7 @@ class AccountDeletionTest extends TestCase
     public function an_admin_can_delete_a_host_who_handed_out_invites(): void
     {
         $admin = $this->player('Staff');
-        $admin->assignRole(\App\Models\Role::findOrCreate('ADMIN', 'web'));
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
         $host = $this->player('Host');
         $event = $this->eventOwnedBy($host);
@@ -601,7 +603,7 @@ class AccountDeletionTest extends TestCase
     public function an_admin_deleting_an_account_leaves_its_events_standing(): void
     {
         $admin = $this->player('Staff');
-        $admin->assignRole(\App\Models\Role::findOrCreate('ADMIN', 'web'));
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
 
         $host = $this->player('Host');
         $event = $this->eventOwnedBy($host);

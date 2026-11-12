@@ -3,7 +3,7 @@
 
     <u-main>
         <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6 lg:py-10 space-y-4">
-            <header class="rounded-lg ring ring-default bg-elevated/50 px-5 py-5 sm:px-6 sm:py-6">
+            <header class="landing-panel rounded-lg ring ring-default bg-elevated/50 px-5 py-5 sm:px-6 sm:py-6">
                 <h1 class="font-bold text-highlighted">{{ $t('supporters.title') }}</h1>
                 <p class="mt-1.5 text-muted leading-relaxed max-w-2xl">{{ $t('supporters.subtitle') }}</p>
             </header>
@@ -16,9 +16,7 @@
                 </h2>
 
                 <div class="p-5">
-                    <p class="text-sm text-muted">{{ $t(`supporters.role_${group.role}_desc`) }}</p>
-
-                    <ul class="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <ul class="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
                         <li v-for="supporter in group.supporters" :key="supporter.id" class="min-w-0">
                             <span class="block font-medium text-highlighted break-words">{{ supporter.name }}</span>
                             <a

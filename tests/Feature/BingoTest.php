@@ -202,7 +202,6 @@ class BingoTest extends TestCase
         ];
     }
 
-
     /**
      * The detail dialog's payload. Optional, so it costs a normal render
      * nothing and only arrives when a square is asked for by position.

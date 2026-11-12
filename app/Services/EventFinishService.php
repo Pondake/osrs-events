@@ -173,7 +173,7 @@ class EventFinishService
      * simply do not move this either way.
      *
      * @param  array<int, int>  $positions  approved positions, wildcards included
-     * @param  array<int, \Illuminate\Support\Carbon|null>  $submittedAt  keyed by position
+     * @param  array<int, Carbon|null>  $submittedAt  keyed by position
      */
     private function bingoWonAt(BingoCard $card, array $positions, array $submittedAt): ?Carbon
     {

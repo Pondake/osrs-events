@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\EventFinishService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * make a finish true (an approved last tile, a won bingo card) are decided
  * there so that both event types answer the question the same way.
  *
- * @see \App\Services\EventFinishService
+ * @see EventFinishService
  */
 class EventFinish extends Model
 {

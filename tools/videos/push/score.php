@@ -1,5 +1,10 @@
 <?php
-use App\Models\{BingoCompletion, Event, Team, User};
+
+use App\Models\BingoCompletion;
+use App\Models\Event;
+use App\Models\Team;
+use App\Models\User;
+
 $event = Event::where('title', 'Clan Team Bingo')->firstOrFail();
 $sq = $event->bingoCard->squares()->where('position', 7)->first();
 $hans = User::where('discord_username', 'demo_hans')->first();

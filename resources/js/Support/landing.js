@@ -25,14 +25,13 @@ export const LANDING_PAGES = [
     // lands on.
     'Page',
     // /about was one of those until 2026-09-07 and is its own component now,
-    // so it needs naming here in its own right. It leans on the panel bevel
-    // more than any of them — see About.vue.
+    // so it needs naming here in its own right.
     'About',
     // The error page, for the same reason: a dead link from a search result
     // is somebody's first sight of the site, and the panel treatment is what
-    // makes it read as a page rather than as a crash. It also gets the panel
-    // bevel for free — see .landing-page in app.css.
+    // makes it read as a page rather than as a crash.
     'Error',
+    'Supporters',
 ];
 
 export function isLandingPage(component) {
@@ -42,29 +41,41 @@ export function isLandingPage(component) {
 /**
  * Which pattern the generative background draws behind a landing page.
  *
- * Three motifs, all of them the app's own language rather than a borrowed
- * one: the square the game world is divided into, the bingo card's diamond
- * lattice, and a Snakes & Ladders board. The page that sells an event type
- * gets the shape of that event; everything else gets the plain tile, which is
- * the unit all three are made of.
+ * Every page that has a field gets its own, picked for what the page is: every
+ * rune on the home page, every skill on /about, bones on a dead link, keys on
+ * the privacy policy, scrolls on the terms, treasure on the page that thanks
+ * the people who chipped in. The page that sells an event type
+ * would get the shape of that event — the bingo card's diamond lattice, a
+ * Snakes & Ladders board — and the plain tile is the fallback.
  *
  * Only landing pages are asked — the caller gates on isLandingPage() first.
  * That gate is the whole point: this belongs on the pages people read, not
  * behind a bingo card somebody is playing or a scoreboard that is moving.
  */
 const MOTIFS = {
+    Home: 'runes',
+    About: 'skills',
+    Error: 'bones',
+    Page: 'runes',
+    Supporters: 'treasure',
     OsrsBingo: 'bingo',
     SnakesAndLadders: 'ladder',
 };
 
+/** Every CMS page renders through `Page`, so those are told apart by address. */
+const PAGE_MOTIFS = {
+    '/privacy': 'keys',
+    '/terms': 'scrolls',
+};
+
 /**
- * The landing pages that get no background at all, for now.
+ * The landing pages with no field behind their content.
  *
  * Every page that explains an event type: a heading, a paragraph and a table
  * of contents from the first line down, and a pattern behind that is one
- * thing too many on a screen that is already busy. They keep the torch light
- * and the panel bevel, which is what LANDING_PAGES is for — this is only
- * about the field.
+ * thing too many on a screen that is already busy. They keep the torch light,
+ * which is what LANDING_PAGES is for, and get the field beside the content
+ * instead: see GUTTER_MOTIFS.
  *
  * It means `bingo` and `ladder` above are currently unreachable: the two
  * pages that ask for them are on this list. They stay wired rather than
@@ -81,12 +92,12 @@ const NO_BACKGROUND = [
 ];
 
 /** The motif for a landing page, or null where the field is off. */
-export function backgroundMotif(component) {
+export function backgroundMotif(component, url = '') {
     const name = String(component ?? '');
 
     if (NO_BACKGROUND.includes(name)) return null;
 
-    return MOTIFS[name] ?? 'tiles';
+    return (name === 'Page' && PAGE_MOTIFS[String(url).split(/[?#]/)[0]]) || (MOTIFS[name] ?? 'tiles');
 }
 
 /**
@@ -101,10 +112,34 @@ export function backgroundMotif(component) {
  * The same split collectopoly makes on `route.meta.layout`, decided here on
  * the component name because that is what the shell knows about the page.
  */
-const QUIET_PAGES = ['Page'];
+const QUIET_PAGES = ['Page', 'Supporters'];
 
 export function backgroundIsHero(component) {
     return ! QUIET_PAGES.includes(String(component ?? ''));
+}
+
+/**
+ * The event pages and the guides that explain them get the field beside their
+ * content, never behind it: see `gutters` in AppBackground.
+ */
+const GUTTER_MOTIFS = {
+    OsrsBingo: 'runes',
+    OsrsBingoTileIdeas: 'runes',
+    OsrsSkillRace: 'skills',
+    OsrsDropRace: 'treasure',
+    OsrsClanEvents: 'runes',
+    OsrsEventIdeas: 'runes',
+    SnakesAndLadders: 'runes',
+    'Boards/Index': 'runes',
+    'Boards/Mine': 'runes',
+    BoardShow: 'runes',
+    'Events/Bingo': 'runes',
+    'Events/SkillRace': 'skills',
+    'Events/Participants': 'runes',
+};
+
+export function gutterMotif(component) {
+    return GUTTER_MOTIFS[String(component ?? '')] ?? null;
 }
 
 /**

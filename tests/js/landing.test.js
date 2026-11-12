@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LANDING_PAGES, PUBLIC_PATHS, isLandingPage, isPublicPath } from '@/Support/landing';
+import { LANDING_PAGES, PUBLIC_PATHS, backgroundMotif, gutterMotif, isLandingPage, isPublicPath } from '@/Support/landing';
 
 /**
  * Which pages wear the branding, and which links survive the lock.
@@ -104,5 +104,53 @@ describe('the two lists', () => {
         for (const path of PUBLIC_PATHS) {
             expect(path.startsWith('/'), path).toBe(true);
         }
+    });
+});
+
+describe('backgroundMotif', () => {
+    it('gives each page with a field its own', () => {
+        expect(backgroundMotif('Home')).toBe('runes');
+        expect(backgroundMotif('About')).toBe('skills');
+        expect(backgroundMotif('Error')).toBe('bones');
+        expect(backgroundMotif('Supporters')).toBe('treasure');
+    });
+
+    it('tells CMS pages apart by address', () => {
+        expect(backgroundMotif('Page', '/privacy')).toBe('keys');
+        expect(backgroundMotif('Page', '/terms?ref=footer')).toBe('scrolls');
+        expect(backgroundMotif('Page', '/anything-else')).toBe('runes');
+    });
+
+    it('only reads the address for CMS pages', () => {
+        expect(backgroundMotif('Home', '/privacy')).toBe('runes');
+    });
+
+    it('leaves the pages that explain an event type bare', () => {
+        expect(backgroundMotif('OsrsBingo')).toBeNull();
+    });
+});
+
+describe('gutterMotif', () => {
+    it('gives the event pages a field beside their content', () => {
+        expect(gutterMotif('Boards/Index')).toBe('runes');
+        expect(gutterMotif('BoardShow')).toBe('runes');
+        expect(gutterMotif('Events/Bingo')).toBe('runes');
+        expect(gutterMotif('Events/SkillRace')).toBe('skills');
+    });
+
+    it('does the same for the guides, which have no field behind them', () => {
+        for (const component of ['OsrsBingo', 'OsrsBingoTileIdeas', 'OsrsSkillRace', 'OsrsDropRace', 'OsrsClanEvents', 'OsrsEventIdeas', 'SnakesAndLadders']) {
+            expect(backgroundMotif(component), component).toBeNull();
+            expect(gutterMotif(component), component).not.toBeNull();
+        }
+
+        expect(gutterMotif('OsrsSkillRace')).toBe('skills');
+        expect(gutterMotif('OsrsDropRace')).toBe('treasure');
+    });
+
+    it('leaves the rest of the app alone', () => {
+        expect(gutterMotif('Settings/Profile')).toBeNull();
+        expect(gutterMotif('Admin/Boards')).toBeNull();
+        expect(gutterMotif(undefined)).toBeNull();
     });
 });

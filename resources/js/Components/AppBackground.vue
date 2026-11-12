@@ -7,14 +7,45 @@
     -->
     <div
         class="app-bg text-stone-900 dark:text-stone-300"
+        :class="{ 'app-bg--gutters': gutters }"
         aria-hidden="true"
         :style="{
             '--bg-tile-w': `${shape.tileW}px`,
             '--bg-tile-h': `${shape.tileH}px`,
-            '--bg-accent-peak': hero ? 0.3 : 0.15,
+            '--bg-accent-peak': hero ? accentPeak : accentPeak / 2,
+            '--bg-drift-time': `${shape.drift ?? 90}s`,
+            ...(shape.sheet ? { '--bg-sheet': `url(${shape.sheet})` } : {}),
         }"
     >
-        <svg class="app-bg__field" xmlns="http://www.w3.org/2000/svg">
+        <!-- Things from the game, one flat shape each. The sheet is an alpha
+             mask rather than an inline pattern: two dozen traced shapes would
+             add more to every page's HTML than the sheet weighs as a cached
+             file. tools/fields/build.py makes them. -->
+        <div v-if="shape.sheet" class="app-bg__field">
+            <div class="app-bg__drift app-bg__sheet">
+                <div
+                    class="app-bg__shapes"
+                    :class="hero
+                        ? 'opacity-[0.05] dark:opacity-[0.045]'
+                        : 'opacity-[0.03] dark:opacity-[0.025]'"
+                />
+                <div
+                    v-for="(spot, i) in accents"
+                    :key="`accent-${i}`"
+                    class="app-bg__shapes app-bg__accent"
+                    :style="{
+                        left: `${spot.x}px`,
+                        top: `${spot.y}px`,
+                        width: `${shape.step}px`,
+                        height: `${shape.step}px`,
+                        '--bg-sheet-offset': `${-spot.x}px ${-spot.y}px`,
+                        animationDelay: `${spot.delay}s`,
+                    }"
+                />
+            </div>
+        </div>
+
+        <svg v-else class="app-bg__field" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <!-- The repeating unit. Every motif draws it around the same
                      origin, so a placement below is only a lattice coordinate.
@@ -173,13 +204,28 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-    // 'tiles' | 'bingo' | 'ladder'. An unknown value falls back to 'tiles'
+    // A key of SHAPES below. An unknown value falls back to 'tiles'
     // rather than rendering nothing — this is decoration, and a typo in the
     // page map should not leave a blank layer nobody notices is missing.
     motif: { type: String, default: 'tiles' },
     // A hero page can carry the pattern at full strength; a page that already
     // has content in the top band cannot. See the rect's own comment.
     hero: { type: Boolean, default: true },
+    // Only in the space left and right of the page container.
+    gutters: { type: Boolean, default: false },
+});
+
+/** A sheet from tools/fields/build.py: 8 by 8 cells, odd rows half a cell along. */
+const sheet = (motif) => ({
+    sheet: `/images/osrs/fields/${motif}.webp`,
+    tileW: 512,
+    tileH: 512,
+    step: 64,
+    // A whole tile per cycle needs this long to crawl at the same pace as the
+    // plain tiles.
+    drift: 1000,
+    staggered: true,
+    accents: [[1, 2], [6, 0], [4, 5], [9, 3], [13, 7], [7, 10], [16, 4], [19, 9], [11, 12], [22, 2], [2, 11], [24, 12]],
 });
 
 const SHAPES = {
@@ -210,12 +256,21 @@ const SHAPES = {
         step: 58,
         accents: [[1, 2], [5, 0], [3, 5], [8, 3], [12, 7], [6, 10], [15, 4], [18, 9], [10, 12], [20, 2], [2, 11], [22, 12]],
     },
+    runes: sheet('runes'),
+    skills: sheet('skills'),
+    bones: sheet('bones'),
+    keys: sheet('keys'),
+    scrolls: sheet('scrolls'),
+    treasure: sheet('treasure'),
 };
 
 const name = computed(() => (props.motif in SHAPES ? props.motif : 'tiles'));
 const shape = computed(() => SHAPES[name.value]);
 
 const markSize = computed(() => (name.value === 'ladder' ? 48 : 38));
+
+// A sheet shape is solid where a mark above is mostly outline, so it needs less.
+const accentPeak = computed(() => (shape.value.sheet ? 0.14 : 0.3));
 
 /** A diamond around the origin, so the four corner quarters clip themselves. */
 function diamond(r) {
@@ -250,7 +305,7 @@ const ladder = (() => {
 })();
 
 const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
-    x: i * shape.value.step,
+    x: (i + (shape.value.staggered && j % 2 ? 0.5 : 0)) * shape.value.step,
     y: j * shape.value.step,
     // Spread far enough apart that no two are ever up at the same time.
     delay: index * 2.2,
@@ -276,6 +331,27 @@ const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
     mask-image: radial-gradient(ellipse 115% 80% at 50% 140px, #000 12%, transparent 78%);
 }
 
+/* Fades out at the container's edge, so nothing runs behind the content. */
+.app-bg--gutters {
+    --bg-gutter: calc(50% - var(--ui-container) / 2);
+    --bg-gutter-mask: linear-gradient(
+        90deg,
+        #000 calc(var(--bg-gutter) - 64px),
+        transparent var(--bg-gutter),
+        transparent calc(100% - var(--bg-gutter)),
+        #000 calc(100% - var(--bg-gutter) + 64px)
+    );
+    -webkit-mask-image: var(--bg-gutter-mask);
+    mask-image: var(--bg-gutter-mask);
+}
+
+/* The container fills these screens: there is no gutter to show it in. */
+@media (max-width: 1360px) {
+    .app-bg--gutters {
+        display: none;
+    }
+}
+
 .app-bg__field {
     /* The tiles are drawn in user units, so without a scale a phone gets the
        same squares as a desktop — four of them across the screen, which is a
@@ -290,7 +366,7 @@ const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
 }
 
 .app-bg__drift {
-    animation: bg-drift 90s linear infinite;
+    animation: bg-drift var(--bg-drift-time) linear infinite;
     will-change: transform;
 }
 
@@ -315,6 +391,21 @@ const accents = computed(() => shape.value.accents.map(([i, j], index) => ({
     to {
         transform: translate3d(calc(-1 * var(--bg-tile-w)), calc(-1 * var(--bg-tile-h)), 0);
     }
+}
+
+.app-bg__sheet {
+    position: relative;
+    width: calc(100% + var(--bg-tile-w));
+    height: calc(100% + var(--bg-tile-h));
+}
+
+/* The accents share this, so a lit shape is the same pixels as the one under it. */
+.app-bg__shapes {
+    position: absolute;
+    inset: 0;
+    background-color: currentColor;
+    -webkit-mask: var(--bg-sheet) var(--bg-sheet-offset, 0 0) / var(--bg-tile-w) var(--bg-tile-h) repeat;
+    mask: var(--bg-sheet) var(--bg-sheet-offset, 0 0) / var(--bg-tile-w) var(--bg-tile-h) repeat;
 }
 
 .app-bg__accent {

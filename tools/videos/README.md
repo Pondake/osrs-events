@@ -30,6 +30,7 @@ tags and the chat callout, `style/cards.mjs` and `style/assets.mjs` render the
 headings, step columns and title cards with the site's own fonts.
 
 ```
+python tools/videos/style/word.py                       # wordmark, read by assets.mjs
 node tools/videos/style/assets.mjs
 node tools/videos/style/cards.mjs
 python tools/videos/style/restyle.py <name> peek 3 8    # stills first

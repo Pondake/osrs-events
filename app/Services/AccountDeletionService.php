@@ -216,7 +216,7 @@ class AccountDeletionService
      * still there — is a worse state than either end of the operation.
      *
      * @param  array<string, string>  $events  event id => user id | 'delete'
-     * @param  array<string, string>  $teams   team id  => user id | 'delete'
+     * @param  array<string, string>  $teams  team id  => user id | 'delete'
      */
     public function delete(User $user, array $events = [], array $teams = []): void
     {

@@ -6,7 +6,7 @@
             <!-- The title band is a panel like everything else here, not a
                  hero. A hero is a page's opening argument; this page is
                  answering a question somebody already has. -->
-            <header class="rounded-lg ring ring-default bg-elevated/50 px-5 py-5 sm:px-6 sm:py-6">
+            <header class="landing-panel rounded-lg ring ring-default bg-elevated/50 px-5 py-5 sm:px-6 sm:py-6">
                 <div class="sm:flex sm:items-end sm:justify-between sm:gap-6">
                     <div class="min-w-0">
                         <h1 class="font-bold text-highlighted">{{ $t('about.title') }}</h1>
@@ -32,7 +32,7 @@
                  which is what the CMS `features` block drew — it was built for
                  a marketing page. These are six facts about one thing, so they
                  share a frame and the gaps do the separating. -->
-            <section class="rounded-lg ring ring-default bg-default overflow-hidden">
+            <section class="landing-panel rounded-lg ring ring-default bg-default overflow-hidden">
                 <h2 :class="titleBar">
                     <span :class="titleBarLabel">{{ $t('about.offer_title') }}</span>
                 </h2>
@@ -162,11 +162,10 @@ import { useCurrentPage } from '@/Support/pageState';
  * Its own shell rather than GuideLayout: that layout's sidebar is a table of
  * contents and a list of other guides, and this page is neither long enough to
  * need jumping around nor a guide to sit beside them. What it borrows instead
- * is the panel bevel every landing page wears — see .landing-page in app.css,
- * which reaches any rounded-lg carrying ring-default. That is why the page is
- * built out of titled frames rather than headings and air: the frames do the
- * work the whitespace used to, and it reads as an interface rather than as a
- * brochure.
+ * is the panel bevel, on the first two frames only — see .landing-panel in
+ * app.css. The page is built out of titled frames rather than headings and
+ * air: the frames do the work the whitespace used to, and it reads as an
+ * interface rather than as a brochure.
  */
 defineProps({
     // { icon, title, description }[] — built server-side so the copy stays in

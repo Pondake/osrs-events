@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Event;
 use App\Models\EventStanding;
 use App\Models\PushSubscription;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\DiagnosticsService;
 use App\Support\DiagnosticCheck;
 use App\Support\ScheduleHeartbeat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -77,7 +79,7 @@ class DiagnosticsTest extends TestCase
 
     private function allGroups(): array
     {
-        return app(\App\Services\DiagnosticsService::class)->all();
+        return app(DiagnosticsService::class)->all();
     }
 
     // -----------------------------------------------------------------
@@ -265,7 +267,7 @@ class DiagnosticsTest extends TestCase
     #[Test]
     public function entrants_that_cannot_be_measured_are_surfaced(): void
     {
-        $event = \App\Models\Event::create(['title' => 'Race', 'type' => 'SKILL_RACE', 'metric' => 'mining', 'mode' => 'SOLO']);
+        $event = Event::create(['title' => 'Race', 'type' => 'SKILL_RACE', 'metric' => 'mining', 'mode' => 'SOLO']);
 
         EventStanding::create([
             'event_id' => $event->id,

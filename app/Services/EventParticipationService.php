@@ -50,9 +50,9 @@ class EventParticipationService
 
     /**
      * @param  string|null  $tokenOrCode  an invite, for events that need one
-     * @param  string|null  $teamId       a team of theirs to bring in with
-     *                                    them, for a team event they may
-     *                                    join but no team of theirs is in
+     * @param  string|null  $teamId  a team of theirs to bring in with
+     *                               them, for a team event they may
+     *                               join but no team of theirs is in
      *
      * @throws ValidationException when they may not join, when a team event
      *                             is not theirs to play, or when a race

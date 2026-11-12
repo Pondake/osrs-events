@@ -1,5 +1,15 @@
 <?php
-use App\Models\{BingoCard, BingoCompletion, BoardAuthor, Event, EventParticipant, Task, Team, TeamMember, User};
+
+use App\Models\BingoCard;
+use App\Models\BingoCompletion;
+use App\Models\BoardAuthor;
+use App\Models\Event;
+use App\Models\EventFinish;
+use App\Models\EventParticipant;
+use App\Models\Task;
+use App\Models\Team;
+use App\Models\TeamMember;
+use App\Models\User;
 use App\Services\BingoService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -53,7 +63,7 @@ if (! $event) {
         }
     }
 }
-\App\Models\EventFinish::where('event_id', $event->id)->delete();
+EventFinish::where('event_id', $event->id)->delete();
 $sq = $event->bingoCard->squares()->where('position', 7)->first();
 BingoCompletion::where('bingo_square_id', $sq->id)->delete();
 echo 'EVENT '.$event->id.' '.$sq->id."\n";

@@ -8,14 +8,16 @@ use App\Models\PluginToken;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\EventStandingsService;
+use App\Services\RaceKillService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
  * A drop race counting the kills the plugin reports, alongside Wise Old Man.
  *
- * @see \App\Services\RaceKillService
+ * @see RaceKillService
  */
 class RaceKillTest extends TestCase
 {
@@ -57,7 +59,7 @@ class RaceKillTest extends TestCase
         return $event;
     }
 
-    private function kill(string $name, int $killCount, ?string $occurredAt = null, ?User $as = null, ?string $code = null): \Illuminate\Testing\TestResponse
+    private function kill(string $name, int $killCount, ?string $occurredAt = null, ?User $as = null, ?string $code = null): TestResponse
     {
         return $this->withHeader('Authorization', 'Bearer '.($code ?? $this->code))
             ->postJson('/api/plugin/v1/completions', [

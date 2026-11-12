@@ -1,5 +1,8 @@
 <?php
-use App\Models\{Event, Task};
+
+use App\Models\Event;
+use App\Models\Task;
+
 $event = Event::where('title', 'Saturday Snakes & Ladders')->firstOrFail();
 $broken = ['Zulrah.png', 'Alchemical_Hydra.png', 'Wintertodt.png'];
 $tasks = Task::whereNotNull('icon_url')->orderBy('title')->get()

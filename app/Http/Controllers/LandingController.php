@@ -377,7 +377,6 @@ class LandingController extends Controller
         ]);
     }
 
-    /** @return Response */
     private function metricRacePage(string $key, string $component): Response
     {
         $hostSteps = collect(range(1, 5))->map(fn ($i) => [

@@ -13,6 +13,7 @@ use Tests\TestCase;
  *
  * A bare 302 to discord.com looks completely correct server-side and in curl.
  * It only fails in a browser, and only when the click came from a component
+ *
  * @nuxt/ui routed through Inertia: the XHR follows the redirect cross-origin,
  * carrying X-Inertia and X-XSRF-TOKEN, which preflights and is refused. The
  * user gets "AxiosError: Network Error" and the server logs nothing.

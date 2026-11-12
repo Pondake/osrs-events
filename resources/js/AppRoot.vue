@@ -12,6 +12,7 @@
              and decoration behind a bingo card somebody is playing is
              something to look past. -->
         <app-background v-if="isLanding && backgroundOn && backgroundMotif" :motif="backgroundMotif" :hero="backgroundIsHero" />
+        <app-background v-else-if="backgroundOn && gutterField" :motif="gutterField" gutters />
 
         <app-header v-if="showSiteChrome" />
 
@@ -187,7 +188,7 @@ import RichText from '@/Components/RichText.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import { bannerBgFor, bannerIconFor, styleFor } from '@/Support/announcement';
 import AppBackground from '@/Components/AppBackground.vue';
-import { backgroundIsHero as isHeroFor, backgroundMotif as motifFor, isLandingPage } from '@/Support/landing';
+import { backgroundIsHero as isHeroFor, backgroundMotif as motifFor, gutterMotif, isLandingPage } from '@/Support/landing';
 import { CURRENT_PAGE } from '@/Support/pageState';
 import { usePush } from '@/Composables/usePush';
 import { onboardingSnoozedUntil, snoozeOnboarding } from '@/Support/onboarding';
@@ -374,8 +375,9 @@ const AUTH_PAGES = ['Auth/Login', 'Auth/Register', 'Auth/ForgotPassword', 'Auth/
 
 const isLanding = computed(() => isLandingPage(inertiaPage.value.component));
 
-const backgroundMotif = computed(() => motifFor(inertiaPage.value.component));
+const backgroundMotif = computed(() => motifFor(inertiaPage.value.component, inertiaPage.value.url));
 const backgroundIsHero = computed(() => isHeroFor(inertiaPage.value.component));
+const gutterField = computed(() => gutterMotif(inertiaPage.value.component));
 
 /**
  * The account's answer to the background, defaulting to on.

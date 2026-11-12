@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -26,7 +27,7 @@ class AdminTaskFilterTest extends TestCase
         return $admin;
     }
 
-    /** @return \Illuminate\Support\Collection<int, string> */
+    /** @return Collection<int, string> */
     private function titles(string $query)
     {
         return collect($this->actingAs($this->admin())

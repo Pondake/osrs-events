@@ -1,5 +1,10 @@
 <?php
-use App\Models\{BoardAuthor, Event, EventParticipant, EventStanding, User};
+
+use App\Models\BoardAuthor;
+use App\Models\Event;
+use App\Models\EventParticipant;
+use App\Models\EventStanding;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 

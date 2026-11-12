@@ -1,17 +1,17 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
-use App\Http\Controllers\Admin\PluginTestController;
 use App\Http\Controllers\Admin\BoardController as AdminBoardController;
 use App\Http\Controllers\Admin\BossIconController;
 use App\Http\Controllers\Admin\ContentController;
-use App\Http\Controllers\Admin\DiagnosticsController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DiagnosticsController;
 use App\Http\Controllers\Admin\EventBlueprintController as AdminEventBlueprintController;
 use App\Http\Controllers\Admin\InviteController;
+use App\Http\Controllers\Admin\PluginTestController;
 use App\Http\Controllers\Admin\SiteSettingsController;
-use App\Http\Controllers\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Admin\SupporterController as AdminSupporterController;
+use App\Http\Controllers\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\DiscordController;
@@ -23,6 +23,7 @@ use App\Http\Controllers\BingoController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\BoardInviteController;
 use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\DevFillController;
 use App\Http\Controllers\EventBlueprintController;
 use App\Http\Controllers\EventParticipationController;
 use App\Http\Controllers\EventStreamController;
@@ -47,7 +48,9 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TileController;
 use App\Http\Controllers\UserSearchController;
 use App\Http\Controllers\WikiController;
+use App\Http\Middleware\EnsureSiteUnlocked;
 use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -583,14 +586,14 @@ Route::redirect('/boards/{path}', '/events/{path}')->where('path', '.*');
 
 // Walkthrough sign-in, local only; links come from `php artisan dev:login-link`.
 if (app()->environment('local')) {
-    Route::get('/dev/login/{user}', function (Illuminate\Http\Request $request, App\Models\User $user) {
-        Illuminate\Support\Facades\Auth::login($user);
+    Route::get('/dev/login/{user}', function (Request $request, User $user) {
+        Auth::login($user);
         $request->session()->regenerate();
 
         return redirect('/');
-    })->middleware('signed')->withoutMiddleware(App\Http\Middleware\EnsureSiteUnlocked::class)->name('dev.login');
+    })->middleware('signed')->withoutMiddleware(EnsureSiteUnlocked::class)->name('dev.login');
 
-    Route::post('/dev/events/{event}/fill-random', App\Http\Controllers\DevFillController::class)->middleware('auth')->name('dev.fill-random');
+    Route::post('/dev/events/{event}/fill-random', DevFillController::class)->middleware('auth')->name('dev.fill-random');
 }
 
 Route::get('/{page}', [PageController::class, 'show'])->name('pages.show');

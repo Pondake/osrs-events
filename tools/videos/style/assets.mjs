@@ -6,15 +6,16 @@ const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname).replac
 const HERE = path.dirname(new URL(import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1');
 const { chromium } = createRequire(REPO + '/package.json')('@playwright/test');
 const b64 = (f) => readFileSync(REPO + f).toString('base64');
-const logo = 'data:image/svg+xml;base64,' + b64('/public/favicon.svg');
+const logo = 'data:image/svg+xml;base64,' + b64('/resources/images/logo/osrs-events-logo-color.svg');
 const rs = 'data:font/otf;base64,' + b64('/public/fonts/RuneScape-Bold-12.otf');
 const head = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Instrument+Sans:wght@400;500;600&display=swap">
 <style>
 @font-face { font-family: 'RS'; src: url(${rs}); }
 html,body{margin:0;background:transparent}
 .wrap{display:inline-flex;padding:24px}
-.brand{display:flex;align-items:center;gap:14px;color:#f5f0e8;font:32px 'RS';letter-spacing:.5px;text-shadow:0 2px 0 #000}
-.brand img{width:44px;height:44px;image-rendering:pixelated}
+.brand{display:flex;align-items:center;gap:14px}
+.brand .mark{width:48px;height:48px;image-rendering:pixelated}
+.brand .word{image-rendering:pixelated;height:30px}
 .tag{display:inline-flex;align-items:center;gap:10px;padding:9px 16px 9px 13px;border-radius:999px;background:rgba(14,12,10,.80);
   border:1px solid rgba(255,255,255,.14);color:#f5f0e8;font:600 19px 'Instrument Sans';box-shadow:0 6px 18px rgba(0,0,0,.35);backdrop-filter:blur(6px)}
 .tag i{width:9px;height:9px;border-radius:50%;background:#fbbf24;box-shadow:0 0 0 4px rgba(251,191,36,.18)}
@@ -26,16 +27,22 @@ html,body{margin:0;background:transparent}
 .vsub{font:500 27px 'Instrument Sans';color:#d6d3d1;text-align:center;margin-top:14px}
 .url{font:500 22px 'Instrument Sans';color:#a8a29e;margin-top:6px;text-align:center}
 .col{display:flex;flex-direction:column;align-items:center}
+.vbrand{gap:22px}
+.vbrand .mark{width:96px;height:96px}
+.vbrand .word{height:60px}
 </style>`;
+// word.py draws the wordmark; it only ever scales by whole numbers.
+const word = 'data:image/png;base64,' + readFileSync(path.join(HERE, 'word.png')).toString('base64');
+const brand = (cls = '') => `<div class="brand ${cls}"><img class="mark" src="${logo}"><img class="word" src="${word}"></div>`;
 const pieces = {
-  brand: `<div class="brand"><img src="${logo}">OSRS Events</div>`,
+  brand: `${brand()}`,
   'tag-game': `<div class="tag"><i></i>In game, with the plugin</div>`,
   'tag-game-short': `<div class="tag"><i></i>In game</div>`,
   'tag-site': `<div class="tag"><i></i>On the site</div>`,
   'chat-label': `<div class="label">Game chat</div>`,
   title16: `<div class="right"><div class="title">Your kill, claimed on the card</div><div class="sub">The RuneLite plugin for clan bingo</div></div>`,
-  vhead: `<div class="col"><div class="vtitle">Your kill,<br>claimed on the card</div><div class="vsub">The RuneLite plugin for clan bingo</div></div>`,
-  vfoot: `<div class="col"><div class="brand"><img src="${logo}">OSRS Events</div><div class="url">Free for your clan · osrs-events.com</div></div>`,
+  vhead: `<div class="col">${brand('vbrand')}</div>`,
+  vfoot: `<div class="col"><div class="url">osrs-events.com</div></div>`,
 };
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1600, height: 600 }, deviceScaleFactor: 1 });

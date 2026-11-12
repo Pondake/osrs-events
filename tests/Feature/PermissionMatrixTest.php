@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\BingoCompletion;
+use App\Models\Board;
 use App\Models\BoardAuthor;
 use App\Models\Event;
+use App\Models\EventStanding;
 use App\Models\Permission;
+use App\Models\PlayerBoard;
+use App\Models\Role;
 use App\Models\Team;
 use App\Models\TeamMember;
-use App\Models\Role;
 use App\Models\User;
 use App\Services\BingoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -526,7 +529,7 @@ class PermissionMatrixTest extends TestCase
         ]);
         $entrant = $this->player('Racer');
         $entrant->update(['nickname' => 'Marthijn']);
-        \App\Models\EventStanding::create([
+        EventStanding::create([
             'event_id' => $race->id,
             'user_id' => $entrant->id,
             'username' => $entrant->osrs_username,
@@ -566,10 +569,10 @@ class PermissionMatrixTest extends TestCase
             'access_mode' => 'INVITE',
             'is_listed' => true,
         ]);
-        $game = \App\Models\Board::create(['event_id' => $board->id, 'size' => 'SIZE_5X5']);
+        $game = Board::create(['event_id' => $board->id, 'size' => 'SIZE_5X5']);
         $player = $this->player('Runner');
         $player->update(['nickname' => 'Marthijn']);
-        \App\Models\PlayerBoard::create([
+        PlayerBoard::create([
             'user_id' => $player->id,
             'board_id' => $game->id,
             'current_position' => 7,

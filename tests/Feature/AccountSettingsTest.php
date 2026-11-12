@@ -256,5 +256,4 @@ class AccountSettingsTest extends TestCase
         $this->put('/settings/account/email', ['email' => 'me@example.com'])->assertRedirect('/login');
         $this->put('/settings/account/password', [])->assertRedirect('/login');
     }
-
 }

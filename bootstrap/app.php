@@ -69,7 +69,7 @@ return Application::configure(basePath: dirname(__DIR__))
          * Inertia builds a 200 and the status has to be stamped on afterwards,
          * or a crawler reads a soft 404 and indexes the dead URL.
          */
-        $exceptions->respond(function (Response $response, \Throwable $exception, Request $request) {
+        $exceptions->respond(function (Response $response, Throwable $exception, Request $request) {
             // JSON clients want the JSON body Laravel already built.
             if ($request->is('api/*') || $request->expectsJson()) {
                 return $response;

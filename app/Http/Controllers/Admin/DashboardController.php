@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
-use App\Models\Event;
 use App\Models\BoardInvite;
+use App\Models\Event;
 use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;

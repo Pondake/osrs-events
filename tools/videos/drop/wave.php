@@ -1,5 +1,8 @@
 <?php
-use App\Models\{Event, EventStanding};
+
+use App\Models\Event;
+use App\Models\EventStanding;
+
 $waves = [
     ['Hans' => 61, 'Aggie' => 57, 'Duke' => 52, 'Gnome Kid' => 44, 'Bob' => 41, 'Old Wise' => 35, 'Ned' => 29, 'Juliet' => 22],
     ['Hans' => 63, 'Aggie' => 58, 'Duke' => 53, 'Gnome Kid' => 45, 'Bob' => 49, 'Old Wise' => 36, 'Ned' => 38, 'Juliet' => 23],
