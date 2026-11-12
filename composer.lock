@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "35566b05722f3f0943bb56083e4c37dd",
+    "content-hash": "375b841c4d6f836ed5fc74f4262b0d75",
     "packages": [
         {
             "name": "brick/math",
@@ -7608,6 +7608,38 @@
         }
     ],
     "packages-dev": [
+        {
+            "name": "absolit/lint-config",
+            "version": "v1.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Pondake/lint-config.git",
+                "reference": "f71b5cc315dd337d03119f3e6eec8805bdc82ddd"
+            },
+            "require": {
+                "php": ">=8.2"
+            },
+            "suggest": {
+                "laravel/pint": "^1.32 to use the pint/*.json presets via \"extend\"",
+                "squizlabs/php_codesniffer": "^3.10 to use the phpcs/*.xml rulesets"
+            },
+            "type": "library",
+            "archive": {
+                "exclude": [
+                    "/eslint",
+                    "/prettier",
+                    "/test",
+                    "/node_modules",
+                    "/package.json",
+                    "/pnpm-lock.yaml"
+                ]
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Shared Laravel Pint and PHP_CodeSniffer presets per stack (Laravel, WordPress Bedrock).",
+            "time": "2026-11-12T07:39:45+00:00"
+        },
         {
             "name": "fakerphp/faker",
             "version": "v1.24.1",
