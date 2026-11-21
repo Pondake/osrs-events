@@ -176,5 +176,5 @@ list itself is unchanged.
    and awaited it; 3.5.44 started doing `String(props.innerHTML)`. The
    browser shows the text until hydration replaces it, so it reads as a
    loading screen, while crawlers and link previews only ever see the text.
-   `ssr.js` now renders the page itself and splices it into the wrapper.
-   Inertia v3 awaits the render, so the workaround can go with that upgrade.
+   Fixed by moving to Inertia v3, which awaits the render. Stay on v3 or
+   later; v2 cannot be combined with a current Vue.
