@@ -97,6 +97,14 @@ references. None of those four are places to file new work.
 
 ---
 
+## Comments
+- Comment only what is genuinely complex: a non-obvious why, a trap, a workaround.
+  No history ("this used to…"), no restating the code, no essays above simple functions.
+- Existing code is heavily commented. Trim it when you are already changing that code;
+  don't do a separate sweep.
+
+---
+
 ## Vue / TypeScript
 
 ### Refs

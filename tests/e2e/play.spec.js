@@ -1,4 +1,4 @@
-import { test, expect, hydrated } from './fixtures.js';
+import { test, expect, hydrated, offersLeave, leaveEvent } from './fixtures.js';
 import { eventId, query } from './support/db.js';
 
 /**
@@ -43,14 +43,14 @@ test('joining, leaving and joining again', async ({ as }) => {
     await hydrated(page);
 
     await page.getByRole('button', { name: 'Join event' }).first().click();
-    await expect(page.getByRole('button', { name: 'Leave event' })).toBeVisible();
+    await offersLeave(page);
 
     await page.getByRole('link', { name: 'Participants' }).click();
     await expect(page.getByText('Creator', { exact: true }).first()).toBeVisible();
 
     await page.goto(`/events/${eventId(LADDER)}`);
     await hydrated(page);
-    await page.getByRole('button', { name: 'Leave event' }).click();
+    await leaveEvent(page);
 
     const confirm = page.getByRole('dialog').getByRole('button', { name: /leave/i });
 
@@ -67,7 +67,7 @@ test('a claim reaches the host, and the player can roll once it is approved', as
     await hydrated(player);
 
     await player.getByRole('button', { name: 'Join event' }).first().click();
-    await expect(player.getByRole('button', { name: 'Leave event' })).toBeVisible();
+    await offersLeave(player);
 
     await player.getByRole('button', { name: 'Mark as complete' }).click();
     await player.getByLabel('Screenshot link').fill('https://i.imgur.com/e2e.png');
@@ -79,7 +79,7 @@ test('a claim reaches the host, and the player can roll once it is approved', as
     await host.goto(`/events/${eventId(LADDER)}`);
     await hydrated(host);
 
-    await host.getByRole('button', { name: /waiting for review/i }).click();
+    await host.getByRole('button', { name: 'Review claims' }).click();
     await expect(host.getByRole('dialog').getByText('Review claims')).toBeVisible();
     await host.getByRole('dialog').getByRole('button', { name: 'Approve' }).first().click();
     await expect(host.getByText('Claim approved').first()).toBeVisible();
@@ -90,7 +90,8 @@ test('a claim reaches the host, and the player can roll once it is approved', as
 
     const before = position('e2e_member');
 
-    await player.getByRole('button', { name: '3', exact: true }).first().click();
+    // The real die: the forced-roll grid is for local admins only.
+    await player.getByRole('button', { name: 'Click to roll' }).click();
 
     await expect.poll(() => position('e2e_member')).not.toBe(before);
 });

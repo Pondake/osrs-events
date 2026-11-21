@@ -3,7 +3,7 @@
     "private": true,
     "license": "AGPL-3.0-or-later",
     "type": "module",
-    "packageManager": "pnpm@10.34.5",
+    "packageManager": "pnpm@10.34.9",
     "scripts": {
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
@@ -19,7 +19,7 @@
         "@iconify-json/lucide": "^1.2.153",
         "@iconify-json/mdi": "^1.2.3",
         "@iconify-json/simple-icons": "^1.2.102",
-        "@inertiajs/vue3": "^2.3.29",
+        "@inertiajs/vue3": "^3.11.0",
         "@playwright/test": "^1.65.0",
         "@tailwindcss/vite": "^4.3.5",
         "@vitejs/plugin-vue": "^6.0.10",

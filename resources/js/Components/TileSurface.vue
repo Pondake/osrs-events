@@ -37,23 +37,39 @@
              on purpose: the scroller clips the edit ring along its straight
              edges and leaves only the corner arcs — see `.is-editing` in
              app.css. -->
-        <div class="overflow-x-auto">
+        <div class="relative">
+        <div ref="scroller" class="overflow-x-auto" data-tile-scroller @scroll.passive="measure">
             <!-- osrs-border/board-parchment as Tailwind utilities rather than
                  the old app's custom CSS: this codebase writes custom CSS only
                  where Tailwind cannot, and it can. `.is-editing` is the one
                  exception, in app.css, because a ring that has to survive this
                  scroller is not a utility. -->
             <div
-                class="relative rounded-xl p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900"
+                class="relative rounded-xl p-1.5 sm:p-3 border-2 border-stone-400 dark:border-stone-600 bg-amber-50/90 dark:bg-stone-900"
                 :class="[minWidth, editing ? 'is-editing sm:pt-5' : '']"
             >
                 <slot />
             </div>
         </div>
+        <!-- Says there is more board off-screen, which a clipped edge alone
+             reads as a layout bug. -->
+        <div
+            v-if="more.left"
+            class="pointer-events-none absolute inset-y-0 left-0 w-8 rounded-l-xl bg-gradient-to-r from-default to-transparent"
+            aria-hidden="true"
+        />
+        <div
+            v-if="more.right"
+            class="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-xl bg-gradient-to-l from-default to-transparent"
+            aria-hidden="true"
+        />
+        </div>
     </div>
 </template>
 
 <script setup>
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+
 defineProps({
     editing: { type: Boolean, default: false },
     // What is being edited, in the words of the format: a board has tiles, a
@@ -65,4 +81,25 @@ defineProps({
 });
 
 const emit = defineEmits(['done']);
+
+const scroller = ref(null);
+const more = ref({ left: false, right: false });
+
+function measure() {
+    const el = scroller.value;
+
+    if (!el) return;
+
+    more.value = {
+        left: el.scrollLeft > 1,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    };
+}
+
+onMounted(() => {
+    measure();
+    window.addEventListener('resize', measure, { passive: true });
+});
+
+onBeforeUnmount(() => window.removeEventListener('resize', measure));
 </script>

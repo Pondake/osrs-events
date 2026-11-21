@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BoardAccess;
 use App\Models\Event;
 use App\Models\EventParticipant;
 use App\Models\EventStanding;
@@ -40,13 +39,9 @@ class ParticipantController extends Controller
 
         $canEdit = $user?->canEditEvent($event) ?? false;
 
-        // Everyone who has a reason to be counted. Joining is its own record
-        // now and is the first source read, but the rest stay: an access row
-        // means somebody was let into a private event, and the play tables
-        // still hold anyone whose rows predate the join record.
+        // Not BoardAccess: leaving keeps that row so a spent invite still lets you back in.
         $userIds = collect()
             ->merge(EventParticipant::where('event_id', $event->id)->pluck('user_id'))
-            ->merge(BoardAccess::where('event_id', $event->id)->pluck('user_id'))
             ->merge(EventStanding::where('event_id', $event->id)->pluck('user_id'))
             ->merge($event->board ? PlayerBoard::where('board_id', $event->board->id)->pluck('user_id') : collect())
             ->merge($event->authors->pluck('user_id'))

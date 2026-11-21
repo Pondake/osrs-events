@@ -249,6 +249,16 @@ class User extends Authenticatable
     }
 
     /**
+     * A chosen die, for working on the board's movement locally. Never on
+     * another environment, where it would be cheating, and never for a
+     * non-admin even locally.
+     */
+    public function canForceRoll(): bool
+    {
+        return app()->environment('local') && $this->isAdmin();
+    }
+
+    /**
      * Mirrors the old usePermissions.ts: ADMIN bypasses every granular check.
      *
      * Kept as a named method rather than letting call sites use spatie's

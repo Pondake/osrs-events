@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -31,7 +31,7 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor
           key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
@@ -40,9 +40,9 @@ jobs:
 
       - run: cp .env.example .env && php artisan key:generate
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -70,7 +70,7 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor
           key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
@@ -79,9 +79,9 @@ jobs:
 
       - run: cp .env.example .env && php artisan key:generate
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -95,14 +95,18 @@ jobs:
       # database, storage and Wise Old Man stand-in, and nothing outside the
       # site is fetched, so there is nothing to configure. On Linux PHP's
       # built-in server forks workers, which is what stream.spec.js needs.
-      - run: pnpm e2e
+      # A step limit inside the job's, so a run that overruns fails instead of being
+      # cancelled, and the report below is still kept.
+      - run: pnpm e2e --max-failures=20
+        timeout-minutes: 25
 
       - name: Keep the report of a failed run
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
             playwright-report
             tests/e2e/.results
           retention-days: 7
+          include-hidden-files: true

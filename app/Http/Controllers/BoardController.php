@@ -403,9 +403,7 @@ class BoardController extends Controller
         return Inertia::render('BoardShow', [
             // Flattened for the same reason the cards are — see EventCard.
             'board' => EventCard::for($event),
-            // Shows the dice-forcing control, for working on the movement
-            // animation. Environment, not role — see PlayerBoardController.
-            'canForceRoll' => app()->environment('local'),
+            'canForceRoll' => (bool) $user?->canForceRoll(),
             'tiles' => $tiles,
             'playerBoard' => $playerBoard === null ? null : [
                 // `team_id` as well as the rest: the sidebar decides which

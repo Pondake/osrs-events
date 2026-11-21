@@ -114,9 +114,9 @@ test('an admin can let a member create events, and the member is then offered to
     const row = admin.locator('li, div').filter({ hasText: '@e2e_promotee' }).filter({ has: admin.getByRole('button', { name: 'Edit' }) }).last();
 
     await row.getByRole('button', { name: 'Edit' }).click();
-    await admin.getByRole('menuitem', { name: 'Grant: canCreateBoards' }).click();
+    await admin.getByRole('menuitem', { name: 'Grant: Hosts events' }).click();
 
-    await expect(row.getByText('canCreateBoards')).toBeVisible();
+    await expect(row.getByText('Hosts events')).toBeVisible();
 
     await member.reload();
     await hydrated(member);

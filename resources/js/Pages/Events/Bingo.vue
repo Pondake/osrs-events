@@ -44,9 +44,10 @@
                         <!-- Bingo had no way of saying you were playing at
                              all: taking part was inferred from having claimed
                              a square, so an empty card meant an empty event. -->
-                        <join-event-button v-if="joined || (!isPaused && status !== 'ended')" :event-id="liveEvent.id" :joined="joined" :needs-team="needsTeam" :teams="teamOptions" size="sm" />
+                        <join-event-button v-if="!joined && !isPaused && status !== 'ended'" :event-id="liveEvent.id" :needs-team="needsTeam" :teams="teamOptions" :quiet="canEdit" size="sm" />
 
                         <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
+                        <event-more-menu v-if="joined" :items="moreItems" @select="onMore" />
                     </template>
                 </event-page-header>
 
@@ -62,6 +63,10 @@
                     :webhook-failed-at="webhookFailedAt"
                     class="mb-6"
                 />
+
+                <div v-if="reviewQueue.length" class="hidden sm:block mb-6">
+                    <review-queue-bar :claims="reviewQueue" @open="showReviewModal = true" />
+                </div>
 
                 <!-- The way in, for a listed invite-only event. Since
                      2026-08-31 such an event opens for everyone, so it no
@@ -212,11 +217,10 @@
                             </svg>
 
                         <div class="grid gap-1" :class="gridClass">
+                            <div v-for="square in squares" :key="square.id" class="relative min-w-0">
                             <button
-                                v-for="square in squares"
-                                :key="square.id"
                                 type="button"
-                                class="@container relative aspect-square overflow-hidden min-w-0 rounded-md p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-150"
+                                class="@container relative w-full aspect-square overflow-hidden min-w-0 rounded-md p-1.5 sm:p-2 flex flex-col items-center justify-center text-center gap-1 sm:gap-2 transition-all duration-150"
                                 :class="[squareClass(square), hasRequirement(square) ? 'pb-3.5 sm:pb-5' : '']"
                                 :disabled="(!canPlay && !editing) || (square.isWildcard && !editing) || (square.hidden && !canEdit)"
                                 :title="squareTitle(square)"
@@ -351,6 +355,18 @@
                                     >+{{ extraHolders(square) }}</span>
                                 </span>
                             </button>
+                            <!-- A sibling of the square, not inside it: the
+                                 square stays the host's own way to claim it,
+                                 and this opens the claims waiting on it. -->
+                            <button
+                                v-if="pendingOn(square.position)"
+                                type="button"
+                                class="absolute -top-1.5 -right-1.5 z-20 min-w-5 h-5 px-1 rounded-full bg-warning text-inverted text-[11px] font-bold tabular-nums flex items-center justify-center shadow-md ring-2 ring-default before:absolute before:-inset-3 before:content-['']"
+                                :aria-label="$tChoice('board.review_square', pendingOn(square.position), { count: pendingOn(square.position) })"
+                                :title="$tChoice('board.review_square', pendingOn(square.position), { count: pendingOn(square.position) })"
+                                @click="reviewPosition(square.position)"
+                            >{{ pendingOn(square.position) }}</button>
+                            </div>
                         </div>
                         </div>
                         </tile-surface>
@@ -472,23 +488,6 @@
                                     <span>{{ $t('bingo.legend_min_quantity') }}</span>
                                 </div>
 
-                                <!-- The sentence above tells a host that
-                                     claims wait for them; the button is
-                                     where they act on it. Having the fact
-                                     here and the control only in the page
-                                     header made the two read as unrelated. -->
-                                <u-button
-                                    v-if="canEdit && liveCard.requiresApproval"
-                                    :color="pending.length ? 'warning' : 'neutral'"
-                                    variant="outline"
-                                    size="xs"
-                                    icon="i-lucide-gavel"
-                                    class="mt-1"
-                                    :label="pending.length
-                                        ? $t('bingo.review_pending_count', { count: pending.length })
-                                        : $t('bingo.review_nothing_waiting')"
-                                    @click="showReviewModal = true"
-                                />
                             </div>
                         </u-card>
 
@@ -502,6 +501,8 @@
                         />
                     </div>
                 </div>
+
+                <review-queue-bar placement="sticky" :claims="reviewQueue" @open="showReviewModal = true" />
             </u-container>
         </u-page>
 
@@ -569,6 +570,8 @@ import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { eventStatus, formatDate, ordinal, relativeTime } from '@/Support/board';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
+import ReviewQueueBar from '@/Components/ReviewQueueBar.vue';
+import EventMoreMenu from '@/Components/EventMoreMenu.vue';
 import TileSurface from '@/Components/TileSurface.vue';
 import { openLinesThrough, strokesFor } from '@/Support/bingoLines';
 import { celebrate } from '@/Support/celebrate';
@@ -1193,6 +1196,36 @@ function warmDialog() {
 // queue — see the note on squareReviewModalOpen below.
 const squareReviewModalOpen = ref(false);
 const squareReviewClaims = ref([]);
+
+const moreItems = computed(() => [
+    { key: 'leave', label: trans('events.leave_event'), icon: 'i-lucide-log-out', color: 'error' },
+]);
+
+function onMore(key) {
+    if (key === 'leave') {
+        router.delete(`/events/${liveEvent.value.id}/join`, {
+            preserveScroll: true,
+            onError: (errors) => console.error(errors),
+        });
+    }
+}
+
+const reviewQueue = computed(() => (props.canEdit && liveCard.value.requiresApproval ? props.pending : []));
+
+const pendingCounts = computed(() => reviewQueue.value.reduce((counts, claim) => {
+    counts[claim.position] = (counts[claim.position] ?? 0) + 1;
+
+    return counts;
+}, {}));
+
+function pendingOn(position) {
+    return editing.value ? 0 : (pendingCounts.value[position] ?? 0);
+}
+
+function reviewPosition(position) {
+    squareReviewClaims.value = reviewQueue.value.filter((claim) => claim.position === position);
+    squareReviewModalOpen.value = true;
+}
 
 function onSquareClick(square) {
     if (editing.value) {
