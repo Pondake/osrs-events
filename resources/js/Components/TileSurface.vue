@@ -37,7 +37,7 @@
              on purpose: the scroller clips the edit ring along its straight
              edges and leaves only the corner arcs — see `.is-editing` in
              app.css. -->
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" data-tile-scroller>
             <!-- osrs-border/board-parchment as Tailwind utilities rather than
                  the old app's custom CSS: this codebase writes custom CSS only
                  where Tailwind cannot, and it can. `.is-editing` is the one

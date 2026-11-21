@@ -36,22 +36,6 @@
                     </event-type-heading>
 
                     <template #actions>
-                            <!-- Two buttons that both sound like "see who else is
-                                 here", so each says what it does: this one draws
-                                 the other players' markers on the board, the next
-                                 opens the list. The label names what pressing it
-                                 will do, since it starts off and an empty board
-                                 otherwise reads as broken. -->
-                            <u-button
-                                v-if="otherPlayers.length > 0 && !isSpectator"
-                                :color="showOtherPlayers ? 'primary' : 'neutral'"
-                                :variant="showOtherPlayers ? 'subtle' : 'outline'"
-                                size="sm"
-                                icon="i-lucide-map-pin"
-                                :label="showOtherPlayers ? $t('board.hide_players') : $t('board.show_players')"
-                                :title="$t('board.show_players_desc')"
-                                @click="showOtherPlayers = !showOtherPlayers"
-                            />
                             <u-button
                                 :href="`/events/${liveBoard.id}/participants`"
                                 color="neutral"
@@ -66,14 +50,15 @@
                                  at square one. Joining is a decision now, and
                                  this is where it is made. -->
                             <join-event-button
-                                v-if="joined || (!isPaused && !isEnded)"
+                                v-if="!joined && !isPaused && !isEnded"
                                 :event-id="liveBoard.id"
-                                :joined="joined"
                                 :needs-team="needsTeam"
                                 :teams="teamOptions"
+                                :quiet="canEdit"
                                 size="sm"
                             />
                             <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
+                            <event-more-menu v-if="moreItems.length" :items="moreItems" @select="onMore" />
                     </template>
                 </event-page-header>
 
@@ -89,6 +74,10 @@
                     :webhook-failed-at="webhookFailedAt"
                     class="mb-6"
                 />
+
+                <div v-if="reviewQueue.length" class="hidden sm:block mb-6">
+                    <review-queue-bar :claims="reviewQueue" @open="showReviewModal = true" />
+                </div>
 
                 <!-- The way in, for a listed invite-only event. Since
                      2026-08-31 such an event opens for everyone, so it no
@@ -180,11 +169,10 @@
                                      creates that row. Caught by testing the actual
                                      cold-start flow through a real browser, not just
                                      curling a pre-seeded player's board. -->
+                                <div v-for="tile in orderedTiles" :key="tile.position" class="relative min-w-0" :data-tile-position="tile.position">
                                 <button
-                                    v-for="tile in orderedTiles"
-                                    :key="tile.position"
                                     type="button"
-                                    class="@container aspect-square rounded-md relative cursor-pointer overflow-hidden"
+                                    class="@container w-full aspect-square rounded-md relative cursor-pointer overflow-hidden"
                                     :class="tileClasses(tile)"
                                     :title="tileHint(tile)"
                                     :aria-label="tileHint(tile)"
@@ -319,6 +307,15 @@
                                     </div>
                                     </span>
                                 </button>
+                                <button
+                                    v-if="pendingOn(tile.position)"
+                                    type="button"
+                                    class="absolute -top-1.5 -right-1.5 z-20 min-w-5 h-5 px-1 rounded-full bg-warning text-inverted text-[11px] font-bold tabular-nums flex items-center justify-center shadow-md ring-2 ring-default before:absolute before:-inset-3 before:content-['']"
+                                    :aria-label="$tChoice('board.review_square', pendingOn(tile.position), { count: pendingOn(tile.position) })"
+                                    :title="$tChoice('board.review_square', pendingOn(tile.position), { count: pendingOn(tile.position) })"
+                                    @click="reviewPosition(tile.position)"
+                                >{{ pendingOn(tile.position) }}</button>
+                                </div>
                             </div>
                             </component>
 
@@ -421,56 +418,14 @@
                             </p>
                         </u-card>
 
-                        <u-card v-else-if="playerBoard">
+                        <u-card v-else-if="playerBoard && !turnCard">
                             <template #header>
                                 <span class="font-semibold">{{ $t('board.roll_dice') }}</span>
                             </template>
 
-                            <!-- Local only: a chosen die, for the animation.
-                                 Inside the playable branch, so it cannot
-                                 offer a roll the server would refuse. -->
-                            <!-- Two rows of six, in a grid rather than a wrap:
-                                 the same six steps forwards and backwards, so
-                                 -3 sits under 3 and the pair reads as one
-                                 control. Left to wrap, the twelve buttons
-                                 broke 7/5 across the sidebar's width and the
-                                 columns lined up with nothing. -->
-                            <div v-if="canForceRoll" class="mb-3">
-                                <span class="block text-[10px] uppercase tracking-wide text-muted text-center mb-1">dev: force roll</span>
-                                <div class="grid grid-cols-6 gap-1">
-                                    <u-button
-                                        v-for="face in 6"
-                                        :key="face"
-                                        size="xs"
-                                        color="neutral"
-                                        variant="outline"
-                                        class="justify-center"
-                                        :disabled="rolling"
-                                        @click="roll(face)"
-                                    >
-                                        {{ face }}
-                                    </u-button>
-                                    <!-- Backwards, which no die can do.
-                                         Reaching a snake head or a ladder foot
-                                         a second time is otherwise only
-                                         possible by editing the board out from
-                                         under the player. Same button, one
-                                         shade quieter: it is the same action,
-                                         but not one a real roll can produce. -->
-                                    <u-button
-                                        v-for="face in 6"
-                                        :key="`back-${face}`"
-                                        size="xs"
-                                        color="neutral"
-                                        variant="soft"
-                                        class="justify-center"
-                                        :disabled="rolling"
-                                        @click="roll(-face)"
-                                    >
-                                        −{{ face }}
-                                    </u-button>
-                                </div>
-                            </div>
+                            <!-- Local only, and inside the playable branch so it
+                                 cannot offer a roll the server would refuse. -->
+                            <dev-force-roll v-if="canForceRoll" :disabled="rolling" @roll="roll" />
 
                             <dice-roller
                                 v-if="canRoll"
@@ -525,19 +480,15 @@
                             </div>
                         </u-card>
 
-                        <!-- Below the dice, by the owner's call: the action goes
-                             at the top of the column.
-                             These two cards have now been swapped twice, both
-                             times because the roll card's disabled copy pointed
-                             at this one by direction — "mark it complete above"
-                             was a lie the first time round and would be one
-                             again now. The copy no longer says where: it names
-                             the card instead, so the order is free to change
-                             without the text going stale a third time. -->
+                        <!-- While you can play, the task and the dice are one
+                             card in the order a turn goes: do the task, then
+                             roll. As two cards they were swapped twice, and
+                             whichever came first, half the turn was out of
+                             order. -->
                         <u-card v-if="currentTile">
                             <template #header>
                                 <div class="flex items-center justify-between gap-2">
-                                    <span class="font-semibold">{{ $t('board.your_task') }}</span>
+                                    <span class="font-semibold">{{ turnCard ? $t('board.your_turn', { n: currentTile.position + 1 }) : $t('board.your_task') }}</span>
                                     <!-- A button rather than a bare icon — a wiki
                                          link is the one external action on this
                                          card and should read as one — but a short
@@ -561,6 +512,7 @@
                                     />
                                 </div>
                             </template>
+                            <p v-if="turnCard" class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">{{ $t('board.turn_step_task') }}</p>
                             <div class="flex items-start gap-3">
                                 <img
                                     v-if="currentTile.task?.icon_url"
@@ -671,6 +623,22 @@
                                     />
                                 </template>
                             </div>
+
+                            <div v-if="turnCard" class="mt-4 pt-4 border-t border-default">
+                                <p class="text-xs font-semibold uppercase tracking-wide mb-2" :class="canRoll ? 'text-muted' : 'text-dimmed'">{{ $t('board.turn_step_roll') }}</p>
+                                <dev-force-roll v-if="canForceRoll" :disabled="rolling" @roll="roll" />
+                                <dice-roller
+                                    v-if="canRoll"
+                                    :rolling="rolling"
+                                    :last-roll="lastRoll"
+                                    :rolls-today="playerBoard?.dice_rolls_today ?? 0"
+                                    :roll-limit="liveBoard.dice_roll_limit"
+                                    @roll="roll"
+                                />
+                                <p v-else class="text-sm text-muted">
+                                    {{ currentClaim?.status === 'PENDING' ? $t('board.roll_awaiting_review') : $t('board.turn_roll_after_task') }}
+                                </p>
+                            </div>
                         </u-card>
 
                         <u-card v-if="clickedTile && clickedTile.position !== playerBoard?.current_position">
@@ -735,51 +703,17 @@
                             />
                         </u-card>
 
-                        <u-card>
-                            <template #header>
-                                <span class="font-semibold">{{ $t('admin.editors') }}</span>
-                            </template>
-                            <div class="flex flex-wrap gap-2">
-                                <div v-for="author in liveBoard.authors" :key="author.id" class="flex items-center gap-1.5">
-                                    <u-avatar :src="author.user.avatar_url ?? undefined" :alt="author.user.nickname || author.user.discord_username" size="xs" />
-                                    <span class="text-xs">{{ author.user.nickname || author.user.discord_username }}</span>
-                                </div>
-                            </div>
-                        </u-card>
-
-                        <!-- Beside the editors, because handing out a link is
-                             about who is in the event. Renders itself away
-                             for anyone but a host of an invite-only one. -->
-                        <host-invite-card
-                            :event-id="liveBoard.id"
-                            :access-mode="liveBoard.access_mode"
-                            :can-edit="canEdit"
-                        />
-
+                        <!-- Dates, size and mode are in the page heading;
+                             this keeps only what the heading has no room for. -->
                         <u-card>
                             <template #header>
                                 <span class="font-semibold">{{ $t('boards.meta') }}</span>
                             </template>
                             <div class="flex flex-wrap gap-2">
-                                <u-badge color="neutral" variant="subtle" icon="i-lucide-calendar" :title="$t('events.meta_dates_hint')">
-                                    {{ formatDate(liveBoard.start_date) }} – {{ formatDate(liveBoard.end_date) }}
-                                </u-badge>
-                                <u-badge color="neutral" variant="subtle" icon="i-lucide-grid-3x3" :title="$t('admin.board_size_desc')">
-                                    {{ formatBoardSize(liveBoard.size) }}
-                                </u-badge>
-                                <u-badge v-if="liveBoard.dice_roll_limit" color="neutral" variant="subtle" icon="i-lucide-dice-6" :title="$t('board.roll_limit_hint')">
-                                    {{ $tChoice('boards.roll_limit', liveBoard.dice_roll_limit, { limit: liveBoard.dice_roll_limit }) }}
-                                </u-badge>
-                                <u-badge v-else color="neutral" variant="subtle" icon="i-lucide-dice-6" :title="$t('board.roll_limit_hint')">
-                                    {{ $t('dice.unlimited') }}
-                                </u-badge>
-                                <u-badge
-                                    :color="liveBoard.mode === 'TEAM' ? 'warning' : 'neutral'"
-                                    variant="subtle"
-                                    icon="i-lucide-users-round"
-                                    :title="liveBoard.mode === 'TEAM' ? $t('admin.board_mode_team_hint') : $t('admin.board_mode_solo_hint')"
-                                >
-                                    {{ liveBoard.mode === 'TEAM' ? $t('board.mode_team') : $t('board.mode_solo') }}
+                                <u-badge color="neutral" variant="subtle" icon="i-lucide-dice-6" :title="$t('board.roll_limit_hint')">
+                                    {{ liveBoard.dice_roll_limit
+                                        ? $tChoice('boards.roll_limit', liveBoard.dice_roll_limit, { limit: liveBoard.dice_roll_limit })
+                                        : $t('dice.unlimited') }}
                                 </u-badge>
                                 <u-badge
                                     color="neutral"
@@ -790,24 +724,23 @@
                                     {{ requiresApproval ? $t('board.info_reviewed') : $t('board.info_instant') }}
                                 </u-badge>
                             </div>
-
-                            <!-- Same placement bingo uses: the fact that
-                                 claims wait for a host sits right beside the
-                                 button that acts on it. -->
-                            <u-button
-                                v-if="canEdit && requiresApproval"
-                                :color="livePending.length ? 'warning' : 'neutral'"
-                                variant="outline"
-                                size="xs"
-                                icon="i-lucide-gavel"
-                                class="mt-3"
-                                :label="livePending.length
-                                    ? $t('bingo.review_pending_count', { count: livePending.length })
-                                    : $t('bingo.review_nothing_waiting')"
-                                @click="showReviewModal = true"
-                            />
+                            <div v-if="liveBoard.authors?.length" class="mt-4 pt-4 border-t border-default">
+                                <p class="text-xs text-muted mb-2">{{ $t('admin.editors') }}</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <div v-for="author in liveBoard.authors" :key="author.id" class="flex items-center gap-1.5">
+                                        <u-avatar :src="author.user.avatar_url ?? undefined" :alt="author.user.nickname || author.user.discord_username" size="xs" />
+                                        <span class="text-xs">{{ author.user.nickname || author.user.discord_username }}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </u-card>
-
+                        <!-- Renders itself away for anyone but a host of an
+                             invite-only event. -->
+                        <host-invite-card
+                            :event-id="liveBoard.id"
+                            :access-mode="liveBoard.access_mode"
+                            :can-edit="canEdit"
+                        />
                         <u-card v-if="livePlayers.length">
                             <template #header>
                                 <div class="flex items-center justify-between">
@@ -903,6 +836,8 @@
                         </u-card>
                     </div>
                 </div>
+
+                <review-queue-bar placement="sticky" :claims="reviewQueue" @open="showReviewModal = true" />
             </u-container>
         </u-page>
 
@@ -1030,10 +965,13 @@ import JoinEventButton from '@/Components/JoinEventButton.vue';
 import RequirementRail from '@/Components/RequirementRail.vue';
 import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
+import DevForceRoll from '@/Components/DevForceRoll.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
+import EventMoreMenu from '@/Components/EventMoreMenu.vue';
+import ReviewQueueBar from '@/Components/ReviewQueueBar.vue';
 import TileSurface from '@/Components/TileSurface.vue';
 import StandingHereList from '@/Components/StandingHereList.vue';
-import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, claimAreaIsShown, formatBoardSize, formatDate, eventStatus, finishSubtitle as finishSubtitleFor, ordinal, settledPlace } from '@/Support/board';
+import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, claimAreaIsShown, formatBoardSize, eventStatus, finishSubtitle as finishSubtitleFor, ordinal, settledPlace } from '@/Support/board';
 import { celebrate } from '@/Support/celebrate';
 import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';
 import { useEventStream } from '@/Composables/useEventStream';
@@ -1235,6 +1173,23 @@ const showReviewModal = ref(false);
 // queue — see onViewClaim() below.
 const tileReviewModalOpen = ref(false);
 const tileReviewClaims = ref([]);
+
+const reviewQueue = computed(() => (props.canEdit && requiresApproval.value ? livePending.value : []));
+
+const pendingCounts = computed(() => reviewQueue.value.reduce((counts, claim) => {
+    counts[claim.position] = (counts[claim.position] ?? 0) + 1;
+
+    return counts;
+}, {}));
+
+function pendingOn(position) {
+    return editMode.value ? 0 : (pendingCounts.value[position] ?? 0);
+}
+
+function reviewPosition(position) {
+    tileReviewClaims.value = reviewQueue.value.filter((claim) => claim.position === position);
+    tileReviewModalOpen.value = true;
+}
 
 // Opened automatically on ?setup=tiles — the redirect a freshly created
 // event arrives on. onMounted because `location` does not exist during SSR.
@@ -1606,6 +1561,18 @@ onMounted(() => {
     query.addEventListener('change', (event) => (narrow.value = event.matches));
 
     warmDialog();
+
+    // A 7x7 or 9x9 board is wider than a phone and scrolls sideways; start
+    // that scroller on the player's own tile instead of its left edge.
+    // Only sideways: scrollIntoView would also move the page.
+    const tile = props.playerBoard && document.querySelector(`[data-tile-position="${props.playerBoard.current_position}"]`);
+    const scroller = tile?.closest('[data-tile-scroller]');
+
+    if (query.matches && scroller) {
+        const offset = tile.getBoundingClientRect().left - scroller.getBoundingClientRect().left;
+
+        scroller.scrollLeft += offset - (scroller.clientWidth - tile.offsetWidth) / 2;
+    }
 });
 
 // Fed by PlayerBoardController::roll()'s 'last-roll' session flash (kept
@@ -1720,6 +1687,10 @@ const currentTileHasTask = computed(() => Boolean(
  */
 const canRoll = computed(() => !currentTileHasTask.value || currentTileCompleted.value);
 
+// The task and the dice in one card — only while there is a task to do and a
+// roll to earn. Otherwise the dice keep a card of their own.
+const turnCard = computed(() => Boolean(props.playerBoard) && canPlayNow.value && !hasFinished.value && currentTileHasTask.value);
+
 /**
  * What the sidebar card says while there is no board of your own yet, in the
  * order the states rule each other out: over, stopped, not started, no team,
@@ -1770,6 +1741,24 @@ const manageItems = computed(() => [
     { key: 'status', label: trans('events.status_menu'), icon: statusIcon.value },
     ...(requiresApproval.value ? [{ key: 'review', label: trans('bingo.review_queue'), icon: 'i-lucide-gavel', badge: livePending.value.length }] : []),
 ]);
+
+const moreItems = computed(() => [
+    ...(otherPlayers.value.length > 0 && !isSpectator.value
+        ? [{ key: 'players', label: showOtherPlayers.value ? trans('board.hide_players') : trans('board.show_players'), icon: 'i-lucide-map-pin' }]
+        : []),
+    ...(props.joined ? [{ key: 'leave', label: trans('events.leave_event'), icon: 'i-lucide-log-out', color: 'error' }] : []),
+]);
+
+function onMore(key) {
+    if (key === 'players') showOtherPlayers.value = ! showOtherPlayers.value;
+
+    if (key === 'leave') {
+        router.delete(`/events/${liveBoard.value.id}/join`, {
+            preserveScroll: true,
+            onError: (errors) => console.error(errors),
+        });
+    }
+}
 
 function onManage(key) {
     if (key === 'edit') editMode.value = ! editMode.value;

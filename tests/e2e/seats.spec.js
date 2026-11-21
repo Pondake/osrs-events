@@ -55,7 +55,7 @@ test.describe('the event page', () => {
 
         await openEvent(page);
 
-        await expect(page.getByRole('button', { name: /^Join event|Leave event$/ }).first()).toBeVisible();
+        await expect(page.getByRole('button', { name: /^Join event$|^More actions$/ }).first()).toBeVisible();
         await expect(manage(page)).toHaveCount(0);
     });
 

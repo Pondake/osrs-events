@@ -182,3 +182,18 @@ export async function hydrated(page) {
     await page.waitForFunction(() => document.querySelector('#app')?.children.length > 0);
     await page.waitForLoadState('load');
 }
+
+/**
+ * Leaving an event lives in the header's "More actions" menu, so "has joined"
+ * is read there: the menu offers Leave event to a participant and nobody else.
+ */
+export async function offersLeave(page) {
+    await page.getByRole('button', { name: 'More actions' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Leave event' })).toBeVisible();
+    await page.keyboard.press('Escape');
+}
+
+export async function leaveEvent(page) {
+    await page.getByRole('button', { name: 'More actions' }).click();
+    await page.getByRole('menuitem', { name: 'Leave event' }).click();
+}

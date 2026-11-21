@@ -1,4 +1,4 @@
-import { test, expect, hydrated } from './fixtures.js';
+import { test, expect, hydrated, offersLeave } from './fixtures.js';
 import { clearThrottles, eventId, resetInvites } from './support/db.js';
 
 /**
@@ -51,7 +51,7 @@ test('a code opens the event, and the admin sees who used it and can pull it bac
 
     // The first player is let in…
     await useCode(first, code);
-    await expect(first.getByRole('button', { name: 'Leave event' })).toBeVisible();
+    await offersLeave(first);
 
     // …and the admin sees the invite, its event and that one person joined.
     await admin.goto('/admin/invites');
@@ -71,11 +71,11 @@ test('a code opens the event, and the admin sees who used it and can pull it bac
 
     await useCode(second, code);
     await expect(second.getByText('Invite not found.')).toBeVisible();
-    await expect(second.getByRole('button', { name: 'Leave event' })).toHaveCount(0);
+    await expect(second.getByRole('button', { name: 'More actions' })).toHaveCount(0);
 
     // Whoever used it before keeps their place.
     await open(first);
-    await expect(first.getByRole('button', { name: 'Leave event' })).toBeVisible();
+    await offersLeave(first);
 });
 
 test('a code that does not exist says so and lets nobody in', async ({ as }) => {
@@ -84,7 +84,7 @@ test('a code that does not exist says so and lets nobody in', async ({ as }) => 
     await useCode(player, 'NOPE00');
 
     await expect(player.getByText('Invite not found.')).toBeVisible();
-    await expect(player.getByRole('button', { name: 'Leave event' })).toHaveCount(0);
+    await expect(player.getByRole('button', { name: 'More actions' })).toHaveCount(0);
 });
 
 test('the invite list is for admins only', async ({ as }) => {

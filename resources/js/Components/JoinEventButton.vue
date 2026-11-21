@@ -1,7 +1,8 @@
 <template>
     <u-button
         v-if="!joined"
-        color="primary"
+        :color="quiet ? 'neutral' : 'primary'"
+        :variant="quiet ? 'outline' : 'solid'"
         :icon="icon"
         :size="size"
         :label="joinLabel || $t('events.join')"
@@ -57,6 +58,8 @@ const props = defineProps({
     leaveLabel: { type: String, default: '' },
     icon: { type: String, default: 'i-lucide-user-plus' },
     size: { type: String, default: undefined },
+    /** Not the page's main action — a host who is not playing their own event. */
+    quiet: { type: Boolean, default: false },
     /** A team event this account is on no team in — asks before joining. */
     needsTeam: { type: Boolean, default: false },
     /** Teams this account runs that could be brought in — see TeamEntryModal. */

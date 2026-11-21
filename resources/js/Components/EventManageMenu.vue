@@ -1,21 +1,13 @@
 <template>
     <u-dropdown-menu :items="menuItems" :ui="{ content: 'w-56' }">
         <u-button
-            :color="badgeTotal ? 'warning' : 'neutral'"
+            color="neutral"
             variant="outline"
             size="sm"
             icon="i-lucide-sliders-horizontal"
             trailing-icon="i-lucide-chevron-down"
             :label="$t('board.manage')"
-        >
-            <!-- `xs`, not `sm`: a badge one size up makes the trigger 32px
-                 tall next to 28px siblings, and a row of three buttons where
-                 one is taller reads as a mistake rather than as emphasis. -->
-            <template v-if="badgeTotal" #trailing>
-                <u-badge :label="String(badgeTotal)" color="warning" variant="solid" size="xs" />
-                <u-icon name="i-lucide-chevron-down" class="size-4" />
-            </template>
-        </u-button>
+        />
     </u-dropdown-menu>
 </template>
 
@@ -32,9 +24,9 @@ import { computed } from 'vue';
  * everybody) and running the event (occasional, hosts only). A host is both,
  * so a host got all six and a player's two drowned among them.
  *
- * Only the second kind moves in here. The count of anything waiting — a
- * review queue — rides on the trigger, because hiding a number a host is
- * meant to act on would be trading one problem for a worse one.
+ * Only the second kind moves in here. Claims waiting for review are not
+ * announced on the trigger: ReviewQueueBar says that above the board, where
+ * it is the first thing a host sees rather than a number on a menu.
  */
 const props = defineProps({
     /**
@@ -48,13 +40,11 @@ const props = defineProps({
 
 const emit = defineEmits(['select']);
 
-const badgeTotal = computed(() => props.items.reduce((total, item) => total + (item.badge ?? 0), 0));
-
 /**
  * A count goes into the LABEL rather than into a slot on the row: the menu
  * renders items from a plain array, and a number that only survives if a
  * particular slot is supported is a number that quietly disappears one
- * upgrade later. On the trigger it is a badge, where it has room to be one.
+ * upgrade later.
  */
 const menuItems = computed(() => [props.items.map((item) => ({
     label: item.badge ? `${item.label} · ${item.badge}` : item.label,

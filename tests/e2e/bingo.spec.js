@@ -1,4 +1,4 @@
-import { test, expect, hydrated } from './fixtures.js';
+import { test, expect, hydrated, offersLeave } from './fixtures.js';
 import { clearThrottles, eventId, resetEvent } from './support/db.js';
 
 /**
@@ -40,7 +40,7 @@ async function claim(page, number, alreadyClaimed = 0) {
 }
 
 async function openQueue(host) {
-    await host.getByRole('button', { name: /waiting for review/i }).click();
+    await host.getByRole('button', { name: 'Review claims' }).click();
     await expect(host.getByRole('dialog').getByText('Review claims')).toBeVisible();
 }
 
@@ -100,7 +100,7 @@ test('the host sees every player\'s claim in the same queue', async ({ as }) => 
     await claim(second, 4);
 
     await open(host, REVIEWED);
-    await expect(host.getByRole('button', { name: '2 waiting for review' })).toBeVisible();
+    await expect(host.getByText('2 claims are waiting for review')).toBeVisible();
 });
 
 test('three approved squares in a line win the card', async ({ as }) => {
@@ -170,7 +170,7 @@ test('a signed-in reader who has not joined can open a square, and claiming join
     await player.getByRole('dialog').getByRole('button', { name: 'Mark as done' }).click();
 
     await expect(player.getByText('Square marked').first()).toBeVisible();
-    await expect(player.getByRole('button', { name: 'Leave event' })).toBeVisible();
+    await offersLeave(player);
 });
 
 /**
@@ -196,7 +196,7 @@ test.describe('lockout', () => {
         await claim(blue, 1);
 
         await open(host, LOCKOUT);
-        await expect(host.getByRole('button', { name: '2 waiting for review' })).toBeVisible();
+        await expect(host.getByText('2 claims are waiting for review')).toBeVisible();
         await openQueue(host);
 
         const dialog = host.getByRole('dialog');

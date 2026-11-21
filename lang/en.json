@@ -772,8 +772,6 @@
     "bingo.review_note": "Note (optional)",
     "bingo.review_note_desc": "Shown to the claimant. Worth filling in on a rejection so they know what to fix.",
     "bingo.review_note_placeholder": "e.g. screenshot does not show the drop",
-    "bingo.review_nothing_waiting": "Nothing to review",
-    "bingo.review_pending_count": ":count waiting for review",
     "bingo.review_previous": "Previous claim",
     "bingo.review_queue": "Review",
     "bingo.review_race_order": "Submitted :place of :total waiting claims that would win. Places go by when a claim was submitted, so the order you approve them in does not change who won.",
@@ -2840,5 +2838,16 @@
     "plugin.demo_label": "Demo video of the RuneLite plugin, no sound. The game is on the left and the event page on the right, with an empty 3×3 bingo card. A goblin is killed and the game chat reads \"OSRS Events: Claimed Goblin in Clan Bingo Night - approved\", shown enlarged; the Goblin square turns green. The same happens for a cow and a chicken, which completes a line: the chat reads \"You finished Clan Bingo Night - 1st place!\" and the card says \"You won!\" under a burst of confetti.",
     "plugin.demo_caption": "Three kills in RuneLite, three squares, one line.",
     "plugin.demo_play": "Play the demo video",
-    "plugin.demo_pause": "Pause the demo video"
+    "plugin.demo_pause": "Pause the demo video",
+    "board.review_bar_waiting": ":count claim is waiting for review|:count claims are waiting for review",
+    "board.review_bar_waiting_short": ":count claim to review|:count claims to review",
+    "board.review_bar_oldest": "oldest :time",
+    "board.review_bar_open": "Review claims",
+    "board.review_bar_open_short": "Review",
+    "board.review_square": "Review :count claim on this tile|Review :count claims on this tile",
+    "board.your_turn": "Your turn · tile :n",
+    "board.turn_step_task": "1. Do the task",
+    "board.turn_step_roll": "2. Roll the dice",
+    "board.turn_roll_after_task": "Mark the task complete first, then roll.",
+    "events.more_actions": "More actions"
 }
