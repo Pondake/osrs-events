@@ -7614,7 +7614,7 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/Pondake/lint-config.git",
-                "reference": "f71b5cc315dd337d03119f3e6eec8805bdc82ddd"
+                "reference": "efd2702c73686325a4d0ed4f7056c6cf65dd638f"
             },
             "require": {
                 "php": ">=8.2"

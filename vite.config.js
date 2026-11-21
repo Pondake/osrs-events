@@ -74,6 +74,7 @@ export default defineConfig({
             },
             autoImport: {
                 vueTemplate: true,
+                exclude: [/[\\/]node_modules[\\/]/, /[\\/]vendor[\\/]/, /[\\/]\.git[\\/]/],
                 imports: [
                     'vue',
                     {

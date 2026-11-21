@@ -1,6 +1,6 @@
 # SSR gotchas
 
-Sixteen render-related traps, every one of them hit for real on this branch and
+Eighteen render-related traps, every one of them hit for real on this branch and
 fixed once. They are easy to reintroduce, which is why they live in their own
 file rather than scrolling away inside a backlog — `CLAUDE.md` points here, and
 reading it before touching anything render-related is the point.
@@ -169,3 +169,12 @@ list itself is unchanged.
    reader concludes the click was ignored. Mount a lazily loaded dialog
    closed, alongside the other dialogs, and let a separate ref say whether it
    is showing. Guarded by `tests/js/editorDialogMount.test.js`.
+18. **Inertia v2 + Vue 3.5.44 or newer renders every page as
+   `[object Promise]`.** Inertia v2's `createInertiaApp` puts the page's
+   unawaited `renderToString()` promise into the wrapper div's `innerHTML`.
+   Up to Vue 3.5.43 the server renderer pushed that promise into its buffer
+   and awaited it; 3.5.44 started doing `String(props.innerHTML)`. The
+   browser shows the text until hydration replaces it, so it reads as a
+   loading screen, while crawlers and link previews only ever see the text.
+   `ssr.js` now renders the page itself and splices it into the wrapper.
+   Inertia v3 awaits the render, so the workaround can go with that upgrade.
