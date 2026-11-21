@@ -156,7 +156,7 @@
                                 :items="tileMenuItems"
                                 :disabled="!tileMenuTarget"
                             >
-                            <div :class="gridClass" class="grid gap-1" @contextmenu.capture="tileMenuTarget = null">
+                            <div :class="gridClass" class="grid gap-0.5 sm:gap-1" @contextmenu.capture="tileMenuTarget = null">
                                 <!-- Not gated on playerBoard existing — reaching this
                                      page at all already implies BoardAccess (see
                                      BoardController::show()'s access-gate redirect),

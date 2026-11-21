@@ -12,8 +12,10 @@ use App\Models\PlayerBoard;
 use App\Models\TargetProgress;
 use App\Models\Team;
 use App\Models\TeamMember;
+use App\Models\Role;
 use App\Models\Tile;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -284,6 +286,34 @@ class PlayerBoardTest extends TestCase
                 && $move['landed'] >= 1 && $move['landed'] <= 6
                 && $move['to'] === 20
                 && $move['jump'] === 'ladder');
+    }
+
+    /** Even locally a forced die is an admin's tool, not a player's. */
+    #[Test]
+    public function only_an_admin_may_force_a_roll_and_only_locally(): void
+    {
+        [$owner, $event] = $this->board();
+        $this->fillTiles($event->board);
+        $admin = User::factory()->create(['osrs_username' => 'Admin']);
+        $admin->assignRole(Role::findOrCreate('ADMIN', 'web'));
+
+        $this->assertFalse($admin->canForceRoll());
+
+        // Outside `testing` the CSRF check is live again.
+        $this->app['env'] = 'local';
+        $this->withoutMiddleware(PreventRequestForgery::class);
+
+        $this->assertTrue($admin->canForceRoll());
+        $this->assertFalse($owner->canForceRoll());
+
+        $this->actingAs($admin)->post("/events/{$event->id}/join");
+        $this->actingAs($admin)->post("/events/{$event->id}/roll", ['force' => 5])
+            ->assertSessionHas('last-move', fn (array $move) => $move['landed'] === 5);
+
+        $this->actingAs($owner)->get("/events/{$event->id}")
+            ->assertInertia(fn ($page) => $page->where('canForceRoll', false));
+        $this->actingAs($admin)->get("/events/{$event->id}")
+            ->assertInertia(fn ($page) => $page->where('canForceRoll', true));
     }
 
     /** A plain move says so, rather than leaving `jump` to be guessed at. */

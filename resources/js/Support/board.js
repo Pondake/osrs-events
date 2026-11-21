@@ -23,9 +23,11 @@ export const BOARD_TILE_COUNT = {
     SIZE_9X9: 81,
 };
 
+// The narrowest a board may get with 44px tiles. A 7x7 still fits a 375px
+// phone (TileSurface pads less below `sm`); a 9x9 cannot, and scrolls.
 export const BOARD_MIN_WIDTH = {
     SIZE_5X5: 'min-w-[300px]',
-    SIZE_7X7: 'min-w-[380px]',
+    SIZE_7X7: 'min-w-[340px]',
     SIZE_9X9: 'min-w-[460px]',
 };
 

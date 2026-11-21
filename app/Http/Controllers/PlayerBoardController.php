@@ -85,16 +85,15 @@ class PlayerBoardController extends Controller
 
         $rolled = random_int(1, 6);
 
-        // A forced number for working on the movement animation locally.
-        // Gated on the environment, not a role: a chosen die on production
-        // would be cheating with extra steps.
+        // A forced number for working on the movement animation locally,
+        // for admins only — see User::canForceRoll().
         //
         // Negatives are allowed, and no die can produce one. Walking back to
         // a tile you already passed is the only way to reach a snake head or
         // a ladder foot a second time, and testing what happens there — the
         // uncomplete sweep, the podium losing a row — otherwise means
         // editing the board out from under the player.
-        if (app()->environment('local') && $request->filled('force')) {
+        if ($request->user()?->canForceRoll() && $request->filled('force')) {
             $forced = (int) $request->input('force');
 
             if ($forced !== 0 && abs($forced) <= 6) {

@@ -193,9 +193,27 @@ export function isSameRow(from, to, cols) {
  * A rope bridge for a jump along a row: a bowed deck between two sagging
  * rails, built from axis-aligned squares so the curve stays on style.
  */
-export function bridgeParts({ a, b, v, cell }) {
-    const bow = cell * 0.32;
-    const half = cell * 0.2;
+export function bridgeParts(conn) {
+    let { a, b, v } = conn;
+    const { cell } = conn;
+    let half = cell * 0.2;
+    let bow = cell * 0.32;
+    let short = false;
+
+    // Neighbouring tiles: the usual overlap would put the whole bridge on
+    // top of both tiles' text. Keep it a small span across the seam.
+    if (v.length < cell * 0.6) {
+        const trim = (v.length - cell * 0.16) / 2;
+
+        a = { x: a.x + v.ux * trim, y: a.y + v.uy * trim };
+        b = { x: b.x - v.ux * trim, y: b.y - v.uy * trim };
+        v = axis(a, b);
+        half = cell * 0.15;
+        bow = 0;
+        short = true;
+    }
+
+    bow = Math.min(bow, v.length * 0.15);
     const block = cell * 0.08;
     const samples = Math.max(24, Math.round(v.length / (cell * 0.06)));
     const base = [];
@@ -222,21 +240,16 @@ export function bridgeParts({ a, b, v, cell }) {
         const t = i / samples;
         const c = at(t);
 
-        // Local perpendicular: the deck curves, so the rails follow its
-        // tangent rather than the straight run.
-        const ahead = at(Math.min(1, t + 0.01));
-        const behind = at(Math.max(0, t - 0.01));
-        const tx = ahead.x - behind.x;
-        const ty = ahead.y - behind.y;
-        const tl = Math.hypot(tx, ty) || 1;
-        const px = -ty / tl;
-        const py = tx / tl;
+        // The run's perpendicular, not the curve's: following the curve
+        // splayed the end planks of a short run into a cup.
+        const px = v.px;
+        const py = v.py;
 
         for (const side of [-1, 1]) {
             square(base, { x: c.x + px * half * side, y: c.y + py * half * side });
         }
 
-        if (i % plankEvery === 0) {
+        if (i % plankEvery === 0 || (short && i === samples)) {
             // Planks overhang the rails, which is what separates this from a
             // ladder's flush rungs.
             for (let k = -1.15; k <= 1.15; k += 0.25) {

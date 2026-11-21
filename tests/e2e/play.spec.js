@@ -90,7 +90,8 @@ test('a claim reaches the host, and the player can roll once it is approved', as
 
     const before = position('e2e_member');
 
-    await player.getByRole('button', { name: '3', exact: true }).first().click();
+    // The real die: the forced-roll grid is for local admins only.
+    await player.getByRole('button', { name: 'Click to roll' }).click();
 
     await expect.poll(() => position('e2e_member')).not.toBe(before);
 });
