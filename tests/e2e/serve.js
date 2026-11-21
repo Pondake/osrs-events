@@ -106,7 +106,10 @@ const ports = forks ? [PHP_PORT] : Array.from({ length: PHP_WORKERS }, (_, i) =>
 const servers = ports.map((port) =>
     spawn(
         PHP,
-        ['-S', `127.0.0.1:${port}`, path.join(ROOT, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],
+        // Laravel reads LARAVEL_STORAGE_PATH from $_ENV only, and a production
+        // php.ini (CI's) leaves $_ENV empty. Without this the app writes its
+        // cache and sessions to the repo's storage/, where no reset reaches them.
+        ['-d', 'variables_order=EGPCS', '-S', `127.0.0.1:${port}`, path.join(ROOT, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')],
         {
             cwd: path.join(ROOT, 'public'),
             env: forks ? { ...phpEnv, PHP_CLI_SERVER_WORKERS: String(PHP_WORKERS) } : phpEnv,

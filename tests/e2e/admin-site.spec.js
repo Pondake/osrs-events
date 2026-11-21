@@ -14,15 +14,7 @@ test.beforeEach(() => {
     resetSettings();
 });
 
-test.afterEach(async () => {
-    resetSettings();
-
-    // A request the open pages still had in flight can read the settings before
-    // the reset and write them back into the cache after it, which leaves the
-    // lockdown on for every spec that follows. Let it land, then clear again.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    clearThrottles();
-});
+test.afterEach(() => resetSettings());
 
 async function openSite(admin, section) {
     await admin.goto('/admin/site');
