@@ -880,6 +880,8 @@
     "board.detail_not_your_tile": "You claim the tile you are standing on. This one is not it.",
     "board.detail_pending": "Waiting on a host",
     "board.detail_snake_to": "Landing here is a snake down to tile :n.",
+    "board.detail_standing_count": ":count player is standing here|:count players are standing here",
+    "board.detail_standing_here": "Standing here (:count)",
     "board.detail_title": "Tile :n",
     "board.detail_you": "You",
     "board.edit_board": "Edit event",
