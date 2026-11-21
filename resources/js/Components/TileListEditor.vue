@@ -88,6 +88,15 @@
                             <!-- Snakes and ladders say where they go, since
                                  that is the whole of what makes them one. -->
                             <u-badge
+                                v-if="isDirty(row.position)"
+                                :label="$t('tile_list.unsaved')"
+                                color="warning"
+                                variant="subtle"
+                                size="sm"
+                                class="shrink-0"
+                            />
+
+                            <u-badge
                                 v-if="row.type && row.type !== 'NORMAL'"
                                 :label="row.type === 'SNAKE'
                                     ? $t('tile_list.snake_to', { n: (row.targetPosition ?? 0) + 1 })
@@ -187,7 +196,7 @@
                                     variant="ghost"
                                     size="sm"
                                     :label="$t('common.cancel')"
-                                    @click="expanded = null"
+                                    @click="discard(row.position)"
                                 />
                                 <u-button
                                     v-if="!isBingo && row.exists"
@@ -211,6 +220,9 @@
         </template>
 
         <template #footer>
+            <p v-if="dirtyCount" class="text-xs text-warning w-full sm:w-auto">
+                {{ $t('tile_list.unsaved_count', { count: dirtyCount }) }}
+            </p>
             <!-- Local only: fills every empty square with a random task. A
                  board has "Fill the rest" above instead. -->
             <u-button
@@ -228,7 +240,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import TaskPicker from '@/Components/TaskPicker.vue';
@@ -318,7 +330,7 @@ const rows = computed(() => Array.from({ length: props.total }, (_, position) =>
 }));
 
 /** Snake and ladder are the same case throughout: a move, not a task. */
-const draftIsJump = computed(() => !isBingo.value && draft.type !== 'NORMAL');
+const draftIsJump = computed(() => !isBingo.value && draft.value?.type !== 'NORMAL');
 
 /**
  * What the row says about itself when it has no task title.
@@ -357,33 +369,66 @@ const visibleRows = computed(() => (
 const expanded = ref(null);
 const saving = ref(false);
 
-// The row being edited, held apart from the list so a half-typed change is
-// not written into the grid behind the modal.
-const draft = reactive({ task: null, titleOverride: '', points: 1, minQuantity: 1, requiredCount: 1, isWildcard: false, type: 'NORMAL', targetPosition: null });
+// Unsaved edits per row, kept until saved or cancelled.
+const drafts = ref({});
+
+const draft = computed(() => (expanded.value === null ? null : drafts.value[expanded.value] ?? null));
+
+function draftFrom(row) {
+    return {
+        task: row.task,
+        titleOverride: row.titleOverride ?? '',
+        points: row.points ?? 1,
+        minQuantity: row.minQuantity ?? 1,
+        requiredCount: row.requiredCount ?? 1,
+        isWildcard: row.isWildcard ?? false,
+        type: row.type ?? 'NORMAL',
+        targetPosition: row.targetPosition,
+    };
+}
+
+function isDirty(position) {
+    const pending = drafts.value[position];
+    const row = rows.value[position];
+
+    if (!pending || !row) return false;
+
+    const saved = draftFrom(row);
+
+    return (pending.task?.id ?? null) !== (saved.task?.id ?? null)
+        || (pending.titleOverride || '') !== (saved.titleOverride || '')
+        || Number(pending.points) !== Number(saved.points)
+        || Number(pending.minQuantity) !== Number(saved.minQuantity)
+        || Number(pending.requiredCount) !== Number(saved.requiredCount)
+        || pending.isWildcard !== saved.isWildcard
+        || pending.type !== saved.type
+        || (pending.targetPosition ?? null) !== (saved.targetPosition ?? null);
+}
+
+const dirtyCount = computed(() => Object.keys(drafts.value).filter((position) => isDirty(Number(position))).length);
 
 function toggle(position) {
     if (expanded.value === position) {
+        if (!isDirty(position)) delete drafts.value[position];
         expanded.value = null;
 
         return;
     }
 
-    const row = rows.value.find((r) => r.position === position);
+    if (expanded.value !== null && !isDirty(expanded.value)) delete drafts.value[expanded.value];
 
-    draft.task = row.task;
-    draft.titleOverride = row.titleOverride ?? '';
-    draft.points = row.points ?? 1;
-    draft.minQuantity = row.minQuantity ?? 1;
-    draft.requiredCount = row.requiredCount ?? 1;
-    draft.isWildcard = row.isWildcard ?? false;
-    draft.type = row.type ?? 'NORMAL';
-    draft.targetPosition = row.targetPosition;
+    if (!drafts.value[position]) {
+        drafts.value[position] = draftFrom(rows.value.find((r) => r.position === position));
+    }
 
     expanded.value = position;
 }
 
-// Closing the dialog drops whatever was open, so reopening never lands on a
-// half-filled form belonging to a row you have forgotten about.
+function discard(position) {
+    delete drafts.value[position];
+    expanded.value = null;
+}
+
 watch(() => props.open, (open) => {
     if (!open) expanded.value = null;
 });
@@ -402,17 +447,17 @@ function tileTypeOptions(position) {
 
 /** The tiles this jump may lead to, by printed number — not zero-based position. */
 function targetOptions(from) {
-    return jumpTargetPositions(draft.type, from, props.total)
+    return jumpTargetPositions(draft.value?.type, from, props.total)
         .map((position) => ({ label: trans('tile_list.tile_n', { n: position + 1 }), value: position }));
 }
 
 // A target picked for a ladder points the wrong way once the tile becomes a
 // snake, so it is dropped rather than carried over.
-watch(() => draft.type, () => {
-    if (expanded.value === null || draft.targetPosition === null) return;
+watch(() => draft.value?.type, () => {
+    if (!draft.value || draft.value.targetPosition === null) return;
 
-    if (!jumpTargetPositions(draft.type, expanded.value, props.total).includes(draft.targetPosition)) {
-        draft.targetPosition = null;
+    if (!jumpTargetPositions(draft.value.type, expanded.value, props.total).includes(draft.value.targetPosition)) {
+        draft.value.targetPosition = null;
     }
 });
 
@@ -421,12 +466,14 @@ const saveErrors = ref({});
 watch(expanded, () => (saveErrors.value = {}));
 
 function save(row) {
+    const d = draft.value;
+
     saving.value = true;
     saveErrors.value = {};
 
     const done = {
         preserveScroll: true,
-        onSuccess: () => (expanded.value = null),
+        onSuccess: () => discard(row.position),
         onError: (errors) => {
             console.error(errors);
             saveErrors.value = errors;
@@ -436,12 +483,12 @@ function save(row) {
 
     if (isBingo.value) {
         router.patch(`/events/${props.eventId}/bingo/squares/${row.id}`, {
-            task_id: draft.isWildcard ? null : (draft.task?.id ?? null),
-            title_override: draft.titleOverride || null,
-            points: draft.points,
-            min_quantity: draft.isWildcard ? 1 : (Number(draft.minQuantity) || 1),
-            required_count: draft.isWildcard ? 1 : (Number(draft.requiredCount) || 1),
-            is_wildcard: draft.isWildcard,
+            task_id: d.isWildcard ? null : (d.task?.id ?? null),
+            title_override: d.titleOverride || null,
+            points: d.points,
+            min_quantity: d.isWildcard ? 1 : (Number(d.minQuantity) || 1),
+            required_count: d.isWildcard ? 1 : (Number(d.requiredCount) || 1),
+            is_wildcard: d.isWildcard,
         }, done);
 
         return;
@@ -449,19 +496,19 @@ function save(row) {
 
     router.post(`/events/${props.eventId}/tiles`, {
         position: row.position,
-        task_id: draftIsJump.value ? null : (draft.task?.id ?? null),
-        title_override: draftIsJump.value ? null : (draft.titleOverride || null),
-        min_quantity: draftIsJump.value ? 1 : (Number(draft.minQuantity) || 1),
-        required_count: draftIsJump.value ? 1 : (Number(draft.requiredCount) || 1),
-        type: draft.type,
-        target_position: draftIsJump.value ? draft.targetPosition : null,
+        task_id: draftIsJump.value ? null : (d.task?.id ?? null),
+        title_override: draftIsJump.value ? null : (d.titleOverride || null),
+        min_quantity: draftIsJump.value ? 1 : (Number(d.minQuantity) || 1),
+        required_count: draftIsJump.value ? 1 : (Number(d.requiredCount) || 1),
+        type: d.type,
+        target_position: draftIsJump.value ? d.targetPosition : null,
     }, done);
 }
 
 function clear(row) {
     router.delete(`/events/${props.eventId}/tiles/${row.id}`, {
         preserveScroll: true,
-        onSuccess: () => (expanded.value = null),
+        onSuccess: () => discard(row.position),
         onError: (errors) => console.error(errors),
     });
 }

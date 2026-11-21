@@ -2677,6 +2677,8 @@
     "tile_list.snake_to": "Snake to :n",
     "tile_list.tile_n": "Tile :n",
     "tile_list.title": "Fill in the board",
+    "tile_list.unsaved": "Not saved",
+    "tile_list.unsaved_count": "Rows with a change that is not saved yet: :count",
     "validation.desc_too_long": "Description cannot exceed 500 characters",
     "validation.description_too_long": "Description cannot exceed :max characters",
     "validation.dice_limit_range": "Enter a roll limit between :min and :max, or switch to Unlimited",
