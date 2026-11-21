@@ -48,7 +48,7 @@ test('an open card follows what another player does, without a reload', async ({
     await expect(player.getByText('Square marked').first()).toBeVisible();
 
     // The channel polls every few seconds; the viewer sees it without asking.
-    await expect(page.getByText('1 pts')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText('1 pt', { exact: true })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText('Nobody has marked a square yet.')).toHaveCount(0);
 
     // And the other way: taking it back reaches the viewer too.
