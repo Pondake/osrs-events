@@ -11,6 +11,12 @@ vi.mock('@inertiajs/vue3', () => ({
     router: { put: vi.fn() },
 }));
 
+// The server-render test builds its own app, where a global component cannot
+// replace the page's local import, so the layout is swapped out at the module.
+vi.mock('@/Components/SettingsLayout.vue', () => ({
+    default: { template: '<div><slot /></div>' },
+}));
+
 const Animations = (await import('@/Pages/Settings/Animations.vue')).default;
 
 /**
