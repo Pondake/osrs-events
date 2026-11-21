@@ -55,7 +55,7 @@ osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.
 ├── ui.config.ts          Nuxt UI theme (colors, component overrides) — wired into vite.config.js
 ├── lang/en.json           flat dotted-key translations (see i18n below)
 ├── docs/ideas.md           thought through, not scheduled
-├── docs/ssr-gotchas.md     sixteen render traps, every one hit for real
+├── docs/ssr-gotchas.md     eighteen render traps, every one hit for real
 └── docs/discord.md         local notes — always gitignored
 ```
 
