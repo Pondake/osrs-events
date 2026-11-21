@@ -727,6 +727,12 @@
                                     </u-badge>
                                 </div>
                             </div>
+
+                            <standing-here-list
+                                class="mt-4 pt-4 border-t border-default"
+                                :players="standingOn(clickedTile.position)"
+                                :named="namesArePublic"
+                            />
                         </u-card>
 
                         <u-card>
@@ -988,6 +994,8 @@
                 :detail="detailFor(detailTile)"
                 :detail-loading="detailLoading"
                 :cannot-act-reason="detailClaimBlockedReason"
+                :standing-here="standingOn(detailTile.position)"
+                :names-are-public="namesArePublic"
             />
 
             <tile-claim-modal
@@ -1000,6 +1008,8 @@
                 :can-act="canPlay"
                 :allow-alts="liveBoard.allow_alts ?? true"
                 :progress="progressOn(currentTile)"
+                :standing-here="standingOn(currentTile.position)"
+                :names-are-public="namesArePublic"
             />
         </client-only>
     </u-main>
@@ -1022,6 +1032,7 @@ import TeamEntryModal from '@/Components/TeamEntryModal.vue';
 import DiceRoller from '@/Components/DiceRoller.vue';
 import EventManageMenu from '@/Components/EventManageMenu.vue';
 import TileSurface from '@/Components/TileSurface.vue';
+import StandingHereList from '@/Components/StandingHereList.vue';
 import { BOARD_STATUS_STYLE, BOARD_TILE_COUNT, BOARD_MIN_WIDTH, claimAreaIsShown, formatBoardSize, formatDate, eventStatus, finishSubtitle as finishSubtitleFor, ordinal, settledPlace } from '@/Support/board';
 import { celebrate } from '@/Support/celebrate';
 import { bridgeParts, connection, endTiles, isSameRow, ladderParts, snakeParts, tileCenter, travelPath } from '@/Support/snakesLadders';
@@ -2101,6 +2112,19 @@ function playersOnTile(position) {
             name: playerName(p),
             avatarUrl: p.team?.icon_url ?? p.team?.guild_icon_url ?? p.user?.avatar_url ?? null,
         }));
+}
+
+// Unlike playersOnTile(), ignores the show-other-players toggle and walking pieces.
+function standingOn(position) {
+    return livePlayers.value
+        .filter((p) => p.current_position === position)
+        .map((p) => ({
+            id: p.team?.id ?? p.user_id,
+            name: playerName(p),
+            avatarUrl: p.team?.icon_url ?? p.team?.guild_icon_url ?? p.user?.avatar_url ?? null,
+            isYou: isMyPlayerRow(p),
+        }))
+        .sort((a, b) => Number(b.isYou) - Number(a.isYou));
 }
 
 // Ported from the old GameBoard.vue's orderedTiles: a board doesn't get a

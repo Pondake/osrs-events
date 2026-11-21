@@ -164,6 +164,33 @@ class ParticipantsTest extends TestCase
         $this->assertTrue($this->props($guest, $event)['named']);
     }
 
+    #[Test]
+    public function somebody_who_left_a_private_event_is_off_the_list(): void
+    {
+        $event = $this->event([
+            'type' => 'BINGO',
+            'metric' => null,
+            'access_mode' => 'INVITE',
+            'is_listed' => false,
+            'start_date' => null,
+            'end_date' => null,
+        ]);
+        $host = $this->player('Host');
+        BoardAuthor::create(['event_id' => $event->id, 'user_id' => $host->id, 'is_owner' => true]);
+
+        $leaver = $this->player('Leaver');
+        BoardAccess::create(['event_id' => $event->id, 'user_id' => $leaver->id, 'access_mode' => 'INVITE']);
+        $this->actingAs($leaver)->post("/events/{$event->id}/join")->assertSessionHasNoErrors();
+
+        $this->assertContains('Leaver', collect($this->props($host, $event)['participants'])->pluck('osrsUsername')->all());
+
+        $this->actingAs($leaver)->delete("/events/{$event->id}/join")->assertSessionHasNoErrors();
+
+        $props = $this->props($host, $event);
+        $this->assertNotContains('Leaver', collect($props['participants'])->pluck('osrsUsername')->all());
+        $this->assertSame(1, $props['participantCount']);
+    }
+
     /**
      * On a TEAM event it is the team that plays, so a member may have no row
      * of their own and would otherwise be a stranger to their own event.

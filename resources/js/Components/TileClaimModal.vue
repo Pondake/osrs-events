@@ -73,6 +73,12 @@
                 :loading="detailLoading"
             />
 
+            <standing-here-list
+                class="py-4 border-b border-default"
+                :players="standingHere"
+                :named="namesArePublic"
+            />
+
             <!-- Already claimed: what you submitted, what the host said, and
                  the one destructive action — same shape as BingoClaimModal,
                  the same trust problem solved a second time on this board
@@ -206,6 +212,7 @@ import ClaimCharacterField from '@/Components/ClaimCharacterField.vue';
 import ClaimSourceBadge from '@/Components/ClaimSourceBadge.vue';
 import RuneliteContextCard from '@/Components/RuneliteContextCard.vue';
 import TargetHolderList from '@/Components/TargetHolderList.vue';
+import StandingHereList from '@/Components/StandingHereList.vue';
 import OsrsProofNotice from '@/Components/OsrsProofNotice.vue';
 import { computed, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
@@ -245,6 +252,8 @@ const props = defineProps({
     cannotActReason: { type: String, default: null },
     // Whether the event counts alts — see ClaimCharacterField.
     allowAlts: { type: Boolean, default: true },
+    standingHere: { type: Array, default: () => [] },
+    namesArePublic: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:open']);
