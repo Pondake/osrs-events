@@ -1,5 +1,8 @@
 import { createInertiaApp } from '@inertiajs/vue3';
 import createServer from '@inertiajs/vue3/server';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { renderToString } from '@vue/server-renderer';
 import { createSSRApp, h } from 'vue';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -40,6 +43,25 @@ function createRenderer() {
     };
 }
 
+// Several sites share one server, so each SSR process listens on the port of
+// its own site's INERTIA_SSR_URL instead of Inertia's default 13714.
+function ssrPort() {
+    let url = process.env.INERTIA_SSR_URL;
+
+    if (!url) {
+        try {
+            const env = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../.env'), 'utf8');
+            url = env.match(/^INERTIA_SSR_URL=["']?([^"'\s#]+)/m)?.[1];
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    const port = url ? Number(new URL(url).port) : 0;
+
+    return port || 13714;
+}
+
 createServer((page) => {
     const renderer = createRenderer();
 
@@ -66,4 +88,4 @@ createServer((page) => {
                 }));
         },
     });
-});
+}, { port: ssrPort() });
