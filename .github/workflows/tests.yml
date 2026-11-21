@@ -97,7 +97,7 @@ jobs:
       # built-in server forks workers, which is what stream.spec.js needs.
       # A step limit inside the job's, so a run that overruns fails instead of being
       # cancelled, and the report below is still kept.
-      - run: pnpm e2e
+      - run: pnpm e2e --max-failures=20
         timeout-minutes: 25
 
       - name: Keep the report of a failed run
@@ -109,3 +109,4 @@ jobs:
             playwright-report
             tests/e2e/.results
           retention-days: 7
+          include-hidden-files: true
