@@ -54,7 +54,8 @@ class UserController extends Controller
                 }),
             )
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->each(fn (User $user) => $user->setAttribute('is_online', $user->isOnline()));
 
         return Inertia::render('Admin/Users', [
             'users' => $users,
