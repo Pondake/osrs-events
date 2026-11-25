@@ -43,18 +43,19 @@
                                 :label="$t('participants.open')"
                             />
 
-                            <!-- Opening the board used to enrol you in it,
-                                 which put every passer-by on the leaderboard
-                                 at square one. Joining is a decision now, and
-                                 this is where it is made. -->
-                            <join-event-button
-                                v-if="!joined && !isPaused && !isEnded"
-                                :event-id="liveBoard.id"
-                                :needs-team="needsTeam"
-                                :teams="teamOptions"
-                                :quiet="canEdit"
-                                size="sm"
-                            />
+                            <!-- Phone and tablet only: from lg the sidebar's
+                                 join card sits beside this header, and two
+                                 identical buttons in one view compete. Below
+                                 lg that card falls under the whole board. -->
+                            <div v-if="!joined && !isPaused && !isEnded" class="contents lg:hidden">
+                                <join-event-button
+                                    :event-id="liveBoard.id"
+                                    :needs-team="needsTeam"
+                                    :teams="teamOptions"
+                                    :quiet="canEdit"
+                                    size="sm"
+                                />
+                            </div>
                             <event-manage-menu v-if="canEdit" :items="manageItems" @select="onManage" />
                             <event-more-menu v-if="moreItems.length" :items="moreItems" @select="onMore" />
                     </template>
