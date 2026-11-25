@@ -13,7 +13,7 @@
                     <!-- Stacked rather than laid out in one row, because the
                          locked state puts a paragraph where the others put a
                          button, and the Discord link sits under either. -->
-                    <div class="flex flex-col items-center gap-4">
+                    <div class="flex flex-col sm:items-center gap-4">
                         <!-- The public pages stay readable while the site is locked, but
                              everything they invite you to do is behind the door. A
                              button that lands on a password box reads as broken; a
@@ -27,7 +27,7 @@
                             :description="$t('lock.app_not_open')"
                         />
 
-                        <div class="flex flex-wrap justify-center gap-3">
+                        <div class="flex flex-wrap gap-3 max-sm:*:grow max-sm:*:justify-center sm:justify-center">
                             <template v-if="!locked">
                                 <u-button v-if="isAuthenticated" href="/events" trailing-icon="i-lucide-arrow-right" size="xl" color="primary" :label="$t('home.cta_boards')" />
                                 <u-button v-else to="/login" size="xl" icon="i-lucide-log-in" color="primary" :label="$t('home.cta_login')" />
@@ -65,7 +65,7 @@
             </u-page-hero>
 
             <u-page-section :title="$t('home.preview_title')" :description="$t('home.preview_subtitle')">
-                <u-container class="max-w-6xl">
+                <u-container class="max-w-6xl max-sm:px-0">
                     <div class="relative">
                         <div class="absolute inset-0 -z-10 bg-primary/20 blur-3xl rounded-full scale-90" aria-hidden="true" />
                         <plugin-demo-video
@@ -79,7 +79,7 @@
             </u-page-section>
 
             <u-page-section v-if="pluginAvailable" :title="$t('home.plugin_demo_title')" :description="$t('home.plugin_demo_subtitle')">
-                <u-container class="max-w-6xl">
+                <u-container class="max-w-6xl max-sm:px-0">
                     <plugin-demo-video caption-class="text-center sm:text-sm" />
                 </u-container>
             </u-page-section>
@@ -88,7 +88,7 @@
                  /admin/content/home lands here, between the preview and the
                  fixed "what's available" grid. -->
             <u-page-section v-if="blocks.length">
-                <u-container class="max-w-4xl">
+                <u-container class="max-w-4xl max-sm:px-0">
                     <page-renderer :blocks="blocks" />
                 </u-container>
             </u-page-section>

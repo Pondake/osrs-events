@@ -98,6 +98,12 @@ export const uiConfig = {
             base: 'relative max-sm:before:absolute max-sm:before:-inset-x-2 max-sm:before:-inset-y-3',
         },
     },
+    // A centred button row on a phone starts every line somewhere else and
+    // leaves ragged gaps. Start left and let each button grow, so the row
+    // fills the column edge to edge.
+    pageHero: { slots: { links: 'max-sm:justify-start max-sm:*:grow max-sm:*:justify-center' } },
+    pageSection: { slots: { links: 'max-sm:justify-start max-sm:*:grow max-sm:*:justify-center' } },
+    pageCta: { slots: { links: 'max-sm:justify-start max-sm:*:grow max-sm:*:justify-center' } },
     main: {
         base: 'min-h-[calc(100vh-var(--ui-header-height)-var(--ui-footer-height,0px))]',
     },

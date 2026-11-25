@@ -36,7 +36,7 @@
                     <h1 class="mt-6 text-2xl sm:text-3xl font-bold text-highlighted">{{ copy.heading }}</h1>
                     <p class="mt-3 text-muted">{{ copy.body }}</p>
 
-                    <div class="mt-8 flex flex-wrap items-center justify-start sm:justify-center gap-3">
+                    <div class="mt-8 flex flex-wrap items-center justify-start sm:justify-center gap-3 max-sm:*:grow max-sm:*:justify-center">
                         <u-button
                             to="/"
                             size="lg"
