@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Event;
 use App\Models\Page;
+use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -68,5 +70,36 @@ class SitemapTest extends TestCase
         foreach (['/my-events', '/admin', '/settings/profile', '/welcome/osrs-username'] as $path) {
             $response->assertDontSee(url($path), false);
         }
+    }
+
+    #[Test]
+    public function it_lists_listed_events_and_omits_unlisted_ones(): void
+    {
+        $listed = $this->event(true);
+        $unlisted = $this->event(false);
+
+        $this->get('/sitemap.xml')
+            ->assertSee(url('/events/'.$listed->id), false)
+            ->assertDontSee(url('/events/'.$unlisted->id), false);
+    }
+
+    #[Test]
+    public function it_omits_events_behind_the_site_lock(): void
+    {
+        $listed = $this->event(true);
+        Setting::set('site_lock_enabled', true);
+
+        $this->get('/sitemap.xml')->assertDontSee(url('/events/'.$listed->id), false);
+    }
+
+    private function event(bool $listed): Event
+    {
+        return Event::create([
+            'title' => $listed ? 'Listed event' : 'Unlisted event',
+            'type' => 'SNAKES_LADDERS',
+            'mode' => 'SOLO',
+            'access_mode' => 'OPEN',
+            'is_listed' => $listed,
+        ]);
     }
 }

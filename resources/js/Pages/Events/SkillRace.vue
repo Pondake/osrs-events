@@ -1,5 +1,5 @@
 <template>
-    <Head :title="liveEvent.title" />
+    <event-seo-head :event="liveEvent" />
 
     <u-main>
         <u-page>
@@ -411,7 +411,8 @@
 
 <script setup>
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
+import EventSeoHead from '@/Components/EventSeoHead.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import EventPageHeader from '@/Components/EventPageHeader.vue';
