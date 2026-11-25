@@ -18,9 +18,10 @@ use Illuminate\Support\Carbon;
  * discovered in days instead of whenever a crawler happens across a link.
  *
  * **Only publicly reachable, indexable URLs belong here.** Everything behind
- * auth is excluded: an event page needs a login, so listing it would send
- * crawlers to a redirect and put URLs in the index that no visitor can open.
- * BoardShow and Boards/Mine already carry `noindex` for the same reason.
+ * auth is excluded. Listed events are the exception that proves it: they
+ * open for signed-out visitors (BoardAccessService::canView), so they are
+ * listed and indexable, while an unlisted event sends a stranger to the
+ * login and stays out — EventSeoHead marks it `noindex` to match.
  */
 class SitemapController extends Controller
 {
@@ -101,6 +102,22 @@ class SitemapController extends Controller
                 'changefreq' => 'monthly',
                 'lastmod' => $page->updated_at?->toAtomString(),
             ];
+        }
+
+        if (! $locked) {
+            $events = Event::query()
+                ->where('is_listed', true)
+                ->orderByDesc('updated_at')
+                ->get(['id', 'updated_at']);
+
+            foreach ($events as $event) {
+                $urls[] = [
+                    'loc' => route('events.show', $event->id),
+                    'priority' => '0.6',
+                    'changefreq' => 'daily',
+                    'lastmod' => $event->updated_at?->toAtomString(),
+                ];
+            }
         }
 
         return $urls;

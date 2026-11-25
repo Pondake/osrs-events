@@ -1,7 +1,5 @@
 <template>
-    <Head :title="liveBoard.title">
-        <meta name="robots" content="noindex, nofollow" />
-    </Head>
+    <event-seo-head :event="liveBoard" />
 
     <u-main>
         <u-page>
@@ -952,9 +950,10 @@
 
 <script setup>
 import { computed, defineAsyncComponent, defineComponent, onMounted, ref, shallowRef, watch } from 'vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import ClientOnly from '@/Components/ClientOnly.vue';
+import EventSeoHead from '@/Components/EventSeoHead.vue';
 import BoardConnectors from '@/Components/BoardConnectors.vue';
 import EventTypeHeading from '@/Components/EventTypeHeading.vue';
 import EventPageHeader from '@/Components/EventPageHeader.vue';
