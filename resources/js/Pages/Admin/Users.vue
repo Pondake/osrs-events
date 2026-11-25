@@ -33,7 +33,12 @@
         <div class="divide-y divide-default rounded-lg ring ring-default bg-default">
             <div v-for="u in visibleUsers" :key="u.id" class="flex items-center justify-between gap-3 px-4 py-3 flex-wrap">
                 <u-link :to="`/admin/users/${u.id}`" raw class="group flex items-center gap-3 min-w-0 flex-1 min-h-11">
-                    <u-avatar :src="u.avatar_url ?? undefined" :alt="displayName(u)" size="sm" />
+                    <u-avatar
+                        :src="u.avatar_url ?? undefined"
+                        :alt="displayName(u)"
+                        size="sm"
+                        :chip="u.is_online ? { color: 'success', position: 'bottom-right' } : undefined"
+                    />
                     <div class="min-w-0">
                         <div class="font-medium text-highlighted truncate group-hover:underline">{{ displayName(u) }}</div>
                         <div class="text-xs text-muted truncate">{{ u.discord_username ? `@${u.discord_username}` : u.email }}</div>
@@ -60,7 +65,7 @@
 
                     <div class="hidden sm:block w-36 shrink-0 ps-2 text-xs text-muted tabular-nums text-end">
                         <div>{{ $t('admin.user_joined', { date: formatDate(u.created_at) }) }}</div>
-                        <div>{{ $t('admin.user_updated', { date: formatDate(u.updated_at) }) }}</div>
+                        <div :class="u.is_online ? 'text-success font-medium' : ''">{{ seenLabel(u) }}</div>
                     </div>
 
                     <!-- One menu per user instead of two always-visible selects
@@ -97,6 +102,7 @@ import { trans } from 'laravel-vue-i18n';
 import { useAuth } from '@/Composables/useAuth';
 import { permissionLabel } from '@/Support/audit';
 import { formatDate } from '@/Support/invite';
+import { relativeTime } from '@/Support/board';
 import AdminLayout from '@/Components/AdminLayout.vue';
 import ClientOnly from '@/Components/ClientOnly.vue';
 
@@ -122,6 +128,12 @@ const PERMISSION_ICONS = { canCreateBoards: 'i-lucide-calendar-plus', canCreateT
 const permissionIcon = (name) => PERMISSION_ICONS[name] ?? 'i-lucide-key';
 
 const displayName = (u) => u.nickname ?? u.discord_username ?? u.email;
+
+function seenLabel(u) {
+    if (u.is_online) return trans('admin.user_online');
+    if (!u.last_seen_at) return trans('admin.user_never_seen');
+    return trans('admin.user_last_seen', { time: relativeTime(u.last_seen_at) });
+}
 
 const roleLabel = (name) => {
     const key = `admin.role_label_${name.toLowerCase()}`;

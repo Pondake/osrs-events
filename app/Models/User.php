@@ -25,6 +25,9 @@ class User extends Authenticatable
     // alongside the explicit checks below.
     use HasFactory, HasRoles, HasUuids, Notifiable;
 
+    /** TrackLastSeen writes at most once a minute, so this has to be comfortably wider. */
+    public const ONLINE_MINUTES = 5;
+
     /**
      * Laravel's auto-hashing cast — any ->create()/->update() with a raw
      * 'password' value hashes it before it touches the database, and
@@ -41,6 +44,7 @@ class User extends Authenticatable
             'notification_preferences' => 'array',
             'display_preferences' => 'array',
             'push_opted_out_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 
@@ -241,6 +245,11 @@ class User extends Authenticatable
                 $key => $this->notification_preferences[$key] ?? NotificationCategory::defaultFor($key),
             ])
             ->all();
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at !== null && $this->last_seen_at->gt(now()->subMinutes(self::ONLINE_MINUTES));
     }
 
     public function isAdmin(): bool

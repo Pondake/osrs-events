@@ -9,6 +9,8 @@ use App\Models\Event;
 use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,16 +49,27 @@ class DashboardController extends Controller
                 ->orderByDesc('created_at')
                 ->limit(8)
                 ->get(['id', 'action', 'actor_label', 'target_label', 'team_label', 'created_at']),
-            'newestUsers' => User::query()
-                ->orderByDesc('created_at')
-                ->limit(5)
-                ->get(['id', 'discord_username', 'nickname', 'email', 'avatar_url', 'created_at'])
-                ->map(fn (User $user) => [
-                    'id' => $user->id,
-                    'name' => $user->displayName(),
-                    'avatarUrl' => $user->avatar_url,
-                    'createdAt' => $user->created_at,
-                ]),
+            'onlineCount' => User::where('last_seen_at', '>', now()->subMinutes(User::ONLINE_MINUTES))->count(),
+            'recentlyActiveUsers' => $this->userRows(
+                User::query()->whereNotNull('last_seen_at')->orderByDesc('last_seen_at')->limit(8),
+            ),
+            'newestUsers' => $this->userRows(
+                User::query()->orderByDesc('created_at')->limit(8),
+            ),
         ]);
+    }
+
+    private function userRows(Builder $query): Collection
+    {
+        return $query
+            ->get(['id', 'discord_username', 'nickname', 'email', 'avatar_url', 'created_at', 'last_seen_at'])
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->displayName(),
+                'avatarUrl' => $user->avatar_url,
+                'createdAt' => $user->created_at,
+                'lastSeenAt' => $user->last_seen_at,
+                'online' => $user->isOnline(),
+            ]);
     }
 }

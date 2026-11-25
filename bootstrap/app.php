@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureSiteUnlocked;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireOsrsUsername;
 use App\Http\Middleware\ThrottlePerRoute;
+use App\Http\Middleware\TrackLastSeen;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // turned away rather than having a page's worth of props built for
             // it first.
             AuthenticateSession::class,
+            TrackLastSeen::class,
             HandleInertiaRequests::class,
             // Last in the group, so a locked site still gets a session and
             // its shared Inertia props — the lock screen is an Inertia page
