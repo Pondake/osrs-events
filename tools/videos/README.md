@@ -60,6 +60,24 @@ sounds are the jingles lowered by 8 dB.
 5. Copy to `public/videos/<name>-<first 8 of sha256>.<ext>` and update the
    reference in the page.
 
+### Sound
+
+Only the intro and the plugin demo have sound; the guide loops stay silent.
+`sound.mjs` adds it to the rendered mp4 and webm (AAC and Opus, -14 LUFS),
+copies the video stream unchanged and writes the hashed files to
+`public/videos/`:
+
+```
+node tools/videos/sound.mjs intro <intro.mp4> <intro.webm>
+SOUND_FROM=<reddit.mp4> node tools/videos/sound.mjs plugin <plugin.mp4> <plugin.webm>
+```
+
+The intro gets the site's own finish jingles from `public/sounds/` (times in
+`INTRO`): quest when the claim goes in, triumph on the bingo line, medal when
+Bob takes first place. The 16:9 plugin demo shares its timeline with the 9:16
+cut, so it takes that cut's mixed soundtrack (`plugin/reddit.jsonl`). It needs
+an ffmpeg with libopus (`FFMPEG`); Playwright's has no audio encoders.
+
 | Clip | Page | Notes |
 |---|---|---|
 | `sl-video` | Snakes & Ladders guide | `retile.php` adjusts the board |

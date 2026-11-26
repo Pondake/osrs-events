@@ -1,7 +1,7 @@
 <template>
     <!-- Self-hosted on purpose: an embed would set third-party cookies the
          privacy page promises not to. Click to play, nothing downloads until
-         then. The file has no audio track, so play/pause is the only control. -->
+         then. Sound plays with it unless `audio` is off (a silent file). -->
     <figure class="space-y-2">
         <div class="relative overflow-hidden rounded-xl border border-default shadow-2xl shadow-primary/10 ring-1 ring-default">
             <video
@@ -9,7 +9,7 @@
                 :poster="poster"
                 :width="width"
                 :height="height"
-                muted
+                :muted="!audio || muted"
                 playsinline
                 loop
                 preload="none"
@@ -31,6 +31,16 @@
                 <u-icon :name="playing ? 'i-lucide-pause' : 'i-lucide-play'" :class="playing ? 'size-5' : 'size-7 ms-1'" />
             </button>
             <button
+                v-if="audio"
+                type="button"
+                :aria-label="muted ? $t('landing.video_unmute') : $t('landing.video_mute')"
+                :aria-pressed="muted"
+                class="absolute bottom-3 right-16 flex size-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm cursor-pointer transition hover:bg-primary hover:text-inverted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                @click="muted = !muted"
+            >
+                <u-icon :name="muted ? 'i-lucide-volume-x' : 'i-lucide-volume-2'" class="size-5" />
+            </button>
+            <button
                 ref="enlargeButton"
                 type="button"
                 :aria-label="$t('landing.video_enlarge')"
@@ -48,6 +58,8 @@
             :height="height"
             :label="$t(label)"
             :start-at="startAt"
+            :audio="audio"
+            v-model:muted="muted"
             @close="shrink"
         />
         <figcaption v-if="caption" class="text-xs text-muted" :class="captionClass">{{ $t(caption) }}</figcaption>
@@ -61,10 +73,11 @@ import { seekVideo } from '@/Support/video';
 
 defineProps({
     captionClass: { type: String, default: '' },
-    sources: { type: Array, default: () => ['/videos/plugin-demo-01362f03.webm', '/videos/plugin-demo-d51eb362.mp4'] },
+    sources: { type: Array, default: () => ['/videos/plugin-demo-bed4984d.webm', '/videos/plugin-demo-78c1967c.mp4'] },
     poster: { type: String, default: '/videos/plugin-demo-poster-aa2ae22a.webp' },
     width: { type: Number, default: 1920 },
     height: { type: Number, default: 1080 },
+    audio: { type: Boolean, default: true },
     // i18n keys
     label: { type: String, default: 'plugin.demo_label' },
     caption: { type: String, default: 'plugin.demo_caption' },
@@ -74,6 +87,7 @@ const video = ref(null);
 const enlargeButton = ref(null);
 const playing = ref(false);
 const large = ref(false);
+const muted = ref(false);
 const startAt = ref(0);
 let resume = false;
 

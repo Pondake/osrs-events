@@ -216,6 +216,7 @@
                 poster="/videos/plugin-setup-poster-2d6ac982.webp"
                 label="plugin.setup_video_label"
                 caption=""
+                :audio="false"
             />
 
             <div v-if="confirming" class="mt-4 flex items-center justify-between gap-3 flex-wrap rounded-lg ring ring-default px-3 py-2">

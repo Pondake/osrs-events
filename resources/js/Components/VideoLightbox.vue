@@ -14,7 +14,7 @@
                     :poster="poster"
                     :width="width"
                     :height="height"
-                    muted
+                    :muted="!audio || muted"
                     loop
                     playsinline
                     class="block w-full h-auto rounded-lg bg-black shadow-2xl cursor-pointer"
@@ -58,6 +58,16 @@
                         @input="seek"
                         @keydown="step"
                     />
+                    <button
+                        v-if="audio"
+                        type="button"
+                        :aria-label="muted ? $t('landing.video_unmute') : $t('landing.video_mute')"
+                        :aria-pressed="muted"
+                        class="flex size-11 shrink-0 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm cursor-pointer transition hover:bg-primary hover:text-inverted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        @click="emit('update:muted', !muted)"
+                    >
+                        <u-icon :name="muted ? 'i-lucide-volume-x' : 'i-lucide-volume-2'" class="size-5" />
+                    </button>
                     <span class="shrink-0 font-mono text-xs tabular-nums text-white/90 sm:text-sm">{{ clock(time) }} / {{ clock(duration) }}</span>
                 </div>
             </div>
@@ -89,10 +99,12 @@ const props = defineProps({
     label: { type: String, required: true },
     // Where the small player was, so the large one carries on from there.
     startAt: { type: Number, default: 0 },
+    audio: { type: Boolean, default: false },
+    muted: { type: Boolean, default: false },
 });
 
 // The time it was closed at, so the small player can pick up from there.
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'update:muted']);
 
 const video = ref(null);
 const closeButton = ref(null);
