@@ -36,7 +36,7 @@ process that loads the bundle once at startup, not per-request.
 
 ## Repository layout
 ```
-osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.test)
+osrs-events/            Laravel app lives at repo root (lerd serves osrs-events.test)
 ├── app/                 Http/Controllers, Http/Middleware, Models, Services
 ├── resources/
 │   ├── js/
@@ -437,6 +437,19 @@ php artisan push:sweep --dry-run   # what the time-based sweep would send
   use `trans()` (i18n) directly, and restructure around `route()`'s template-only requirement
 - Do not add `ssr.noExternal` for `@nuxt/ui` in `vite.config.js` — it silently breaks Vue's
   component resolution globally instead of crashing loudly (see `docs/ssr-gotchas.md`)
+
+## Local development
+
+The working copy lives on the WSL ext4 disk, not on the Windows drive: over
+WSL's 9p mount every request took seconds, from ext4 it is fast. lerd serves it
+at https://osrs-events.test. The Windows-side folder is a symlink to it.
+
+- Run PHP, composer and npm inside WSL through lerd: `lerd php artisan …`,
+  `lerd composer …`, `lerd npm …`. `node_modules` holds Linux binaries, so do
+  not run npm for this checkout from Windows.
+- Open sessions, editors and terminals at the `\\wsl.localhost\<distro>\home\<user>\code\osrs-events` path, not through the Windows
+  drive symlink: WSL cannot follow that link, so lerd's Windows shims (MCP,
+  php, composer) started from there run in the WSL home directory instead.
 
 ## Backlog
 
