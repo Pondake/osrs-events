@@ -193,14 +193,14 @@
                             icon="i-lucide-x"
                             :label="$t('bingo.reject')"
                             :loading="submitting === 'REJECTED'"
-                            @click="review('REJECTED')"
+                            @click="review('REJECTED', $event)"
                         />
                         <u-button
                             color="success"
                             icon="i-lucide-check"
                             :label="$t('bingo.approve')"
                             :loading="submitting === 'APPROVED'"
-                            @click="review('APPROVED')"
+                            @click="review('APPROVED', $event)"
                         />
                     </template>
                     <u-button
@@ -279,18 +279,39 @@ watch(() => props.open, (open) => {
     changingVerdict.value = false;
 });
 
-function review(status) {
-    if (!claim.value.id) return;
+function review(status, event) {
+    const id = claim.value.id;
+    // The next claim slides under the cursor as soon as a verdict is given,
+    // so the second click of a double-click would judge that one too.
+    if (!id || event?.detail > 1) return;
 
-    submitting.value = status;
+    // A pending claim leaves the queue at once and comes back if the server
+    // refuses. A settled one stays on screen until the new verdict lands.
+    const queued = !isSettled.value;
+    const note = reviewNote.value || null;
 
-    router.patch(`/events/${props.eventId}/tiles/completions/${claim.value.id}`, {
+    if (queued) {
+        reviewNote.value = '';
+        proofFailed.value = false;
+    } else {
+        submitting.value = status;
+    }
+
+    const visit = queued
+        ? router.optimistic((current) => ({ pending: (current.pending ?? []).filter((c) => c.id !== id) }))
+        : router;
+
+    visit.patch(`/events/${props.eventId}/tiles/completions/${id}`, {
         status,
-        review_note: reviewNote.value || null,
+        review_note: note,
     }, {
         preserveScroll: true,
         // Stays open on purpose — a queue is worked through.
+        // Not for a queued claim: by now the host may be writing a note on
+        // the next one.
         onSuccess: () => {
+            if (queued) return;
+
             reviewNote.value = '';
             proofFailed.value = false;
         },

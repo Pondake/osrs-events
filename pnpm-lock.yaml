@@ -42,6 +42,9 @@ importers:
       '@iconify-json/simple-icons':
         specifier: ^1.2.102
         version: 1.2.103
+      '@inertiajs/vite':
+        specifier: ^3.11.0
+        version: 3.11.0(axios@1.21.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0))
       '@inertiajs/vue3':
         specifier: ^3.11.0
         version: 3.11.0(axios@1.21.1)(vue@3.5.45(typescript@6.0.3))
@@ -326,6 +329,11 @@ packages:
     peerDependenciesMeta:
       axios:
         optional: true
+
+  '@inertiajs/vite@3.11.0':
+    resolution: {integrity: sha512-BQDD++BbQ/Q7U2E3yPGYki/vkwC+pT2DNUXUItrGeMefLy8aBaJXftF979+hupU/V3rfXf1RpGZZRi+BcQ5jRQ==}
+    peerDependencies:
+      vite: ^7.0.0 || ^8.0.0
 
   '@inertiajs/vue3@3.11.0':
     resolution: {integrity: sha512-O1NnujzskjOWOI4OlGmZfNbpkzzO/PvHGQyMv2de6ntwc2UZvFHUa0UoGOgqV3bjJINMdjJdaU+mOkNPATVERQ==}
@@ -2768,6 +2776,16 @@ snapshots:
       laravel-precognition: 2.1.1(axios@1.21.1)
     optionalDependencies:
       axios: 1.21.1
+
+  '@inertiajs/vite@3.11.0(axios@1.21.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0))':
+    dependencies:
+      '@inertiajs/core': 3.11.0(axios@1.21.1)
+      '@jridgewell/remapping': 2.3.5
+      magic-string: 0.30.21
+      tinyglobby: 0.2.17
+      vite: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)
+    transitivePeerDependencies:
+      - axios
 
   '@inertiajs/vue3@3.11.0(axios@1.21.1)(vue@3.5.45(typescript@6.0.3))':
     dependencies:

@@ -119,20 +119,17 @@ list itself is unchanged.
    `v-if` gating instead, which sidesteps the question rather than
    resolving it either way.
 14. **A leftover `public/hot` silently turns SSR off entirely.** Laravel
-   writes that file while `pnpm dev` runs and deletes it on a clean exit;
-   if the dev server is killed, or simply left running, the file stays.
+   writes that file while `pnpm dev` runs and deletes it on a clean exit.
    Inertia's `HttpGateway` checks `Vite::isRunningHot()` FIRST and, when
-   hot, posts to `INERTIA_SSR_HOT_URL` — which nothing here sets — so the
-   request fails and SSR falls back to client rendering. The fallback is
-   deliberately silent (that's the documented behaviour on any SSR error),
-   so the only symptom is `<div id="app"></div>` in view-source while the
-   page looks perfect in a browser. Found this way: the SSR process was
-   healthy on :13714 and answering /health with 200, and pages still
-   shipped 55KB of empty shell instead of 134KB of rendered markup. Check
-   view-source, not the browser, when verifying anything SEO-related — and
-   `ls public/hot` before concluding SSR is broken. Corollary: while the
-   dev server is up, every "verification" runs against HMR source and
-   never exercises the built bundle at all.
+   hot, posts to `/__inertia_ssr` on the dev server instead of the SSR
+   process. A running `pnpm dev` answers that (the `@inertiajs/vite`
+   plugin), but a killed one leaves the file behind, the request fails and
+   SSR falls back to client rendering — silently, as on any SSR error. The
+   only symptom is `<div id="app"></div>` in view-source while the page
+   looks perfect in a browser. Check view-source, not the browser, when
+   verifying anything SEO-related, and `ls public/hot` before concluding
+   SSR is broken. Corollary: while the dev server is up, SSR renders HMR
+   source and never exercises the built bundle at all.
 15. `php artisan serve` cannot serve an SSE stream and anything else at the
    same time. PHP's built-in server is single-threaded, and
    `PHP_CLI_SERVER_WORKERS` forks, so it does nothing on Windows. One open

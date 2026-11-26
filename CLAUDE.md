@@ -18,7 +18,7 @@ behaviour came from, not files you can open.
 ## Package manager
 Always **pnpm** for JS tooling, **composer** for PHP. Never `npm`, `npx`, or `yarn`.
 ```
-pnpm dev            # vite dev server (client HMR)
+pnpm dev            # vite dev server (client HMR, and SSR via /__inertia_ssr)
 pnpm test           # vitest over tests/js (frontend)
 php artisan test    # phpunit over tests/Feature (backend)
 pnpm e2e            # build, then the browser suite in tests/e2e
@@ -48,7 +48,7 @@ osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.
 │   │   ├── ssr.js       SSR entry
 │   │   └── AppRoot.vue  root component — header/page/footer, flash-to-toast bridge
 │   ├── css/app.css       Tailwind + Nuxt UI imports, OSRS theme CSS
-│   └── views/app.blade.php  root Blade shell — favicons, fonts, @inertiaHead
+│   └── views/app.blade.php  root Blade shell — favicons, fonts, <x-inertia::head>
 ├── routes/web.php
 ├── tools/videos/        scripts that record the demo videos and jingles (README inside)
 ├── tools/fields/        builds the shape sheets behind the landing pages
@@ -59,7 +59,7 @@ osrs-events/            Laravel app lives at repo root (Herd serves osrs-events.
 └── docs/discord.md         local notes — always gitignored
 ```
 
-Stack: Laravel 13 · Inertia.js v2 · Vue 3 · `@nuxt/ui` v4 · Tailwind v4 ·
+Stack: Laravel 13 · Inertia.js v3 · Vue 3 · `@nuxt/ui` v4 · Tailwind v4 ·
 Eloquent/PostgreSQL · Laravel Socialite (Discord OAuth).
 
 ### Which doc gets what — decide this, don't invent a new file

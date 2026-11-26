@@ -7,7 +7,7 @@
         {{-- Everything below this line is what the SSR-parity test cares
              about: title/meta/canonical/JSON-LD emitted by each page's own
              <Head> block (see Pages/SnakesAndLadders.vue), collected during
-             the server render and injected here by @inertiaHead — not
+             the server render and injected here by <x-inertia::head> — not
              appended client-side after hydration. --}}
         {{-- Home-screen icons come in two flavours: the clean brand mark on
              production, and an amber blueprint/hazard version everywhere else,
@@ -57,7 +57,11 @@
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700&display=swap">
 
         @routes
-        @inertiaHead
+        {{-- The slot only renders when SSR did not answer, so a page still has
+             a title without doubling the one SSR emits. --}}
+        <x-inertia::head>
+            <title>{{ config('app.name') }}</title>
+        </x-inertia::head>
 
         {{-- See LandingController::snakesAndLadders() for why JSON-LD is
              shared as plain Blade view data instead of going through

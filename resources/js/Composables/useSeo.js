@@ -14,7 +14,7 @@ const DEFAULT_OG_IMAGE = 'default';
  * useSeoMeta()/useHead() composables (which mutate a shared head singleton
  * outside the render tree), this returns a render function that emits an
  * Inertia <Head> block. Head's tag-diffing during renderToString is what
- * actually gets these tags into the SSR HTML — the same job @inertiaHead
+ * actually gets these tags into the SSR HTML — the same job <x-inertia::head>
  * does in resources/views/app.blade.php on the Laravel side.
  *
  * Usage in a page's <template>:

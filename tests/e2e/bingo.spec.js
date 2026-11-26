@@ -56,7 +56,18 @@ test('a claim waits for the host, and only scores once it is approved', async ({
 
     await open(host, REVIEWED);
     await openQueue(host);
+
+    // The claim leaves the queue before the server has answered.
+    let release;
+    const held = new Promise((resolve) => (release = resolve));
+    await host.route('**/bingo/claims/*', async (route) => {
+        await held;
+        await route.continue();
+    });
+
     await host.getByRole('dialog').getByRole('button', { name: 'Approve' }).click();
+    await expect(host.getByRole('dialog').getByText('Nothing waiting for review')).toBeVisible();
+    release();
     await expect(host.getByText('Claim approved').first()).toBeVisible();
     await expect(host.getByRole('dialog').getByText('Nothing waiting for review')).toBeVisible();
 

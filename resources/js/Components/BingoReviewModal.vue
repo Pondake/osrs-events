@@ -229,7 +229,7 @@
                             icon="i-lucide-x"
                             :label="$t('bingo.reject')"
                             :loading="submitting === 'REJECTED'"
-                            @click="review('REJECTED')"
+                            @click="review('REJECTED', $event)"
                         />
                         <u-button
                             color="success"
@@ -237,7 +237,7 @@
                             :label="$t('bingo.approve')"
                             :disabled="Boolean(claim.lockoutAhead)"
                             :loading="submitting === 'APPROVED'"
-                            @click="review('APPROVED')"
+                            @click="review('APPROVED', $event)"
                         />
                     </template>
                     <!-- A settled claim gets a deliberate second step before
@@ -329,19 +329,40 @@ watch(() => props.open, (open) => {
     changingVerdict.value = false;
 });
 
-function review(status) {
-    if (!claim.value.id) return;
+function review(status, event) {
+    const id = claim.value.id;
+    // The next claim slides under the cursor as soon as a verdict is given,
+    // so the second click of a double-click would judge that one too.
+    if (!id || event?.detail > 1) return;
 
-    submitting.value = status;
+    // A pending claim leaves the queue at once and comes back if the server
+    // refuses. A settled one stays on screen until the new verdict lands.
+    const queued = !isSettled.value;
+    const note = reviewNote.value || null;
 
-    router.patch(`/events/${props.eventId}/bingo/claims/${claim.value.id}`, {
+    if (queued) {
+        reviewNote.value = '';
+        proofFailed.value = false;
+    } else {
+        submitting.value = status;
+    }
+
+    const visit = queued
+        ? router.optimistic((current) => ({ pending: (current.pending ?? []).filter((c) => c.id !== id) }))
+        : router;
+
+    visit.patch(`/events/${props.eventId}/bingo/claims/${id}`, {
         status,
-        review_note: reviewNote.value || null,
+        review_note: note,
     }, {
         preserveScroll: true,
         // Stays open on purpose. A queue is worked through, and closing after
         // every verdict would mean reopening it for each of twenty claims.
+        // Not for a queued claim: by now the host may be writing a note on
+        // the next one.
         onSuccess: () => {
+            if (queued) return;
+
             reviewNote.value = '';
             proofFailed.value = false;
         },

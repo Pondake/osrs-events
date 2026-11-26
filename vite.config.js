@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
+import inertia from '@inertiajs/vite';
 import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 import ui from '@nuxt/ui/vite';
@@ -31,6 +32,9 @@ export default defineConfig({
             ssr: 'resources/js/ssr.js',
             refresh: true,
         }),
+        // Lets `pnpm dev` answer Laravel's SSR requests on /__inertia_ssr.
+        // Without it a running dev server (public/hot) turns SSR off silently.
+        inertia({ ssr: 'resources/js/ssr.js' }),
         i18n(),
         tailwindcss(),
         vue({
